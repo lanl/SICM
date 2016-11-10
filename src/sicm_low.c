@@ -1,5 +1,6 @@
 #include "sicm_low.h"
 #include "dram.h"
+#include "knl_hbm.h"
 
 #include <stdio.h>
 
@@ -20,8 +21,8 @@ int zero() {
 }
 
 int main() {
-  int spec_count = 1;
-  struct sicm_device_spec specs[] = {sicm_dram_spec()};
+  int spec_count = 2;
+  struct sicm_device_spec specs[] = {sicm_knl_hbm_spec(), sicm_dram_spec()};
   
   int i;
   int non_numa = 0;

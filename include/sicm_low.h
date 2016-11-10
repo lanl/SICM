@@ -4,8 +4,11 @@
 
 #define SICM_BLOB_SIZE 4
 
+enum sicm_device_type { SICM_KNL_HBM, SICM_DRAM };
+
 struct sicm_device {
   char payload[SICM_BLOB_SIZE];
+  enum sicm_device_type ty;
   void* (*alloc)(struct sicm_device*, size_t);
   void (*free)(struct sicm_device*, void*, size_t);
   int (*add_to_bitmask)(struct sicm_device*, struct bitmask*);
