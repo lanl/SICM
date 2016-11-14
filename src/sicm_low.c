@@ -20,6 +20,30 @@ int zero() {
   return 0;
 }
 
+int sicm_cpu_mask_created = 0;
+struct bitmask* sicm_cpu_mask_memo;
+
+struct bitmask* sicm_cpu_mask() {
+  if(sicm_cpu_mask_created) return sicm_cpu_mask_memo;
+  
+  struct bitmask* cpumask = numa_allocate_cpumask();
+  int cpu_count = numa_num_possible_cpus();
+  int node_count = numa_max_node() + 1;
+  sicm_cpu_mask_memo = numa_bitmask_alloc(node_count);
+  int i, j;
+  for(i = 0; i < node_count; i++) {
+    numa_node_to_cpus(i, cpumask);
+    for(j = 0; j < cpu_count; j++) {
+      if(numa_bitmask_isbitset(cpumask, j)) {
+        numa_bitmask_setbit(sicm_cpu_mask_memo, i);
+        break;
+      }
+    }
+  }
+  numa_free_cpumask(cpumask);
+  return sicm_cpu_mask_memo;
+}
+
 int main() {
   int spec_count = 2;
   struct sicm_device_spec specs[] = {sicm_knl_hbm_spec(), sicm_dram_spec()};

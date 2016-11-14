@@ -35,8 +35,9 @@ int sicm_knl_hbm_add(struct sicm_device* device_list, int idx, struct bitmask* n
   uint32_t actual = registers[0] & (CPUID_MODEL_MASK | CPUID_EXT_MODEL_MASK);
 
   if (actual == expected) {
+    struct bitmask* cpumask = sicm_cpu_mask();
     for(i = 0; i <= numa_max_node(); i++) {
-      if(!numa_bitmask_isbitset(numa_all_cpus_ptr, i)) {
+      if(!numa_bitmask_isbitset(cpumask, i)) {
         numa_bitmask_setbit(numa_mask, i);
         ((int*)device_list[idx].payload)[0] = i;
         device_list[idx].ty = SICM_KNL_HBM;

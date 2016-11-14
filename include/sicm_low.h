@@ -21,6 +21,8 @@ struct sicm_device_spec {
 
 int zero();
 
+struct bitmask* sicm_cpu_mask();
+
 void* sicm_alloc(struct sicm_device* device, size_t size);
 void sicm_free(struct sicm_device* device, void* ptr, size_t size);
 int sicm_add_to_bitmask(struct sicm_device* device, struct bitmask* mask);
