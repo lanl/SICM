@@ -2,7 +2,7 @@
 #include "dram.h"
 #include "knl_hbm.h"
 
-#include <stdio.h>
+#include <numaif.h>
 
 void* sicm_alloc(struct sicm_device* device, size_t size) {
   return device->alloc(device, size);
@@ -12,8 +12,36 @@ void sicm_free(struct sicm_device* device, void* ptr, size_t size) {
   device->free(device, ptr, size);
 }
 
+size_t sicm_used(struct sicm_device* device) {
+  return device->used(device);
+}
+
+size_t sicm_capacity(struct sicm_device* device) {
+  return device->capacity(device);
+}
+
 int sicm_add_to_bitmask(struct sicm_device* device, struct bitmask* mask) {
   return device->add_to_bitmask(device, mask);
+}
+
+long sicm_move(struct sicm_device* src, struct sicm_device* dest, void* ptr, size_t len) {
+  if(src->move_ty == SICM_MOVER_NUMA && dest->move_ty == SICM_MOVER_NUMA) {
+    long page_size = sysconf(_SC_PAGESIZE);
+    int page_count = len / page_size + 1;
+    int dest_node = dest->move_payload.numa;
+    void** pages = malloc(page_count * sizeof(void*));
+    int* nodes = malloc(page_count * sizeof(int));
+    int i;
+    for(i = 0; i < page_count; i++) {
+      pages[i] = ptr + i * page_size;
+      nodes[i] = dest_node;
+    }
+    long res = move_pages(0, page_count, pages, nodes, NULL, MPOL_MF_MOVE);
+    free(pages);
+    free(nodes);
+    return res;
+  }
+  return -1;
 }
 
 int zero() {
@@ -53,7 +81,6 @@ int main() {
   for(i = 0; i < spec_count; i++)
     non_numa += specs[i].non_numa_count();
   
-  printf("%d\n", numa_max_node());
   int device_count = non_numa + numa_max_node() + 1;
   struct sicm_device* devices = malloc(device_count * sizeof(struct sicm_device));
   struct bitmask* numa_mask = numa_bitmask_alloc(numa_max_node() + 1);
@@ -61,6 +88,12 @@ int main() {
   for(i = 0; i < spec_count; i++)
     idx = specs[i].add_devices(devices, idx, numa_mask);
   
+  /*
+   * test code starts here
+   * everything above this comment is required spinup
+   */
+  printf("used: %lu\n", sicm_used(&devices[0]));
+  printf("capacity: %lu\n", sicm_capacity(&devices[0]));
   int* test = sicm_alloc(&devices[0], 100 * sizeof(int));
   for(i = 0; i < 100; i++)
     test[i] = i;

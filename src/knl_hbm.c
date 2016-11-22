@@ -1,21 +1,9 @@
 #include <stdint.h>
 #include "knl_hbm.h"
+#include "numa_common.h"
 
 #define CPUID_MODEL_MASK        (0xf<<4)
 #define CPUID_EXT_MODEL_MASK    (0xf<<16)
-
-void* sicm_knl_hbm_alloc(struct sicm_device* device, size_t size) {
-  return numa_alloc_onnode(size, ((int*)device->payload)[0]);
-}
-
-void sicm_knl_hbm_free(struct sicm_device* device, void* start, size_t size) {
-  numa_free(start, size);
-}
-
-int sicm_knl_hbm_add_to_bitmask(struct sicm_device* device, struct bitmask* mask) {
-  numa_bitmask_setbit(mask, ((int*)device->payload)[0]);
-  return 1;
-}
 
 /*
  * This code is mostly taken from memkind: check to see if the CPU is an
@@ -41,9 +29,13 @@ int sicm_knl_hbm_add(struct sicm_device* device_list, int idx, struct bitmask* n
         numa_bitmask_setbit(numa_mask, i);
         ((int*)device_list[idx].payload)[0] = i;
         device_list[idx].ty = SICM_KNL_HBM;
-        device_list[idx].alloc = sicm_knl_hbm_alloc;
-        device_list[idx].free = sicm_knl_hbm_free;
-        device_list[idx].add_to_bitmask = sicm_knl_hbm_add_to_bitmask;
+        device_list[idx].move_ty = SICM_MOVER_NUMA;
+        device_list[idx].move_payload.numa = i;
+        device_list[idx].alloc = sicm_numa_common_alloc;
+        device_list[idx].free = sicm_numa_common_free;
+        device_list[idx].used = sicm_numa_common_used;
+        device_list[idx].capacity = sicm_numa_common_capacity;
+        device_list[idx].add_to_bitmask = sicm_numa_common_add_to_bitmask;
         idx++;
       }
     }

@@ -1,5 +1,5 @@
-INCLUDES := sicm_low.h dram.h knl_hbm.h
-SOURCES := sicm_low dram knl_hbm
+INCLUDES := sicm_low.h dram.h knl_hbm.h numa_common.h
+SOURCES := sicm_low dram knl_hbm numa_common
 
 IDIR := include
 CFLAGS := -I$(IDIR) -Wall -lnuma
