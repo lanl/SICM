@@ -27,7 +27,10 @@ int sicm_add_to_bitmask(struct sicm_device* device, struct bitmask* mask) {
 int sicm_move(struct sicm_device* src, struct sicm_device* dest, void* ptr, size_t len) {
   if(src->move_ty == SICM_MOVER_NUMA && dest->move_ty == SICM_MOVER_NUMA) {
     int dest_node = dest->move_payload.numa;
-    int nodemask_length = numa_max_node() / (sizeof(long int) * 8) + 1;
+    nodemask_t nodemask;
+    nodemask_zero(&nodemask);
+    nodemask_set_compat(&nodemask, dest_node);
+    /*int nodemask_length = numa_max_node() / (sizeof(long int) * 8) + 1;
     unsigned long* nodes = malloc(nodemask_length);
     int i = nodemask_length - 1;
     while(dest_node > 0) {
@@ -39,9 +42,9 @@ int sicm_move(struct sicm_device* src, struct sicm_device* dest, void* ptr, size
         nodes[i] = 1 << dest_node;
         dest_node = -1;
       }
-    }
-    int res = mbind(ptr, len, MPOL_BIND, nodes, numa_max_node() + 2, MPOL_MF_MOVE);
-    free(nodes);
+    }*/
+    int res = mbind(ptr, len, MPOL_BIND, nodemask.n, numa_max_node() + 2, MPOL_MF_MOVE);
+    //free(nodes);
     return res;
   }
   return -1;
