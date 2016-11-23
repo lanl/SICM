@@ -97,12 +97,15 @@ int main() {
    */
   printf("used: %lu\n", sicm_used(&devices[0]));
   printf("capacity: %lu\n", sicm_capacity(&devices[0]));
-  int* test = sicm_alloc(&devices[0], 100 * sizeof(int));
-  for(i = 0; i < 100; i++)
+  int count = 1000000;
+  int* test = sicm_alloc(&devices[0], count * sizeof(int));
+  for(i = 0; i < count; i++)
     test[i] = i;
-  for(i = 0; i < 100; i++)
-    printf("%d ", test[i]);
-  printf("\n");
-  sicm_free(&devices[0], test, 100 * sizeof(int));
+  char path[100];
+  sprintf(path, "cat /proc/%d/numa_maps", (int)getpid());
+  system(path);
+  sicm_move(&devices[0], &devices[1], test, count * sizeof(int));
+  system(path);
+  sicm_free(&devices[1], test, count * sizeof(int));
   return 1;
 }
