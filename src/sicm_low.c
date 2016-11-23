@@ -40,7 +40,7 @@ int sicm_move(struct sicm_device* src, struct sicm_device* dest, void* ptr, size
         dest_node = -1;
       }
     }
-    int res = mbind(ptr, len, MPOL_BIND, nodes, numa_max_node() + 1, MPOL_MF_MOVE);
+    int res = mbind(ptr, len, MPOL_BIND, nodes, numa_max_node() + 2, MPOL_MF_MOVE);
     free(nodes);
     return res;
   }
