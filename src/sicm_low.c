@@ -24,20 +24,23 @@ int sicm_add_to_bitmask(struct sicm_device* device, struct bitmask* mask) {
   return device->add_to_bitmask(device, mask);
 }
 
-long sicm_move(struct sicm_device* src, struct sicm_device* dest, void* ptr, size_t len) {
+int sicm_move(struct sicm_device* src, struct sicm_device* dest, void* ptr, size_t len) {
   if(src->move_ty == SICM_MOVER_NUMA && dest->move_ty == SICM_MOVER_NUMA) {
-    long page_size = sysconf(_SC_PAGESIZE);
-    int page_count = len / page_size + 1;
     int dest_node = dest->move_payload.numa;
-    void** pages = malloc(page_count * sizeof(void*));
-    int* nodes = malloc(page_count * sizeof(int));
-    int i;
-    for(i = 0; i < page_count; i++) {
-      pages[i] = ptr + i * page_size;
-      nodes[i] = dest_node;
+    int nodemask_length = numa_max_node() / (sizeof(long int) * 8) + 1;
+    unsigned long* nodes = malloc(nodemask_length);
+    int i = nodemask_length - 1;
+    while(dest_node > 0) {
+      if(dest_node > sizeof(long int) * 8) {
+        i--;
+        dest_node -= sizeof(long int) * 8;
+      }
+      else {
+        nodes[i] = 1 << dest_node;
+        dest_node = -1;
+      }
     }
-    long res = move_pages(0, page_count, pages, nodes, NULL, MPOL_MF_MOVE);
-    free(pages);
+    int res = mbind(ptr, len, MPOL_BIND, nodes, numa_max_node() + 1, MPOL_MF_MOVE);
     free(nodes);
     return res;
   }

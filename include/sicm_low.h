@@ -41,4 +41,4 @@ void* sicm_alloc(struct sicm_device*, size_t);
 void sicm_free(struct sicm_device*, void*, size_t);
 size_t sicm_used(struct sicm_device*);
 int sicm_add_to_bitmask(struct sicm_device*, struct bitmask*);
-long sicm_move(struct sicm_device*, struct sicm_device*, void*, size_t);
+int sicm_move(struct sicm_device*, struct sicm_device*, void*, size_t);
