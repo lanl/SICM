@@ -20,6 +20,14 @@ size_t sicm_capacity(struct sicm_device* device) {
   return device->capacity(device);
 }
 
+int sicm_model_distance(struct sicm_device* device) {
+  return device->model_distance(device);
+}
+
+void sicm_latency(struct sicm_device* device, struct sicm_timing* res) {
+  return device->latency(device, res);
+}
+
 int sicm_add_to_bitmask(struct sicm_device* device, struct bitmask* mask) {
   return device->add_to_bitmask(device, mask);
 }
@@ -30,22 +38,7 @@ int sicm_move(struct sicm_device* src, struct sicm_device* dest, void* ptr, size
     nodemask_t nodemask;
     nodemask_zero(&nodemask);
     nodemask_set_compat(&nodemask, dest_node);
-    /*int nodemask_length = numa_max_node() / (sizeof(long int) * 8) + 1;
-    unsigned long* nodes = malloc(nodemask_length);
-    int i = nodemask_length - 1;
-    while(dest_node > 0) {
-      if(dest_node > sizeof(long int) * 8) {
-        i--;
-        dest_node -= sizeof(long int) * 8;
-      }
-      else {
-        nodes[i] = 1 << dest_node;
-        dest_node = -1;
-      }
-    }*/
-    int res = mbind(ptr, len, MPOL_BIND, nodemask.n, numa_max_node() + 2, MPOL_MF_MOVE);
-    //free(nodes);
-    return res;
+    return mbind(ptr, len, MPOL_BIND, nodemask.n, numa_max_node() + 2, MPOL_MF_MOVE);
   }
   return -1;
 }
@@ -54,11 +47,10 @@ int zero() {
   return 0;
 }
 
-int sicm_cpu_mask_created = 0;
-struct bitmask* sicm_cpu_mask_memo;
+struct bitmask* sicm_cpu_mask_memo = NULL;
 
 struct bitmask* sicm_cpu_mask() {
-  if(sicm_cpu_mask_created) return sicm_cpu_mask_memo;
+  if(sicm_cpu_mask_memo) return sicm_cpu_mask_memo;
   
   struct bitmask* cpumask = numa_allocate_cpumask();
   int cpu_count = numa_num_possible_cpus();
@@ -93,6 +85,7 @@ int main() {
   int idx = 0;
   for(i = 0; i < spec_count; i++)
     idx = specs[i].add_devices(devices, idx, numa_mask);
+  numa_bitmask_free(numa_mask);
   
   /*
    * test code starts here
@@ -104,11 +97,16 @@ int main() {
   int* test = sicm_alloc(&devices[0], count * sizeof(int));
   for(i = 0; i < count; i++)
     test[i] = i;
-  char path[100];
+  printf("%p\n", sicm_cpu_mask());
+  printf("%p\n", sicm_cpu_mask());
+  struct sicm_timing timing;
+  sicm_latency(&devices[0], &timing);
+  printf("%u %u %u %u\n", timing.alloc, timing.write, timing.read, timing.free);
+  /*char path[100];
   sprintf(path, "cat /proc/%d/numa_maps", (int)getpid());
   system(path);
   sicm_move(&devices[0], &devices[1], test, count * sizeof(int));
   system(path);
-  sicm_free(&devices[1], test, count * sizeof(int));
+  sicm_free(&devices[1], test, count * sizeof(int));*/
   return 1;
 }

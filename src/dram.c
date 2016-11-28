@@ -5,7 +5,6 @@ int sicm_dram_add(struct sicm_device* device_list, int idx, struct bitmask* numa
   int i;
   for(i = 0; i <= numa_max_node(); i++) {
     if(!numa_bitmask_isbitset(numa_mask, i)) {
-      ((int*)device_list[idx].payload)[0] = i;
       device_list[idx].ty = SICM_DRAM;
       device_list[idx].move_ty = SICM_MOVER_NUMA;
       device_list[idx].move_payload.numa = i;
@@ -13,6 +12,8 @@ int sicm_dram_add(struct sicm_device* device_list, int idx, struct bitmask* numa
       device_list[idx].free = sicm_numa_common_free;
       device_list[idx].used = sicm_numa_common_used;
       device_list[idx].capacity = sicm_numa_common_capacity;
+      device_list[idx].model_distance = sicm_numa_common_model_distance;
+      device_list[idx].latency = sicm_numa_common_latency;
       device_list[idx].add_to_bitmask = sicm_numa_common_add_to_bitmask;
       idx++;
     }
