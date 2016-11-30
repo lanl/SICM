@@ -25,7 +25,87 @@ int sicm_model_distance(struct sicm_device* device) {
 }
 
 void sicm_latency(struct sicm_device* device, struct sicm_timing* res) {
-  return device->latency(device, res);
+  struct timespec start, end;
+  int i;
+  char b;
+  unsigned int n = time(NULL);
+  clock_gettime(CLOCK_MONOTONIC_RAW, &start);
+  char* blob = sicm_alloc(device, SICM_LATENCY_SIZE);
+  clock_gettime(CLOCK_MONOTONIC_RAW, &end);
+  res->alloc = (end.tv_sec - start.tv_sec) * 1000000 + (end.tv_nsec - start.tv_nsec) / 1000;
+  clock_gettime(CLOCK_MONOTONIC_RAW, &start);
+  for(i = 0; i < SICM_LATENCY_ITERATIONS; i++) {
+    sicm_rand(n);
+    blob[n % SICM_LATENCY_SIZE] = 0;
+  }
+  clock_gettime(CLOCK_MONOTONIC_RAW, &end);
+  res->write = (end.tv_sec - start.tv_sec) * 1000000 + (end.tv_nsec - start.tv_nsec) / 1000;
+  clock_gettime(CLOCK_MONOTONIC_RAW, &start);
+  for(i = 0; i < SICM_LATENCY_ITERATIONS; i++) {
+    sicm_rand(n);
+    b = blob[n % SICM_LATENCY_SIZE];
+  }
+  clock_gettime(CLOCK_MONOTONIC_RAW, &end);
+  // Write it back so hopefully it won't compile away the read
+  blob[0] = b;
+  res->read = (end.tv_sec - start.tv_sec) * 1000000 + (end.tv_nsec - start.tv_nsec) / 1000;
+  clock_gettime(CLOCK_MONOTONIC_RAW, &start);
+  sicm_free(device, blob, SICM_LATENCY_SIZE);
+  clock_gettime(CLOCK_MONOTONIC_RAW, &end);
+  res->free = (end.tv_sec - start.tv_sec) * 1000000 + (end.tv_nsec - start.tv_nsec) / 1000;
+}
+
+struct bandwidth_payload {
+  char* blob;
+  int* ready;
+};
+
+void* bandwidth_routine(void* payload_) {
+  struct timespec start, end;
+  struct bandwidth_payload* payload = (struct bandwidth_payload*)payload_;
+  char* blob = payload->blob;
+  int i;
+  // Need a pseudorandom seed; each thread should have a different stack
+  // so this should suffice
+  unsigned int n = (int)(size_t)&i;
+  sicm_rand(n);
+  char* src = blob + (n % (SICM_BANDWIDTH_SIZE / 2 - SICM_BANDWIDTH_COPY_SIZE));
+  sicm_rand(n);
+  char* dst = src + (n % (SICM_BANDWIDTH_SIZE / 2));
+  int indexes[SICM_BANDWIDTH_ITERATION_COUNT];
+  for(i = 0; i < SICM_BANDWIDTH_ITERATION_COUNT; i++) {
+    sicm_rand(n);
+    indexes[i] = n % SICM_BANDWIDTH_SIZE;
+  }
+  while(!(*(payload->ready)));
+  clock_gettime(CLOCK_MONOTONIC_RAW, &start);
+  //memcpy(src, dst, SICM_BANDWIDTH_COPY_SIZE);
+  //for(i = 0; i < SICM_BANDWIDTH_ITERATION_COUNT; i++) src[i] = 0;
+  for(i = 0; i < SICM_BANDWIDTH_ITERATION_COUNT; i++)
+    blob[indexes[i]] = 0;
+  clock_gettime(CLOCK_MONOTONIC_RAW, &end);
+  size_t delta = (end.tv_sec - start.tv_sec) * 1000000 + (end.tv_nsec - start.tv_nsec) / 1000;
+  return (void*)delta;
+}
+
+double sicm_bandwidth(struct sicm_device* device) {
+  pthread_t threads[SICM_BANDWIDTH_THREAD_COUNT];
+  int i;
+  char* blob = sicm_alloc(device, SICM_BANDWIDTH_SIZE);
+  int ready = 0;
+  struct bandwidth_payload payload = { .blob = blob, .ready = &ready };
+  for(i = 0; i < SICM_BANDWIDTH_THREAD_COUNT; i++)
+    assert(!pthread_create(&threads[i], NULL, bandwidth_routine, &payload));
+  ready = 1;
+  double total_time = 0;
+  void* cur_time;
+  for(i = 0; i < SICM_BANDWIDTH_THREAD_COUNT; i++) {
+    pthread_join(threads[i], &cur_time);
+    total_time += ((double)(size_t)cur_time) / 1000000;
+  }
+  sicm_free(device, blob, SICM_BANDWIDTH_SIZE);
+  //printf("%f\n", total_time);
+  return (double)SICM_BANDWIDTH_THREAD_COUNT * SICM_BANDWIDTH_COPY_SIZE / total_time;
 }
 
 int sicm_add_to_bitmask(struct sicm_device* device, struct bitmask* mask) {
@@ -102,6 +182,10 @@ int main() {
   struct sicm_timing timing;
   sicm_latency(&devices[0], &timing);
   printf("%u %u %u %u\n", timing.alloc, timing.write, timing.read, timing.free);
+  int samples = 5;
+  double bw = 0;
+  for(i = 0; i < samples; i++) bw += sicm_bandwidth(&devices[0]);
+  printf("bw: %f\n", bw / samples);
   /*char path[100];
   sprintf(path, "cat /proc/%d/numa_maps", (int)getpid());
   system(path);
