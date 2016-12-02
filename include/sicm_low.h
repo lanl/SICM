@@ -4,7 +4,6 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <numa.h>
-#include <pthread.h>
 #include <sched.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -17,7 +16,7 @@
 #define SICM_LATENCY_ITERATIONS 10000
 #define SICM_BANDWIDTH_SIZE 1073741824
 #define SICM_BANDWIDTH_THREAD_COUNT 64
-#define SICM_BANDWIDTH_COPY_SIZE 1048576
+#define SICM_BANDWIDTH_COPY_SIZE 10000000
 #define SICM_BANDWIDTH_ITERATION_COUNT 1048576
 
 /*
@@ -66,15 +65,21 @@ struct sicm_device_spec {
   int (*add_devices)(struct sicm_device*, int, struct bitmask*);
 };
 
+struct sicm_device_list {
+  unsigned int count;
+  struct sicm_device* devices;
+};
+
 int zero();
 
 struct bitmask* sicm_cpu_mask();
 
+struct sicm_device_list sicm_init();
 void* sicm_alloc(struct sicm_device*, size_t);
 void sicm_free(struct sicm_device*, void*, size_t);
 size_t sicm_used(struct sicm_device*);
 int sicm_model_distance(struct sicm_device*);
 void sicm_latency(struct sicm_device*, struct sicm_timing*);
-double sicm_bandwidth(struct sicm_device*);
+size_t sicm_bandwidth(struct sicm_device*);
 int sicm_add_to_bitmask(struct sicm_device*, struct bitmask*);
 int sicm_move(struct sicm_device*, struct sicm_device*, void*, size_t);

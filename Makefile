@@ -2,7 +2,7 @@ INCLUDES := sicm_low.h dram.h knl_hbm.h numa_common.h
 SOURCES := sicm_low dram knl_hbm numa_common
 
 IDIR := include
-CFLAGS := -I$(IDIR) -Wall -lnuma -lpthread
+CFLAGS := -I$(IDIR) -Wall -lnuma -fopenmp -O2
 
 ODIR := obj
 SDIR := src
