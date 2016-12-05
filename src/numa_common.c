@@ -52,8 +52,3 @@ size_t sicm_numa_common_capacity(struct sicm_device* device) {
 int sicm_numa_common_model_distance(struct sicm_device* device) {
   return numa_distance(device->move_payload.numa, numa_node_of_cpu(sched_getcpu()));
 }
-
-int sicm_numa_common_add_to_bitmask(struct sicm_device* device, struct bitmask* mask) {
-  numa_bitmask_setbit(mask, device->move_payload.numa);
-  return 1;
-}

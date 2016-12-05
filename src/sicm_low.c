@@ -4,6 +4,11 @@
 
 #include <numaif.h>
 
+/// Allocates memory on the given device.
+/**
+ * This is just a wrapper around device->alloc, to deal with the problem
+ * that C can't do the implicit object closure.
+ */
 void* sicm_alloc(struct sicm_device* device, size_t size) {
   return device->alloc(device, size);
 }
@@ -22,6 +27,27 @@ size_t sicm_capacity(struct sicm_device* device) {
 
 int sicm_model_distance(struct sicm_device* device) {
   return device->model_distance(device);
+}
+
+size_t sicm_triad_kernel_linear(double* a, double* b, double* c, size_t size) {
+  int i;
+  double scalar = 3.0;
+  #pragma omp parallel for
+  for(i = 0; i < size; i++) {
+    a[i] = b[i] + scalar * c[i];
+  }
+  return size * 3 * sizeof(double);
+}
+
+size_t sicm_triad_kernel_random(double* a, double* b, double* c, size_t* indexes, size_t size) {
+  int i, idx;
+  double scalar = 3.0;
+  #pragma omp parallel for
+  for(i = 0; i < size; i++) {
+    idx = indexes[i];
+    a[idx] = b[idx] + scalar * c[idx];
+  }
+  return size * (sizeof(size_t) + 3 * sizeof(double));
 }
 
 void sicm_latency(struct sicm_device* device, struct sicm_timing* res) {
@@ -55,107 +81,124 @@ void sicm_latency(struct sicm_device* device, struct sicm_timing* res) {
   res->free = (end.tv_sec - start.tv_sec) * 1000000 + (end.tv_nsec - start.tv_nsec) / 1000;
 }
 
-struct bandwidth_payload {
-  char* blob;
-  int* ready;
+union size_bytes {
+  size_t i;
+  char b[sizeof(size_t)];
 };
 
-void* bandwidth_routine(void* payload_) {
+size_t sicm_bandwidth_linear2(struct sicm_device* device, size_t size,
+    size_t (*kernel)(double*, double*, size_t)) {
   struct timespec start, end;
-  struct bandwidth_payload* payload = (struct bandwidth_payload*)payload_;
-  char* blob = payload->blob;
-  int i;
-  // Need a pseudorandom seed; each thread should have a different stack
-  // so this should suffice
-  unsigned int n = (int)(size_t)&i;
-  sicm_rand(n);
-  char* src = blob + (n % (SICM_BANDWIDTH_SIZE / 2 - SICM_BANDWIDTH_COPY_SIZE));
-  sicm_rand(n);
-  char* dst = src + (n % (SICM_BANDWIDTH_SIZE / 2));
-  /*int indexes[SICM_BANDWIDTH_ITERATION_COUNT];
-  for(i = 0; i < SICM_BANDWIDTH_ITERATION_COUNT; i++) {
-    sicm_rand(n);
-    indexes[i] = n % SICM_BANDWIDTH_SIZE;
-  }*/
-  while(!(*(payload->ready)));
-  clock_gettime(CLOCK_MONOTONIC_RAW, &start);
-  //memcpy(src, dst, SICM_BANDWIDTH_COPY_SIZE);
-  for(i = 0; i < SICM_BANDWIDTH_ITERATION_COUNT; i++) src[i] = 0;
-  //for(i = 0; i < SICM_BANDWIDTH_ITERATION_COUNT; i++)
-    //blob[indexes[i]] = 0;
-  clock_gettime(CLOCK_MONOTONIC_RAW, &end);
-  size_t delta = (end.tv_sec - start.tv_sec) * 1000000 + (end.tv_nsec - start.tv_nsec) / 1000;
-  return (void*)delta;
-}
-/*
-double sicm_bandwidth(struct sicm_device* device) {
-  pthread_t threads[SICM_BANDWIDTH_THREAD_COUNT];
-  int i;
-  char* blob = sicm_alloc(device, SICM_BANDWIDTH_SIZE);
-  int ready = 0;
-  struct bandwidth_payload payload = { .blob = blob, .ready = &ready };
-  for(i = 0; i < SICM_BANDWIDTH_THREAD_COUNT; i++)
-    assert(!pthread_create(&threads[i], NULL, bandwidth_routine, &payload));
-  ready = 1;
-  double total_time = 0;
-  double max_time = 0;
-  void* cur_time_;
-  double cur_time;
-  for(i = 0; i < SICM_BANDWIDTH_THREAD_COUNT; i++) {
-    pthread_join(threads[i], &cur_time_);
-    cur_time = ((double)(size_t)cur_time_) / 1000000;
-    total_time += cur_time;
-    if(cur_time > max_time) max_time = cur_time;
-  }
-  sicm_free(device, blob, SICM_BANDWIDTH_SIZE);
-  //printf("%f\n", total_time);
-  return (double)SICM_BANDWIDTH_THREAD_COUNT * SICM_BANDWIDTH_COPY_SIZE / max_time;
-}
-*/
-/*double a[SICM_BANDWIDTH_COPY_SIZE];
-double b[SICM_BANDWIDTH_COPY_SIZE];
-double c[SICM_BANDWIDTH_COPY_SIZE];*/
-size_t sicm_bandwidth(struct sicm_device* device) {
-  struct timespec start, end;
-  double* a = sicm_alloc(device, SICM_BANDWIDTH_COPY_SIZE * sizeof(double));
-  double* b = sicm_alloc(device, SICM_BANDWIDTH_COPY_SIZE * sizeof(double));
-  double* c = sicm_alloc(device, SICM_BANDWIDTH_COPY_SIZE * sizeof(double));
-  //unsigned int* indexes = sicm_alloc(device, SICM_BANDWIDTH_COPY_SIZE * sizeof(unsigned int));
-  double scalar = 3;
+  double* a = sicm_alloc(device, size * sizeof(double));
+  double* b = sicm_alloc(device, size * sizeof(double));
   unsigned int i;
   #pragma omp parallel for
-  for(i = 0; i < SICM_BANDWIDTH_COPY_SIZE; i++) {
+  for(i = 0; i < size; i++) {
     a[i] = 1;
     b[i] = 2;
-    c[i] = 0;
-    //indexes[i] = ((i ^ 2166136261) * 16777619) % SICM_BANDWIDTH_COPY_SIZE;
   }
   clock_gettime(CLOCK_MONOTONIC_RAW, &start);
-  #pragma omp parallel for
-  for(i = 0; i < SICM_BANDWIDTH_COPY_SIZE; i++) {
-    //int idx = indexes[i];
-    c[i] = a[i] + scalar * b[i];
-  }
+  size_t accesses = kernel(a, b, size);
   clock_gettime(CLOCK_MONOTONIC_RAW, &end);
   size_t delta = (end.tv_sec - start.tv_sec) * 1000000 + (end.tv_nsec - start.tv_nsec) / 1000;
-  sicm_free(device, a, SICM_BANDWIDTH_COPY_SIZE * sizeof(double));
-  sicm_free(device, b, SICM_BANDWIDTH_COPY_SIZE * sizeof(double));
-  sicm_free(device, c, SICM_BANDWIDTH_COPY_SIZE * sizeof(double));
-  //sicm_free(device, indexes, SICM_BANDWIDTH_COPY_SIZE * sizeof(unsigned int));
-  return 3 * sizeof(double) * SICM_BANDWIDTH_COPY_SIZE / delta;
+  sicm_free(device, a, size * sizeof(double));
+  sicm_free(device, b, size * sizeof(double));
+  return accesses / delta;
 }
 
-int sicm_add_to_bitmask(struct sicm_device* device, struct bitmask* mask) {
-  return device->add_to_bitmask(device, mask);
+size_t sicm_bandwidth_random2(struct sicm_device* device, size_t size,
+    size_t (*kernel)(double*, double*, size_t*, size_t)) {
+  struct timespec start, end;
+  double* a = sicm_alloc(device, size * sizeof(double));
+  double* b = sicm_alloc(device, size * sizeof(double));
+  size_t* indexes = sicm_alloc(device, size * sizeof(size_t));
+  unsigned int i, j;
+  union size_bytes bytes;
+  #pragma omp parallel for
+  for(i = 0; i < size; i++) {
+    a[i] = 1;
+    b[i] = 2;
+    bytes.i = i;
+    indexes[i] = 0xcbf29ce484222325;
+    for(j = 0; j < sizeof(size_t); j++) {
+      indexes[i] ^= bytes.b[j];
+      indexes[i] *= 0x100000001b3;
+    }
+    indexes[i] = indexes[i] % size;
+  }
+  clock_gettime(CLOCK_MONOTONIC_RAW, &start);
+  size_t accesses = kernel(a, b, indexes, size);
+  clock_gettime(CLOCK_MONOTONIC_RAW, &end);
+  size_t delta = (end.tv_sec - start.tv_sec) * 1000000 + (end.tv_nsec - start.tv_nsec) / 1000;
+  sicm_free(device, a, size * sizeof(double));
+  sicm_free(device, b, size * sizeof(double));
+  sicm_free(device, indexes, size * sizeof(size_t));
+  return accesses / delta;
 }
 
-int sicm_move(struct sicm_device* src, struct sicm_device* dest, void* ptr, size_t len) {
+size_t sicm_bandwidth_linear3(struct sicm_device* device, size_t size,
+    size_t (*kernel)(double*, double*, double*, size_t)) {
+  struct timespec start, end;
+  double* a = sicm_alloc(device, size * sizeof(double));
+  double* b = sicm_alloc(device, size * sizeof(double));
+  double* c = sicm_alloc(device, size * sizeof(double));
+  unsigned int i;
+  #pragma omp parallel for
+  for(i = 0; i < size; i++) {
+    a[i] = 1;
+    b[i] = 2;
+    c[i] = 3;
+  }
+  clock_gettime(CLOCK_MONOTONIC_RAW, &start);
+  size_t accesses = kernel(a, b, c, size);
+  clock_gettime(CLOCK_MONOTONIC_RAW, &end);
+  size_t delta = (end.tv_sec - start.tv_sec) * 1000000 + (end.tv_nsec - start.tv_nsec) / 1000;
+  sicm_free(device, a, size * sizeof(double));
+  sicm_free(device, b, size * sizeof(double));
+  sicm_free(device, c, size * sizeof(double));
+  return accesses / delta;
+}
+
+size_t sicm_bandwidth_random3(struct sicm_device* device, size_t size,
+    size_t (*kernel)(double*, double*, double*, size_t*, size_t)) {
+  struct timespec start, end;
+  double* a = sicm_alloc(device, size * sizeof(double));
+  double* b = sicm_alloc(device, size * sizeof(double));
+  double* c = sicm_alloc(device, size * sizeof(double));
+  size_t* indexes = sicm_alloc(device, size * sizeof(size_t));
+  unsigned int i, j;
+  union size_bytes bytes;
+  #pragma omp parallel for
+  for(i = 0; i < size; i++) {
+    a[i] = 1;
+    b[i] = 2;
+    c[i] = 3;
+    bytes.i = i;
+    indexes[i] = 0xcbf29ce484222325;
+    for(j = 0; j < sizeof(size_t); j++) {
+      indexes[i] ^= bytes.b[j];
+      indexes[i] *= 0x100000001b3;
+    }
+    indexes[i] = indexes[i] % size;
+  }
+  clock_gettime(CLOCK_MONOTONIC_RAW, &start);
+  size_t accesses = kernel(a, b, c, indexes, size);
+  clock_gettime(CLOCK_MONOTONIC_RAW, &end);
+  size_t delta = (end.tv_sec - start.tv_sec) * 1000000 + (end.tv_nsec - start.tv_nsec) / 1000;
+  sicm_free(device, a, size * sizeof(double));
+  sicm_free(device, b, size * sizeof(double));
+  sicm_free(device, c, size * sizeof(double));
+  sicm_free(device, indexes, size * sizeof(size_t));
+  return accesses / delta;
+}
+
+int sicm_move(struct sicm_device* src, struct sicm_device* dest, void* ptr, size_t size) {
   if(src->move_ty == SICM_MOVER_NUMA && dest->move_ty == SICM_MOVER_NUMA) {
     int dest_node = dest->move_payload.numa;
     nodemask_t nodemask;
     nodemask_zero(&nodemask);
     nodemask_set_compat(&nodemask, dest_node);
-    return mbind(ptr, len, MPOL_BIND, nodemask.n, numa_max_node() + 2, MPOL_MF_MOVE);
+    return mbind(ptr, size, MPOL_BIND, nodemask.n, numa_max_node() + 2, MPOL_MF_MOVE);
   }
   return -1;
 }
@@ -216,6 +259,7 @@ int main() {
    * test code starts here
    * everything above this comment is required spinup
    */
+  printf("%lu\n", sizeof(size_t));
   printf("used: %lu\n", sicm_used(&devices[0]));
   printf("capacity: %lu\n", sicm_capacity(&devices[0]));
   int count = 1000000;
@@ -232,7 +276,7 @@ int main() {
   for(i = 0; i < samples; i++) bw += sicm_bandwidth(&devices[0]);*/
   size_t best = 0;
   for(i = 0; i < 10; i++) {
-    size_t res = sicm_bandwidth(&devices[0]);
+    size_t res = sicm_bandwidth_random3(&devices[0], 10000000, sicm_triad_kernel_random);
     if(res > best) best = res;
   }
   printf("bw: %lu\n", best);
