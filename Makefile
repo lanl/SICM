@@ -1,8 +1,8 @@
-INCLUDES := sicm_low.h dram.h knl_hbm.h numa_common.h
-SOURCES := sicm_low dram knl_hbm numa_common
+INCLUDES := sicm_low.h
+SOURCES := sicm_low
 
 IDIR := include
-CFLAGS := -I$(IDIR) -Wall -lnuma -fopenmp -O2
+CFLAGS := -I$(IDIR) -fPIC -Wall -lnuma -fopenmp -O2
 
 ODIR := obj
 SDIR := src
@@ -13,6 +13,9 @@ OBJ = $(patsubst %,$(ODIR)/%.o,$(SOURCES))
 
 sicm: $(OBJ)
 	gcc -o $@ $^ $(CFLAGS)
+	
+fortran: src/fbinding.f90 $(OBJ) obj/fbinding.o
+	gfortran -o sicm_f90.so src/fbinding.f90 obj/fbinding.o $(OBJ) -shared $(CFLAGS)
 
 $(ODIR)/%.o: $(SDIR)/%.c $(DEPS)
 	$(CC) $(CFLAGS) -o $@ -c $<

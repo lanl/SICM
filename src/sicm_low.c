@@ -1,82 +1,212 @@
 #include "sicm_low.h"
-#include "dram.h"
-#include "knl_hbm.h"
 
+#include <fcntl.h>
+#include <numa.h>
 #include <numaif.h>
+#include <sched.h>
+#include <stdio.h>
+#include <time.h>
+#include <unistd.h>
 
-/// Allocates memory on the given device.
-/**
- * This is just a wrapper around device->alloc, to deal with the problem
- * that C can't do the implicit object closure.
- */
+#define X86_CPUID_MODEL_MASK        (0xf<<4)
+#define X86_CPUID_EXT_MODEL_MASK    (0xf<<16)
+
+struct sicm_device_list sicm_init() {
+  int node_count = numa_max_node() + 1;
+  int device_count = node_count;
+  struct sicm_device* devices = malloc(device_count * sizeof(struct sicm_device));
+  
+  int i, j;
+  int idx = 0;
+  
+  struct bitmask* cpumask = numa_allocate_cpumask();
+  int cpu_count = numa_num_possible_cpus();
+  struct bitmask* compute_nodes = numa_bitmask_alloc(node_count);
+  for(i = 0; i < node_count; i++) {
+    numa_node_to_cpus(i, cpumask);
+    for(j = 0; j < cpu_count; j++) {
+      if(numa_bitmask_isbitset(cpumask, j)) {
+        numa_bitmask_setbit(compute_nodes, i);
+        break;
+      }
+    }
+  }
+  numa_free_cpumask(cpumask);
+  
+  struct bitmask* non_dram_nodes = numa_bitmask_alloc(node_count);
+  
+  // Knights Landing
+  uint32_t xeon_phi_model = (0x7<<4);
+  uint32_t xeon_phi_ext_model = (0x5<<16);
+  uint32_t registers[4];
+  uint32_t expected = xeon_phi_model | xeon_phi_ext_model;
+  asm volatile("cpuid":"=a"(registers[0]),
+                         "=b"(registers[1]),
+                         "=c"(registers[2]),
+                         "=d"(registers[2]):"0"(1), "2"(0));
+  uint32_t actual = registers[0] & (X86_CPUID_MODEL_MASK | X86_CPUID_EXT_MODEL_MASK);
+
+  if (actual == expected) {
+    for(i = 0; i <= numa_max_node(); i++) {
+      if(!numa_bitmask_isbitset(compute_nodes, i)) {
+        devices[idx].tag = SICM_KNL_HBM;
+        devices[idx].data.knl_hbm = i;
+        numa_bitmask_setbit(non_dram_nodes, i);
+        idx++;
+      }
+    }
+  }
+  
+  // DRAM
+  for(i = 0; i <= numa_max_node(); i++) {
+    if(!numa_bitmask_isbitset(non_dram_nodes, i)) {
+      devices[idx].tag = SICM_DRAM;
+      devices[idx].data.dram = i;
+      idx++;
+    }
+  }
+  
+  numa_bitmask_free(compute_nodes);
+  numa_bitmask_free(non_dram_nodes);
+  
+  return (struct sicm_device_list){ .count = device_count, .devices = devices };
+}
+
 void* sicm_alloc(struct sicm_device* device, size_t size) {
-  return device->alloc(device, size);
+  switch(device->tag) {
+    case SICM_DRAM:
+      return numa_alloc_onnode(size, device->data.dram);
+    case SICM_KNL_HBM:
+      return numa_alloc_onnode(size, device->data.knl_hbm);
+  }
+  printf("error in sicm_alloc: unknown tag\n");
+  exit(-1);
 }
 
 void sicm_free(struct sicm_device* device, void* ptr, size_t size) {
-  device->free(device, ptr, size);
+  switch(device->tag) {
+    case SICM_DRAM:
+    case SICM_KNL_HBM:
+      numa_free(ptr, size);
+      break;
+    default:
+      printf("error in sicm_free: unknown tag\n");
+      exit(-1);
+  }
 }
 
-size_t sicm_used(struct sicm_device* device) {
-  return device->used(device);
+int sicm_numa_id(struct sicm_device* device) {
+  switch(device->tag) {
+    case SICM_DRAM:
+      return device->data.dram;
+    case SICM_KNL_HBM:
+      return device->data.knl_hbm;
+    default:
+      return -1;
+  }
+}
+
+int sicm_move(struct sicm_device* src, struct sicm_device* dst, void* ptr, size_t size) {
+  if(sicm_numa_id(src) >= 0) {
+    int dst_node = sicm_numa_id(dst);
+    if(dst_node >= 0) {
+      nodemask_t nodemask;
+      nodemask_zero(&nodemask);
+      nodemask_set_compat(&nodemask, dst_node);
+      return mbind(ptr, size, MPOL_BIND, nodemask.n, numa_max_node() + 2, MPOL_MF_MOVE);
+    }
+  }
+  return -1;
 }
 
 size_t sicm_capacity(struct sicm_device* device) {
-  return device->capacity(device);
+  switch(device->tag) {
+    case SICM_DRAM:
+    case SICM_KNL_HBM:; // labels can't be followed by declarations
+      int node = sicm_numa_id(device);
+      char path[50];
+      sprintf(path, "/sys/devices/system/node/node%d/meminfo", node);
+      int fd = open(path, O_RDONLY);
+      char data[31];
+      read(fd, data, 31);
+      close(fd);
+      size_t res = 0;
+      size_t factor = 1;
+      int i;
+      for(i = 30; data[i] != ' '; i--) {
+        res += factor * (data[i] - '0');
+        factor *= 10;
+      }
+      return res;
+    default:
+      return -1;
+  }
 }
 
+size_t sicm_used(struct sicm_device* device) {
+  switch(device->tag) {
+    case SICM_DRAM:
+    case SICM_KNL_HBM:; // labels can't be followed by declarations
+      int node = sicm_numa_id(device);
+      char path[50];
+      sprintf(path, "/sys/devices/system/node/node%d/meminfo", node);
+      int fd = open(path, O_RDONLY);
+      char data[101];
+      read(fd, data, 101);
+      close(fd);
+      size_t res = 0;
+      size_t factor = 1;
+      int i;
+      for(i = 100; data[i] != ' '; i--) {
+        res += factor * (data[i] - '0');
+        factor *= 10;
+      }
+      return res;
+    default:
+      return -1;
+  }
+}
+
+#ifdef _GNU_SOURCE
 int sicm_model_distance(struct sicm_device* device) {
-  return device->model_distance(device);
-}
-
-size_t sicm_triad_kernel_linear(double* a, double* b, double* c, size_t size) {
-  int i;
-  double scalar = 3.0;
-  #pragma omp parallel for
-  for(i = 0; i < size; i++) {
-    a[i] = b[i] + scalar * c[i];
+  switch(device->tag) {
+    case SICM_DRAM:
+    case SICM_KNL_HBM:; // labels can't be followed by declarations
+      int node = sicm_numa_id(device);
+      return numa_distance(node, numa_node_of_cpu(sched_getcpu()));
+    default:
+      return -1;
   }
-  return size * 3 * sizeof(double);
 }
+#endif
 
-size_t sicm_triad_kernel_random(double* a, double* b, double* c, size_t* indexes, size_t size) {
-  int i, idx;
-  double scalar = 3.0;
-  #pragma omp parallel for
-  for(i = 0; i < size; i++) {
-    idx = indexes[i];
-    a[idx] = b[idx] + scalar * c[idx];
-  }
-  return size * (sizeof(size_t) + 3 * sizeof(double));
-}
-
-void sicm_latency(struct sicm_device* device, struct sicm_timing* res) {
+void sicm_latency(struct sicm_device* device, size_t size, int iter, struct sicm_timing* res) {
   struct timespec start, end;
   int i;
-  char b;
+  char b = 0;
   unsigned int n = time(NULL);
   clock_gettime(CLOCK_MONOTONIC_RAW, &start);
-  char* blob = sicm_alloc(device, SICM_LATENCY_SIZE);
+  char* blob = sicm_alloc(device, size);
   clock_gettime(CLOCK_MONOTONIC_RAW, &end);
   res->alloc = (end.tv_sec - start.tv_sec) * 1000000 + (end.tv_nsec - start.tv_nsec) / 1000;
   clock_gettime(CLOCK_MONOTONIC_RAW, &start);
-  for(i = 0; i < SICM_LATENCY_ITERATIONS; i++) {
+  for(i = 0; i < iter; i++) {
     sicm_rand(n);
-    blob[n % SICM_LATENCY_SIZE] = 0;
+    blob[n % size] = 0;
   }
   clock_gettime(CLOCK_MONOTONIC_RAW, &end);
   res->write = (end.tv_sec - start.tv_sec) * 1000000 + (end.tv_nsec - start.tv_nsec) / 1000;
   clock_gettime(CLOCK_MONOTONIC_RAW, &start);
-  for(i = 0; i < SICM_LATENCY_ITERATIONS; i++) {
+  for(i = 0; i < iter; i++) {
     sicm_rand(n);
-    b = blob[n % SICM_LATENCY_SIZE];
+    b = blob[n % size];
   }
   clock_gettime(CLOCK_MONOTONIC_RAW, &end);
   // Write it back so hopefully it won't compile away the read
   blob[0] = b;
   res->read = (end.tv_sec - start.tv_sec) * 1000000 + (end.tv_nsec - start.tv_nsec) / 1000;
   clock_gettime(CLOCK_MONOTONIC_RAW, &start);
-  sicm_free(device, blob, SICM_LATENCY_SIZE);
+  sicm_free(device, blob, size);
   clock_gettime(CLOCK_MONOTONIC_RAW, &end);
   res->free = (end.tv_sec - start.tv_sec) * 1000000 + (end.tv_nsec - start.tv_nsec) / 1000;
 }
@@ -192,99 +322,36 @@ size_t sicm_bandwidth_random3(struct sicm_device* device, size_t size,
   return accesses / delta;
 }
 
-int sicm_move(struct sicm_device* src, struct sicm_device* dest, void* ptr, size_t size) {
-  if(src->move_ty == SICM_MOVER_NUMA && dest->move_ty == SICM_MOVER_NUMA) {
-    int dest_node = dest->move_payload.numa;
-    nodemask_t nodemask;
-    nodemask_zero(&nodemask);
-    nodemask_set_compat(&nodemask, dest_node);
-    return mbind(ptr, size, MPOL_BIND, nodemask.n, numa_max_node() + 2, MPOL_MF_MOVE);
-  }
-  return -1;
-}
-
-int zero() {
-  return 0;
-}
-
-struct bitmask* sicm_cpu_mask_memo = NULL;
-
-struct bitmask* sicm_cpu_mask() {
-  if(sicm_cpu_mask_memo) return sicm_cpu_mask_memo;
-  
-  struct bitmask* cpumask = numa_allocate_cpumask();
-  int cpu_count = numa_num_possible_cpus();
-  int node_count = numa_max_node() + 1;
-  sicm_cpu_mask_memo = numa_bitmask_alloc(node_count);
-  int i, j;
-  for(i = 0; i < node_count; i++) {
-    numa_node_to_cpus(i, cpumask);
-    for(j = 0; j < cpu_count; j++) {
-      if(numa_bitmask_isbitset(cpumask, j)) {
-        numa_bitmask_setbit(sicm_cpu_mask_memo, i);
-        break;
-      }
-    }
-  }
-  numa_free_cpumask(cpumask);
-  return sicm_cpu_mask_memo;
-}
-
-struct sicm_device_list sicm_init() {
-  int spec_count = 2;
-  struct sicm_device_spec specs[] = {sicm_knl_hbm_spec(), sicm_dram_spec()};
-  
+size_t sicm_triad_kernel_linear(double* a, double* b, double* c, size_t size) {
   int i;
-  int non_numa = 0;
-  for(i = 0; i < spec_count; i++)
-    non_numa += specs[i].non_numa_count();
-  
-  int device_count = non_numa + numa_max_node() + 1;
-  struct sicm_device* devices = malloc(device_count * sizeof(struct sicm_device));
-  struct bitmask* numa_mask = numa_bitmask_alloc(numa_max_node() + 1);
-  int idx = 0;
-  for(i = 0; i < spec_count; i++)
-    idx = specs[i].add_devices(devices, idx, numa_mask);
-  numa_bitmask_free(numa_mask);
-  
-  return (struct sicm_device_list){ .count=spec_count, .devices=devices };
+  double scalar = 3.0;
+  #pragma omp parallel for
+  for(i = 0; i < size; i++) {
+    a[i] = b[i] + scalar * c[i];
+  }
+  return size * 3 * sizeof(double);
+}
+
+size_t sicm_triad_kernel_random(double* a, double* b, double* c, size_t* indexes, size_t size) {
+  int i, idx;
+  double scalar = 3.0;
+  #pragma omp parallel for
+  for(i = 0; i < size; i++) {
+    idx = indexes[i];
+    a[idx] = b[idx] + scalar * c[idx];
+  }
+  return size * (sizeof(size_t) + 3 * sizeof(double));
 }
 
 int main() {
-  struct sicm_device_list state = sicm_init();
-  struct sicm_device* devices = state.devices;
-  int i;
+  struct sicm_device_list devices = sicm_init();
   
-  /*
-   * test code starts here
-   * everything above this comment is required spinup
-   */
-  printf("%lu\n", sizeof(size_t));
-  printf("used: %lu\n", sicm_used(&devices[0]));
-  printf("capacity: %lu\n", sicm_capacity(&devices[0]));
-  int count = 1000000;
-  int* test = sicm_alloc(&devices[0], count * sizeof(int));
-  for(i = 0; i < count; i++)
-    test[i] = i;
-  printf("%p\n", sicm_cpu_mask());
-  printf("%p\n", sicm_cpu_mask());
-  struct sicm_timing timing;
-  sicm_latency(&devices[0], &timing);
-  printf("%u %u %u %u\n", timing.alloc, timing.write, timing.read, timing.free);
-  /*int samples = 5;
-  double bw = 0;
-  for(i = 0; i < samples; i++) bw += sicm_bandwidth(&devices[0]);*/
-  size_t best = 0;
-  for(i = 0; i < 10; i++) {
-    size_t res = sicm_bandwidth_random3(&devices[0], 10000000, sicm_triad_kernel_random);
-    if(res > best) best = res;
-  }
-  printf("bw: %lu\n", best);
-  /*char path[100];
-  sprintf(path, "cat /proc/%d/numa_maps", (int)getpid());
-  system(path);
-  sicm_move(&devices[0], &devices[1], test, count * sizeof(int));
-  system(path);
-  sicm_free(&devices[1], test, count * sizeof(int));*/
+  int* blob = sicm_alloc(&devices.devices[0], 100 * sizeof(int));
+  int i;
+  for(i = 0; i < 100; i++) blob[i] = i;
+  for(i = 0; i < 100; i++) printf("%d ", blob[i]);
+  printf("\n");
+  sicm_free(&devices.devices[0], blob, 100 * sizeof(int));
+  
   return 1;
 }
