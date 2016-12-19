@@ -27,9 +27,29 @@
  * This function must be seeded manually. time(NULL) can be used, or if
  * multiple threads will be launched nearby in time, you can the address
  * of a local variable.
+ * 
+ * The "magic number" 0xd0000001u is the maximum-period internal XOR
+ * value for the 64-bit Galois LSFR.
  */
 #define sicm_rand(n) \
   n = (n >> 1) ^ (unsigned int)((0 - (n & 1u)) & 0xd0000001u)
+
+/// FNV-1A hash algorithm.
+/**
+ * @param[in] n The value to be hashed.
+ * @return The hash of n.
+ * 
+ * This is a simple but reasonably effective hash algorithm. It's mainly
+ * useful for generating random index arrays, particularly if the index
+ * array is being generated in parallel. So this is preferred if you
+ * have a large amount of input values to transform, while if you have a
+ * single value that you want to process on repeatedly, sicm_rand is
+ * preferred. Of course, this is not a cryptographic algorithm.
+ * 
+ * The "magic numbers" were chosen by the original authors (Fowler,
+ * Noll, and Vo for good hashing behavior.
+ */
+#define sicm_hash(n) ((0xcbf29ce484222325 ^ n) * 0x100000001b3)
 
 /// Enumeration of supported memory device types.
 /**

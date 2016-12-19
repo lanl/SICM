@@ -1,5 +1,7 @@
 #include "sicm_low.h"
 
+#include <time.h>
+
 struct sicm_fortran_device {
   void* device;
 };
@@ -7,6 +9,10 @@ struct sicm_fortran_device {
 struct sicm_fortran_device_list {
   int count;
   struct sicm_device** devices;
+};
+
+struct sicm_fortran_time {
+  long nsec, sec;
 };
 
 void sicm_init_wrap_(struct sicm_fortran_device_list* devices_) {
@@ -19,11 +25,15 @@ void sicm_init_wrap_(struct sicm_fortran_device_list* devices_) {
 }
 
 void sicm_get_device_wrap_(struct sicm_fortran_device_list* devices_, int* i, struct sicm_fortran_device* device) {
-  device->device = devices_->devices[*i];
+  device->device = devices_->devices[*i-1];
 }
 
 void sicm_alloc_wrap_(struct sicm_fortran_device* device, size_t* size, void** ptr) {
   *ptr = sicm_alloc(device->device, *size);
+}
+
+void sicm_free_wrap_(struct sicm_fortran_device* device, void** ptr, size_t* size) {
+  sicm_free(device->device, *ptr, *size);
 }
 
 void sicm_move_wrap_(struct sicm_fortran_device* src, struct sicm_fortran_device* dst, void** ptr, size_t* size, int* res) {
@@ -48,4 +58,15 @@ void sicm_model_distance_wrap_(struct sicm_fortran_device* device, int* res) {
 
 void sicm_latency_wrap_(struct sicm_fortran_device* device, size_t* size, int* iter, struct sicm_timing* res) {
   sicm_latency(device->device, *size, *iter, res);
+}
+
+void sicm_get_time_(struct sicm_fortran_time* time) {
+  struct timespec t;
+  clock_gettime(CLOCK_MONOTONIC_RAW, &t);
+  time->nsec = t.tv_nsec;
+  time->sec = t.tv_sec;
+}
+
+void sicm_index_hash_(size_t* i, size_t* extent, size_t* res) {
+  *res = sicm_hash(*i) % *extent;
 }

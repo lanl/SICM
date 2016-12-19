@@ -15,6 +15,10 @@ module sicm_f90
     integer(c_int) :: alloc_time, read_time, write_time, free_time
   end type sf_timing
   
+  type, bind(C) :: sf_time
+    integer(c_long) :: nsec, sec
+  end type sf_time
+  
   contains
   
   subroutine sf_init(devices) bind(C)
@@ -37,6 +41,13 @@ module sicm_f90
     integer(c_size_t), intent(in) :: sz
     call sicm_alloc_wrap(device%device, sz, sf_alloc)
   end function sf_alloc
+  
+  subroutine sf_free(device, ptr, sz) bind(C)
+    type(sf_device), intent(in) :: device
+    type(c_ptr) :: ptr
+    integer(c_size_t), intent(in) :: sz
+    call sicm_free_wrap(device%device, ptr, sz)
+  end subroutine sf_free
   
   function sf_move(src, dst, ptr, sz) bind(C)
     integer(c_int) :: sf_move
@@ -71,4 +82,146 @@ module sicm_f90
     integer(c_int), intent(in) :: iter
     call sicm_latency_wrap(device%device, sz, iter, sf_latency)
   end function sf_latency
+  
+  function sf_bandwidth_linear2(device, sz, kernel)
+    integer(c_size_t) :: sf_bandwidth_linear2
+    type(sf_device), intent(in) :: device
+    integer(c_size_t), intent(in) :: sz
+    integer(c_size_t) :: kernel
+    integer(c_size_t) :: bytes, i
+    type(sf_time) :: stime, etime
+    type(c_ptr) :: a_, b_
+    double precision, pointer, dimension(:) :: a, b
+    
+    a_ = sf_alloc(device, sz * 8_8)
+    call c_f_pointer(a_, a, shape=[sz])
+    b_ = sf_alloc(device, sz * 8_8)
+    call c_f_pointer(b_, b, shape=[sz])
+    
+!$omp parallel do
+    do i=1,sz
+      a(i) = 1
+      b(i) = 2
+    end do
+    
+    call sicm_get_time(stime)
+    bytes = kernel(a, b, sz)
+    call sicm_get_time(etime)
+    
+    sf_bandwidth_linear2 = bytes / ((etime%sec - stime%sec) * 1000000 + (etime%nsec - stime%nsec) / 1000);
+    
+    call sf_free(device, a_, sz * 8_8)
+    call sf_free(device, b_, sz * 8_8)
+  end function sf_bandwidth_linear2
+  
+  function sf_bandwidth_random2(device, sz, kernel)
+    integer(c_size_t) :: sf_bandwidth_random2
+    type(sf_device), intent(in) :: device
+    integer(c_size_t), intent(in) :: sz
+    integer(c_size_t) :: kernel
+    integer(c_size_t) :: bytes, i
+    type(sf_time) :: stime, etime
+    type(c_ptr) :: a_, b_, indexes_
+    double precision, pointer, dimension(:) :: a, b
+    integer(c_size_t), pointer, dimension(:) :: indexes
+    
+    a_ = sf_alloc(device, sz * 8_8)
+    call c_f_pointer(a_, a, shape=[sz])
+    b_ = sf_alloc(device, sz * 8_8)
+    call c_f_pointer(b_, b, shape=[sz])
+    indexes_ = sf_alloc(device, sz * c_size_t)
+    call c_f_pointer(indexes_, indexes, shape=[sz])
+    
+!$omp parallel do
+    do i=1,sz
+      a(i) = 1
+      b(i) = 2
+      call sicm_index_hash(i, sz, indexes(i))
+    end do
+    
+    call sicm_get_time(stime)
+    bytes = kernel(a, b, indexes, sz)
+    call sicm_get_time(etime)
+    
+    sf_bandwidth_random2 = bytes / ((etime%sec - stime%sec) * 1000000 + (etime%nsec - stime%nsec) / 1000);
+    
+    call sf_free(device, a_, sz * 8_8)
+    call sf_free(device, b_, sz * 8_8)
+    call sf_free(device, indexes_, sz * c_size_t)
+  end function sf_bandwidth_random2
+  
+  function sf_bandwidth_linear3(device, sz, kernel)
+    integer(c_size_t) :: sf_bandwidth_linear3
+    type(sf_device), intent(in) :: device
+    integer(c_size_t), intent(in) :: sz
+    integer(c_size_t) :: kernel
+    integer(c_size_t) :: bytes, i
+    type(sf_time) :: stime, etime
+    type(c_ptr) :: a_, b_, c_
+    double precision, pointer, dimension(:) :: a, b, c
+    
+    a_ = sf_alloc(device, sz * 8_8)
+    call c_f_pointer(a_, a, shape=[sz])
+    b_ = sf_alloc(device, sz * 8_8)
+    call c_f_pointer(b_, b, shape=[sz])
+    c_ = sf_alloc(device, sz * 8_8)
+    call c_f_pointer(c_, c, shape=[sz])
+    
+!$omp parallel do
+    do i=1,sz
+      a(i) = 1
+      b(i) = 2
+      c(i) = 3
+    end do
+    
+    call sicm_get_time(stime)
+    bytes = kernel(a, b, c, sz)
+    call sicm_get_time(etime)
+    
+    sf_bandwidth_linear3 = bytes / ((etime%sec - stime%sec) * 1000000 + (etime%nsec - stime%nsec) / 1000);
+    
+    call sf_free(device, a_, sz * 8_8)
+    call sf_free(device, b_, sz * 8_8)
+    call sf_free(device, c_, sz * 8_8)
+  end function sf_bandwidth_linear3
+  
+  function sf_bandwidth_random3(device, sz, kernel)
+    integer(c_size_t) :: sf_bandwidth_random3
+    type(sf_device), intent(in) :: device
+    integer(c_size_t), intent(in) :: sz
+    integer(c_size_t) :: kernel
+    integer(c_size_t) :: bytes, i
+    type(sf_time) :: stime, etime
+    type(c_ptr) :: a_, b_, c_, indexes_
+    double precision, pointer, dimension(:) :: a, b, c
+    integer(c_size_t), pointer, dimension(:) :: indexes
+    
+    a_ = sf_alloc(device, sz * 8_8)
+    call c_f_pointer(a_, a, shape=[sz])
+    b_ = sf_alloc(device, sz * 8_8)
+    call c_f_pointer(b_, b, shape=[sz])
+    c_ = sf_alloc(device, sz * 8_8)
+    call c_f_pointer(c_, c, shape=[sz])
+    indexes_ = sf_alloc(device, sz * c_size_t)
+    call c_f_pointer(indexes_, indexes, shape=[sz])
+    
+!$omp parallel do
+    do i=1,sz
+      a(i) = 1
+      b(i) = 2
+      c(i) = 3
+      call sicm_index_hash(i, sz, indexes(i))
+    end do
+    
+    call sicm_get_time(stime)
+    bytes = kernel(a, b, c, indexes, sz)
+    call sicm_get_time(etime)
+    
+    sf_bandwidth_random3 = bytes / ((etime%sec - stime%sec) * 1000000 + (etime%nsec - stime%nsec) / 1000);
+    
+    call sf_free(device, a_, sz * 8_8)
+    call sf_free(device, b_, sz * 8_8)
+    call sf_free(device, c_, sz * 8_8)
+    call sf_free(device, indexes_, sz * c_size_t)
+  end function sf_bandwidth_random3
 end module sicm_f90
