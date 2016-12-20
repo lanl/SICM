@@ -47,9 +47,17 @@
  * preferred. Of course, this is not a cryptographic algorithm.
  * 
  * The "magic numbers" were chosen by the original authors (Fowler,
- * Noll, and Vo for good hashing behavior.
+ * Noll, and Vo) for good hashing behavior. These numbers are
+ * specifically tailored to 64-bit integers.
  */
 #define sicm_hash(n) ((0xcbf29ce484222325 ^ n) * 0x100000001b3)
+
+/// System page size in KiB.
+/**
+ * This variable is initialized by sicm_init(), so don't use it before
+ * then.
+ */
+extern int normal_page_size;
 
 /// Enumeration of supported memory device types.
 /**
@@ -61,6 +69,18 @@ enum sicm_device_tag {
   SICM_KNL_HBM
 };
 
+/// Data specific to a DRAM device.
+struct sicm_dram_data {
+  int node; ///< NUMA node
+  int page_size; ///< Page size
+};
+
+/// Data specific to a KNL HBM device.
+struct sicm_knl_hbm_data {
+  int node; ///< NUMA node
+  int page_size; ///< Page size
+};
+
 /// Data that, given a device type, uniquely identify the device within that type.
 /**
  * This union is only meaningful in the presence of a sicm_device_tag,
@@ -69,8 +89,8 @@ enum sicm_device_tag {
  * inhabited.
  */
 union sicm_device_data {
-  int dram;
-  int knl_hbm;
+  struct sicm_dram_data dram;
+  struct sicm_knl_hbm_data knl_hbm;
 };
 
 /// Tagged/discriminated union that fully identifies a device.
@@ -139,6 +159,13 @@ void sicm_free(struct sicm_device* device, void* ptr, size_t size);
  * @return NUMA node number of the device. If the device is not a NUMA node, the return value is -1.
  */
 int sicm_numa_id(struct sicm_device* device);
+
+/// Get the page size of a SICM device.
+/**
+ * @param[in] device Pointer ot the sicm_device to query.
+ * @return Page size of the device. If the device is not a NUMA node, the return value is -1.
+ */
+int sicm_device_page_size(struct sicm_device* device);
 
 /// Move data from one device to another.
 /**

@@ -1,5 +1,6 @@
 #include "sicm_low.h"
 
+#include <dirent.h>
 #include <fcntl.h>
 #include <numa.h>
 #include <numaif.h>
@@ -7,17 +8,57 @@
 #include <stdio.h>
 #include <time.h>
 #include <unistd.h>
+#include <sys/mman.h>
 
 #define X86_CPUID_MODEL_MASK        (0xf<<4)
 #define X86_CPUID_EXT_MODEL_MASK    (0xf<<16)
 
+int normal_page_size = -1;
+
 struct sicm_device_list sicm_init() {
   int node_count = numa_max_node() + 1;
-  int device_count = node_count;
+  normal_page_size = getpagesize() / 1024;
+  
+  // Find the number of huge page sizes
+  int huge_page_size_count = 0;
+  DIR* dir;
+  struct dirent* entry;
+  dir = opendir("/sys/kernel/mm/hugepages");
+  while((entry = readdir(dir)) != NULL)
+    if(entry->d_name[0] != '.') huge_page_size_count++;
+  closedir(dir);
+  
+  int device_count = node_count * (huge_page_size_count + 1);
+  
+  struct bitmask* non_dram_nodes = numa_bitmask_alloc(node_count);
+  
   struct sicm_device* devices = malloc(device_count * sizeof(struct sicm_device));
+  int* huge_page_sizes = malloc(huge_page_size_count);
   
   int i, j;
   int idx = 0;
+  
+  // Find the actual set of huge page sizes (reported in KiB)
+  dir = opendir("/sys/kernel/mm/hugepages");
+  i = 0;
+  while((entry = readdir(dir)) != NULL) {
+    if(entry->d_name[0] != '.') {
+      huge_page_sizes[i] = 0;
+      for(j = 0; j < 10; j++) {
+        if(entry->d_name[j] == '\0') {
+          j = -1;
+          break;
+        }
+      }
+      if(j < 0) break;
+      for(; entry->d_name[j] >= '0' && entry->d_name[j] <= '9'; j++) {
+        huge_page_sizes[i] *= 10;
+        huge_page_sizes[i] += entry->d_name[j] - '0';
+      }
+      i++;
+    }
+  }
+  closedir(dir);
   
   struct bitmask* cpumask = numa_allocate_cpumask();
   int cpu_count = numa_num_possible_cpus();
@@ -32,8 +73,6 @@ struct sicm_device_list sicm_init() {
     }
   }
   numa_free_cpumask(cpumask);
-  
-  struct bitmask* non_dram_nodes = numa_bitmask_alloc(node_count);
   
   // Knights Landing
   uint32_t xeon_phi_model = (0x7<<4);
@@ -50,9 +89,14 @@ struct sicm_device_list sicm_init() {
     for(i = 0; i <= numa_max_node(); i++) {
       if(!numa_bitmask_isbitset(compute_nodes, i)) {
         devices[idx].tag = SICM_KNL_HBM;
-        devices[idx].data.knl_hbm = i;
+        devices[idx].data.knl_hbm = (struct sicm_knl_hbm_data){ .node=i, .page_size=normal_page_size };
         numa_bitmask_setbit(non_dram_nodes, i);
         idx++;
+        for(j = 0; j < huge_page_size_count; j++) {
+          devices[idx].tag = SICM_KNL_HBM;
+          devices[idx].data.knl_hbm = (struct sicm_knl_hbm_data){ .node=i, .page_size=huge_page_sizes[j] };
+          idx++;
+        }
       }
     }
   }
@@ -61,13 +105,19 @@ struct sicm_device_list sicm_init() {
   for(i = 0; i <= numa_max_node(); i++) {
     if(!numa_bitmask_isbitset(non_dram_nodes, i)) {
       devices[idx].tag = SICM_DRAM;
-      devices[idx].data.dram = i;
+      devices[idx].data.dram = (struct sicm_dram_data){ .node=i, .page_size=normal_page_size };
       idx++;
+      for(j = 0; j < huge_page_size_count; j++) {
+        devices[idx].tag = SICM_DRAM;
+        devices[idx].data.dram = (struct sicm_dram_data){ .node=i, .page_size=huge_page_sizes[j] };
+        idx++;
+      }
     }
   }
   
   numa_bitmask_free(compute_nodes);
   numa_bitmask_free(non_dram_nodes);
+  free(huge_page_sizes);
   
   return (struct sicm_device_list){ .count = device_count, .devices = devices };
 }
@@ -75,9 +125,30 @@ struct sicm_device_list sicm_init() {
 void* sicm_alloc(struct sicm_device* device, size_t size) {
   switch(device->tag) {
     case SICM_DRAM:
-      return numa_alloc_onnode(size, device->data.dram);
-    case SICM_KNL_HBM:
-      return numa_alloc_onnode(size, device->data.knl_hbm);
+    case SICM_KNL_HBM:;
+      int page_size = sicm_device_page_size(device);
+      if(page_size == normal_page_size)
+        return numa_alloc_onnode(size, sicm_numa_id(device));
+      else {
+        int shift = 10; // i.e., 1024
+        int remaining = page_size;
+        while(remaining > 1) {
+          shift++;
+          remaining >>= 1;
+        }
+        printf("%d, %d\n", page_size, shift);
+        int old_mode;
+        nodemask_t old_nodemask;
+        get_mempolicy(&old_mode, old_nodemask.n, numa_max_node() + 2, NULL, 0);
+        nodemask_t nodemask;
+        nodemask_zero(&nodemask);
+        nodemask_set_compat(&nodemask, sicm_numa_id(device));
+        set_mempolicy(MPOL_BIND, nodemask.n, numa_max_node() + 2);
+        void* ptr = mmap(NULL, size, PROT_READ | PROT_WRITE,
+          MAP_PRIVATE | MAP_ANONYMOUS | MAP_HUGETLB | (shift << MAP_HUGE_SHIFT), -1, 0);
+        set_mempolicy(old_mode, old_nodemask.n, numa_max_node() + 2);
+        return ptr;
+      }
   }
   printf("error in sicm_alloc: unknown tag\n");
   exit(-1);
@@ -98,9 +169,20 @@ void sicm_free(struct sicm_device* device, void* ptr, size_t size) {
 int sicm_numa_id(struct sicm_device* device) {
   switch(device->tag) {
     case SICM_DRAM:
-      return device->data.dram;
+      return device->data.dram.node;
     case SICM_KNL_HBM:
-      return device->data.knl_hbm;
+      return device->data.knl_hbm.node;
+    default:
+      return -1;
+  }
+}
+
+int sicm_device_page_size(struct sicm_device* device) {
+  switch(device->tag) {
+    case SICM_DRAM:
+      return device->data.dram.page_size;
+    case SICM_KNL_HBM:
+      return device->data.knl_hbm.page_size;
     default:
       return -1;
   }
@@ -327,12 +409,14 @@ size_t sicm_triad_kernel_random(double* a, double* b, double* c, size_t* indexes
 int main() {
   struct sicm_device_list devices = sicm_init();
   
-  int* blob = sicm_alloc(&devices.devices[0], 100 * sizeof(int));
+  printf("device count: %d\n", devices.count);
+  int* blob = sicm_alloc(&devices.devices[1], 100 * sizeof(int));
+  printf("allocated %p\n", blob);
   int i;
   for(i = 0; i < 100; i++) blob[i] = i;
   for(i = 0; i < 100; i++) printf("%d ", blob[i]);
   printf("\n");
-  sicm_free(&devices.devices[0], blob, 100 * sizeof(int));
+  sicm_free(&devices.devices[1], blob, 100 * sizeof(int));
   
   return 1;
 }
