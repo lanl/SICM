@@ -1,11 +1,13 @@
 #include "sicm_low.h"
 
 #include <dirent.h>
+#include <errno.h>
 #include <fcntl.h>
 #include <numa.h>
 #include <numaif.h>
 #include <sched.h>
 #include <stdio.h>
+#include <string.h>
 #include <time.h>
 #include <unistd.h>
 #include <sys/mman.h>
@@ -136,7 +138,6 @@ void* sicm_alloc(struct sicm_device* device, size_t size) {
           shift++;
           remaining >>= 1;
         }
-        printf("%d, %d\n", page_size, shift);
         int old_mode;
         nodemask_t old_nodemask;
         get_mempolicy(&old_mode, old_nodemask.n, numa_max_node() + 2, NULL, 0);
@@ -146,6 +147,9 @@ void* sicm_alloc(struct sicm_device* device, size_t size) {
         set_mempolicy(MPOL_BIND, nodemask.n, numa_max_node() + 2);
         void* ptr = mmap(NULL, size, PROT_READ | PROT_WRITE,
           MAP_PRIVATE | MAP_ANONYMOUS | MAP_HUGETLB | (shift << MAP_HUGE_SHIFT), -1, 0);
+        if(ptr == (void*)-1) {
+          printf("huge page allocation error: %s\n", strerror(errno));
+        }
         set_mempolicy(old_mode, old_nodemask.n, numa_max_node() + 2);
         return ptr;
       }
@@ -158,7 +162,14 @@ void sicm_free(struct sicm_device* device, void* ptr, size_t size) {
   switch(device->tag) {
     case SICM_DRAM:
     case SICM_KNL_HBM:
-      numa_free(ptr, size);
+      if(sicm_device_page_size(device) == normal_page_size)
+        numa_free(ptr, size);
+      else {
+        // Huge page allocation occurs in whole page chunks, so we need
+        // to free (unmap) in whole page chunks.
+        int page_size = sicm_device_page_size(device);
+        munmap(ptr, sicm_div_ceil(size, page_size * 1024) * page_size * 1024);
+      }
       break;
     default:
       printf("error in sicm_free: unknown tag\n");
@@ -202,48 +213,86 @@ int sicm_move(struct sicm_device* src, struct sicm_device* dst, void* ptr, size_
 }
 
 size_t sicm_capacity(struct sicm_device* device) {
+  char path[100];
   switch(device->tag) {
     case SICM_DRAM:
-    case SICM_KNL_HBM:; // labels can't be followed by declarations
+    case SICM_KNL_HBM:;
       int node = sicm_numa_id(device);
-      char path[50];
-      sprintf(path, "/sys/devices/system/node/node%d/meminfo", node);
-      int fd = open(path, O_RDONLY);
-      char data[31];
-      read(fd, data, 31);
-      close(fd);
-      size_t res = 0;
-      size_t factor = 1;
-      int i;
-      for(i = 30; data[i] != ' '; i--) {
-        res += factor * (data[i] - '0');
-        factor *= 10;
+      int page_size = sicm_device_page_size(device);
+      if(page_size == normal_page_size) {
+        sprintf(path, "/sys/devices/system/node/node%d/meminfo", node);
+        int fd = open(path, O_RDONLY);
+        char data[31];
+        read(fd, data, 31);
+        close(fd);
+        size_t res = 0;
+        size_t factor = 1;
+        int i;
+        for(i = 30; data[i] != ' '; i--) {
+          res += factor * (data[i] - '0');
+          factor *= 10;
+        }
+        return res;
       }
-      return res;
+      else {
+        sprintf(path, "/sys/devices/system/node/node%d/hugepages/hugepages-%dkB/nr_hugepages", node, page_size);
+        int fd = open(path, O_RDONLY);
+        int pages = 0;
+        int i;
+        char data[10];
+        while(read(fd, data, 10) > 0) {
+          for(i = 0; i < 10; i++) {
+            if(data[i] < '0' || data[i] > '9') break;
+            pages *= 10;
+            pages += data[i] - '0';
+          }
+        }
+        close(fd);
+        return pages * page_size;
+      }
     default:
       return -1;
   }
 }
 
-size_t sicm_used(struct sicm_device* device) {
+size_t sicm_avail(struct sicm_device* device) {
+  char path[100];
   switch(device->tag) {
     case SICM_DRAM:
-    case SICM_KNL_HBM:; // labels can't be followed by declarations
+    case SICM_KNL_HBM:;
       int node = sicm_numa_id(device);
-      char path[50];
-      sprintf(path, "/sys/devices/system/node/node%d/meminfo", node);
-      int fd = open(path, O_RDONLY);
-      char data[101];
-      read(fd, data, 101);
-      close(fd);
-      size_t res = 0;
-      size_t factor = 1;
-      int i;
-      for(i = 100; data[i] != ' '; i--) {
-        res += factor * (data[i] - '0');
-        factor *= 10;
+      int page_size = sicm_device_page_size(device);
+      if(page_size == normal_page_size) {
+        sprintf(path, "/sys/devices/system/node/node%d/meminfo", node);
+        int fd = open(path, O_RDONLY);
+        char data[66];
+        read(fd, data, 66);
+        close(fd);
+        size_t res = 0;
+        size_t factor = 1;
+        int i;
+        for(i = 65; data[i] != ' '; i--) {
+          res += factor * (data[i] - '0');
+          factor *= 10;
+        }
+        return res;
       }
-      return res;
+      else {
+        sprintf(path, "/sys/devices/system/node/node%d/hugepages/hugepages-%dkB/free_hugepages", node, page_size);
+        int fd = open(path, O_RDONLY);
+        int pages = 0;
+        int i;
+        char data[10];
+        while(read(fd, data, 10) > 0) {
+          for(i = 0; i < 10; i++) {
+            if(data[i] < '0' || data[i] > '9') break;
+            pages *= 10;
+            pages += data[i] - '0';
+          }
+        }
+        close(fd);
+        return pages * page_size;
+      }
     default:
       return -1;
   }
@@ -339,9 +388,9 @@ size_t sicm_bandwidth_random2(struct sicm_device* device, size_t size,
 size_t sicm_bandwidth_linear3(struct sicm_device* device, size_t size,
     size_t (*kernel)(double*, double*, double*, size_t)) {
   struct timespec start, end;
-  double* a = sicm_alloc(device, size * sizeof(double));
-  double* b = sicm_alloc(device, size * sizeof(double));
-  double* c = sicm_alloc(device, size * sizeof(double));
+  double* a = sicm_alloc(device, 3 * size * sizeof(double));
+  double* b = &a[size];
+  double* c = &a[size * 2];
   unsigned int i;
   #pragma omp parallel for
   for(i = 0; i < size; i++) {
@@ -353,9 +402,7 @@ size_t sicm_bandwidth_linear3(struct sicm_device* device, size_t size,
   size_t accesses = kernel(a, b, c, size);
   clock_gettime(CLOCK_MONOTONIC_RAW, &end);
   size_t delta = (end.tv_sec - start.tv_sec) * 1000000 + (end.tv_nsec - start.tv_nsec) / 1000;
-  sicm_free(device, a, size * sizeof(double));
-  sicm_free(device, b, size * sizeof(double));
-  sicm_free(device, c, size * sizeof(double));
+  sicm_free(device, a, 3 * size * sizeof(double));
   return accesses / delta;
 }
 
@@ -404,19 +451,4 @@ size_t sicm_triad_kernel_random(double* a, double* b, double* c, size_t* indexes
     a[idx] = b[idx] + scalar * c[idx];
   }
   return size * (sizeof(size_t) + 3 * sizeof(double));
-}
-
-int main() {
-  struct sicm_device_list devices = sicm_init();
-  
-  printf("device count: %d\n", devices.count);
-  int* blob = sicm_alloc(&devices.devices[1], 100 * sizeof(int));
-  printf("allocated %p\n", blob);
-  int i;
-  for(i = 0; i < 100; i++) blob[i] = i;
-  for(i = 0; i < 100; i++) printf("%d ", blob[i]);
-  printf("\n");
-  sicm_free(&devices.devices[1], blob, 100 * sizeof(int));
-  
-  return 1;
 }

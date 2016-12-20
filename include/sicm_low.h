@@ -52,6 +52,18 @@
  */
 #define sicm_hash(n) ((0xcbf29ce484222325 ^ n) * 0x100000001b3)
 
+/// Ceiling of integer division.
+/**
+ * @param[in] n Numerator (dividend).
+ * @param[in] d Denominator (divisor).
+ * @return Quotient, rounded toward positive infinity.
+ * 
+ * Ordinary integer division implicitly floors, so 1 / 2 = 0. This
+ * instead returns the ceiling, so 1 / 2 = 1. This works by just
+ * adding 1 if the division produces a nonzero remainder.
+ */
+#define sicm_div_ceil(n, d) ((n) / (d) + ((n) % (d) ? 1 : 0))
+
 /// System page size in KiB.
 /**
  * This variable is initialized by sicm_init(), so don't use it before
@@ -142,6 +154,11 @@ struct sicm_device_list sicm_init();
  * @param[in] device Pointer to a sicm_device to allocate on.
  * @param[in] size Amount of memory to allocate.
  * @return Pointer to the start of the allocation.
+ * 
+ * If you allocate on huge pages, your allocation will be rounded up to
+ * a multiple of the huge page size. Also, if you try to allocate on
+ * huge pages and there aren't enough huge pages available, the
+ * allocation will fail and return -1.
  */
 void* sicm_alloc(struct sicm_device* device, size_t size);
 
@@ -186,12 +203,15 @@ int sicm_move(struct sicm_device* src, struct sicm_device* dst, void* ptr, size_
  */
 size_t sicm_capacity(struct sicm_device* device);
 
-/// Query amount of used (physically-backed) memory on a device.
+/// Query amount of available memory on a device.
 /**
  * @param[in] device Pointer to the sicm_device to query.
- * @return Number of already-used kibibytes on the device.
+ * @return Number of available kibibytes on the device.
+ * 
+ * Note that this does not account for memory that has been allocated
+ * but not yet touched.
  */
-size_t sicm_used(struct sicm_device* device);
+size_t sicm_avail(struct sicm_device* device);
 
 /// Returns a distance metric based on general beliefs about the device/its location in the system.
 /**
