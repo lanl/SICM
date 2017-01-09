@@ -57,17 +57,23 @@ module sicm_f90
     call sicm_move_wrap(src%device, dst%device, ptr, sz, sf_move)
   end function sf_move
   
+  function sf_pin(device) bind(C)
+    integer(c_int) :: sf_pin
+    type(sf_device), intent(in) :: device
+    call sicm_pin_wrap(device%device, sf_pin)
+  end function sf_pin
+  
   function sf_capacity(device) bind(C)
     integer(c_size_t) :: sf_capacity
     type(sf_device), intent(in) :: device
     call sicm_capacity_wrap(device%device, sf_capacity)
   end function sf_capacity
   
-  function sf_used(device) bind(C)
-    integer(c_size_t) :: sf_used
+  function sf_avail(device) bind(C)
+    integer(c_size_t) :: sf_avail
     type(sf_device), intent(in) :: device
-    call sicm_used_wrap(device%device, sf_used)
-  end function sf_used
+    call sicm_avail_wrap(device%device, sf_avail)
+  end function sf_avail
   
   function sf_model_distance(device) bind(C)
     integer(c_int) :: sf_model_distance
@@ -82,6 +88,11 @@ module sicm_f90
     integer(c_int), intent(in) :: iter
     call sicm_latency_wrap(device%device, sz, iter, sf_latency)
   end function sf_latency
+  
+  subroutine sf_system_debug(path) bind(C)
+    character(kind=c_char) :: path(*)
+    call sicm_system_debug(path)
+  end subroutine sf_system_debug
   
   function sf_bandwidth_linear2(device, sz, kernel)
     integer(c_size_t) :: sf_bandwidth_linear2

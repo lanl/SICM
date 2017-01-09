@@ -17,7 +17,9 @@ sicm: $(OBJ)
 fortran: src/fbinding.f90 $(OBJ) obj/fbinding.o
 	gfortran -o sicm_f90.so src/fbinding.f90 obj/fbinding.o $(OBJ) -shared $(CFLAGS)
 
-examples: sicm
+.PHONY: examples
+
+examples: libsicm.so
 	gcc -o examples/basic examples/basic.c -L. -lsicm $(CFLAGS)
 
 $(ODIR)/%.o: $(SDIR)/%.c $(DEPS)

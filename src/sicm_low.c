@@ -212,6 +212,19 @@ int sicm_move(struct sicm_device* src, struct sicm_device* dst, void* ptr, size_
   return -1;
 }
 
+int sicm_pin(struct sicm_device* device) {
+  switch(device->tag) {
+    case SICM_DRAM:;
+      struct bitmask* mask = numa_allocate_cpumask();
+      numa_node_to_cpus(device->data.dram.node, mask);
+      int res = numa_sched_setaffinity(0, mask);
+      numa_free_cpumask(mask);
+      return res;
+    default:
+      return -1;
+  }
+}
+
 size_t sicm_capacity(struct sicm_device* device) {
   char path[100];
   switch(device->tag) {

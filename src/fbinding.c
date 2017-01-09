@@ -40,12 +40,16 @@ void sicm_move_wrap_(struct sicm_fortran_device* src, struct sicm_fortran_device
   *res = sicm_move(src->device, dst->device, *ptr, *size);
 }
 
+void sicm_pin_wrap_(struct sicm_fortran_device* device, int* res) {
+  *res = sicm_pin(device->device);
+}
+
 void sicm_capacity_wrap_(struct sicm_fortran_device* device, size_t* res) {
   *res = sicm_capacity(device->device);
 }
 
-void sicm_used_wrap_(struct sicm_fortran_device* device, size_t* res) {
-  *res = sicm_used(device->device);
+void sicm_avail_wrap_(struct sicm_fortran_device* device, size_t* res) {
+  *res = sicm_avail(device->device);
 }
 
 void sicm_model_distance_wrap_(struct sicm_fortran_device* device, int* res) {
@@ -69,4 +73,8 @@ void sicm_get_time_(struct sicm_fortran_time* time) {
 
 void sicm_index_hash_(size_t* i, size_t* extent, size_t* res) {
   *res = sicm_hash(*i) % *extent;
+}
+
+void sicm_system_debug_(char** path) {
+  system(*path);
 }
