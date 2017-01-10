@@ -1,0 +1,596 @@
+ SNAP: SN (Discrete Ordinates) Application Proxy
+ Version Number..  1.07 
+ Version Date..  03-03-2016
+ Ran on  4-19-2016 at time 18:27:18
+
+********************************************************************************
+
+          keyword Input Echo - Values from input or default
+********************************************************************************
+
+  NML=invar
+     npey=     1
+     npez=     1
+     ichunk=     4
+     nthreads=     2
+     nnested=   1
+     ndimen=  1
+     nx=    20
+     ny=     1
+     nz=     1
+     lx=  1.0000E+01
+     ly=  1.0000E+00
+     lz=  1.0000E+00
+     nmom=   4
+     nang=   12
+     ng=   10
+     mat_opt=  0
+     src_opt=  3
+     scatp=  1
+     epsi=  1.0000E-04
+     iitm=   5
+     oitm=  100
+     timedep=  0
+     tf=  1.0000E+00
+     nsteps=    10
+     swp_typ=  0
+     cor_swp=  0
+     angcpy=  2
+     it_det=  1
+     soloutp=  0
+     kplane=    0
+     popout=  0
+     fluxp=  2
+     fixup=  1
+
+********************************************************************************
+
+   *WARNING: INPUT_CHECK: NSTEPS reset to 1 for static calc        
+
+          keyword Calculation Run-time Parameters Echo
+********************************************************************************
+
+  Geometry
+    ndimen = 1
+    nx =    20
+    ny =     1
+    nz =     1
+    lx =  1.0000E+01
+    ly =  1.0000E+00
+    lz =  1.0000E+00
+    dx =  5.0000E-01
+    dy =  0.0000E+00
+    dz =  0.0000E+00
+
+  Sn
+    nmom = 4
+    nang =   12
+    noct = 2
+
+    w =  4.1667E-02   ... uniform weights
+
+          mu              eta               xi
+     4.16666667E-02
+     1.25000000E-01
+     2.08333333E-01
+     2.91666667E-01
+     3.75000000E-01
+     4.58333333E-01
+     5.41666667E-01
+     6.25000000E-01
+     7.08333333E-01
+     7.91666667E-01
+     8.75000000E-01
+     9.58333333E-01
+
+  Material Map
+    mat_opt = 0   -->   nmat = 1
+    Base material (default for every cell) = 1
+
+  Source Map
+    src_opt = 3
+    MMS-generated source
+
+  Pseudo Cross Sections Data
+    ng =  10
+
+    Material 1
+    Group         Total         Absorption      Scattering
+       1       1.000000E+00    5.000000E-01    5.000000E-01
+       2       1.010000E+00    5.050000E-01    5.050000E-01
+       3       1.020000E+00    5.100000E-01    5.100000E-01
+       4       1.030000E+00    5.150000E-01    5.150000E-01
+       5       1.040000E+00    5.200000E-01    5.200000E-01
+       6       1.050000E+00    5.250000E-01    5.250000E-01
+       7       1.060000E+00    5.300000E-01    5.300000E-01
+       8       1.070000E+00    5.350000E-01    5.350000E-01
+       9       1.080000E+00    5.400000E-01    5.400000E-01
+      10       1.090000E+00    5.450000E-01    5.450000E-01
+
+  Solution Control Parameters
+    epsi =  1.0000E-04
+    iitm =   5
+    oitm =  100
+    timedep = 0
+    swp_typ = 0
+    it_det = 1
+    soloutp = 0
+    kplane =    0
+    popout = 0
+    fluxp = 2
+    fixup = 1
+
+
+  Parallelization Parameters
+    npey =     1
+    npez =     1
+    nthreads =    2
+
+          Thread Support Level
+           0 - MPI_THREAD_SINGLE
+           1 - MPI_THREAD_FUNNELED
+           2 - MPI_THREAD_SERIALIZED
+           3 - MPI_THREAD_MULTIPLE
+    thread_level =  0
+
+    .FALSE. nested threading
+      nnested =    1
+
+    Parallel Computational Efficiency = 1.0000
+
+********************************************************************************
+
+          keyword Iteration Monitor
+********************************************************************************
+ ********************
+  Outer   1
+    Group   1     Inner     1     Dfmxi  2.5420E-01
+    Group   2     Inner     1     Dfmxi  1.2666E+00
+    Group   3     Inner     1     Dfmxi  2.1594E+00
+    Group   4     Inner     1     Dfmxi  2.9842E+00
+    Group   5     Inner     1     Dfmxi  3.7256E+00
+    Group   6     Inner     1     Dfmxi  4.3539E+00
+    Group   7     Inner     1     Dfmxi  4.8148E+00
+    Group   8     Inner     1     Dfmxi  4.9981E+00
+    Group   9     Inner     1     Dfmxi  4.6261E+00
+    Group  10     Inner     1     Dfmxi  4.6877E-01
+    Group   1     Inner     2     Dfmxi  1.4726E-01
+    Group   2     Inner     2     Dfmxi  1.0752E-01
+    Group   3     Inner     2     Dfmxi  1.0621E-01
+    Group   4     Inner     2     Dfmxi  1.0580E-01
+    Group   5     Inner     2     Dfmxi  1.0564E-01
+    Group   6     Inner     2     Dfmxi  1.0564E-01
+    Group   7     Inner     2     Dfmxi  1.0584E-01
+    Group   8     Inner     2     Dfmxi  1.0643E-01
+    Group   9     Inner     2     Dfmxi  1.0765E-01
+    Group  10     Inner     2     Dfmxi  4.0702E-01
+    Group   1     Inner     3     Dfmxi  1.8462E-02
+    Group   2     Inner     3     Dfmxi  9.7707E-03
+    Group   3     Inner     3     Dfmxi  9.7424E-03
+    Group   4     Inner     3     Dfmxi  1.1651E-02
+    Group   5     Inner     3     Dfmxi  1.1563E-02
+    Group   6     Inner     3     Dfmxi  9.6945E-03
+    Group   7     Inner     3     Dfmxi  9.6506E-03
+    Group   8     Inner     3     Dfmxi  9.6567E-03
+    Group   9     Inner     3     Dfmxi  1.1098E-02
+    Group  10     Inner     3     Dfmxi  4.6475E-02
+    Group   1     Inner     4     Dfmxi  2.6265E-03
+    Group   2     Inner     4     Dfmxi  9.5701E-04
+    Group   3     Inner     4     Dfmxi  9.6918E-04
+    Group   4     Inner     4     Dfmxi  1.3139E-03
+    Group   5     Inner     4     Dfmxi  1.2993E-03
+    Group   6     Inner     4     Dfmxi  9.6318E-04
+    Group   7     Inner     4     Dfmxi  9.4994E-04
+    Group   8     Inner     4     Dfmxi  9.4450E-04
+    Group   9     Inner     4     Dfmxi  1.1452E-03
+    Group  10     Inner     4     Dfmxi  9.2915E-03
+    Group   1     Inner     5     Dfmxi  3.7917E-04
+    Group   2     Inner     5     Dfmxi  9.3966E-05
+    Group   3     Inner     5     Dfmxi  9.6426E-05
+    Group   4     Inner     5     Dfmxi  1.3983E-04
+    Group   5     Inner     5     Dfmxi  1.3808E-04
+    Group   6     Inner     5     Dfmxi  9.5752E-05
+    Group   7     Inner     5     Dfmxi  9.3706E-05
+    Group   8     Inner     5     Dfmxi  9.2713E-05
+    Group   9     Inner     5     Dfmxi  1.1592E-04
+    Group  10     Inner     5     Dfmxi  1.7014E-03
+    1    Dfmxo= 5.5369E+00    No. Inners=   50
+ ********************
+  Outer   2
+    Group   1     Inner     1     Dfmxi  1.4444E+00
+    Group   2     Inner     1     Dfmxi  2.7990E-01
+    Group   3     Inner     1     Dfmxi  2.6850E-01
+    Group   4     Inner     1     Dfmxi  2.8612E-01
+    Group   5     Inner     1     Dfmxi  3.1069E-01
+    Group   6     Inner     1     Dfmxi  3.4434E-01
+    Group   7     Inner     1     Dfmxi  3.6867E-01
+    Group   8     Inner     1     Dfmxi  3.5889E-01
+    Group   9     Inner     1     Dfmxi  5.9135E-01
+    Group  10     Inner     1     Dfmxi  1.1913E+02
+    Group   1     Inner     2     Dfmxi  8.7351E-02
+    Group   2     Inner     2     Dfmxi  4.3380E-02
+    Group   3     Inner     2     Dfmxi  5.0859E-02
+    Group   4     Inner     2     Dfmxi  4.5364E-02
+    Group   5     Inner     2     Dfmxi  4.7160E-02
+    Group   6     Inner     2     Dfmxi  5.3980E-02
+    Group   7     Inner     2     Dfmxi  6.5379E-02
+    Group   8     Inner     2     Dfmxi  7.6128E-02
+    Group   9     Inner     2     Dfmxi  5.5071E-02
+    Group  10     Inner     2     Dfmxi  4.3622E-01
+    Group   1     Inner     3     Dfmxi  1.2454E-02
+    Group   2     Inner     3     Dfmxi  6.4502E-03
+    Group   3     Inner     3     Dfmxi  6.9725E-03
+    Group   4     Inner     3     Dfmxi  5.9907E-03
+    Group   5     Inner     3     Dfmxi  6.1840E-03
+    Group   6     Inner     3     Dfmxi  7.1299E-03
+    Group   7     Inner     3     Dfmxi  8.7985E-03
+    Group   8     Inner     3     Dfmxi  1.1141E-02
+    Group   9     Inner     3     Dfmxi  7.7882E-03
+    Group  10     Inner     3     Dfmxi  1.3210E-01
+    Group   1     Inner     4     Dfmxi  1.8501E-03
+    Group   2     Inner     4     Dfmxi  7.9323E-04
+    Group   3     Inner     4     Dfmxi  8.5850E-04
+    Group   4     Inner     4     Dfmxi  7.2619E-04
+    Group   5     Inner     4     Dfmxi  7.4805E-04
+    Group   6     Inner     4     Dfmxi  8.6680E-04
+    Group   7     Inner     4     Dfmxi  1.0809E-03
+    Group   8     Inner     4     Dfmxi  1.4127E-03
+    Group   9     Inner     4     Dfmxi  9.2710E-04
+    Group  10     Inner     4     Dfmxi  5.0764E-02
+    Group   1     Inner     5     Dfmxi  2.7542E-04
+    Group   2     Inner     5     Dfmxi  8.9755E-05
+    Group   3     Inner     5     Dfmxi  9.9450E-05
+    Group   4     Inner     5     Dfmxi  8.3429E-05
+    Group   5     Inner     5     Dfmxi  8.5869E-05
+    Group   6     Inner     5     Dfmxi  9.9826E-05
+    Group   7     Inner     5     Dfmxi  1.2527E-04
+    Group   8     Inner     5     Dfmxi  1.6646E-04
+    Group   9     Inner     5     Dfmxi  1.0253E-04
+    Group  10     Inner     5     Dfmxi  2.5452E-02
+    2    Dfmxo= 2.0764E+02    No. Inners=   50
+ ********************
+  Outer   3
+    Group   1     Inner     1     Dfmxi  2.4072E-01
+    Group   2     Inner     1     Dfmxi  2.3988E-01
+    Group   3     Inner     1     Dfmxi  1.5721E-01
+    Group   4     Inner     1     Dfmxi  1.2025E-01
+    Group   5     Inner     1     Dfmxi  1.0819E-01
+    Group   6     Inner     1     Dfmxi  1.1251E-01
+    Group   7     Inner     1     Dfmxi  1.3635E-01
+    Group   8     Inner     1     Dfmxi  1.9679E-01
+    Group   9     Inner     1     Dfmxi  3.1687E-01
+    Group  10     Inner     1     Dfmxi  3.7406E-01
+    Group   1     Inner     2     Dfmxi  5.8947E-02
+    Group   2     Inner     2     Dfmxi  3.0913E-02
+    Group   3     Inner     2     Dfmxi  2.0747E-02
+    Group   4     Inner     2     Dfmxi  1.6278E-02
+    Group   5     Inner     2     Dfmxi  1.4558E-02
+    Group   6     Inner     2     Dfmxi  1.4746E-02
+    Group   7     Inner     2     Dfmxi  1.7137E-02
+    Group   8     Inner     2     Dfmxi  2.3273E-02
+    Group   9     Inner     2     Dfmxi  3.6499E-02
+    Group  10     Inner     2     Dfmxi  1.1543E-01
+    Group   1     Inner     3     Dfmxi  1.3168E-02
+    Group   2     Inner     3     Dfmxi  3.8843E-03
+    Group   3     Inner     3     Dfmxi  2.5933E-03
+    Group   4     Inner     3     Dfmxi  2.0375E-03
+    Group   5     Inner     3     Dfmxi  1.8128E-03
+    Group   6     Inner     3     Dfmxi  1.8188E-03
+    Group   7     Inner     3     Dfmxi  2.0899E-03
+    Group   8     Inner     3     Dfmxi  2.8087E-03
+    Group   9     Inner     3     Dfmxi  4.4573E-03
+    Group  10     Inner     3     Dfmxi  4.5097E-02
+    Group   1     Inner     4     Dfmxi  2.5612E-03
+    Group   2     Inner     4     Dfmxi  4.5985E-04
+    Group   3     Inner     4     Dfmxi  3.0529E-04
+    Group   4     Inner     4     Dfmxi  2.3960E-04
+    Group   5     Inner     4     Dfmxi  2.1244E-04
+    Group   6     Inner     4     Dfmxi  2.1206E-04
+    Group   7     Inner     4     Dfmxi  2.4238E-04
+    Group   8     Inner     4     Dfmxi  3.2462E-04
+    Group   9     Inner     4     Dfmxi  5.2037E-04
+    Group  10     Inner     4     Dfmxi  2.2680E-02
+    Group   1     Inner     5     Dfmxi  4.5072E-04
+    Group   2     Inner     5     Dfmxi  5.2161E-05
+    Group   3     Inner     5     Dfmxi  3.4503E-05
+    Group   4     Inner     5     Dfmxi  2.7053E-05
+    Group   5     Inner     5     Dfmxi  2.3934E-05
+    Group   6     Inner     5     Dfmxi  2.3815E-05
+    Group   7     Inner     5     Dfmxi  2.7132E-05
+    Group   8     Inner     5     Dfmxi  3.6271E-05
+    Group   9     Inner     5     Dfmxi  5.8520E-05
+    Group  10     Inner     5     Dfmxi  1.2349E-02
+    3    Dfmxo= 6.4620E-01    No. Inners=   50
+ ********************
+  Outer   4
+    Group   1     Inner     1     Dfmxi  2.5928E-01
+    Group   2     Inner     1     Dfmxi  9.2954E-02
+    Group   3     Inner     1     Dfmxi  6.1180E-02
+    Group   4     Inner     1     Dfmxi  4.9468E-02
+    Group   5     Inner     1     Dfmxi  4.4833E-02
+    Group   6     Inner     1     Dfmxi  4.4419E-02
+    Group   7     Inner     1     Dfmxi  4.8392E-02
+    Group   8     Inner     1     Dfmxi  6.0251E-02
+    Group   9     Inner     1     Dfmxi  9.4718E-02
+    Group  10     Inner     1     Dfmxi  2.4594E-01
+    Group   1     Inner     2     Dfmxi  4.2177E-02
+    Group   2     Inner     2     Dfmxi  1.1708E-02
+    Group   3     Inner     2     Dfmxi  7.8978E-03
+    Group   4     Inner     2     Dfmxi  6.3904E-03
+    Group   5     Inner     2     Dfmxi  5.7487E-03
+    Group   6     Inner     2     Dfmxi  5.6221E-03
+    Group   7     Inner     2     Dfmxi  6.0070E-03
+    Group   8     Inner     2     Dfmxi  7.2604E-03
+    Group   9     Inner     2     Dfmxi  1.0835E-02
+    Group  10     Inner     2     Dfmxi  1.3247E-01
+    Group   1     Inner     3     Dfmxi  7.3592E-03
+    Group   2     Inner     3     Dfmxi  1.4079E-03
+    Group   3     Inner     3     Dfmxi  9.5155E-04
+    Group   4     Inner     3     Dfmxi  7.6796E-04
+    Group   5     Inner     3     Dfmxi  6.8801E-04
+    Group   6     Inner     3     Dfmxi  6.6919E-04
+    Group   7     Inner     3     Dfmxi  7.0982E-04
+    Group   8     Inner     3     Dfmxi  8.4956E-04
+    Group   9     Inner     3     Dfmxi  1.2510E-03
+    Group  10     Inner     3     Dfmxi  6.5753E-02
+    Group   1     Inner     4     Dfmxi  1.2550E-03
+    Group   2     Inner     4     Dfmxi  1.6135E-04
+    Group   3     Inner     4     Dfmxi  1.0902E-04
+    Group   4     Inner     4     Dfmxi  8.7826E-05
+    Group   5     Inner     4     Dfmxi  7.8502E-05
+    Group   6     Inner     4     Dfmxi  7.6135E-05
+    Group   7     Inner     4     Dfmxi  8.0456E-05
+    Group   8     Inner     4     Dfmxi  9.5820E-05
+    Group   9     Inner     4     Dfmxi  1.4023E-04
+    Group  10     Inner     4     Dfmxi  3.2221E-02
+    Group   1     Inner     5     Dfmxi  2.0834E-04
+    Group   2     Inner     5     Dfmxi  1.7901E-05
+    Group   3     Inner     5     Dfmxi  1.2091E-05
+    Group   4     Inner     4     Dfmxi  8.7826E-05
+    Group   5     Inner     4     Dfmxi  7.8502E-05
+    Group   6     Inner     4     Dfmxi  7.6135E-05
+    Group   7     Inner     4     Dfmxi  8.0456E-05
+    Group   8     Inner     4     Dfmxi  9.5820E-05
+    Group   9     Inner     5     Dfmxi  1.5352E-05
+    Group  10     Inner     5     Dfmxi  1.5683E-02
+    4    Dfmxo= 5.7657E-01    No. Inners=   45
+ ********************
+  Outer   5
+    Group   1     Inner     1     Dfmxi  8.4637E-02
+    Group   2     Inner     1     Dfmxi  3.7467E-02
+    Group   3     Inner     1     Dfmxi  2.5593E-02
+    Group   4     Inner     1     Dfmxi  2.0824E-02
+    Group   5     Inner     1     Dfmxi  1.8852E-02
+    Group   6     Inner     1     Dfmxi  1.8567E-02
+    Group   7     Inner     1     Dfmxi  1.9854E-02
+    Group   8     Inner     1     Dfmxi  2.3503E-02
+    Group   9     Inner     1     Dfmxi  3.2870E-02
+    Group  10     Inner     1     Dfmxi  8.3833E-02
+    Group   1     Inner     2     Dfmxi  1.4110E-02
+    Group   2     Inner     2     Dfmxi  4.3371E-03
+    Group   3     Inner     2     Dfmxi  2.9910E-03
+    Group   4     Inner     2     Dfmxi  2.4411E-03
+    Group   5     Inner     2     Dfmxi  2.2105E-03
+    Group   6     Inner     2     Dfmxi  2.1734E-03
+    Group   7     Inner     2     Dfmxi  2.3152E-03
+    Group   8     Inner     2     Dfmxi  2.7208E-03
+    Group   9     Inner     2     Dfmxi  3.7488E-03
+    Group  10     Inner     2     Dfmxi  4.0272E-02
+    Group   1     Inner     3     Dfmxi  2.3806E-03
+    Group   2     Inner     3     Dfmxi  4.9158E-04
+    Group   3     Inner     3     Dfmxi  3.3915E-04
+    Group   4     Inner     3     Dfmxi  2.7676E-04
+    Group   5     Inner     3     Dfmxi  2.5051E-04
+    Group   6     Inner     3     Dfmxi  2.4611E-04
+    Group   7     Inner     3     Dfmxi  2.6183E-04
+    Group   8     Inner     3     Dfmxi  3.0703E-04
+    Group   9     Inner     3     Dfmxi  4.2132E-04
+    Group  10     Inner     3     Dfmxi  1.9447E-02
+    Group   1     Inner     4     Dfmxi  3.9355E-04
+    Group   2     Inner     4     Dfmxi  5.4218E-05
+    Group   3     Inner     4     Dfmxi  3.7395E-05
+    Group   4     Inner     4     Dfmxi  3.0509E-05
+    Group   5     Inner     4     Dfmxi  2.7608E-05
+    Group   6     Inner     4     Dfmxi  2.7114E-05
+    Group   7     Inner     4     Dfmxi  2.8830E-05
+    Group   8     Inner     4     Dfmxi  3.3773E-05
+    Group   9     Inner     4     Dfmxi  4.6257E-05
+    Group  10     Inner     4     Dfmxi  9.3638E-03
+    Group   1     Inner     5     Dfmxi  6.3849E-05
+    Group   2     Inner     4     Dfmxi  5.4218E-05
+    Group   3     Inner     4     Dfmxi  3.7395E-05
+    Group   4     Inner     4     Dfmxi  3.0509E-05
+    Group   5     Inner     4     Dfmxi  2.7608E-05
+    Group   6     Inner     4     Dfmxi  2.7114E-05
+    Group   7     Inner     4     Dfmxi  2.8830E-05
+    Group   8     Inner     4     Dfmxi  3.3773E-05
+    Group   9     Inner     4     Dfmxi  4.6257E-05
+    Group  10     Inner     5     Dfmxi  4.4813E-03
+    5    Dfmxo= 1.6537E-01    No. Inners=   42
+ ********************
+  Outer   6
+    Group   1     Inner     1     Dfmxi  2.9344E-02
+    Group   2     Inner     1     Dfmxi  1.3718E-02
+    Group   3     Inner     1     Dfmxi  9.1341E-03
+    Group   4     Inner     1     Dfmxi  7.1248E-03
+    Group   5     Inner     1     Dfmxi  6.2981E-03
+    Group   6     Inner     1     Dfmxi  6.2167E-03
+    Group   7     Inner     1     Dfmxi  6.8486E-03
+    Group   8     Inner     1     Dfmxi  8.5116E-03
+    Group   9     Inner     1     Dfmxi  1.2326E-02
+    Group  10     Inner     1     Dfmxi  2.6515E-02
+    Group   1     Inner     2     Dfmxi  4.8448E-03
+    Group   2     Inner     2     Dfmxi  1.3888E-03
+    Group   3     Inner     2     Dfmxi  7.2901E-04
+    Group   4     Inner     2     Dfmxi  5.4536E-04
+    Group   5     Inner     2     Dfmxi  4.7670E-04
+    Group   6     Inner     2     Dfmxi  4.7007E-04
+    Group   7     Inner     2     Dfmxi  5.1953E-04
+    Group   8     Inner     2     Dfmxi  6.6946E-04
+    Group   9     Inner     2     Dfmxi  1.1620E-03
+    Group  10     Inner     2     Dfmxi  1.2975E-02
+    Group   1     Inner     3     Dfmxi  7.9530E-04
+    Group   2     Inner     3     Dfmxi  1.2830E-04
+    Group   3     Inner     3     Dfmxi  6.2711E-05
+    Group   4     Inner     3     Dfmxi  4.6512E-05
+    Group   5     Inner     3     Dfmxi  3.9886E-05
+    Group   6     Inner     3     Dfmxi  3.9475E-05
+    Group   7     Inner     3     Dfmxi  4.3252E-05
+    Group   8     Inner     3     Dfmxi  5.6075E-05
+    Group   9     Inner     3     Dfmxi  1.0398E-04
+    Group  10     Inner     3     Dfmxi  6.2872E-03
+    Group   1     Inner     4     Dfmxi  1.2855E-04
+    Group   2     Inner     4     Dfmxi  1.2315E-05
+    Group   3     Inner     3     Dfmxi  6.2711E-05
+    Group   4     Inner     3     Dfmxi  4.6512E-05
+    Group   5     Inner     3     Dfmxi  3.9886E-05
+    Group   6     Inner     3     Dfmxi  3.9475E-05
+    Group   7     Inner     3     Dfmxi  4.3252E-05
+    Group   8     Inner     3     Dfmxi  5.6075E-05
+    Group   9     Inner     4     Dfmxi  9.7570E-06
+    Group  10     Inner     4     Dfmxi  3.0177E-03
+    Group   1     Inner     5     Dfmxi  2.0507E-05
+    Group   2     Inner     4     Dfmxi  1.2315E-05
+    Group   3     Inner     3     Dfmxi  6.2711E-05
+    Group   4     Inner     3     Dfmxi  4.6512E-05
+    Group   5     Inner     3     Dfmxi  3.9886E-05
+    Group   6     Inner     3     Dfmxi  3.9475E-05
+    Group   7     Inner     3     Dfmxi  4.3252E-05
+    Group   8     Inner     3     Dfmxi  5.6075E-05
+    Group   9     Inner     4     Dfmxi  9.7570E-06
+    Group  10     Inner     5     Dfmxi  1.4361E-03
+    6    Dfmxo= 5.1037E-02    No. Inners=   36
+ ********************
+  Outer   7
+    Group   1     Inner     1     Dfmxi  9.2147E-03
+    Group   2     Inner     1     Dfmxi  3.1068E-03
+    Group   3     Inner     1     Dfmxi  2.0301E-03
+    Group   4     Inner     1     Dfmxi  1.6382E-03
+    Group   5     Inner     1     Dfmxi  1.4789E-03
+    Group   6     Inner     1     Dfmxi  1.4515E-03
+    Group   7     Inner     1     Dfmxi  1.5518E-03
+    Group   8     Inner     1     Dfmxi  1.8605E-03
+    Group   9     Inner     1     Dfmxi  2.7315E-03
+    Group  10     Inner     1     Dfmxi  8.9016E-03
+    Group   1     Inner     2     Dfmxi  9.8945E-04
+    Group   2     Inner     2     Dfmxi  2.3604E-04
+    Group   3     Inner     2     Dfmxi  1.5888E-04
+    Group   4     Inner     2     Dfmxi  1.2962E-04
+    Group   5     Inner     2     Dfmxi  1.1743E-04
+    Group   6     Inner     2     Dfmxi  1.1575E-04
+    Group   7     Inner     2     Dfmxi  1.2421E-04
+    Group   8     Inner     2     Dfmxi  1.4855E-04
+    Group   9     Inner     2     Dfmxi  2.1282E-04
+    Group  10     Inner     2     Dfmxi  4.3461E-03
+    Group   1     Inner     3     Dfmxi  1.1676E-04
+    Group   2     Inner     3     Dfmxi  2.0276E-05
+    Group   3     Inner     3     Dfmxi  1.3898E-05
+    Group   4     Inner     3     Dfmxi  1.1356E-05
+    Group   5     Inner     3     Dfmxi  1.0329E-05
+    Group   6     Inner     3     Dfmxi  1.0214E-05
+    Group   7     Inner     3     Dfmxi  1.0984E-05
+    Group   8     Inner     3     Dfmxi  1.3127E-05
+    Group   9     Inner     3     Dfmxi  1.8589E-05
+    Group  10     Inner     3     Dfmxi  1.7053E-03
+    Group   1     Inner     4     Dfmxi  1.5212E-05
+    Group   2     Inner     3     Dfmxi  2.0276E-05
+    Group   3     Inner     3     Dfmxi  1.3898E-05
+    Group   4     Inner     3     Dfmxi  1.1356E-05
+    Group   5     Inner     3     Dfmxi  1.0329E-05
+    Group   6     Inner     3     Dfmxi  1.0214E-05
+    Group   7     Inner     3     Dfmxi  1.0984E-05
+    Group   8     Inner     3     Dfmxi  1.3127E-05
+    Group   9     Inner     3     Dfmxi  1.8589E-05
+    Group  10     Inner     4     Dfmxi  5.6596E-04
+    Group   1     Inner     4     Dfmxi  1.5212E-05
+    Group   2     Inner     3     Dfmxi  2.0276E-05
+    Group   3     Inner     3     Dfmxi  1.3898E-05
+    Group   4     Inner     3     Dfmxi  1.1356E-05
+    Group   5     Inner     3     Dfmxi  1.0329E-05
+    Group   6     Inner     3     Dfmxi  1.0214E-05
+    Group   7     Inner     3     Dfmxi  1.0984E-05
+    Group   8     Inner     3     Dfmxi  1.3127E-05
+    Group   9     Inner     3     Dfmxi  1.8589E-05
+    Group  10     Inner     5     Dfmxi  2.0099E-04
+    7    Dfmxo= 1.5793E-02    No. Inners=   33
+ ********************
+  Outer   8
+    Group   1     Inner     1     Dfmxi  1.6059E-03
+    Group   2     Inner     1     Dfmxi  7.9368E-04
+    Group   3     Inner     1     Dfmxi  5.5428E-04
+    Group   4     Inner     1     Dfmxi  4.5248E-04
+    Group   5     Inner     1     Dfmxi  4.0818E-04
+    Group   6     Inner     1     Dfmxi  3.9886E-04
+    Group   7     Inner     1     Dfmxi  4.2198E-04
+    Group   8     Inner     1     Dfmxi  4.9242E-04
+    Group   9     Inner     1     Dfmxi  6.7103E-04
+    Group  10     Inner     1     Dfmxi  1.3466E-03
+    Group   1     Inner     2     Dfmxi  2.0294E-04
+    Group   2     Inner     2     Dfmxi  6.6319E-05
+    Group   3     Inner     2     Dfmxi  4.6365E-05
+    Group   4     Inner     2     Dfmxi  3.8015E-05
+    Group   5     Inner     2     Dfmxi  3.4486E-05
+    Group   6     Inner     2     Dfmxi  3.3927E-05
+    Group   7     Inner     2     Dfmxi  3.6175E-05
+    Group   8     Inner     2     Dfmxi  4.2585E-05
+    Group   9     Inner     2     Dfmxi  5.8550E-05
+    Group  10     Inner     2     Dfmxi  5.3264E-04
+    Group   1     Inner     3     Dfmxi  2.7529E-05
+    Group   2     Inner     2     Dfmxi  6.6319E-05
+    Group   3     Inner     2     Dfmxi  4.6365E-05
+    Group   4     Inner     2     Dfmxi  3.8015E-05
+    Group   5     Inner     2     Dfmxi  3.4486E-05
+    Group   6     Inner     2     Dfmxi  3.3927E-05
+    Group   7     Inner     2     Dfmxi  3.6175E-05
+    Group   8     Inner     2     Dfmxi  4.2585E-05
+    Group   9     Inner     2     Dfmxi  5.8550E-05
+    Group  10     Inner     3     Dfmxi  2.2113E-04
+    Group   1     Inner     3     Dfmxi  2.7529E-05
+    Group   2     Inner     2     Dfmxi  6.6319E-05
+    Group   3     Inner     2     Dfmxi  4.6365E-05
+    Group   4     Inner     2     Dfmxi  3.8015E-05
+    Group   5     Inner     2     Dfmxi  3.4486E-05
+    Group   6     Inner     2     Dfmxi  3.3927E-05
+    Group   7     Inner     2     Dfmxi  3.6175E-05
+    Group   8     Inner     2     Dfmxi  4.2585E-05
+    Group   9     Inner     2     Dfmxi  5.8550E-05
+    Group  10     Inner     4     Dfmxi  9.4042E-05
+    8    Dfmxo= 2.1957E-03    No. Inners=   23
+
+  No. Outers=   8    No. Inners=  329
+
+********************************************************************************
+
+          MMS Verification
+********************************************************************************
+
+    Manufactured/Computed Solutions Max Diff= 1.287419E-03
+
+    Manufactured/Computed Solutions Min Diff= 4.230863E-05
+
+    Manufactured/Computed Solutions Avg Diff= 2.861993E-04
+
+********************************************************************************
+
+          keyword Timing Summary
+********************************************************************************
+
+  Code Section                          Time (seconds)
+ **************                        ****************
+    Parallel Setup                       9.2578E-04
+    Input                                5.9819E-03
+    Setup                                2.3799E-03
+    Solve                                3.2699E-03
+       Parameter Setup                   1.5616E-04
+       Outer Source                      2.0123E-04
+       Inner Iterations                  2.6827E-03
+          Inner Source                   1.7118E-04
+          Transport Sweeps               1.3931E-03
+          Inner Misc Ops                 1.1184E-03
+       Solution Misc Ops                 2.2984E-04
+    Output                               1.9109E-03
+  Total Execution time                   1.7183E-02
+
+  Grind Time (nanoseconds)         2.0706E+01
+
+********************************************************************************
