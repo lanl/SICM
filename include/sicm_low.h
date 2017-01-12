@@ -200,9 +200,8 @@ int sicm_move(struct sicm_device* src, struct sicm_device* dst, void* ptr, size_
 /// Pins the current process to the processors closest to the memory.
 /**
  * @param[in] device Device to pin the process to.
- * @return Returns 0 if the pin was successful, or -1 otherwise.
  */
-int sicm_pin(struct sicm_device* device);
+void sicm_pin(struct sicm_device* device);
 
 /// Query capacity of a device a device.
 /**

@@ -225,24 +225,18 @@ int sicm_move(struct sicm_device* src, struct sicm_device* dst, void* ptr, size_
   return -1;
 }
 
-int sicm_pin(struct sicm_device* device) {
-  struct bitmask* mask;
-  int res;
+void sicm_pin(struct sicm_device* device) {
   switch(device->tag) {
     case SICM_DRAM:
-      mask = numa_allocate_cpumask();
-      numa_node_to_cpus(device->data.dram.node, mask);
-      res = numa_sched_setaffinity(0, mask);
-      numa_free_cpumask(mask);
-      return res;
+      #pragma omp parallel
+      #pragma omp critical
+      numa_run_on_node(device->data.dram.node);
+      break;
     case SICM_KNL_HBM:
-      mask = numa_allocate_cpumask();
-      numa_node_to_cpus(device->data.knl_hbm.compute_node, mask);
-      res = numa_sched_setaffinity(0, mask);
-      numa_free_cpumask(mask);
-      return res;
-    default:
-      return -1;
+      #pragma omp parallel
+      #pragma omp critical
+      numa_run_on_node(device->data.knl_hbm.compute_node);
+      break;
   }
 }
 
