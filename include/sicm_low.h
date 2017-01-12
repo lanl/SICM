@@ -90,6 +90,7 @@ struct sicm_dram_data {
 /// Data specific to a KNL HBM device.
 struct sicm_knl_hbm_data {
   int node; ///< NUMA node
+  int compute_node;
   int page_size; ///< Page size
 };
 

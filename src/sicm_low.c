@@ -90,13 +90,26 @@ struct sicm_device_list sicm_init() {
   if (actual == expected) {
     for(i = 0; i <= numa_max_node(); i++) {
       if(!numa_bitmask_isbitset(compute_nodes, i)) {
+        int compute_node = -1;
+        /*
+         * On Knights Landing machines, high-bandwidth memory always has
+         * higher NUMA distances (to prevent malloc from giving you HBM)
+         * but I'm pretty sure the compute node closest to an HBM node
+         * always has NUMA distance 31, e.g.,
+         * https://goparallel.sourceforge.net/wp-content/uploads/2016/05/Colfax_KNL_Clustering_Modes_Guide.pdf
+         */
+        for(j = 0; j < numa_max_node(); j++) {
+          if(numa_distance(i, j) == 31) compute_node = j;
+        }
         devices[idx].tag = SICM_KNL_HBM;
-        devices[idx].data.knl_hbm = (struct sicm_knl_hbm_data){ .node=i, .page_size=normal_page_size };
+        devices[idx].data.knl_hbm = (struct sicm_knl_hbm_data){ .node=i,
+          .compute_node=compute_node, .page_size=normal_page_size };
         numa_bitmask_setbit(non_dram_nodes, i);
         idx++;
         for(j = 0; j < huge_page_size_count; j++) {
           devices[idx].tag = SICM_KNL_HBM;
-          devices[idx].data.knl_hbm = (struct sicm_knl_hbm_data){ .node=i, .page_size=huge_page_sizes[j] };
+          devices[idx].data.knl_hbm = (struct sicm_knl_hbm_data){ .node=i,
+            .compute_node=compute_node, .page_size=huge_page_sizes[j] };
           idx++;
         }
       }
@@ -213,11 +226,19 @@ int sicm_move(struct sicm_device* src, struct sicm_device* dst, void* ptr, size_
 }
 
 int sicm_pin(struct sicm_device* device) {
+  struct bitmask* mask;
+  int res;
   switch(device->tag) {
-    case SICM_DRAM:;
-      struct bitmask* mask = numa_allocate_cpumask();
+    case SICM_DRAM:
+      mask = numa_allocate_cpumask();
       numa_node_to_cpus(device->data.dram.node, mask);
-      int res = numa_sched_setaffinity(0, mask);
+      res = numa_sched_setaffinity(0, mask);
+      numa_free_cpumask(mask);
+      return res;
+    case SICM_KNL_HBM:
+      mask = numa_allocate_cpumask();
+      numa_node_to_cpus(device->data.knl_hbm.compute_node, mask);
+      res = numa_sched_setaffinity(0, mask);
       numa_free_cpumask(mask);
       return res;
     default:
