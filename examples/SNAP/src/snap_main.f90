@@ -122,7 +122,7 @@ PROGRAM snap_main
   ! so replicating that here may require writing some more wrappers)
   ! finally, sf_pin ensure the process only runs local to the memory
   call sf_init(devices)
-  allocator = sf_get_device(devices, 2)
+  allocator = sf_get_device(devices, 1)
   pin_res = sf_pin(allocator)
   
 !_______________________________________________________________________
@@ -237,7 +237,8 @@ PROGRAM snap_main
   CALL bcast ( ierr, comm_snap, root )
   call system_clock(finish)
   write (6,*) "time:", 1000 * (finish - start) / clock_rate, "ms"
-  write (6,*) "memory:", 2 * nx * ny * nz * 8 * nang * ng, "B"
+  write (6,*) "memory:", 16_8 * int(nx, c_size_t) * int(ny, c_size_t) * &
+    int(nz, c_size_t) * int(nang, c_size_t) * int(ng, c_size_t) * int(r_knd, c_size_t), "B"
   IF ( ierr /= 0 ) THEN
     CALL print_error ( 0, error )
     CALL stop_run ( 1, 0, 0, 0 )

@@ -123,7 +123,8 @@ MODULE data_module
 !_______________________________________________________________________
 
     IF ( src_opt < 3 ) THEN
-      qidim = int(nx * ny * nz * ng * r_knd, c_size_t)
+      qidim = int(nx, c_size_t) * int(ny, c_size_t) * int(nz, c_size_t)&
+        * int(ng, c_size_t) * int(r_knd, c_size_t)
       c_tmp = sf_alloc(allocator, qidim)
       call c_f_pointer(c_tmp, qi, shape=[nx,ny,nz,ng])
       qimdim = 0_8
@@ -132,10 +133,13 @@ MODULE data_module
       IF ( istat /= 0 ) RETURN
       qi = zero
     ELSE
-      qidim = int(nx * ny * nz * ng * r_knd, c_size_t)
+      qidim = int(nx, c_size_t) * int(ny, c_size_t) * int(nz, c_size_t)&
+        * int(ng, c_size_t) * int(r_knd, c_size_t)
       c_tmp = sf_alloc(allocator, qidim)
       call c_f_pointer(c_tmp, qi, shape=[nx,ny,nz,ng])
-      qimdim = int(nang * nx * ny * nz * noct * ng * r_knd, c_size_t)
+      qimdim = int(nang, c_size_t) * int(nx, c_size_t) * int(ny, c_size_t)&
+        * int(nz, c_size_t) * int(noct, c_size_t) * int(ng, c_size_t)&
+        * int(r_knd, c_size_t)
       c_tmp = sf_alloc(allocator, qimdim)
       call c_f_pointer(c_tmp, qim, shape=[nang,nx,ny,nz,noct,ng])
       !ALLOCATE( qi(nx,ny,nz,ng), qim(nang,nx,ny,nz,noct,ng),           &

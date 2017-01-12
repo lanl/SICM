@@ -127,7 +127,8 @@ MODULE geom_module
 
     ierr = 0
 
-    dinvsize = int(nang * ichunk * ny * nz * nc * ng * r_knd, c_size_t)
+    dinvsize = int(nang, c_size_t) * int(ichunk, c_size_t) * int(ny, c_size_t)&
+      * int(nz, c_size_t) * int(nc, c_size_t) * int(ng, c_size_t) * int(r_knd, c_size_t)
     c_tmp = sf_alloc(allocator, dinvsize)
     call c_f_pointer(c_tmp, dinv, shape=[nang,ichunk,ny,nz,nc,ng])
     !ALLOCATE( dinv(nang,ichunk,ny,nz,nc,ng), STAT=ierr )

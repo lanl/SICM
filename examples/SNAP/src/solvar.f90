@@ -111,16 +111,22 @@ MODULE solvar_module
 
     IF ( timedep == 1 ) THEN
       IF ( angcpy == 1 ) THEN
-        c_tmp = sf_alloc(allocator, int(nang * nx * ny * nz * noct * ng * r_knd, c_size_t))
+        c_tmp = sf_alloc(allocator, int(nang, c_size_t) * int(nx, c_size_t)&
+          * int(ny, c_size_t) * int(nz, c_size_t) * int(noct, c_size_t)&
+          * int(ng, c_size_t) * int(r_knd, c_size_t))
         if (.not. c_associated(c_tmp)) then
           ierr = -1
         end if
         call c_f_pointer(c_tmp, ptr_in, shape=[nang,nx,ny,nz,noct,ng])
         !ALLOCATE( ptr_in(nang,nx,ny,nz,noct,ng), STAT=ierr )
       ELSE
-        c_tmp = sf_alloc(allocator, int(nang * nx * ny * nz * noct * ng * r_knd, c_size_t))
+        c_tmp = sf_alloc(allocator, int(nang, c_size_t) * int(nx, c_size_t)&
+          * int(ny, c_size_t) * int(nz, c_size_t) * int(noct, c_size_t)&
+          * int(ng, c_size_t) * int(r_knd, c_size_t))
         call c_f_pointer(c_tmp, ptr_in, shape=[nang,nx,ny,nz,noct,ng])
-        c_tmp = sf_alloc(allocator, int(nang * nx * ny * nz * noct * ng * r_knd, c_size_t))
+        c_tmp = sf_alloc(allocator, int(nang, c_size_t) * int(nx, c_size_t)&
+          * int(ny, c_size_t) * int(nz, c_size_t) * int(noct, c_size_t)&
+          * int(ng, c_size_t) * int(r_knd, c_size_t))
         call c_f_pointer(c_tmp, ptr_out, shape=[nang,nx,ny,nz,noct,ng])
         if (.not. (c_associated(c_tmp) .and. c_associated(c_tmp))) then
           ierr = -1
@@ -262,10 +268,14 @@ MODULE solvar_module
 !-----------------------------------------------------------------------
 !_______________________________________________________________________
 
-    call sf_free(allocator, c_loc(ptr_in), int(nang * nx * ny * nz * noct * ng * r_knd, c_size_t))
+    call sf_free(allocator, c_loc(ptr_in), int(nang, c_size_t) * int(nx, c_size_t)&
+      * int(ny, c_size_t) * int(nz, c_size_t) * int(noct, c_size_t)&
+      * int(ng, c_size_t) * int(r_knd, c_size_t))
     !DEALLOCATE( ptr_in )
     IF ( angcpy==2 .OR. timedep==0 ) &
-      call sf_free(allocator, c_loc(ptr_out), int(nang * nx * ny * nz * noct * ng * r_knd, c_size_t))
+      call sf_free(allocator, c_loc(ptr_out), int(nang, c_size_t) * int(nx, c_size_t)&
+        * int(ny, c_size_t) * int(nz, c_size_t) * int(noct, c_size_t)&
+        * int(ng, c_size_t) * int(r_knd, c_size_t))
     !IF ( angcpy==2 .OR. timedep==0 ) DEALLOCATE( ptr_out )
     DEALLOCATE( flux0, flux0po, flux0pi, fluxm )
     DEALLOCATE( q2grp0, q2grpm, qtot )
