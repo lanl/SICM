@@ -229,12 +229,10 @@ void sicm_pin(struct sicm_device* device) {
   switch(device->tag) {
     case SICM_DRAM:
       #pragma omp parallel
-      #pragma omp critical
       numa_run_on_node(device->data.dram.node);
       break;
     case SICM_KNL_HBM:
       #pragma omp parallel
-      #pragma omp critical
       numa_run_on_node(device->data.knl_hbm.compute_node);
       break;
   }

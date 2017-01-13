@@ -21,6 +21,7 @@ fortran: src/fbinding.f90 $(OBJ) obj/fbinding.o
 
 examples: libsicm.so
 	gcc -o examples/basic examples/basic.c -L. -lsicm $(CFLAGS)
+	gcc -o examples/hugepages examples/hugepages.c -L. -lsicm $(CFLAGS)
 
 $(ODIR)/%.o: $(SDIR)/%.c $(DEPS)
 	$(CC) $(CFLAGS) -o $@ -c $<
