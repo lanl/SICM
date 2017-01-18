@@ -1,6 +1,7 @@
 #include "sicm_low.h"
 #include <stdio.h>
 #include <time.h>
+#include <sys/mman.h>
 
 // 20 MiB
 #define SZ 20971520
@@ -9,6 +10,8 @@ int main() {
   struct sicm_device_list devices = sicm_init();
   unsigned int start, end;
   unsigned int i;
+  
+  printf("%d\n", MAP_HUGE_SHIFT);
   
   char* data = sicm_alloc(&devices.devices[0], SZ);
   start = time(NULL);
