@@ -29,6 +29,7 @@ examples: libsicm.so
 	gcc -o examples/basic examples/basic.c -L. -lsicm $(CFLAGS)
 	gcc -o examples/hugepages examples/hugepages.c -L. -lsicm $(CFLAGS)
 	g++ -o examples/class examples/class.cpp -L. -lsicm_cpp $(CFLAGS)
+	g++ -o examples/stl examples/stl.cpp -L. -lsicm_cpp $(CFLAGS)
 
 $(ODIR)/%.o: $(SDIR)/%.c $(DEPS)
 	$(CC) $(CFLAGS) -o $@ -c $<

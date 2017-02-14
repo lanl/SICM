@@ -5,7 +5,6 @@ class SicmTest: public SicmClass {
   public:
     SicmTest(int a, int b, int c);
     ~SicmTest();
-  private:
     int a, b, c;
 };
 
@@ -23,6 +22,12 @@ int main() {
   std::cout << sicm_avail(device) << std::endl;
   sicm_new(device, SicmTest, testObj, (1, 2, 3))
   std::cout << sicm_avail(device) << std::endl;
+  std::cout << testObj->a << ", " << testObj->b << ", " << testObj->c << std::endl;
+  SicmTest* testObj2 = new SicmTest(4, 5, 6);
+  std::cout << testObj2->a << ", " << testObj2->b << ", " << testObj2->c << std::endl;
+  std::cout << sicm_avail(device) << std::endl;
   sicm_delete(testObj)
+  std::cout << sicm_avail(device) << std::endl;
+  delete testObj2;
   std::cout << sicm_avail(device) << std::endl;
 }
