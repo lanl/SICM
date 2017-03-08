@@ -18,7 +18,6 @@ class SicmClass {
 template <class T>
 class SicmAllocator {
 public:
-  // type definitions
   typedef T        value_type;
   typedef T*       pointer;
   typedef const T* const_pointer;
@@ -26,16 +25,14 @@ public:
   typedef const T& const_reference;
   typedef std::size_t    size_type;
   typedef std::ptrdiff_t difference_type;
-  
+
   struct sicm_device* sicm_dev;
 
-  // rebind allocator to type U
   template <class U>
   struct rebind {
      typedef SicmAllocator<U> other;
   };
 
-  // return address of values
   pointer address(reference value) const {
     return &value;
   }
@@ -43,9 +40,6 @@ public:
     return &value;
   }
 
-  /* constructors and destructor
-  * - nothing to do because the allocator has no state
-  */
   SicmAllocator() throw() {
     this->sicm_dev =
       (struct sicm_device*)pthread_getspecific(sicm_current_device);

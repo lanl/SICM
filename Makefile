@@ -11,9 +11,12 @@ DEPS := $(patsubst %,$(IDIR)/%,$(INCLUDES))
 
 OBJ = $(patsubst %,$(ODIR)/%.o,$(SOURCES))
 
+sg: $(OBJ) obj/sg.o
+	gcc -o libsg.so obj/sg.o -shared $(CFLAGS)
+
 sicm: $(OBJ)
 	gcc -o lib$@.so $^ -shared $(CFLAGS)
-	
+
 fortran: src/fbinding.f90 $(OBJ) obj/fbinding.o
 	gfortran -o sicm_f90.so src/fbinding.f90 obj/fbinding.o $(OBJ) -shared $(CFLAGS)
 
@@ -30,6 +33,7 @@ examples: libsicm.so
 	gcc -o examples/hugepages examples/hugepages.c -L. -lsicm $(CFLAGS)
 	g++ -o examples/class examples/class.cpp -L. -lsicm_cpp $(CFLAGS)
 	g++ -o examples/stl examples/stl.cpp -L. -lsicm_cpp $(CFLAGS)
+	gcc -o examples/greedy examples/greedy.c -L. -lsg -lsicm $(CFLAGS)
 
 $(ODIR)/%.o: $(SDIR)/%.c $(DEPS)
 	$(CC) $(CFLAGS) -o $@ -c $<

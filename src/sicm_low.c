@@ -20,7 +20,7 @@ int normal_page_size = -1;
 struct sicm_device_list sicm_init() {
   int node_count = numa_max_node() + 1;
   normal_page_size = getpagesize() / 1024;
-  
+
   // Find the number of huge page sizes
   int huge_page_size_count = 0;
   DIR* dir;
@@ -29,17 +29,17 @@ struct sicm_device_list sicm_init() {
   while((entry = readdir(dir)) != NULL)
     if(entry->d_name[0] != '.') huge_page_size_count++;
   closedir(dir);
-  
+
   int device_count = node_count * (huge_page_size_count + 1);
-  
+
   struct bitmask* non_dram_nodes = numa_bitmask_alloc(node_count);
-  
+
   struct sicm_device* devices = malloc(device_count * sizeof(struct sicm_device));
   int* huge_page_sizes = malloc(huge_page_size_count);
-  
+
   int i, j;
   int idx = 0;
-  
+
   // Find the actual set of huge page sizes (reported in KiB)
   dir = opendir("/sys/kernel/mm/hugepages");
   i = 0;
@@ -61,7 +61,7 @@ struct sicm_device_list sicm_init() {
     }
   }
   closedir(dir);
-  
+
   struct bitmask* cpumask = numa_allocate_cpumask();
   int cpu_count = numa_num_possible_cpus();
   struct bitmask* compute_nodes = numa_bitmask_alloc(node_count);
@@ -75,7 +75,7 @@ struct sicm_device_list sicm_init() {
     }
   }
   numa_free_cpumask(cpumask);
-  
+
   // Knights Landing
   uint32_t xeon_phi_model = (0x7<<4);
   uint32_t xeon_phi_ext_model = (0x5<<16);
@@ -115,7 +115,7 @@ struct sicm_device_list sicm_init() {
       }
     }
   }
-  
+
   // DRAM
   for(i = 0; i <= numa_max_node(); i++) {
     if(!numa_bitmask_isbitset(non_dram_nodes, i)) {
@@ -129,18 +129,18 @@ struct sicm_device_list sicm_init() {
       }
     }
   }
-  
+
   numa_bitmask_free(compute_nodes);
   numa_bitmask_free(non_dram_nodes);
   free(huge_page_sizes);
-  
+
   return (struct sicm_device_list){ .count = device_count, .devices = devices };
 }
 
 void* sicm_alloc(struct sicm_device* device, size_t size) {
   switch(device->tag) {
     case SICM_DRAM:
-    case SICM_KNL_HBM:;
+    case SICM_KNL_HBM:; // labels can't be followed by declarations
       int page_size = sicm_device_page_size(device);
       if(page_size == normal_page_size)
         return numa_alloc_onnode(size, sicm_numa_id(device));
@@ -324,18 +324,30 @@ size_t sicm_avail(struct sicm_device* device) {
   }
 }
 
-#ifdef _GNU_SOURCE
 int sicm_model_distance(struct sicm_device* device) {
   switch(device->tag) {
     case SICM_DRAM:
-    case SICM_KNL_HBM:; // labels can't be followed by declarations
+    case SICM_KNL_HBM:;
       int node = sicm_numa_id(device);
       return numa_distance(node, numa_node_of_cpu(sched_getcpu()));
     default:
       return -1;
   }
 }
-#endif
+
+int sicm_is_near(struct sicm_device* device) {
+  int dist;
+  switch(device->tag) {
+    case SICM_DRAM:
+      dist = numa_distance(sicm_numa_id(device), numa_node_of_cpu(sched_getcpu()));
+      return dist == 10;
+    case SICM_KNL_HBM:
+      dist = numa_distance(sicm_numa_id(device), numa_node_of_cpu(sched_getcpu()));
+      return dist == 31;
+    default:
+      return 0;
+  }
+}
 
 void sicm_latency(struct sicm_device* device, size_t size, int iter, struct sicm_timing* res) {
   struct timespec start, end;
