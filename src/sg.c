@@ -2,14 +2,17 @@
 #include "sicm_low.h"
 #include <numa.h>
 #include <stdlib.h>
+#include <sys/mman.h>
 
 struct suballoc_t {
   void* ptr;
+  struct sicm_device* device;
   size_t sz;
 };
 
 struct allocation_t {
   void* ptr;
+  size_t count;
   struct suballoc_t* suballocs;
 };
 
@@ -23,7 +26,7 @@ struct alloc_table_t alloc_table;
 struct sicm_device_list sg_performance_list;
 struct sicm_device_list sg_capacity_list;
 
-void add_allocation(void* ptr, struct suballoc_t* suballocs) {
+void add_allocation(void* ptr, struct suballoc_t* suballocs, size_t count) {
   size_t k;
   if(100 * alloc_table.used / alloc_table.capacity >= 80) {
     struct allocation_t* old_data = alloc_table.data;
@@ -33,13 +36,14 @@ void add_allocation(void* ptr, struct suballoc_t* suballocs) {
     alloc_table.data = malloc(alloc_table.capacity * sizeof(struct alloc_table_t));
     for(k = 0; k < old_capacity; k++)
       if(old_data[k].ptr != NULL)
-        add_allocation(old_data[k].ptr, old_data[k].suballocs);
+        add_allocation(old_data[k].ptr, old_data[k].suballocs, old_data[k].count);
     free(old_data);
   }
   k = sicm_hash((size_t)ptr) % alloc_table.capacity;
   while(1) {
     if(alloc_table.data[k].ptr == NULL) {
       alloc_table.data[k].ptr = ptr;
+      alloc_table.data[k].count = count;
       alloc_table.data[k].suballocs = suballocs;
       break;
     }
@@ -47,11 +51,11 @@ void add_allocation(void* ptr, struct suballoc_t* suballocs) {
   }
 }
 
-struct suballoc_t* get_suballocs(void* ptr) {
+struct allocation_t* get_allocation(void* ptr) {
   size_t k = sicm_hash((size_t)ptr) % alloc_table.capacity;
   while(1) {
     if(alloc_table.data[k].ptr == ptr)
-      return alloc_table.data[k].suballocs;
+      return &alloc_table.data[k];
     if(alloc_table.data[k].ptr == NULL) return NULL;
     k = (k + 1) % alloc_table.capacity;
   }
@@ -62,6 +66,7 @@ void remove_allocation(void* ptr) {
   while(1) {
     if(alloc_table.data[k].ptr == ptr) {
       alloc_table.data[k].ptr = NULL;
+      alloc_table.data[k].count = 0;
       free(alloc_table.data[k].suballocs);
       alloc_table.data[k].suballocs = NULL;
       break;
@@ -163,6 +168,92 @@ void sort_list(struct sicm_device_list* list, int (*cmp)(struct sicm_device*, st
   free(stack);
 }
 
+void* sg_alloc_exact(size_t sz) {
+  void* ptr = NULL;
+  #pragma omp critical(sg_alloc)
+  {
+    int i;
+    size_t j;
+    for(i = 0; i < sg_performance_list.count; i++) {
+      struct sicm_device* device = &sg_performance_list.devices[i];
+      if(sicm_avail(device) >= sz) {
+        ptr = sicm_alloc(device, sz);
+        size_t step = sicm_device_page_size(device);
+        if(step > 0) {
+          step *= 1024; // page size is reported in KiB
+          for(j = 0; j < sz; j += step) ((char*)ptr)[j] = 0;
+        }
+        struct suballoc_t* suballoc = malloc(sizeof(struct suballoc_t));
+        suballoc->ptr = ptr;
+        suballoc->device = device;
+        suballoc->sz = sz;
+        add_allocation(ptr, suballoc, 1);
+        break;
+      }
+    }
+  }
+  return ptr;
+}
+
+void* sg_alloc_spill(size_t sz, struct sicm_device_list list) {
+  void* ptr = NULL;
+  #pragma omp critical(sg_alloc)
+  {
+    int i;
+    size_t j;
+    ptr = mmap(NULL, sz, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+    int device_count = 0;
+    size_t met = 0;
+    struct sicm_device* device;
+    for(i = 0; i < list.count && met < sz; i++) {
+      device = &list.devices[i];
+      size_t avail = sicm_avail(device);
+      if(avail > 0 && sicm_can_place_exact(device)) {
+        met += sicm_avail(device);
+        device_count++;
+      }
+    }
+    if(met < sz) {
+      munmap(ptr, sz);
+      ptr = NULL;
+    }
+    else {
+      struct suballoc_t* suballoc = malloc(device_count * sizeof(struct suballoc_t));
+      met = 0;
+      int cur = 0;
+      for(i = 0; i < list.count && met < sz; i++) {
+        device = &list.devices[i];
+        size_t avail = sicm_avail(device);
+        if(avail > 0 && sicm_can_place_exact(device)) {
+          size_t cur_sz = avail;
+          if(avail > sz - met) cur_sz = sz - met;
+          void* sub_ptr = sicm_alloc_exact(device, ptr + met, cur_sz);
+          size_t step = sicm_device_page_size(device);
+          if(step > 0) {
+            step *= 1024; // page size is reported in KiB
+            for(j = 0; j < cur_sz; j += step) ((char*)sub_ptr)[j] = 0;
+          }
+          suballoc[cur].ptr = sub_ptr;
+          suballoc[cur].device = device;
+          suballoc[cur].sz = cur_sz;
+          cur++;
+          met += cur_sz;
+        }
+      }
+      add_allocation(ptr, suballoc, device_count);
+    }
+  }
+  return ptr;
+}
+
+void* sg_alloc_perf(size_t sz) {
+  return sg_alloc_spill(sz, sg_performance_list);
+}
+
+void* sg_alloc_cap(size_t sz) {
+  return sg_alloc_spill(sz, sg_capacity_list);
+}
+
 void sg_init(int id) {
   int i, j;
   int node_count = numa_max_node() + 1;
@@ -184,6 +275,10 @@ void sg_init(int id) {
   #pragma omp parallel
   numa_run_on_node(compute_nodes[id % compute_node_count]);
   free(compute_nodes);
+
+  alloc_table.used = 0;
+  alloc_table.capacity = 32;
+  alloc_table.data = malloc(alloc_table.capacity * sizeof(struct alloc_table_t));
 
   sg_performance_list = sicm_init();
   sg_capacity_list = (struct sicm_device_list){

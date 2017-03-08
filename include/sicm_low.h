@@ -163,6 +163,29 @@ struct sicm_device_list sicm_init();
  */
 void* sicm_alloc(struct sicm_device* device, size_t size);
 
+/// Returns whether the device supports exact placement.
+/**
+ * @param[in] device Pointer to a sicm_device to query.
+ * @return Whether the device supports mapping with an exact base address.
+ *
+ * This indicates whether it's safe to call sicm_alloc_exact with the device in
+ * question.
+ */
+int sicm_can_place_exact(struct sicm_device* device);
+
+/// Allocate memory on a SICM device with an exact base address.
+/**
+ * @param[in] device Pointer to a sicm_device to allocate on.
+ * @param[in] base Base address of the allocation.
+ * @param[in] size Amount of memory to allocate.
+ * @return Pointer to the start of the allocation.
+ *
+ * This function is incredibly unsafe: it'll either not work (if the device
+ * doesn't support base addresses) or it might stomp previous allocations. Only
+ * use this if you know what you're doing.
+ */
+void* sicm_alloc_exact(struct sicm_device* device, void* base, size_t size);
+
 /// Deallocate/free memory on a SICM device.
 /**
  * @param[in] device Pointer to the sicm_device the allocation was made on.

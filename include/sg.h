@@ -15,6 +15,11 @@
  * allocation among multiple devices, though it will ensure a contiguous address
  * space. The drawback to spill allocations is that it will always allocate in
  * page-size chunks, so it's unsuitable for small allocations.
+ *
+ * The main functions in this library are surrounded in OMP CRITICAL blocks,
+ * because they need to have a reasonably accurate picture of the available
+ * memory. Concurrent allocations could potentially conflict with the others'
+ * modeling.
  */
 #pragma once
 
@@ -55,6 +60,8 @@ void sg_init(int id);
  * This function ensures that all the memory will reside on the same device.
  * Mainly, this is much faster than sg_alloc_perf.Note that this will "touch"
  * each page of the allocation.
+ *
+ * This function is OMP CRITICAL with the other sg_alloc functions.
  */
 void* sg_alloc_exact(size_t sz);
 
@@ -66,6 +73,8 @@ void* sg_alloc_exact(size_t sz);
  * This function will allocate some amount of memory, using as much as is
  * available on each device, sorted by performance. Note that this will "touch"
  * each page of the allocation.
+ *
+ * This function is OMP CRITICAL with the other sg_alloc functions.
  */
 void* sg_alloc_perf(size_t sz);
 
@@ -77,11 +86,15 @@ void* sg_alloc_perf(size_t sz);
  * This function will allocate some amount of memory, using as much as is
  * available on each device, but preferring low-performance memory. Note that
  * this will "touch" each page of the allocation.
+ *
+ * This function is OMP CRITICAL with the other sg_alloc functions.
  */
 void* sg_alloc_cap(size_t sz);
 
 /// Free memory that was allocated with this library.
 /**
  * @param[in] ptr The start of the allocation.
+ *
+ * This function is OMP CRITICAL with the sg_alloc functions.
  */
 void sg_free(void* ptr);
