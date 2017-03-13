@@ -281,7 +281,7 @@ void sg_init(int id) {
     numa_node_to_cpus(i, cpumask);
     for(j = 0; j < cpu_count; j++) {
       if(numa_bitmask_isbitset(cpumask, j)) {
-        compute_nodes[compute_node_count] = j;
+        compute_nodes[compute_node_count] = i;
         compute_node_count++;
         break;
       }
