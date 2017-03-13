@@ -41,6 +41,7 @@ void add_allocation(void* ptr, struct suballoc_t* suballocs, size_t count) {
     free(old_data);
   }
   k = sicm_hash((size_t)ptr) % alloc_table.capacity;
+  alloc_table.used++;
   while(1) {
     if(alloc_table.data[k].ptr == NULL) {
       alloc_table.data[k].ptr = ptr;
@@ -63,6 +64,7 @@ struct allocation_t* get_allocation(void* ptr) {
 }
 
 void remove_allocation(void* ptr) {
+  alloc_table.used--;
   size_t k = sicm_hash((size_t)ptr) % alloc_table.capacity;
   while(1) {
     if(alloc_table.data[k].ptr == ptr) {
