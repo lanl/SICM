@@ -3,6 +3,7 @@
 #include <numa.h>
 #include <stdlib.h>
 #include <sys/mman.h>
+#include <stdio.h>
 
 struct suballoc_t {
   void* ptr;
@@ -176,7 +177,7 @@ void* sg_alloc_exact(size_t sz) {
     size_t j;
     for(i = 0; i < sg_performance_list.count; i++) {
       struct sicm_device* device = &sg_performance_list.devices[i];
-      if(sicm_avail(device) >= sz) {
+      if(sicm_avail(device) >= sz / 1024) {
         ptr = sicm_alloc(device, sz);
         size_t step = sicm_device_page_size(device);
         if(step > 0) {
@@ -207,9 +208,9 @@ void* sg_alloc_spill(size_t sz, struct sicm_device_list list) {
     struct sicm_device* device;
     for(i = 0; i < list.count && met < sz; i++) {
       device = &list.devices[i];
-      size_t avail = sicm_avail(device);
+      size_t avail = sicm_avail(device) * 1024;
       if(avail > 0 && sicm_can_place_exact(device)) {
-        met += sicm_avail(device);
+        met += avail;
         device_count++;
       }
     }
@@ -223,7 +224,7 @@ void* sg_alloc_spill(size_t sz, struct sicm_device_list list) {
       int cur = 0;
       for(i = 0; i < list.count && met < sz; i++) {
         device = &list.devices[i];
-        size_t avail = sicm_avail(device);
+        size_t avail = sicm_avail(device) * 1024;
         if(avail > 0 && sicm_can_place_exact(device)) {
           size_t cur_sz = avail;
           if(avail > sz - met) cur_sz = sz - met;
@@ -254,6 +255,19 @@ void* sg_alloc_cap(size_t sz) {
   return sg_alloc_spill(sz, sg_capacity_list);
 }
 
+void sg_free(void* ptr) {
+  #pragma omp critical(sg_alloc)
+  {
+    struct allocation_t* a = get_allocation(ptr);
+    if(a) {
+      int i;
+      for(i = 0; i < a->count; i++)
+        sicm_free(a->suballocs[i].device, a->suballocs[i].ptr, a->suballocs[i].sz);
+      remove_allocation(ptr);
+    }
+  }
+}
+
 void sg_init(int id) {
   int i, j;
   int node_count = numa_max_node() + 1;
@@ -281,6 +295,15 @@ void sg_init(int id) {
   alloc_table.data = malloc(alloc_table.capacity * sizeof(struct alloc_table_t));
 
   sg_performance_list = sicm_init();
+  int p = 0;
+  for(i = 0; i < sg_performance_list.count; i++) {
+    int page_size = sicm_device_page_size(&sg_performance_list.devices[i]);
+    if(page_size == -1 || page_size == normal_page_size) {
+      sg_performance_list.devices[p++] = sg_performance_list.devices[i];
+    }
+  }
+  sg_performance_list.devices = realloc(sg_performance_list.devices, p * sizeof(struct sicm_device));
+  sg_performance_list.count = p;
   sg_capacity_list = (struct sicm_device_list){
       .devices = malloc(sg_performance_list.count * sizeof(struct sicm_device)),
       .count = sg_performance_list.count

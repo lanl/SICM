@@ -11,8 +11,8 @@ DEPS := $(patsubst %,$(IDIR)/%,$(INCLUDES))
 
 OBJ = $(patsubst %,$(ODIR)/%.o,$(SOURCES))
 
-sg: $(OBJ) obj/sg.o
-	gcc -o libsg.so obj/sg.o -shared $(CFLAGS)
+sg: $(OBJ) obj/sg.o sicm
+	gcc -o libsg.so obj/sg.o $(OBJ) -shared $(CFLAGS)
 
 sicm: $(OBJ)
 	gcc -o lib$@.so $^ -shared $(CFLAGS)
@@ -33,7 +33,7 @@ examples: libsicm.so
 	gcc -o examples/hugepages examples/hugepages.c -L. -lsicm $(CFLAGS)
 	g++ -o examples/class examples/class.cpp -L. -lsicm_cpp $(CFLAGS)
 	g++ -o examples/stl examples/stl.cpp -L. -lsicm_cpp $(CFLAGS)
-	gcc -o examples/greedy examples/greedy.c -L. -lsg -lsicm $(CFLAGS)
+	gcc -o examples/greedy examples/greedy.c -L. -lsg $(CFLAGS)
 
 $(ODIR)/%.o: $(SDIR)/%.c $(DEPS)
 	$(CC) $(CFLAGS) -o $@ -c $<

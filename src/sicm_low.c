@@ -185,8 +185,22 @@ void* sicm_alloc_exact(struct sicm_device* device, void* base, size_t size) {
     case SICM_DRAM:
     case SICM_KNL_HBM:; // labels can't be followed by declarations
       int page_size = sicm_device_page_size(device);
-      if(page_size == normal_page_size)
-        return numa_alloc_onnode(size, sicm_numa_id(device));
+      if(page_size == normal_page_size) {
+        int old_mode;
+        nodemask_t old_nodemask;
+        get_mempolicy(&old_mode, old_nodemask.n, numa_max_node() + 2, NULL, 0);
+        nodemask_t nodemask;
+        nodemask_zero(&nodemask);
+        nodemask_set_compat(&nodemask, sicm_numa_id(device));
+        set_mempolicy(MPOL_BIND, nodemask.n, numa_max_node() + 2);
+        void* ptr = mmap(base, size, PROT_READ | PROT_WRITE,
+          MAP_PRIVATE | MAP_FIXED | MAP_ANONYMOUS, -1, 0);
+        if(ptr == (void*)-1) {
+          printf("exact allocation error: %s\n", strerror(errno));
+        }
+        set_mempolicy(old_mode, old_nodemask.n, numa_max_node() + 2);
+        return ptr;
+      }
       else {
         int shift = 10; // i.e., 1024
         int remaining = page_size;
@@ -202,7 +216,8 @@ void* sicm_alloc_exact(struct sicm_device* device, void* base, size_t size) {
         nodemask_set_compat(&nodemask, sicm_numa_id(device));
         set_mempolicy(MPOL_BIND, nodemask.n, numa_max_node() + 2);
         void* ptr = mmap(base, size, PROT_READ | PROT_WRITE,
-          MAP_PRIVATE | MAP_ANONYMOUS | MAP_HUGETLB | (shift << MAP_HUGE_SHIFT), -1, 0);
+          MAP_PRIVATE | MAP_FIXED | MAP_ANONYMOUS | MAP_HUGETLB | (shift << MAP_HUGE_SHIFT), -1, 0);
+        printf("alloc exact: %p, %p\n", base, ptr);
         if(ptr == (void*)-1) {
           printf("huge page allocation error: %s\n", strerror(errno));
         }
@@ -219,7 +234,8 @@ void sicm_free(struct sicm_device* device, void* ptr, size_t size) {
     case SICM_DRAM:
     case SICM_KNL_HBM:
       if(sicm_device_page_size(device) == normal_page_size)
-        numa_free(ptr, size);
+        //numa_free(ptr, size);
+        munmap(ptr, size);
       else {
         // Huge page allocation occurs in whole page chunks, so we need
         // to free (unmap) in whole page chunks.
