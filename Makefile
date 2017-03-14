@@ -13,6 +13,7 @@ OBJ = $(patsubst %,$(ODIR)/%.o,$(SOURCES))
 
 sg: $(OBJ) obj/sg.o sicm
 	gcc -o libsg.so obj/sg.o $(OBJ) -shared $(CFLAGS)
+	g++ -o libsgcpp.so src/sg.cpp obj/sg.o $(OBJ) -shared $(CFLAGS)
 
 sicm: $(OBJ)
 	gcc -o lib$@.so $^ -shared $(CFLAGS)
@@ -34,6 +35,7 @@ examples: libsicm.so
 	g++ -o examples/class examples/class.cpp -L. -lsicm_cpp $(CFLAGS)
 	g++ -o examples/stl examples/stl.cpp -L. -lsicm_cpp $(CFLAGS)
 	gcc -o examples/greedy examples/greedy.c -L. -lsg $(CFLAGS)
+	g++ -o examples/greedypp examples/greedypp.cpp -L. -lsgcpp $(CFLAGS)
 
 $(ODIR)/%.o: $(SDIR)/%.c $(DEPS)
 	$(CC) $(CFLAGS) -o $@ -c $<

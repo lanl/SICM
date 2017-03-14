@@ -173,7 +173,7 @@ void sort_list(struct sicm_device_list* list, int (*cmp)(struct sicm_device*, st
 
 void* sg_alloc_exact(size_t sz) {
   void* ptr = NULL;
-  #pragma omp critical(sg_alloc)
+  #pragma omp critical(sicm_greedy)
   {
     int i;
     size_t j;
@@ -200,7 +200,7 @@ void* sg_alloc_exact(size_t sz) {
 
 void* sg_alloc_spill(size_t sz, struct sicm_device_list list) {
   void* ptr = NULL;
-  #pragma omp critical(sg_alloc)
+  #pragma omp critical(sicm_greedy)
   {
     int i;
     size_t j;
@@ -258,7 +258,7 @@ void* sg_alloc_cap(size_t sz) {
 }
 
 void sg_free(void* ptr) {
-  #pragma omp critical(sg_alloc)
+  #pragma omp critical(sicm_greedy)
   {
     struct allocation_t* a = get_allocation(ptr);
     if(a) {

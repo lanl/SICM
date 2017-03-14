@@ -11,7 +11,9 @@
 #pragma once
 
 /// Prerequisite for sicm_model_distance.
+#ifndef _GNU_SOURCE
 #define _GNU_SOURCE
+#endif
 #include <stdint.h>
 #include <stdlib.h>
 

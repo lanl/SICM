@@ -19,7 +19,8 @@
  * The main functions in this library are surrounded in OMP CRITICAL blocks,
  * because they need to have a reasonably accurate picture of the available
  * memory. Concurrent allocations could potentially conflict with the others'
- * modeling.
+ * modeling. Also, they need shared access to an allocation table, though that
+ * could be done with finer-grained locking if not for the other concerns.
  */
 #pragma once
 
