@@ -1,5 +1,6 @@
 #include "sg.hpp"
 #include <iostream>
+#include <vector>
 
 class GreedyTest : public SGPerf {
 public:
@@ -28,5 +29,11 @@ int main() {
   GreedyTest* test = new GreedyTest();
   status();
   delete test;
+  status();
+
+  std::vector<int, SGPerfAllocator<int> > data;
+  for(int i = 0; i < 1048576; i++) {
+    data.push_back(i);
+  }
   status();
 }

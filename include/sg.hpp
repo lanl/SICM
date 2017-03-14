@@ -55,7 +55,7 @@ public:
   }
 
   pointer allocate(size_type num, const void* = 0) {
-    pointer mem = sg_alloc_exact(num * sizeof(T));
+    pointer mem = (pointer)sg_alloc_exact(num * sizeof(T));
     if(mem == NULL)
       throw "sg allocation fail (probably not enough memory)";
     return mem;
@@ -108,7 +108,7 @@ public:
   }
 
   pointer allocate(size_type num, const void* = 0) {
-    pointer mem = sg_alloc_perf(num * sizeof(T));
+    pointer mem = (pointer)sg_alloc_perf(num * sizeof(T));
     if(mem == NULL)
       throw "sg allocation fail (probably not enough memory)";
     return mem;
@@ -161,7 +161,7 @@ public:
   }
 
   pointer allocate(size_type num, const void* = 0) {
-    pointer mem = sg_alloc_cap(num * sizeof(T));
+    pointer mem = (pointer)sg_alloc_cap(num * sizeof(T));
     if(mem == NULL)
       throw "sg allocation fail (probably not enough memory)";
     return mem;
