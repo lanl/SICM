@@ -11,9 +11,10 @@ DEPS := $(patsubst %,$(IDIR)/%,$(INCLUDES))
 
 OBJ = $(patsubst %,$(ODIR)/%.o,$(SOURCES))
 
-sg: $(OBJ) obj/sg.o sicm
+sg: $(OBJ) obj/sg_fshim.o obj/sg.o src/sg.f90 src/sg.cpp sicm
 	gcc -o libsg.so obj/sg.o $(OBJ) -shared $(CFLAGS)
 	g++ -o libsgcpp.so src/sg.cpp obj/sg.o $(OBJ) -shared $(CFLAGS)
+	gfortran -o libsgf.so src/sg.f90 obj/sg_fshim.o obj/sg.o $(OBJ) -shared $(CFLAGS)
 
 sicm: $(OBJ)
 	gcc -o lib$@.so $^ -shared $(CFLAGS)
@@ -29,13 +30,14 @@ cpp: obj/sicm_cpp.o $(OBJ)
 
 .PHONY: examples
 
-examples: libsicm.so
+examples: sicm sg
 	gcc -o examples/basic examples/basic.c -L. -lsicm $(CFLAGS)
 	gcc -o examples/hugepages examples/hugepages.c -L. -lsicm $(CFLAGS)
 	g++ -o examples/class examples/class.cpp -L. -lsicm_cpp $(CFLAGS)
 	g++ -o examples/stl examples/stl.cpp -L. -lsicm_cpp $(CFLAGS)
 	gcc -o examples/greedy examples/greedy.c -L. -lsg $(CFLAGS)
 	g++ -o examples/greedypp examples/greedypp.cpp -L. -lsgcpp $(CFLAGS)
+	gfortran -o examples/greedyf examples/greedyf.f90 -L. -lsgf $(CFLAGS)
 
 $(ODIR)/%.o: $(SDIR)/%.c $(DEPS)
 	$(CC) $(CFLAGS) -o $@ -c $<
