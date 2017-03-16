@@ -1,0 +1,298 @@
+ SNAP: SN (Discrete Ordinates) Application Proxy
+ Version Number..  1.07 
+ Version Date..  03-03-2016
+ Ran on  4-19-2016 at time 18:27:32
+
+********************************************************************************
+
+          keyword Input Echo - Values from input or default
+********************************************************************************
+
+  NML=invar
+     npey=     2
+     npez=     4
+     ichunk=     4
+     nthreads=     2
+     nnested=   1
+     ndimen=  3
+     nx=     8
+     ny=     8
+     nz=     8
+     lx=  8.0000E-02
+     ly=  8.0000E-02
+     lz=  8.0000E-02
+     nmom=   4
+     nang=   12
+     ng=   10
+     mat_opt=  0
+     src_opt=  3
+     scatp=  0
+     epsi=  1.0000E-04
+     iitm=   5
+     oitm=  100
+     timedep=  1
+     tf=  1.0000E+00
+     nsteps=    10
+     swp_typ=  0
+     cor_swp=  0
+     angcpy=  1
+     it_det=  0
+     soloutp=  0
+     kplane=    0
+     popout=  0
+     fluxp=  0
+     fixup=  0
+
+********************************************************************************
+
+          keyword Calculation Run-time Parameters Echo
+********************************************************************************
+
+  Geometry
+    ndimen = 3
+    nx =     8
+    ny =     8
+    nz =     8
+    lx =  8.0000E-02
+    ly =  8.0000E-02
+    lz =  8.0000E-02
+    dx =  1.0000E-02
+    dy =  1.0000E-02
+    dz =  1.0000E-02
+
+  Sn
+    nmom = 4
+    nang =   12
+    noct = 8
+
+    w =  1.0417E-02   ... uniform weights
+
+          mu              eta               xi
+     4.16666667E-02   9.58333333E-01   2.82597083E-01
+     1.25000000E-01   8.75000000E-01   4.67707173E-01
+     2.08333333E-01   7.91666667E-01   5.74335365E-01
+     2.91666667E-01   7.08333333E-01   6.42802026E-01
+     3.75000000E-01   6.25000000E-01   6.84653197E-01
+     4.58333333E-01   5.41666667E-01   7.04647272E-01
+     5.41666667E-01   4.58333333E-01   7.04647272E-01
+     6.25000000E-01   3.75000000E-01   6.84653197E-01
+     7.08333333E-01   2.91666667E-01   6.42802026E-01
+     7.91666667E-01   2.08333333E-01   5.74335365E-01
+     8.75000000E-01   1.25000000E-01   4.67707173E-01
+     9.58333333E-01   4.16666667E-02   2.82597083E-01
+
+  Material Map
+    mat_opt = 0   -->   nmat = 1
+    Base material (default for every cell) = 1
+
+  Source Map
+    src_opt = 3
+    MMS-generated source
+
+  Pseudo Cross Sections Data
+    ng =  10
+
+    Material 1
+    Group         Total         Absorption      Scattering
+       1       1.000000E+00    5.000000E-01    5.000000E-01
+       2       1.010000E+00    5.050000E-01    5.050000E-01
+       3       1.020000E+00    5.100000E-01    5.100000E-01
+       4       1.030000E+00    5.150000E-01    5.150000E-01
+       5       1.040000E+00    5.200000E-01    5.200000E-01
+       6       1.050000E+00    5.250000E-01    5.250000E-01
+       7       1.060000E+00    5.300000E-01    5.300000E-01
+       8       1.070000E+00    5.350000E-01    5.350000E-01
+       9       1.080000E+00    5.400000E-01    5.400000E-01
+      10       1.090000E+00    5.450000E-01    5.450000E-01
+
+  Time-Dependent Calculation Data
+    tf =  1.0000E+00
+    nsteps =   10
+    dt =  1.0000E-01
+
+    Group        Speed
+       1       1.0000E+01
+       2       9.0000E+00
+       3       8.0000E+00
+       4       7.0000E+00
+       5       6.0000E+00
+       6       5.0000E+00
+       7       4.0000E+00
+       8       3.0000E+00
+       9       2.0000E+00
+      10       1.0000E+00
+
+  Solution Control Parameters
+    epsi =  1.0000E-04
+    iitm =   5
+    oitm =  100
+    timedep = 1
+    swp_typ = 0
+    it_det = 0
+    soloutp = 0
+    kplane =    0
+    popout = 0
+    fluxp = 0
+    fixup = 0
+
+
+  Parallelization Parameters
+    npey =     2
+    npez =     4
+    nthreads =    2
+
+          Thread Support Level
+           0 - MPI_THREAD_SINGLE
+           1 - MPI_THREAD_FUNNELED
+           2 - MPI_THREAD_SERIALIZED
+           3 - MPI_THREAD_MULTIPLE
+    thread_level =  0
+
+    .FALSE. nested threading
+      nnested =    1
+
+    Parallel Computational Efficiency = 0.8989
+
+********************************************************************************
+
+          keyword Iteration Monitor
+********************************************************************************
+
+ ******************************
+  Time Cycle   1
+  Outer
+    1    Dfmxo= 4.5249E-01    No. Inners=   40
+    2    Dfmxo= 4.2475E-01    No. Inners=   30
+    3    Dfmxo= 3.1588E-03    No. Inners=   20
+    4    Dfmxo= 2.9566E-05    No. Inners=   10
+
+  Cycle=   1    Time= 5.0000E-02    No. Outers=   4    No. Inners=  100
+
+ ******************************
+  Time Cycle   2
+  Outer
+    1    Dfmxo= 1.3540E+00    No. Inners=   40
+    2    Dfmxo= 4.2870E-01    No. Inners=   30
+    3    Dfmxo= 3.1796E-03    No. Inners=   20
+    4    Dfmxo= 2.9763E-05    No. Inners=   10
+
+  Cycle=   2    Time= 1.5000E-01    No. Outers=   4    No. Inners=  100
+
+ ******************************
+  Time Cycle   3
+  Outer
+    1    Dfmxo= 2.2534E+00    No. Inners=   40
+    2    Dfmxo= 4.2998E-01    No. Inners=   30
+    3    Dfmxo= 3.1866E-03    No. Inners=   20
+    4    Dfmxo= 2.9830E-05    No. Inners=   10
+
+  Cycle=   3    Time= 2.5000E-01    No. Outers=   4    No. Inners=  100
+
+ ******************************
+  Time Cycle   4
+  Outer
+    1    Dfmxo= 3.1539E+00    No. Inners=   40
+    2    Dfmxo= 4.3020E-01    No. Inners=   30
+    3    Dfmxo= 3.1878E-03    No. Inners=   20
+    4    Dfmxo= 2.9842E-05    No. Inners=   10
+
+  Cycle=   4    Time= 3.5000E-01    No. Outers=   4    No. Inners=  100
+
+ ******************************
+  Time Cycle   5
+  Outer
+    1    Dfmxo= 4.0539E+00    No. Inners=   40
+    2    Dfmxo= 4.3056E-01    No. Inners=   30
+    3    Dfmxo= 3.1897E-03    No. Inners=   20
+    4    Dfmxo= 2.9860E-05    No. Inners=   10
+
+  Cycle=   5    Time= 4.5000E-01    No. Outers=   4    No. Inners=  100
+
+ ******************************
+  Time Cycle   6
+  Outer
+    1    Dfmxo= 4.9540E+00    No. Inners=   40
+    2    Dfmxo= 4.3061E-01    No. Inners=   30
+    3    Dfmxo= 3.1901E-03    No. Inners=   20
+    4    Dfmxo= 2.9863E-05    No. Inners=   10
+
+  Cycle=   6    Time= 5.5000E-01    No. Outers=   4    No. Inners=  100
+
+ ******************************
+  Time Cycle   7
+  Outer
+    1    Dfmxo= 5.8542E+00    No. Inners=   40
+    2    Dfmxo= 4.3078E-01    No. Inners=   30
+    3    Dfmxo= 3.1910E-03    No. Inners=   20
+    4    Dfmxo= 2.9871E-05    No. Inners=   10
+
+  Cycle=   7    Time= 6.5000E-01    No. Outers=   4    No. Inners=  100
+
+ ******************************
+  Time Cycle   8
+  Outer
+    1    Dfmxo= 6.7543E+00    No. Inners=   40
+    2    Dfmxo= 4.3081E-01    No. Inners=   30
+    3    Dfmxo= 3.1911E-03    No. Inners=   20
+    4    Dfmxo= 2.9873E-05    No. Inners=   10
+
+  Cycle=   8    Time= 7.5000E-01    No. Outers=   4    No. Inners=  100
+
+ ******************************
+  Time Cycle   9
+  Outer
+    1    Dfmxo= 7.6544E+00    No. Inners=   40
+    2    Dfmxo= 4.3090E-01    No. Inners=   30
+    3    Dfmxo= 3.1916E-03    No. Inners=   20
+    4    Dfmxo= 2.9877E-05    No. Inners=   10
+
+  Cycle=   9    Time= 8.5000E-01    No. Outers=   4    No. Inners=  100
+
+ ******************************
+  Time Cycle  10
+  Outer
+    1    Dfmxo= 8.5545E+00    No. Inners=   40
+    2    Dfmxo= 4.3092E-01    No. Inners=   30
+    3    Dfmxo= 3.1917E-03    No. Inners=   20
+    4    Dfmxo= 2.9879E-05    No. Inners=   10
+
+  Cycle=  10    Time= 9.5000E-01    No. Outers=   4    No. Inners=  100
+
+ ******************************
+  Total inners for all time steps, outers =   1000
+
+********************************************************************************
+
+          MMS Verification
+********************************************************************************
+
+    Manufactured/Computed Solutions Max Diff= 1.275868E-02
+
+    Manufactured/Computed Solutions Min Diff= 5.431311E-03
+
+    Manufactured/Computed Solutions Avg Diff= 1.200118E-02
+
+********************************************************************************
+
+          keyword Timing Summary
+********************************************************************************
+
+  Code Section                          Time (seconds)
+ **************                        ****************
+    Parallel Setup                       1.3790E-03
+    Input                                1.0217E-02
+    Setup                                1.8224E-02
+    Solve                                1.6487E-01
+       Parameter Setup                   1.4455E-03
+       Outer Source                      6.4616E-03
+       Inner Iterations                  1.5564E-01
+          Inner Source                   2.1889E-03
+          Transport Sweeps               1.3958E-01
+          Inner Misc Ops                 1.3865E-02
+       Solution Misc Ops                 1.3251E-03
+    Output                               8.4162E-05
+  Total Execution time                   2.0401E-01
+
+  Grind Time (nanoseconds)         3.3543E+00
+
+********************************************************************************

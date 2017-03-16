@@ -3,7 +3,7 @@ program greedyf
   use iso_c_binding
   implicit none
 
-  integer, parameter :: sz = 1048576
+  integer(c_size_t), parameter :: sz = 1048576
   integer(4), pointer :: blob(:)
   integer(4) :: i
   type(c_ptr) :: c_tmp
@@ -16,5 +16,5 @@ program greedyf
   end do
   print *, blob(1:10)
   print *, blob(sz-10:sz)
-  call sgf_free(c_tmp)
+  call sgf_free(c_loc(blob))
 end program greedyf
