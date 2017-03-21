@@ -36,7 +36,6 @@ MODULE setup_module
     thread_funneled, thread_serialized, thread_multiple, nnested,      &
     do_nested, ichunk, pce
   
-  use sicm_f90
   use iso_c_binding
 
   IMPLICIT NONE
@@ -67,7 +66,7 @@ MODULE setup_module
       mie, mjs, mje, mks, mke, qis, qie, qjs, qje, qks, qke
 
     REAL(r_knd) :: t1, t2
-    
+
 !_______________________________________________________________________
 !
 !   First put input ny and nz into ny_gl and nz_gl respectively. Use ny
@@ -89,7 +88,7 @@ MODULE setup_module
     kub = (zproc+1) * nz
 
     nc = nx/ichunk
-    
+
 !_______________________________________________________________________
 !
 !   Allocate needed arrays

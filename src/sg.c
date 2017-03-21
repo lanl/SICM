@@ -29,19 +29,20 @@ struct sicm_device_list sg_capacity_list;
 
 void add_allocation(void* ptr, struct suballoc_t* suballocs, size_t count) {
   size_t k;
+  alloc_table.used++;
   if(100 * alloc_table.used / alloc_table.capacity >= 80) {
     struct allocation_t* old_data = alloc_table.data;
     size_t old_capacity = alloc_table.capacity;
     alloc_table.capacity *= 2;
     alloc_table.used = 0;
     alloc_table.data = malloc(alloc_table.capacity * sizeof(struct alloc_table_t));
+    for(k = 0; k < alloc_table.capacity; k++) alloc_table.data[k].ptr = NULL;
     for(k = 0; k < old_capacity; k++)
       if(old_data[k].ptr != NULL)
         add_allocation(old_data[k].ptr, old_data[k].suballocs, old_data[k].count);
     free(old_data);
   }
   k = sicm_hash((size_t)ptr) % alloc_table.capacity;
-  alloc_table.used++;
   while(1) {
     if(alloc_table.data[k].ptr == NULL) {
       alloc_table.data[k].ptr = ptr;
@@ -55,17 +56,19 @@ void add_allocation(void* ptr, struct suballoc_t* suballocs, size_t count) {
 
 struct allocation_t* get_allocation(void* ptr) {
   size_t k = sicm_hash((size_t)ptr) % alloc_table.capacity;
+  size_t initial_k = k;
   while(1) {
     if(alloc_table.data[k].ptr == ptr)
       return &alloc_table.data[k];
-    if(alloc_table.data[k].ptr == NULL) return NULL;
     k = (k + 1) % alloc_table.capacity;
+    if(k == initial_k) return NULL;
   }
 }
 
 void remove_allocation(void* ptr) {
   alloc_table.used--;
   size_t k = sicm_hash((size_t)ptr) % alloc_table.capacity;
+  size_t initial_k = k;
   while(1) {
     if(alloc_table.data[k].ptr == ptr) {
       alloc_table.data[k].ptr = NULL;
@@ -74,8 +77,8 @@ void remove_allocation(void* ptr) {
       alloc_table.data[k].suballocs = NULL;
       break;
     }
-    if(alloc_table.data[k].ptr == NULL) break;
     k = (k + 1) % alloc_table.capacity;
+    if(k == initial_k) break;
   }
 }
 
@@ -266,6 +269,9 @@ void sg_free(void* ptr) {
       for(i = 0; i < a->count; i++)
         sicm_free(a->suballocs[i].device, a->suballocs[i].ptr, a->suballocs[i].sz);
       remove_allocation(ptr);
+    }
+    else {
+      printf("failed to free\n");
     }
   }
 }

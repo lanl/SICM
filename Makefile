@@ -38,6 +38,7 @@ examples: sicm sg
 	gcc -o examples/greedy examples/greedy.c -L. -lsg $(CFLAGS)
 	g++ -o examples/greedypp examples/greedypp.cpp -L. -lsgcpp $(CFLAGS)
 	gfortran -o examples/greedyf examples/greedyf.f90 -L. -lsgf $(CFLAGS)
+	gcc -o examples/simple_knl_test examples/simple_knl_test.c -L. -lsg $(CFLAGS)
 
 $(ODIR)/%.o: $(SDIR)/%.c $(DEPS)
 	$(CC) $(CFLAGS) -o $@ -c $<
