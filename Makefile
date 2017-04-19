@@ -43,6 +43,8 @@ examples: sicm sg
 	$(CXX) -o examples/greedypp examples/greedypp.cpp -L. -lsgcpp $(CFLAGS) $(LDFLAGS)
 	$(FC) -o examples/greedyf examples/greedyf.f90 -L. -lsgf $(CFLAGS) $(LDFLAGS)
 	$(CC) -o examples/simple_knl_test examples/simple_knl_test.c -L. -lsg $(CFLAGS) $(LDFLAGS)
+clean: $(OBJ) *.so
+	/bin/rm obj/* *.so
 
 $(ODIR)/%.o: $(SDIR)/%.c $(DEPS)
 	$(CC) $(CFLAGS) -o $@ -c $<
