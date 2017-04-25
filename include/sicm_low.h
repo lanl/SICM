@@ -16,7 +16,8 @@
 #endif
 #include <stdint.h>
 #include <stdlib.h>
-
+//MKL
+#include "/usr/include/asm-generic/mman-common.h"
 /// Linear-feedback shift register PRNG algorithm.
 /**
  * @param[in,out] n The previous random number/initial seed. This should
@@ -388,3 +389,4 @@ size_t sicm_triad_kernel_linear(double* a, double* b, double* c, size_t size);
  * This can be used as a template for other bandwidth kernels.
  */
 size_t sicm_triad_kernel_random(double* a, double* b, double* c, size_t* indexes, size_t size);
+
