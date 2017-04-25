@@ -1,8 +1,11 @@
 #include "sg.h"
 #include "sicm_low.h"
+#include <fcntl.h>
 #include <numa.h>
+#include <semaphore.h>
 #include <stdlib.h>
 #include <sys/mman.h>
+#include <sys/stat.h>
 #include <stdio.h>
 
 struct suballoc_t {
@@ -26,6 +29,8 @@ struct alloc_table_t alloc_table;
 
 struct sicm_device_list sg_performance_list;
 struct sicm_device_list sg_capacity_list;
+
+sem_t* sem;
 
 void add_allocation(void* ptr, struct suballoc_t* suballocs, size_t count) {
   size_t k;
@@ -178,11 +183,12 @@ void* sg_alloc_exact(size_t sz) {
   void* ptr = NULL;
   #pragma omp critical(sicm_greedy)
   {
+    sem_wait(sem);
     int i;
     size_t j;
     for(i = 0; i < sg_performance_list.count; i++) {
       struct sicm_device* device = &sg_performance_list.devices[i];
-      if(sicm_avail(device) >= sz / 1024) {
+      if(sicm_avail(device) * 1024 >= sz) {
         ptr = sicm_alloc(device, sz);
         size_t step = sicm_device_page_size(device);
         if(step > 0) {
@@ -197,6 +203,7 @@ void* sg_alloc_exact(size_t sz) {
         break;
       }
     }
+    sem_post(sem);
   }
   return ptr;
 }
@@ -205,6 +212,7 @@ void* sg_alloc_spill(size_t sz, struct sicm_device_list list) {
   void* ptr = NULL;
   #pragma omp critical(sicm_greedy)
   {
+    sem_wait(sem);
     int i;
     size_t j;
     ptr = mmap(NULL, sz, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
@@ -249,6 +257,7 @@ void* sg_alloc_spill(size_t sz, struct sicm_device_list list) {
       add_allocation(ptr, suballoc, device_count);
     }
   }
+  sem_post(sem);
   return ptr;
 }
 
@@ -263,6 +272,7 @@ void* sg_alloc_cap(size_t sz) {
 void sg_free(void* ptr) {
   #pragma omp critical(sicm_greedy)
   {
+    sem_wait(sem);
     struct allocation_t* a = get_allocation(ptr);
     if(a) {
       int i;
@@ -273,10 +283,12 @@ void sg_free(void* ptr) {
     else {
       printf("failed to free\n");
     }
+    sem_post(sem);
   }
 }
 
 void sg_init(int id) {
+  sem = sem_open("/sg_sem", O_CREAT | O_RDWR, 0644, 1);
   int i, j;
   int node_count = numa_max_node() + 1;
   struct bitmask* cpumask = numa_allocate_cpumask();
@@ -301,6 +313,7 @@ void sg_init(int id) {
   alloc_table.used = 0;
   alloc_table.capacity = 32;
   alloc_table.data = malloc(alloc_table.capacity * sizeof(struct alloc_table_t));
+  for(i = 0; i < 32; i++) alloc_table.data[i].ptr = NULL;
 
   sg_performance_list = sicm_init();
   int p = 0;

@@ -24,7 +24,7 @@
  */
 #pragma once
 
-#include <stddef.h>
+//#include <stddef.h>
 #include "sicm_low.h"
 
 /// Memory device priority list, sorted by performance.
