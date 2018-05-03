@@ -16,86 +16,32 @@
 #endif
 #include <stdint.h>
 #include <stdlib.h>
-//MKL
-#include "/usr/include/asm-generic/mman-common.h"
-/// Linear-feedback shift register PRNG algorithm.
-/**
- * @param[in,out] n The previous random number/initial seed. This should
- * be unsigned.
- *
- * This is obviously not a cryptographic algorithm, or even very good
- * for intense random number exercises, but we just want something
- * that'll produce cache misses and avoid prefetching. This is done for
- * speed (to avoid polluting timings) and purity (for thread safety).
- * This function must be seeded manually. time(NULL) can be used, or if
- * multiple threads will be launched nearby in time, you can the address
- * of a local variable.
- *
- * The "magic number" 0xd0000001u is the maximum-period internal XOR
- * value for the 64-bit Galois LSFR.
- */
-#define sicm_rand(n) \
-  n = (n >> 1) ^ (unsigned int)((0 - (n & 1u)) & 0xd0000001u)
 
-/// FNV-1A hash algorithm.
-/**
- * @param[in] n The value to be hashed.
- * @return The hash of n.
- *
- * This is a simple but reasonably effective hash algorithm. It's mainly
- * useful for generating random index arrays, particularly if the index
- * array is being generated in parallel. So this is preferred if you
- * have a large amount of input values to transform, while if you have a
- * single value that you want to process on repeatedly, sicm_rand is
- * preferred. Of course, this is not a cryptographic algorithm.
- *
- * The "magic numbers" were chosen by the original authors (Fowler,
- * Noll, and Vo) for good hashing behavior. These numbers are
- * specifically tailored to 64-bit integers.
- */
-#define sicm_hash(n) ((0xcbf29ce484222325 ^ (n)) * 0x100000001b3)
-
-/// Ceiling of integer division.
-/**
- * @param[in] n Numerator (dividend).
- * @param[in] d Denominator (divisor).
- * @return Quotient, rounded toward positive infinity.
- *
- * Ordinary integer division implicitly floors, so 1 / 2 = 0. This
- * instead returns the ceiling, so 1 / 2 = 1. This works by just
- * adding 1 if the division produces a nonzero remainder.
- */
-#define sicm_div_ceil(n, d) ((n) / (d) + ((n) % (d) ? 1 : 0))
-
-/// System page size in KiB.
-/**
- * This variable is initialized by sicm_init(), so don't use it before
- * then.
- */
-extern int normal_page_size;
+// default arena
+#define ARENA_DEFAULT NULL
 
 /// Enumeration of supported memory device types.
 /**
  * This tag can be used to identify a device, but its internal role is
  * to indicate which case of the sicm_device_data union is inhabited.
  */
-enum sicm_device_tag {
+typedef enum sicm_device_tag {
   SICM_DRAM,
   SICM_KNL_HBM
-};
+} sicm_device_tag;
 
 /// Data specific to a DRAM device.
-struct sicm_dram_data {
+typedef struct sicm_dram_data {
   int node; ///< NUMA node
   int page_size; ///< Page size
-};
+} sicm_dram_data;
 
 /// Data specific to a KNL HBM device.
-struct sicm_knl_hbm_data {
+typedef struct sicm_knl_hbm_data {
   int node; ///< NUMA node
   int compute_node;
   int page_size; ///< Page size
-};
+} sicm_knl_hbm_data;
 
 /// Data that, given a device type, uniquely identify the device within that type.
 /**
@@ -104,10 +50,10 @@ struct sicm_knl_hbm_data {
  * sicm_device_tag enumeration indicates which case of this union is
  * inhabited.
  */
-union sicm_device_data {
-  struct sicm_dram_data dram;
-  struct sicm_knl_hbm_data knl_hbm;
-};
+typedef union sicm_device_data {
+  sicm_dram_data dram;
+  sicm_knl_hbm_data knl_hbm;
+} sicm_device_data;
 
 /// Tagged/discriminated union that fully identifies a device.
 /**
@@ -116,16 +62,16 @@ union sicm_device_data {
  * should switch on the tag, then use the data to further refine their
  * operations.
  */
-struct sicm_device {
-  enum sicm_device_tag tag; ///< Type of memory device
-  union sicm_device_data data; ///< Per-type identifying information
-};
+typedef struct sicm_device {
+  sicm_device_tag tag; ///< Type of memory device
+  sicm_device_data data; ///< Per-type identifying information
+} sicm_device;
 
 /// Explicitly-sized sicm_device array.
-struct sicm_device_list {
+typedef struct sicm_device_list {
   unsigned int count; ///< Number of devices in the array.
-  struct sicm_device* devices; ///< Array of devices of count elements.
-};
+  sicm_device* devices; ///< Array of devices of count elements.
+} sicm_device_list;
 
 /// Results of a latency timing.
 /**
@@ -137,6 +83,15 @@ struct sicm_timing {
   unsigned int read; ///< Time required for reading.
   unsigned int free; ///< Time required for deallocation.
 };
+
+/// Handle to an arena.
+typedef void* sicm_arena;
+
+/// Explicitly-sized sicm_arena list.
+typedef struct sicm_arena_list {
+	unsigned int count;
+	sicm_arena *arenas;
+} sicm_arena_list;
 
 /// Initialize the low-level interface.
 /**
@@ -151,7 +106,82 @@ struct sicm_timing {
  * function is called once and the device list is needed for the entire
  * program lifetime.
  */
-struct sicm_device_list sicm_init();
+sicm_device_list sicm_init();
+
+/// List of the defined arenas
+/**
+ * @return list of the defined arenas
+ *
+ * This function can be used to get the handles of all arenas that are
+ * currently defined
+ */ 
+sicm_arena_list *sicm_arenas_list();
+
+/// Create new arena
+/**
+ * @param maxsize maximum size of the arena.
+ * @param dev initial device where the arena's allocations should use
+ * @return handle to the newly created arena, or ARENA_DEFAULT if the
+ *         the function failed.
+ */
+sicm_arena sicm_arena_create(size_t maxsize, sicm_device *dev);
+
+/// Get the NUMA node for an arena
+/**
+ * @param sa arena
+ * @return device for the arena
+ */
+sicm_device *sicm_arena_get_device(sicm_arena sa);
+
+/// Set the NUMA node for an arena
+/**
+ * @param sa arena
+ * @param dev new device for the arena
+ * @return zero if the operation is successful
+ */
+int sicm_arena_set_device(sicm_arena sa, sicm_device *dev);
+
+/// Get arena size
+/**
+ * @param sa arena
+ * @return arena size
+ *
+ * The returned value might be bigger than the sum of the sizes of the 
+ * allocated regions, because it is tracked at extent level and includes
+ * the currently available free memory.
+ */
+size_t sicm_arena_size(sicm_arena sa);
+
+/// Allocate memory region
+/**
+ * @param sa arena that should be used for the allocation. ARENA_DEFAULT is allowed.
+ * @param sz size of the region
+ * @return pointer to the new allocation, or NULL of the operation failed.
+ *
+ * Specifying ARENA_DEFAULT makes the function equivalent to malloc.
+ */
+void *sicm_arena_alloc(sicm_arena sa, size_t sz);
+
+/// Deallocate/free memory region
+/**
+ * @param ptr pointer to the memory to deallocated.
+ */
+void sicm_free(void *ptr);
+
+/// Resize a memory region
+/**
+ * @param ptr pointer to the memory to be resized
+ * @param sz new size
+ * @return pointer to the new allocation, or NULL if unable to reallocate
+ */
+void *sicm_realloc(void *ptr, size_t sz);
+
+/// Find out which arena a memory region belongs to
+/**
+ * @param ptr pointer to the memory region
+ * @return handle to the arena, or ARENA_DEFAULT if unknown
+ */
+sicm_arena sicm_arena_lookup(void *ptr);
 
 /// Allocate memory on a SICM device.
 /**
@@ -164,7 +194,7 @@ struct sicm_device_list sicm_init();
  * huge pages and there aren't enough huge pages available, the
  * allocation will fail and return -1.
  */
-void* sicm_alloc(struct sicm_device* device, size_t size);
+void* sicm_device_alloc(struct sicm_device* device, size_t size);
 
 /// Returns whether the device supports exact placement.
 /**
@@ -187,7 +217,7 @@ int sicm_can_place_exact(struct sicm_device* device);
  * doesn't support base addresses) or it might stomp previous allocations. Only
  * use this if you know what you're doing.
  */
-void* sicm_alloc_exact(struct sicm_device* device, void* base, size_t size);
+void* sicm_device_alloc_exact(struct sicm_device* device, void* base, size_t size);
 
 /// Deallocate/free memory on a SICM device.
 /**
@@ -195,21 +225,21 @@ void* sicm_alloc_exact(struct sicm_device* device, void* base, size_t size);
  * @param[in] ptr Pointer to the start of the allocation (i.e., return value of sicm_alloc).
  * @param[in] size Amount of memory to deallocate (should be the same as the allocation).
  */
-void sicm_free(struct sicm_device* device, void* ptr, size_t size);
+void sicm_device_free(struct sicm_device* device, void* ptr, size_t size);
 
 /// Get the NUMA node number of a SICM device.
 /**
  * @param[in] device Pointer ot the sicm_device to query.
  * @return NUMA node number of the device. If the device is not a NUMA node, the return value is -1.
  */
-int sicm_numa_id(struct sicm_device* device);
+int sicm_numa_id(sicm_device* device);
 
 /// Get the page size of a SICM device.
 /**
  * @param[in] device Pointer ot the sicm_device to query.
  * @return Page size of the device. If the device is not a NUMA node, the return value is -1.
  */
-int sicm_device_page_size(struct sicm_device* device);
+int sicm_device_page_size(sicm_device* device);
 
 /// Move data from one device to another.
 /**
@@ -221,20 +251,20 @@ int sicm_device_page_size(struct sicm_device* device);
  * probably can't be figured out in practice, due to the large number of
  * possible implementations.
  */
-int sicm_move(struct sicm_device* src, struct sicm_device* dst, void* ptr, size_t size);
+int sicm_move(sicm_device* src, sicm_device* dst, void* ptr, size_t size);
 
 /// Pins the current process to the processors closest to the memory.
 /**
  * @param[in] device Device to pin the process to.
  */
-void sicm_pin(struct sicm_device* device);
+void sicm_pin(sicm_device* device);
 
 /// Query capacity of a device a device.
 /**
  * @param[in] device Pointer to the sicm_device to query.
  * @return Capacity in kibibytes on the device.
  */
-size_t sicm_capacity(struct sicm_device* device);
+size_t sicm_capacity(sicm_device* device);
 
 /// Query amount of available memory on a device.
 /**
@@ -244,7 +274,7 @@ size_t sicm_capacity(struct sicm_device* device);
  * Note that this does not account for memory that has been allocated
  * but not yet touched.
  */
-size_t sicm_avail(struct sicm_device* device);
+size_t sicm_avail(sicm_device* device);
 
 /// Returns a distance metric based on general beliefs about the device/its location in the system.
 /**
@@ -263,7 +293,7 @@ size_t sicm_avail(struct sicm_device* device);
  * low-level interface exposes both empirical and model metrics to allow
  * higher-level interface designers to reach their own conclusions.
  */
-int sicm_model_distance(struct sicm_device* device);
+int sicm_model_distance(sicm_device* device);
 
 /// Indicates whether a device is on a near NUMA node.
 /**
@@ -272,7 +302,7 @@ int sicm_model_distance(struct sicm_device* device);
  *
  * Always returns 0 if the device is not a NUMA device.
  */
-int sicm_is_near(struct sicm_device* device);
+int sicm_is_near(sicm_device* device);
 
 /// Measure empirical latency of the device.
 /**
@@ -287,7 +317,7 @@ int sicm_is_near(struct sicm_device* device);
  * allocation is freed. The time to complete each process is recorded in
  * res.
  */
-void sicm_latency(struct sicm_device* device, size_t size, int iter, struct sicm_timing* res);
+void sicm_latency(sicm_device* device, size_t size, int iter, struct sicm_timing* res);
 
 /// Measure empirical bandwidth, using linear access on a kernel function of arity 2.
 /**
@@ -305,7 +335,7 @@ void sicm_latency(struct sicm_device* device, size_t size, int iter, struct sicm
  * the return value is (bytes accessed by kernel) / (time to complete
  * kernel).
  */
-size_t sicm_bandwidth_linear2(struct sicm_device* device, size_t size,
+size_t sicm_bandwidth_linear2(sicm_device* device, size_t size,
   size_t (*kernel)(double* a, double* b, size_t size));
 
 /// Measure empirical bandwidth, using random access on a kernel function of arity 2.
@@ -326,7 +356,7 @@ size_t sicm_bandwidth_linear2(struct sicm_device* device, size_t size,
  * recorded, and the return value is (bytes accessed by kernel) / (time
  * to complete kernel).
  */
-size_t sicm_bandwidth_random2(struct sicm_device* device, size_t size,
+size_t sicm_bandwidth_random2(sicm_device* device, size_t size,
   size_t (*kernel)(double* a, double* b, size_t* indexes, size_t size));
 
 /// Measure empirical bandwidth, using linear access on a kernel function of arity 3.
@@ -345,7 +375,7 @@ size_t sicm_bandwidth_random2(struct sicm_device* device, size_t size,
  * the return value is (bytes accessed by kernel) / (time to complete
  * kernel).
  */
-size_t sicm_bandwidth_linear3(struct sicm_device* device, size_t size,
+size_t sicm_bandwidth_linear3(sicm_device* device, size_t size,
   size_t (*kernel)(double* a, double* b, double* c, size_t size));
 
 /// Measure empirical bandwidth, using random access on a kernel function of arity 3.
@@ -366,7 +396,7 @@ size_t sicm_bandwidth_linear3(struct sicm_device* device, size_t size,
  * recorded, and the return value is (bytes accessed by kernel) / (time
  * to complete kernel).
  */
-size_t sicm_bandwidth_random3(struct sicm_device* device, size_t size,
+size_t sicm_bandwidth_random3(sicm_device* device, size_t size,
   size_t (*kernel)(double* a, double* b, double* c, size_t* indexes, size_t size));
 
 /// Linear-access triad kernel for use with sicm_bandwidth_linear3.

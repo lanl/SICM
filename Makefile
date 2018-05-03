@@ -2,11 +2,12 @@ CC := gcc
 FC := gfortran
 CXX := g++
 INCLUDES := sicm_low.h
-SOURCES := sicm_low
+SOURCES := sicm_low sicm_arena
 
+JEMALLOCDIR := $(HOME)/jemalloc
 IDIR := include
-CFLAGS := -I$(IDIR) -fPIC -Wall -fopenmp -O2 
-LDFLAGS := -lnuma
+CFLAGS := -I$(IDIR) -I$(JEMALLOCDIR)/include -fPIC -Wall -fopenmp -O2 
+LDFLAGS := -L$(JEMALLOCDIR)/lib -lnuma -ljemalloc
 
 ODIR := obj
 SDIR := src

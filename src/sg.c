@@ -7,6 +7,7 @@
 #include <sys/mman.h>
 #include <sys/stat.h>
 #include <stdio.h>
+#include "sicmimpl.h"
 
 struct suballoc_t {
   void* ptr;
@@ -189,7 +190,7 @@ void* sg_alloc_exact(size_t sz) {
     for(i = 0; i < sg_performance_list.count; i++) {
       struct sicm_device* device = &sg_performance_list.devices[i];
       if(sicm_avail(device) * 1024 >= sz) {
-        ptr = sicm_alloc(device, sz);
+        ptr = sicm_device_alloc(device, sz);
         size_t step = sicm_device_page_size(device);
         if(step > 0) {
           step *= 1024; // page size is reported in KiB
@@ -241,7 +242,7 @@ void* sg_alloc_spill(size_t sz, struct sicm_device_list list) {
         if(avail > 0 && sicm_can_place_exact(device)) {
           size_t cur_sz = avail;
           if(avail > sz - met) cur_sz = sz - met;
-          void* sub_ptr = sicm_alloc_exact(device, ptr + met, cur_sz);
+          void* sub_ptr = sicm_device_alloc_exact(device, ptr + met, cur_sz);
           size_t step = sicm_device_page_size(device);
           if(step > 0) {
             step *= 1024; // page size is reported in KiB
@@ -277,7 +278,7 @@ void sg_free(void* ptr) {
     if(a) {
       int i;
       for(i = 0; i < a->count; i++)
-        sicm_free(a->suballocs[i].device, a->suballocs[i].ptr, a->suballocs[i].sz);
+        sicm_device_free(a->suballocs[i].device, a->suballocs[i].ptr, a->suballocs[i].sz);
       remove_allocation(ptr);
     }
     else {
