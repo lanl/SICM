@@ -244,7 +244,8 @@ static extent_hooks_t sarena_hooks = {
 static void *sa_alloc(extent_hooks_t *h, void *new_addr, size_t size, size_t alignment, bool *zero, bool *commit, unsigned arena_ind) {
 	sarena *sa;
 	uintptr_t n, m, maxnode;
-	unsigned long nodemask;
+	int oldmode;
+	unsigned long nodemask, oldnodemask;
 	void *ret;
 	size_t sasize, maxsize;
 
@@ -261,9 +262,10 @@ static void *sa_alloc(extent_hooks_t *h, void *new_addr, size_t size, size_t ali
 	pthread_mutex_unlock(&sa->mutex);
 	if (maxsize > 0 && sasize + size > maxsize)
 		return NULL;
-	
-        nodemask = 1 << sicm_numa_id(sa->dev);
+
 	maxnode = 32; // sa->node + 1;
+	get_mempolicy(&oldmode, &oldnodemask, maxnode, NULL, 0);
+        nodemask = 1 << sicm_numa_id(sa->dev);
         if (set_mempolicy(MPOL_BIND, &nodemask, maxnode) < 0) {
                 perror("set_mempolicy");
                 return NULL;
@@ -281,13 +283,16 @@ static void *sa_alloc(extent_hooks_t *h, void *new_addr, size_t size, size_t ali
 	munmap(ret, size);
 
 	// if new_addr is set, we can't fulful the alignment, so just fail
-	if (new_addr != NULL)
+	if (new_addr != NULL) {
+error:
+		set_mempolicy(oldmode, &oldnodemask, maxnode);
 		return NULL;
+	}
 
 	size += alignment;
 	ret = mmap(NULL, size + alignment, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANON | MAP_POPULATE, -1, 0);
 	if (ret == MAP_FAILED)
-		return NULL;
+		goto error;
 
 	n = (uintptr_t) ret;
 	m = n + alignment - (n%alignment);
@@ -295,6 +300,7 @@ static void *sa_alloc(extent_hooks_t *h, void *new_addr, size_t size, size_t ali
 	ret = (void *) m;
 
 success:
+	set_mempolicy(oldmode, &oldnodemask, maxnode);
 	sa_range_add(sa, (uintptr_t) ret, size);
 	return ret;
 }
