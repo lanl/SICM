@@ -49,6 +49,11 @@ sicm_arena sicm_arena_create(size_t sz, sicm_device *dev) {
 	pthread_mutex_init(&sa->mutex, NULL);
 	sa->dev = dev;
 	sa->size = sz;
+	sa->pagesize = sicm_device_page_size(dev);
+	sa->numaid = sicm_numa_id(dev);
+	if (sa->numaid < 0)
+		goto error;
+
 	sa->rangesz = 4;
 	sa->rangenum = 0;
 	sa->ranges = calloc(sa->rangesz, sizeof(srange));
@@ -127,6 +132,7 @@ sicm_device *sicm_arena_get_device(sicm_arena a) {
 	return ret;
 }
 
+// FIXME: doesn't support moving to huge pages
 int sicm_arena_set_device(sicm_arena a, sicm_device *dev) {
 	int i, err, node, maxnode;
 	unsigned long nodemask;
@@ -137,19 +143,36 @@ int sicm_arena_set_device(sicm_arena a, sicm_device *dev) {
 	if (sa == NULL)
 		return -EINVAL;
 
+	if (sa->pagesize != sicm_device_page_size(dev))
+		return -EINVAL;
+
 	err = 0;
 	node = sicm_numa_id(dev);
+	if (node < 0)
+		return -EINVAL;
+
 	nodemask = 1 << node;
 	maxnode = 32; // FIXME
 	pthread_mutex_lock(&sa->mutex);
 	for(i = 0; i < sa->rangenum; i++) {
 		r = &sa->ranges[i];
 		err = mbind((void *) r->addr, r->size, MPOL_BIND, &nodemask, maxnode, MPOL_MF_MOVE);
-		if (err < 0)
-			// TODO: move back the extents on error?
+		if (err < 0) {
+			int j;
+
+			// move back to the old device
+			nodemask = 1 << sa->numaid;
+			for(j = 0; j < i; j++) {
+				r = &sa->ranges[j];
+				// TODO: not sure what to do if mbind returns error here
+				mbind((void *) r->addr, r->size, MPOL_BIND, &nodemask, maxnode, MPOL_MF_MOVE);
+			}
+
 			goto out;
+		}
 	}
 	sa->dev = dev;
+	sa->numaid = node;
 
 out:
 	pthread_mutex_unlock(&sa->mutex);
@@ -265,7 +288,7 @@ static void *sa_alloc(extent_hooks_t *h, void *new_addr, size_t size, size_t ali
 
 	maxnode = 32; // sa->node + 1;
 	get_mempolicy(&oldmode, &oldnodemask, maxnode, NULL, 0);
-        nodemask = 1 << sicm_numa_id(sa->dev);
+        nodemask = 1 << sa->numaid;
         if (set_mempolicy(MPOL_BIND, &nodemask, maxnode) < 0) {
                 perror("set_mempolicy");
                 return NULL;

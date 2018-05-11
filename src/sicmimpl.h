@@ -81,6 +81,8 @@ struct sarena {
 	sicm_device*	dev;
 	size_t		maxsize;
 	size_t		size;
+	size_t		pagesize;
+	int		numaid;
 	sarena*		next;
 
 	/* jemalloc related */
