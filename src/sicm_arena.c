@@ -136,8 +136,8 @@ static void sicm_arena_range_move(void *aux, void *start, void *end) {
 	sa = (sarena *) aux;
 	nodemask = 1 << sa->numaid;
 	maxnode = 32; // FIXME
-	err = mbind((void *) start, (char*) end - (char*) start, MPOL_BIND, &nodemask, maxnode, MPOL_MF_MOVE);
-//	printf("sicm_arena_range_move %p %p: %d\n", start, end, err);
+	err = mbind((void *) start, (char*) end - (char*) start, MPOL_BIND, &nodemask, maxnode, MPOL_MF_MOVE | MPOL_MF_STRICT);
+//	printf("sicm_arena_range_move %p %ld: %d\n", start, (char*)end - (char*)start, err);
 	if (err < 0 && sa->err == 0)
 		sa->err = err;
 }
@@ -297,7 +297,7 @@ static void *sa_alloc(extent_hooks_t *h, void *new_addr, size_t size, size_t ali
 
 	ret = mmap(new_addr, size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANON | MAP_POPULATE, -1, 0);
 	if (ret == MAP_FAILED)
-		return NULL;
+		goto error;
  
 	if (alignment == 0 || ((uintptr_t) ret)%alignment == 0)
 		// we are lucky and got the right alignment
