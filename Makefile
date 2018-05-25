@@ -2,7 +2,7 @@ CC := gcc
 FC := gfortran
 CXX := g++
 INCLUDES := sicm_low.h
-SOURCES := sicm_low sicm_arena
+SOURCES := sicm_low sicm_arena rbtree
 
 JEMALLOCDIR := $(HOME)/jemalloc
 IDIR := include

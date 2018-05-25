@@ -74,7 +74,6 @@ extern int normal_page_size;
     (char *)(member_type(type, member) *){ ptr } - offsetof(type, member)))
 
 typedef struct sarena sarena;
-typedef struct srange srange;
 
 struct sarena {
 	pthread_mutex_t	mutex;
@@ -90,19 +89,12 @@ struct sarena {
 	extent_hooks_t	hooks;
 
 	/* jemalloc extent ranges */
-	int		rangesz;
-	int		rangenum;
-	srange*		ranges;
-};
+	struct sicm_tree_t*	ranges;
 
-struct srange {
-	uintptr_t	addr;
-	size_t		size;
+	int		err;
 };
 
 extern sarena *sarena_ptr2sarena(void *ptr);
-extern int sa_range_add(sarena *sa, uintptr_t addr, size_t size);
-extern int sa_range_del(sarena *sa, uintptr_t addr, size_t size);
 extern int sicm_arena_init(void);
 
 #endif
