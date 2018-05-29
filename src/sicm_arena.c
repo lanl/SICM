@@ -10,26 +10,23 @@
 #include "sicmimpl.h"
 #include "rbtree.h"
 
-static pthread_mutex_t sarenas_mutex = PTHREAD_MUTEX_INITIALIZER;
-static int sarenas_num;
-static sarena *sarenas_list;
-static size_t sarenas_lookup_mib[2];
+static pthread_mutex_t sa_mutex = PTHREAD_MUTEX_INITIALIZER;
+static int sa_num;
+static sarena *sa_list;
+static size_t sa_lookup_mib[2];
+static pthread_once_t sa_init = PTHREAD_ONCE_INIT;
+static pthread_key_t sa_default_key;
+static extent_hooks_t sa_hooks;
 
-static extent_hooks_t sarena_hooks;
-
-// called with sarenas_mutex held
-int sicm_arena_init() {
+static void sarena_init() {
 	int err;
 	size_t miblen;
 
+	pthread_key_create(&sa_default_key, NULL);
 	miblen = 2;
-	err = je_mallctlnametomib("arenas.lookup", sarenas_lookup_mib, &miblen);
-	if (err != 0) {
+	err = je_mallctlnametomib("arenas.lookup", sa_lookup_mib, &miblen);
+	if (err != 0)
 		fprintf(stderr, "can't get mib: %d\n", err);
-		return -1;
-	}
-
-	return 0;
 }
 
 sicm_arena sicm_arena_create(size_t sz, sicm_device *dev) {
@@ -43,6 +40,7 @@ sicm_arena sicm_arena_create(size_t sz, sicm_device *dev) {
 	extent_hooks_t *new_hooks, *old_hooks;
 	unsigned arena_ind;
 
+	pthread_once(&sa_init, sarena_init);
 	sa = malloc(sizeof(sarena));
 	if (sa == NULL)
 		return NULL;
@@ -58,7 +56,7 @@ error:
 	}
 
 	sa->ranges = sicm_create_tree();
-	sa->hooks = sarena_hooks;
+	sa->hooks = sa_hooks;
 	arena_ind_sz = sizeof(unsigned); // sa->arena_ind);
 	arena_ind = -1;
 	err = je_mallctl("arenas.create", (void *) &arena_ind, &arena_ind_sz, NULL, 0);
@@ -87,11 +85,11 @@ error:
 	}
 
 	// add the arena to the global list of arenas
-	pthread_mutex_lock(&sarenas_mutex);
-	sa->next = sarenas_list;
-	sarenas_list = sa;
-	sarenas_num++;
-	pthread_mutex_unlock(&sarenas_mutex);
+	pthread_mutex_lock(&sa_mutex);
+	sa->next = sa_list;
+	sa_list = sa;
+	sa_num++;
+	pthread_mutex_unlock(&sa_mutex);
 
 	return sa;
 }
@@ -101,13 +99,14 @@ sicm_arena_list *sicm_arenas_list() {
 	sicm_arena_list *l;
 	sarena *a;
 
-	pthread_mutex_lock(&sarenas_mutex);
-	l = malloc(sizeof(sicm_arena_list) + sarenas_num * sizeof(sicm_arena));
+	pthread_mutex_lock(&sa_mutex);
+	l = malloc(sizeof(sicm_arena_list) + sa_num * sizeof(sicm_arena));
 	l->arenas = (sicm_arena *) &l[1];
-	for(i = 0, a = sarenas_list; i < sarenas_num && a != NULL; i++, a = a->next) {
+	for(i = 0, a = sa_list; i < sa_num && a != NULL; i++, a = a->next) {
 		l->arenas[i] = a;
 	}
 	l->count = i;
+	pthread_mutex_unlock(&sa_mutex);
 
 	return l;
 }
@@ -206,6 +205,19 @@ void *sicm_arena_alloc(sicm_arena a, size_t sz) {
 	return ret;
 }
 
+void *sicm_alloc(size_t sz) {
+	sarena *sa;
+	void *ret;
+
+	sa = pthread_getspecific(sa_default_key);
+	if (sa != NULL)
+		ret = sicm_arena_alloc(sa, sz);
+	else
+		ret = je_malloc(sz);
+
+	return ret;
+}
+
 void sicm_free(void *ptr) {
 	je_free(ptr);
 }
@@ -213,6 +225,17 @@ void sicm_free(void *ptr) {
 void *sicm_realloc(void *ptr, size_t sz) {
 	// TODO: should we include MALLOCX_ARENA(...)???
 	return je_rallocx(ptr, sz, MALLOCX_TCACHE_NONE);
+}
+
+void sicm_arena_set_default(sicm_arena sa) {
+	pthread_setspecific(sa_default_key, sa);
+}
+
+sicm_arena sicm_arena_get_default(void) {
+	sicm_arena *sa;
+
+	sa = pthread_getspecific(sa_default_key);
+	return sa;
 }
 
 sarena *sarena_ptr2sarena(void *ptr) {
@@ -223,19 +246,19 @@ sarena *sarena_ptr2sarena(void *ptr) {
 
 	sa = NULL;
 	ai_sz = sizeof(unsigned);
-	err = je_mallctlbymib(sarenas_lookup_mib, 2, &arena_ind, &ai_sz, &ptr, sizeof(ptr));
+	err = je_mallctlbymib(sa_lookup_mib, 2, &arena_ind, &ai_sz, &ptr, sizeof(ptr));
         if (err != 0) {
                 fprintf(stderr, "can't setup hooks: %d\n", err);
                 goto out;
         }
 
 	// TODO: make this lookup faster if this becomes bottleneck
-	pthread_mutex_lock(&sarenas_mutex);
-	for(sa = sarenas_list; sa != NULL; sa = sa->next) {
+	pthread_mutex_lock(&sa_mutex);
+	for(sa = sa_list; sa != NULL; sa = sa->next) {
 		if (sa->arena_ind == arena_ind)
 			break;
 	}
-	pthread_mutex_unlock(&sarenas_mutex);
+	pthread_mutex_unlock(&sa_mutex);
 
 out:
 	return sa;
@@ -253,7 +276,7 @@ static bool sa_decommit(extent_hooks_t *, void *, size_t, size_t, size_t, unsign
 static bool sa_split(extent_hooks_t *, void *, size_t, size_t, size_t, bool, unsigned);
 static bool sa_merge(extent_hooks_t *, void *, size_t, void *, size_t, bool, unsigned);
 
-static extent_hooks_t sarena_hooks = {
+static extent_hooks_t sa_hooks = {
 	.alloc = sa_alloc,
 	.dalloc = sa_dalloc,
 	.destroy = sa_destroy,

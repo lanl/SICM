@@ -134,7 +134,6 @@ struct sicm_device_list sicm_init() {
   numa_bitmask_free(compute_nodes);
   numa_bitmask_free(non_dram_nodes);
   free(huge_page_sizes);
-  sicm_arena_init();
 
   return (struct sicm_device_list){ .count = device_count, .devices = devices };
 }

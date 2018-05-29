@@ -126,6 +126,20 @@ sicm_arena_list *sicm_arenas_list();
  */
 sicm_arena sicm_arena_create(size_t maxsize, sicm_device *dev);
 
+/// Set default arena for the current thread
+/**
+ * @param sa arena to use when sicm_alloc is called. If the value is NULL,
+ *           sa_alloc will use the standard (je_)malloc for the allocations.
+ *
+ */
+void sicm_arena_set_default(sicm_arena sa);
+
+/// Get default arena for the current thread
+/**
+ * @return the arena used for sa_alloc
+ */
+sicm_arena sicm_arena_get_default(void);
+
 /// Get the NUMA node for an arena
 /**
  * @param sa arena
@@ -161,6 +175,16 @@ size_t sicm_arena_size(sicm_arena sa);
  * Specifying ARENA_DEFAULT makes the function equivalent to malloc.
  */
 void *sicm_arena_alloc(sicm_arena sa, size_t sz);
+
+/// Allocate memory region
+/** 
+ * @param sz size of the region
+ * @return pointer to the new allocation, or NULL if the operation failed.
+ *
+ * The function uses the default arena, if set. Otherwise it uses the standard
+ * (je_)malloc function.
+ */
+void *sicm_alloc(size_t sz);
 
 /// Deallocate/free memory region
 /**
