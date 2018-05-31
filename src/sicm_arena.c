@@ -166,11 +166,11 @@ int sicm_arena_set_device(sicm_arena a, sicm_device *dev) {
 	sicm_map_tree(sa->ranges, sa, sicm_arena_range_move);
 	if (sa->err) {
 		// at least one extent wasn't moved, try to roll back them all
+		err = sa->err;
 		sa->numaid = oldnumaid;
 		sa->err = 0;
 		sicm_map_tree(sa->ranges, sa, sicm_arena_range_move);
 		// TODO: not sure what to do if moving back fails
-		err = sa->err;
 	} else {
 		sa->dev = dev;
 	}
