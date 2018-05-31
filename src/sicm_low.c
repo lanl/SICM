@@ -11,6 +11,9 @@
 #include <time.h>
 #include <unistd.h>
 #include <sys/mman.h>
+#ifndef MAP_HUGE_SHIFT
+#include <linux/mman.h>
+#endif
 #include "sicmimpl.h"
 
 #define X86_CPUID_MODEL_MASK        (0xf<<4)
