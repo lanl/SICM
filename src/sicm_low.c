@@ -79,7 +79,7 @@ struct sicm_device_list sicm_init() {
     }
   }
   numa_free_cpumask(cpumask);
-
+  #ifdef __x86_64__
   // Knights Landing
   uint32_t xeon_phi_model = (0x7<<4);
   uint32_t xeon_phi_ext_model = (0x5<<16);
@@ -119,6 +119,7 @@ struct sicm_device_list sicm_init() {
       }
     }
   }
+  #endif
 
   // DRAM
   for(i = 0; i <= numa_max_node(); i++) {
