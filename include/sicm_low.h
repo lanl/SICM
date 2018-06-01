@@ -27,7 +27,8 @@
  */
 typedef enum sicm_device_tag {
   SICM_DRAM,
-  SICM_KNL_HBM
+  SICM_KNL_HBM,
+  SICM_POWERPC_HBM
 } sicm_device_tag;
 
 /// Data specific to a DRAM device.
@@ -43,6 +44,12 @@ typedef struct sicm_knl_hbm_data {
   int page_size; ///< Page size
 } sicm_knl_hbm_data;
 
+/// Data specific to a PowerPC 9 HBM device.
+typedef struct sicm_powerpc_hbm_data {
+  int node;
+  int page_size;
+} sicm_powerpc_hbm_data;
+
 /// Data that, given a device type, uniquely identify the device within that type.
 /**
  * This union is only meaningful in the presence of a sicm_device_tag,
@@ -53,6 +60,7 @@ typedef struct sicm_knl_hbm_data {
 typedef union sicm_device_data {
   sicm_dram_data dram;
   sicm_knl_hbm_data knl_hbm;
+  sicm_powerpc_hbm_data powerpc_hbm;
 } sicm_device_data;
 
 /// Tagged/discriminated union that fully identifies a device.
@@ -114,7 +122,7 @@ sicm_device_list sicm_init();
  *
  * This function can be used to get the handles of all arenas that are
  * currently defined
- */ 
+ */
 sicm_arena_list *sicm_arenas_list();
 
 /// Create new arena
@@ -160,7 +168,7 @@ int sicm_arena_set_device(sicm_arena sa, sicm_device *dev);
  * @param sa arena
  * @return arena size
  *
- * The returned value might be bigger than the sum of the sizes of the 
+ * The returned value might be bigger than the sum of the sizes of the
  * allocated regions, because it is tracked at extent level and includes
  * the currently available free memory.
  */
@@ -177,7 +185,7 @@ size_t sicm_arena_size(sicm_arena sa);
 void *sicm_arena_alloc(sicm_arena sa, size_t sz);
 
 /// Allocate memory region
-/** 
+/**
  * @param sz size of the region
  * @return pointer to the new allocation, or NULL if the operation failed.
  *
@@ -443,4 +451,3 @@ size_t sicm_triad_kernel_linear(double* a, double* b, double* c, size_t size);
  * This can be used as a template for other bandwidth kernels.
  */
 size_t sicm_triad_kernel_random(double* a, double* b, double* c, size_t* indexes, size_t size);
-

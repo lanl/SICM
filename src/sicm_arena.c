@@ -3,6 +3,7 @@
 #include <sys/mman.h>
 #include <unistd.h>
 #include <sys/time.h>
+#include <numa.h>
 #include <numaif.h>
 #include <pthread.h>
 #include <errno.h>
@@ -50,6 +51,7 @@ sicm_arena sicm_arena_create(size_t sz, sicm_device *dev) {
 	sa->size = sz;
 	sa->pagesize = sicm_device_page_size(dev);
 	sa->numaid = sicm_numa_id(dev);
+
 	if (sa->numaid < 0) {
 error:
 		return NULL;
@@ -128,17 +130,17 @@ sicm_device *sicm_arena_get_device(sicm_arena a) {
 
 // should be called with sa mutex held
 static void sicm_arena_range_move(void *aux, void *start, void *end) {
-	int err, maxnode;
-	unsigned long nodemask;
-	sarena *sa;
+	int err;
+	sarena *sa = (sarena *) aux;
+    struct bitmask *nodemask = numa_allocate_nodemask();
+    numa_bitmask_setbit(nodemask, sa->numaid);
 
-	sa = (sarena *) aux;
-	nodemask = 1 << sa->numaid;
-	maxnode = 32; // FIXME
-	err = mbind((void *) start, (char*) end - (char*) start, MPOL_BIND, &nodemask, maxnode, MPOL_MF_MOVE | MPOL_MF_STRICT);
+	err = mbind((void *) start, (char*) end - (char*) start, MPOL_BIND, nodemask->maskp, nodemask->size, MPOL_MF_MOVE | MPOL_MF_STRICT);
 //	printf("sicm_arena_range_move %p %ld: %d\n", start, (char*)end - (char*)start, err);
 	if (err < 0 && sa->err == 0)
 		sa->err = err;
+
+    numa_free_nodemask(nodemask);
 }
 
 // FIXME: doesn't support moving to huge pages
@@ -290,11 +292,12 @@ static extent_hooks_t sa_hooks = {
 
 static void *sa_alloc(extent_hooks_t *h, void *new_addr, size_t size, size_t alignment, bool *zero, bool *commit, unsigned arena_ind) {
 	sarena *sa;
-	uintptr_t n, m, maxnode;
+	uintptr_t n, m;
 	int oldmode;
-	unsigned long nodemask, oldnodemask;
 	void *ret;
 	size_t sasize, maxsize;
+    struct bitmask *nodemask;
+    struct bitmask *oldnodemask;
 
 	*commit = 1;
 	*zero = 1;
@@ -307,21 +310,26 @@ static void *sa_alloc(extent_hooks_t *h, void *new_addr, size_t size, size_t ali
 	sasize = sa->size;
 	maxsize = sa->maxsize;
 	pthread_mutex_unlock(&sa->mutex);
-	if (maxsize > 0 && sasize + size > maxsize)
+    if (maxsize > 0 && sasize + size > maxsize) {
 		return NULL;
+    }
 
-	maxnode = 32; // sa->node + 1;
-	get_mempolicy(&oldmode, &oldnodemask, maxnode, NULL, 0);
-        nodemask = 1 << sa->numaid;
-        if (set_mempolicy(MPOL_BIND, &nodemask, maxnode) < 0) {
-                perror("set_mempolicy");
-                return NULL;
-        }
+    nodemask = numa_allocate_nodemask();
+    oldnodemask = numa_allocate_nodemask();
+
+	get_mempolicy(&oldmode, oldnodemask->maskp, oldnodemask->size, NULL, 0);
+    numa_bitmask_setbit(nodemask, sa->numaid);
+    if (set_mempolicy(MPOL_BIND, nodemask->maskp, nodemask->size) < 0) {
+        perror("set_mempolicy");
+        numa_free_nodemask(nodemask);
+        numa_free_nodemask(oldnodemask);
+        return NULL;
+    }
 
 	ret = mmap(new_addr, size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANON | MAP_POPULATE, -1, 0);
 	if (ret == MAP_FAILED)
 		goto error;
- 
+
 	if (alignment == 0 || ((uintptr_t) ret)%alignment == 0)
 		// we are lucky and got the right alignment
 		goto success;
@@ -332,7 +340,9 @@ static void *sa_alloc(extent_hooks_t *h, void *new_addr, size_t size, size_t ali
 	// if new_addr is set, we can't fulful the alignment, so just fail
 	if (new_addr != NULL) {
 error:
-		set_mempolicy(oldmode, &oldnodemask, maxnode);
+		set_mempolicy(oldmode, oldnodemask->maskp, oldnodemask->size);
+        numa_free_nodemask(nodemask);
+        numa_free_nodemask(oldnodemask);
 		return NULL;
 	}
 
@@ -347,7 +357,9 @@ error:
 	ret = (void *) m;
 
 success:
-	set_mempolicy(oldmode, &oldnodemask, maxnode);
+	set_mempolicy(oldmode, oldnodemask->maskp, oldnodemask->size);
+    numa_free_nodemask(nodemask);
+    numa_free_nodemask(oldnodemask);
 	pthread_mutex_lock(&sa->mutex);
 	sicm_insert(sa->ranges, ret, (char *)ret + size);
 	pthread_mutex_unlock(&sa->mutex);
