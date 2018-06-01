@@ -72,7 +72,5 @@ int main() {
 		return -1;
 	}
 
-	sleep(5000);
- 
 	return 0;
 }

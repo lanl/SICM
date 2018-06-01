@@ -1,0 +1,53 @@
+language: c
+
+os: linux
+dist: trusty
+sudo: false
+
+matrix:
+      include:
+        - addons:
+            apt:
+              sources:
+                - ubuntu-toolchain-r-test
+              packages:
+                - g++-7
+                - gfortran-7
+                - libnuma-dev
+          env:
+             - C_COMPILER="export CC=gcc-7"
+             - CXX_COMPILER="export CXX=g++-7"
+             - FORTRAN_COMPILER="export FC=gfortran-7"
+
+        - addons:
+            apt:
+              sources:
+                - ubuntu-toolchain-r-test
+              packages:
+                - g++-8
+                - gfortran-8
+                - libnuma-dev
+          env:
+             - C_COMPILER="export CC=gcc-8"
+             - CXX_COMPILER="export CXX=g++-8"
+             - FORTRAN_COMPILER="export FC=gfortran-8"
+
+install:
+    - git clone https://github.com/jemalloc/jemalloc.git
+    - cd jemalloc
+    - ./autogen.sh
+    - mkdir build
+    - cd build
+    - ../configure --prefix=$(pwd) --with-jemalloc-prefix=je_
+    - make -j $(nproc --all)
+    - make -j $(nproc --all) -i install
+    - export JEPATH=$(pwd)
+    - cd ../..
+
+script:
+    - eval "${C_COMPILER}"
+    - eval "${CXX_COMPILER}"
+    - eval "${FORTRAN_COMPILER}"
+    - make
+    - make -C test
+#    - LD_LIBRARY_PATH=.:${JEPATH}/lib find test -type f -executable -exec echo "Running {}" \; -exec {} \;

@@ -57,8 +57,6 @@ int main() {
 	}
 
 	printf("so far so good buf1 %p buf2 %p\n", buf1, buf2);
-	printf("sleeping...\n");
-	sleep(5000);
- 
+
 	return 0;
 }

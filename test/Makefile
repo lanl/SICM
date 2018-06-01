@@ -1,7 +1,7 @@
 JEPATH?=$(HOME)/jemalloc
 
 CC?=gcc
-CFLAGS=-Wall -g -I$(JEPATH)/include -I../include -DJEMALLOC_NO_RENAME
+CFLAGS=-Wall -std=c11 -g -I$(JEPATH)/include -I../include -DJEMALLOC_NO_RENAME
 LFLAGS=-L.. -L$(JEPATH)/lib -lsicm -ljemalloc -lnuma -pthread
 ALL=test1 test2 test3 test4 test5
 

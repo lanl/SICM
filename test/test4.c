@@ -59,8 +59,5 @@ int main() {
 		return -1;
 	}
 
-	printf("sleeping\n");
-	sleep(5000);
- 
 	return 0;
 }
