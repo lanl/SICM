@@ -1,8 +1,8 @@
-JEPATH=$(HOME)/jemalloc
+JEPATH?=$(HOME)/jemalloc
 
-CC=gcc
+CC?=gcc
 CFLAGS=-Wall -g -I$(JEPATH)/include -I../include -DJEMALLOC_NO_RENAME
-LFLAGS=-L.. -L$(HOME)/jemalloc/lib -lsicm -ljemalloc -lnuma -pthread
+LFLAGS=-L.. -L$(JEPATH)/lib -lsicm -ljemalloc -lnuma -pthread
 ALL=test1 test2 test3 test4 test5
 
 .PHONY: all clean

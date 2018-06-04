@@ -1,18 +1,18 @@
-CC := gcc
-FC := gfortran
-CXX := g++
-INCLUDES := sicm_low.h
-SOURCES := sicm_low sicm_arena rbtree
+CC?=gcc
+FC?=gfortran
+CXX?=g++
+INCLUDES=sicm_low.h
+SOURCES=sicm_low sicm_arena rbtree
 
-JEMALLOCDIR := $(HOME)/jemalloc
-IDIR := include
-CFLAGS := -I$(IDIR) -I$(JEMALLOCDIR)/include -fPIC -Wall -fopenmp -O2 
-LDFLAGS := -L$(JEMALLOCDIR)/lib -lnuma -ljemalloc
+JEPATH?=$(HOME)/jemalloc
+IDIR=include
+CFLAGS=-I$(IDIR) -I$(JEPATH)/include -fPIC -Wall -fopenmp -O2
+LDFLAGS=-L$(JEPATH)/lib -lnuma -ljemalloc
 
-ODIR := obj
-SDIR := src
+ODIR=obj
+SDIR=src
 
-DEPS := $(patsubst %,$(IDIR)/%,$(INCLUDES))
+DEPS=$(patsubst %,$(IDIR)/%,$(INCLUDES))
 
 OBJ = $(patsubst %,$(ODIR)/%.o,$(SOURCES))
 
