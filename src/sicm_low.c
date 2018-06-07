@@ -343,35 +343,38 @@ void sicm_pin(struct sicm_device* device) {
 }
 
 size_t sicm_capacity(struct sicm_device* device) {
-  char path[100];
+  static const size_t path_len = 100;
+  char path[path_len];
   switch(device->tag) {
     case SICM_DRAM:
-    case SICM_KNL_HBM:;
+    case SICM_KNL_HBM:
+    case SICM_POWERPC_HBM:;
       int node = sicm_numa_id(device);
       int page_size = sicm_device_page_size(device);
       if(page_size == normal_page_size) {
-        sprintf(path, "/sys/devices/system/node/node%d/meminfo", node);
+        snprintf(path, path_len, "/sys/devices/system/node/node%d/meminfo", node);
         int fd = open(path, O_RDONLY);
         char data[31];
-        read(fd, data, 31);
+        if (read(fd, data, 31) != 31) {
+            close(fd);
+            return -1;
+        }
         close(fd);
         size_t res = 0;
         size_t factor = 1;
-        int i;
-        for(i = 30; data[i] != ' '; i--) {
+        for(int i = 30; data[i] != ' '; i--) {
           res += factor * (data[i] - '0');
           factor *= 10;
         }
         return res;
       }
       else {
-        sprintf(path, "/sys/devices/system/node/node%d/hugepages/hugepages-%dkB/nr_hugepages", node, page_size);
+        snprintf(path, path_len, "/sys/devices/system/node/node%d/hugepages/hugepages-%dkB/nr_hugepages", node, page_size);
         int fd = open(path, O_RDONLY);
         int pages = 0;
-        int i;
         char data[10];
         while(read(fd, data, 10) > 0) {
-          for(i = 0; i < 10; i++) {
+          for(int i = 0; i < 10; i++) {
             if(data[i] < '0' || data[i] > '9') break;
             pages *= 10;
             pages += data[i] - '0';
@@ -386,7 +389,8 @@ size_t sicm_capacity(struct sicm_device* device) {
 }
 
 size_t sicm_avail(struct sicm_device* device) {
-  char path[100];
+  static const size_t path_len = 100;
+  char path[path_len];
   switch(device->tag) {
     case SICM_DRAM:
     case SICM_KNL_HBM:
@@ -394,28 +398,29 @@ size_t sicm_avail(struct sicm_device* device) {
       int node = sicm_numa_id(device);
       int page_size = sicm_device_page_size(device);
       if(page_size == normal_page_size) {
-        sprintf(path, "/sys/devices/system/node/node%d/meminfo", node);
+        snprintf(path, path_len, "/sys/devices/system/node/node%d/meminfo", node);
         int fd = open(path, O_RDONLY);
         char data[66];
-        read(fd, data, 66);
+        if (read(fd, data, 66) != 66) {
+            close(fd);
+            return -1;
+        }
         close(fd);
         size_t res = 0;
         size_t factor = 1;
-        int i;
-        for(i = 65; data[i] != ' '; i--) {
+        for(int i = 65; data[i] != ' '; i--) {
           res += factor * (data[i] - '0');
           factor *= 10;
         }
         return res;
       }
       else {
-        sprintf(path, "/sys/devices/system/node/node%d/hugepages/hugepages-%dkB/free_hugepages", node, page_size);
+        snprintf(path, path_len, "/sys/devices/system/node/node%d/hugepages/hugepages-%dkB/free_hugepages", node, page_size);
         int fd = open(path, O_RDONLY);
         int pages = 0;
-        int i;
         char data[10];
         while(read(fd, data, 10) > 0) {
-          for(i = 0; i < 10; i++) {
+          for(int i = 0; i < 10; i++) {
             if(data[i] < '0' || data[i] > '9') break;
             pages *= 10;
             pages += data[i] - '0';
