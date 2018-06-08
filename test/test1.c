@@ -13,7 +13,7 @@ int main() {
 		printf("%d %d\n", i, sicm_numa_id(&devs.devices[i]));
 	}
 
-	s = sicm_arena_create(1000, &devs.devices[0]);
+	s = sicm_arena_create(0, &devs.devices[0]);
 	if (s == NULL) {
 		fprintf(stderr, "sicm_arena_create failed\n");
 		return -1;

@@ -21,13 +21,13 @@ int main() {
 			break;
 	}
 
-	s1 = sicm_arena_create(1000, d1);
+	s1 = sicm_arena_create(0, d1);
 	if (s1 == NULL) {
 		fprintf(stderr, "sarena_create failed\n");
 		return -1;
 	}
 
-	s2 = sicm_arena_create(1000, d2);
+	s2 = sicm_arena_create(0, d2);
 	if (s2 == NULL) {
 		fprintf(stderr, "sarena_create failed\n");
 		return -1;
