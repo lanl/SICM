@@ -2,7 +2,7 @@ language: c
 
 os: linux
 dist: trusty
-sudo: false
+sudo: required
 
 matrix:
       include:
@@ -13,11 +13,12 @@ matrix:
               packages:
                 - g++-7
                 - gfortran-7
+                - numactl
                 - libnuma-dev
           env:
-             - C_COMPILER="export CC=gcc-7"
-             - CXX_COMPILER="export CXX=g++-7"
-             - FORTRAN_COMPILER="export FC=gfortran-7"
+             - C_COMPILER="gcc-7"
+             - CXX_COMPILER="g++-7"
+             - FORTRAN_COMPILER="gfortran-7"
 
         - addons:
             apt:
@@ -26,11 +27,12 @@ matrix:
               packages:
                 - g++-8
                 - gfortran-8
+                - numactl
                 - libnuma-dev
           env:
-             - C_COMPILER="export CC=gcc-8"
-             - CXX_COMPILER="export CXX=g++-8"
-             - FORTRAN_COMPILER="export FC=gfortran-8"
+             - C_COMPILER="gcc-8"
+             - CXX_COMPILER="g++-8"
+             - FORTRAN_COMPILER="gfortran-8"
 
 install:
     - git clone https://github.com/jemalloc/jemalloc.git
@@ -45,9 +47,10 @@ install:
     - cd ../..
 
 script:
-    - eval "${C_COMPILER}"
-    - eval "${CXX_COMPILER}"
-    - eval "${FORTRAN_COMPILER}"
+    - export CC="${C_COMPILER}"
+    - export CXX="${CXX_COMPILER}"
+    - export FC="${FORTRAN_COMPILER}"
     - make
     - make -C test
-#    - LD_LIBRARY_PATH=.:${JEPATH}/lib find test -type f -executable -exec echo "Running {}" \; -exec {} \;
+    - numactl --hardware
+    - LD_LIBRARY_PATH=.:${JEPATH}/lib find test -type f -executable -exec echo "Running {}" \; -exec {} \;
