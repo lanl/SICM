@@ -342,6 +342,31 @@ void sicm_pin(struct sicm_device* device) {
   }
 }
 
+static size_t read_numastat_meminfo(const int node, const char *info) {
+  static const size_t bufsize = 100;
+
+  // open the file
+  char path[bufsize];
+  snprintf(path, bufsize, "/sys/devices/system/node/node%d/meminfo", node);
+  FILE *meminfo = fopen(path, "r");
+  if (!meminfo) {
+      return 0;
+  }
+
+  // create the pattern to scan for
+  char pattern[bufsize];
+  snprintf(pattern, 100, "Node %d %s: %szu kB\n", node, "%[^:]", "%");
+
+  // scan for the size
+  int matched = -1;
+  char field[bufsize];
+  size_t size = -1;
+  while (((matched = fscanf(meminfo, pattern, field, &size)) == 2) &&
+         (strncmp(info, field, strlen(field))));
+  fclose(meminfo);
+  return (matched == 2)?size:0;
+}
+
 size_t sicm_capacity(struct sicm_device* device) {
   static const size_t path_len = 100;
   char path[path_len];
@@ -352,21 +377,7 @@ size_t sicm_capacity(struct sicm_device* device) {
       int node = sicm_numa_id(device);
       int page_size = sicm_device_page_size(device);
       if(page_size == normal_page_size) {
-        snprintf(path, path_len, "/sys/devices/system/node/node%d/meminfo", node);
-        int fd = open(path, O_RDONLY);
-        char data[31];
-        if (read(fd, data, 31) != 31) {
-            close(fd);
-            return -1;
-        }
-        close(fd);
-        size_t res = 0;
-        size_t factor = 1;
-        for(int i = 30; data[i] != ' '; i--) {
-          res += factor * (data[i] - '0');
-          factor *= 10;
-        }
-        return res;
+        return read_numastat_meminfo(sicm_numa_id(device), "MemTotal");
       }
       else {
         snprintf(path, path_len, "/sys/devices/system/node/node%d/hugepages/hugepages-%dkB/nr_hugepages", node, page_size);
@@ -398,21 +409,7 @@ size_t sicm_avail(struct sicm_device* device) {
       int node = sicm_numa_id(device);
       int page_size = sicm_device_page_size(device);
       if(page_size == normal_page_size) {
-        snprintf(path, path_len, "/sys/devices/system/node/node%d/meminfo", node);
-        int fd = open(path, O_RDONLY);
-        char data[66];
-        if (read(fd, data, 66) != 66) {
-            close(fd);
-            return -1;
-        }
-        close(fd);
-        size_t res = 0;
-        size_t factor = 1;
-        for(int i = 65; data[i] != ' '; i--) {
-          res += factor * (data[i] - '0');
-          factor *= 10;
-        }
-        return res;
+        return read_numastat_meminfo(sicm_numa_id(device), "MemFree");
       }
       else {
         snprintf(path, path_len, "/sys/devices/system/node/node%d/hugepages/hugepages-%dkB/free_hugepages", node, page_size);
