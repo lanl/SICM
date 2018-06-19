@@ -116,6 +116,16 @@ typedef struct sicm_arena_list {
  */
 sicm_device_list sicm_init();
 
+/// Find and return a device that matches the given type and page size
+/**
+ * @param devs the list of devices
+ * @param type the type of device
+ * @param page_size the size of the page; use 0 for any size
+ * @param old a previously selected device that should not be considered for use
+ * @return a pointer to a device that matches the given criteria or NULL
+ */
+sicm_device *sicm_get_device(sicm_device_list *devs, sicm_device_tag type, int page_size, sicm_device *old);
+
 /// List of the defined arenas
 /**
  * @return list of the defined arenas
@@ -272,6 +282,14 @@ int sicm_numa_id(sicm_device* device);
  * @return Page size of the device. If the device is not a NUMA node, the return value is -1.
  */
 int sicm_device_page_size(sicm_device* device);
+
+/// Compares devices for equality
+/**
+ * @param[in] dev1 the first device
+ * @param[in] dev2 the second device
+ * @return 1 if the devices are the same; 0 otherwise
+ */
+int sicm_device_eq(sicm_device* dev1, sicm_device* dev2);
 
 /// Move data from one device to another.
 /**

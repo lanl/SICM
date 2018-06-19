@@ -170,6 +170,21 @@ struct sicm_device_list sicm_init() {
   return (struct sicm_device_list){ .count = device_count, .devices = devices };
 }
 
+sicm_device *sicm_get_device(sicm_device_list *devs, sicm_device_tag type, int page_size, sicm_device *old) {
+    sicm_device *dev = NULL;
+    if (devs) {
+      for(unsigned int i = 0; i < devs->count; i++) {
+        if ((devs->devices[i].tag == SICM_DRAM) &&
+            ((page_size == 0) || (sicm_device_page_size(&devs->devices[i]) == page_size)) &&
+            !sicm_device_eq(&devs->devices[i], old)) {
+          dev = &devs->devices[i];
+          break;
+        }
+      }
+    }
+    return dev;
+}
+
 void* sicm_device_alloc(struct sicm_device* device, size_t size) {
   switch(device->tag) {
     case SICM_DRAM:
@@ -310,6 +325,40 @@ int sicm_device_page_size(struct sicm_device* device) {
     default:
       return -1;
   }
+}
+
+int sicm_device_eq(sicm_device* dev1, sicm_device* dev2) {
+  if (!dev1 || !dev2) {
+    return 0;
+  }
+
+  if (dev1 == dev2) {
+    return 1;
+  }
+
+  if (dev1->tag != dev2->tag) {
+      return 0;
+  }
+
+  switch(dev1->tag) {
+    case SICM_DRAM:
+      return
+          (dev1->data.dram.node == dev2->data.dram.node) &&
+          (dev1->data.dram.page_size == dev2->data.dram.page_size);
+    case SICM_KNL_HBM:
+      return
+          (dev1->data.knl_hbm.node == dev2->data.knl_hbm.node) &&
+          (dev1->data.knl_hbm.compute_node == dev2->data.knl_hbm.compute_node) &&
+          (dev1->data.knl_hbm.page_size == dev2->data.knl_hbm.page_size);
+    case SICM_POWERPC_HBM:
+      return
+          (dev1->data.powerpc_hbm.node == dev2->data.powerpc_hbm.node) &&
+          (dev1->data.powerpc_hbm.page_size == dev2->data.powerpc_hbm.page_size);
+    default:
+      return 0;
+  }
+
+  return 0;
 }
 
 int sicm_move(struct sicm_device* src, struct sicm_device* dst, void* ptr, size_t size) {
