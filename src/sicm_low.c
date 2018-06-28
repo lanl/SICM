@@ -170,11 +170,11 @@ struct sicm_device_list sicm_init() {
   return (struct sicm_device_list){ .count = device_count, .devices = devices };
 }
 
-sicm_device *sicm_get_device(sicm_device_list *devs, sicm_device_tag type, int page_size, sicm_device *old) {
+sicm_device *sicm_find_device(sicm_device_list *devs, const sicm_device_tag type, const int page_size, sicm_device *old) {
     sicm_device *dev = NULL;
     if (devs) {
       for(unsigned int i = 0; i < devs->count; i++) {
-        if ((devs->devices[i].tag == SICM_DRAM) &&
+        if ((devs->devices[i].tag == type) &&
             ((page_size == 0) || (sicm_device_page_size(&devs->devices[i]) == page_size)) &&
             !sicm_device_eq(&devs->devices[i], old)) {
           dev = &devs->devices[i];

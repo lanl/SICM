@@ -208,6 +208,20 @@ void *sicm_arena_alloc(sicm_arena a, size_t sz) {
 	return ret;
 }
 
+void *sicm_arena_alloc_aligned(sicm_arena a, size_t sz, size_t align) {
+	sarena *sa;
+	int flags;
+	void *ret;
+
+	sa = a;
+	flags = 0;
+	if (sa != NULL)
+		flags = MALLOCX_ARENA(sa->arena_ind) | MALLOCX_TCACHE_NONE | MALLOCX_ALIGN(align);
+
+	ret = je_mallocx(sz, flags);
+	return ret;
+}
+
 void *sicm_alloc(size_t sz) {
 	sarena *sa;
 	void *ret;
@@ -217,6 +231,19 @@ void *sicm_alloc(size_t sz) {
 		ret = sicm_arena_alloc(sa, sz);
 	else
 		ret = je_malloc(sz);
+
+	return ret;
+}
+
+void *sicm_alloc_aligned(size_t sz, size_t align) {
+	sarena *sa;
+	void *ret;
+
+	sa = pthread_getspecific(sa_default_key);
+	if (sa != NULL)
+		ret = sicm_arena_alloc_aligned(sa, sz, align);
+	else
+		ret = je_aligned_alloc(align, sz);
 
 	return ret;
 }

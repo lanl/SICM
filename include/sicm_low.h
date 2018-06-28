@@ -124,7 +124,7 @@ sicm_device_list sicm_init();
  * @param old a previously selected device that should not be considered for use
  * @return a pointer to a device that matches the given criteria or NULL
  */
-sicm_device *sicm_get_device(sicm_device_list *devs, sicm_device_tag type, int page_size, sicm_device *old);
+sicm_device *sicm_find_device(sicm_device_list *devs, const sicm_device_tag type, const int page_size, sicm_device *old);
 
 /// List of the defined arenas
 /**
@@ -194,6 +194,17 @@ size_t sicm_arena_size(sicm_arena sa);
  */
 void *sicm_arena_alloc(sicm_arena sa, size_t sz);
 
+/// Allocate aligned memory region
+/**
+ * @param sa arena that should be used for the allocation. ARENA_DEFAULT is allowed.
+ * @param sz size of the region
+ * @param align the alignment of the address; must be a power of 2
+ * @return pointer to the new allocation, or NULL of the operation failed.
+ *
+ * Specifying ARENA_DEFAULT makes the function equivalent to malloc.
+ */
+void *sicm_arena_alloc_aligned(sicm_arena sa, size_t sz, size_t align);
+
 /// Allocate memory region
 /**
  * @param sz size of the region
@@ -203,6 +214,17 @@ void *sicm_arena_alloc(sicm_arena sa, size_t sz);
  * (je_)malloc function.
  */
 void *sicm_alloc(size_t sz);
+
+/// Allocate memory region
+/**
+ * @param sz size of the region
+ * @param align the alignment of the address; must be a power of 2
+ * @return pointer to the new allocation, or NULL if the operation failed.
+ *
+ * The function uses the default arena, if set. Otherwise it uses the standard
+ * (je_)malloc function.
+ */
+void *sicm_alloc_aligned(size_t sz, size_t align);
 
 /// Deallocate/free memory region
 /**
