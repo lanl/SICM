@@ -21,6 +21,18 @@
 
 int normal_page_size = -1;
 
+const char * const sicm_device_tag_str(sicm_device_tag tag) {
+  switch(tag) {
+    case SICM_DRAM:
+        return "SICM_DRAM";
+    case SICM_KNL_HBM:
+        return "SICM_KNL_HBM";
+    case SICM_POWERPC_HBM:
+        return "SICM_POWERPC_HBM";
+  }
+  return NULL;
+}
+
 struct sicm_device_list sicm_init() {
   int node_count = numa_max_node() + 1;
   normal_page_size = getpagesize() / 1024;

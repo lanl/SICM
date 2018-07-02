@@ -31,6 +31,8 @@ typedef enum sicm_device_tag {
   SICM_POWERPC_HBM
 } sicm_device_tag;
 
+const char * const sicm_device_tag_str(sicm_device_tag tag);
+
 /// Data specific to a DRAM device.
 typedef struct sicm_dram_data {
   int node; ///< NUMA node
