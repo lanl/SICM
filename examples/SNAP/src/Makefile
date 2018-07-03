@@ -21,6 +21,10 @@ TARGET = gsnap
 
 #HASWELL = yes
 
+JEPATH?=$(HOME)/jemalloc
+SICM_INCLUDE = ../../..
+SICM_LIB = ../../..
+
 ifeq ($(MPI),yes)
   DEFS := $(DEFS) MPI
 else
@@ -46,7 +50,7 @@ endif
 PPFLAGS = $(foreach def,$(DEFS),-D$(def))
 
 ifeq ($(TARGET),gsnap)
-  FFLAGS = -O3 $(OMPFLAG)
+  FFLAGS = -g $(OMPFLAG) -I$(SICM_INCLUDE) -L$(SICM_LIB) -L$(JEPATH)/lib -ljemalloc -lsicm_f90
   FFLAG2 =
   PP = cpp
   ifeq ($(OPT),no)
@@ -88,7 +92,7 @@ endif
 OBJS = global.o snap_main.o utils.o version.o plib.o geom.o sn.o \
        data.o control.o input.o setup.o dealloc.o translv.o solvar.o \
        outer.o expxs.o inner.o sweep.o octsweep.o dim1_sweep.o dim3_sweep.o \
-       output.o time.o mms.o analyze.o thrd_comm.o mkba_sweep.o sicm_f90.so
+       output.o time.o mms.o analyze.o thrd_comm.o mkba_sweep.o ../../../libsicm_f90.so
 
 SRCS = global.f90 snap_main.f90 utils.f90 version.f90 plib.F90 geom.f90 \
        sn.f90 data.f90 control.f90 input.f90 setup.f90 dealloc.f90 \
@@ -148,9 +152,9 @@ translv.o :	global.o plib.o geom.o sn.o data.o control.o utils.o \
 # Cleanup
 #
 clean:
-	mv sicm_f90.mod sicm_f90.tmp
+#	mv sicm_f90.mod sicm_f90.tmp
 	rm -f *.o *.mod *.bc
-	mv sicm_f90.tmp sicm_f90.mod
+#	mv sicm_f90.tmp sicm_f90.mod
 
 #
 # Count lines of code
@@ -166,5 +170,3 @@ count:
 #
 link:
 	$(FORTRAN) $(FFLAGS) $(FFLAG2) -o $(TARGET) $(OBJS)
-
-

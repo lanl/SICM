@@ -25,7 +25,7 @@ sicm: $(OBJ)
 	$(CC) -o lib$@.so $^ -shared $(CFLAGS) $(LDFLAGS)
 
 fortran: src/fbinding.f90 $(OBJ) obj/fbinding.o
-	$(FC) -o sicm_f90.so src/fbinding.f90 obj/fbinding.o $(OBJ) -shared $(CFLAGS) $(LDFLAGS)
+	$(FC) -o libsicm_f90.so src/fbinding.f90 obj/fbinding.o $(OBJ) -shared $(CFLAGS) $(LDFLAGS)
 
 obj/sicm_cpp.o: src/sicm_cpp.cpp include/sicm_cpp.hpp $(OBJ)
 	$(CXX) -o obj/sicm_cpp.o -c src/sicm_cpp.cpp $(CFLAGS)
@@ -35,7 +35,7 @@ cpp: obj/sicm_cpp.o $(OBJ)
 
 .PHONY: examples
 
-examples: sicm sg
+examples: sicm sg cpp
 	$(CC) -o examples/basic examples/basic.c -L. -lsicm $(CFLAGS) $(LDFLAGS)
 	$(CC) -o examples/hugepages examples/hugepages.c -L. -lsicm $(CFLAGS) $(LDFLAGS)
 	$(CXX) -o examples/class examples/class.cpp -L. -lsicm_cpp $(CFLAGS) $(LDFLAGS)

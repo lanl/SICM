@@ -1,4 +1,5 @@
 #include "sicm_low.h"
+#include "sicmimpl.h"
 
 #include <time.h>
 
@@ -29,11 +30,11 @@ void sicm_get_device_wrap_(struct sicm_fortran_device_list* devices_, int* i, st
 }
 
 void sicm_alloc_wrap_(struct sicm_fortran_device* device, size_t* size, void** ptr) {
-  *ptr = sicm_alloc(device->device, *size);
+  *ptr = sicm_device_alloc(device->device, *size);
 }
 
 void sicm_free_wrap_(struct sicm_fortran_device* device, void** ptr, size_t* size) {
-  sicm_free(device->device, *ptr, *size);
+    sicm_device_free(device->device, *ptr, *size);
 }
 
 void sicm_move_wrap_(struct sicm_fortran_device* src, struct sicm_fortran_device* dst, void** ptr, size_t* size, int* res) {

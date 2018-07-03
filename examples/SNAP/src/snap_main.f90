@@ -80,11 +80,11 @@ PROGRAM snap_main
     pcomm_set, pinit_omp
 
   USE control_module, ONLY: otrdone, swp_typ
-  
+
   use geom_module, only: nx, ny, nz
   use data_module, only: ng
   use sn_module, only: nang
-  
+
   use iso_c_binding
   use sicm_f90
 
@@ -103,11 +103,11 @@ PROGRAM snap_main
   REAL(r_knd) :: t1, t2, t3, t4, t5
   integer(8) :: start, finish, clock_rate
   integer(c_int) :: pin_res
-  
+
   type(sf_device_list) :: devices
-  
+
   call system_clock(start, clock_rate)
-  
+
   ! Our SICM initialization is done in three steps:
   ! sf_init looks for the memory devices that are available on the
   ! machine, and populates the devices list
@@ -124,13 +124,13 @@ PROGRAM snap_main
   call sf_init(devices)
   allocator = sf_get_device(devices, 1)
   pin_res = sf_pin(allocator)
-  
+
 !_______________________________________________________________________
 !
 ! Perform calls that set up the parallel environment in MPI and
 ! OpenMP. Also starts the timer. Update parallel setup time.
 !_______________________________________________________________________
-  
+
   ierr = 0
   error = ' '
 

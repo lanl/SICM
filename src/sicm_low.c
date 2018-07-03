@@ -386,21 +386,23 @@ int sicm_move(struct sicm_device* src, struct sicm_device* dst, void* ptr, size_
   return -1;
 }
 
-void sicm_pin(struct sicm_device* device) {
+int sicm_pin(struct sicm_device* device) {
+  int ret = -1;
   switch(device->tag) {
     case SICM_DRAM:
       #pragma omp parallel
-      numa_run_on_node(device->data.dram.node);
+      ret = numa_run_on_node(device->data.dram.node);
       break;
     case SICM_KNL_HBM:
       #pragma omp parallel
-      numa_run_on_node(device->data.knl_hbm.compute_node);
+      ret = numa_run_on_node(device->data.knl_hbm.compute_node);
       break;
     case SICM_POWERPC_HBM:
       #pragma omp parallel
-      numa_run_on_node(device->data.powerpc_hbm.node);
+      ret = numa_run_on_node(device->data.powerpc_hbm.node);
       break;
   }
+  return ret;
 }
 
 size_t sicm_capacity(struct sicm_device* device) {

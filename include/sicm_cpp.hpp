@@ -61,7 +61,7 @@ public:
     if(this->sicm_dev == NULL)
       mem = (pointer)malloc(num * sizeof(T));
     else
-      mem = (pointer)sicm_alloc(this->sicm_dev, num * sizeof(T));
+      mem = (pointer)sicm_device_alloc(this->sicm_dev, num * sizeof(T));
     if(mem == NULL)
       throw "sicm_stl allocation fail (probably not enough memory)";
     return mem;
@@ -79,7 +79,7 @@ public:
     if(this->sicm_dev == NULL)
       free(p);
     else
-      sicm_free(this->sicm_dev, p, num * sizeof(T));
+      sicm_device_free(this->sicm_dev, p, num * sizeof(T));
   }
 };
 

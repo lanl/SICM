@@ -7,7 +7,7 @@ void* SicmClass::operator new(size_t sz) {
   if(device == NULL)
     mem = malloc(sz);
   else {
-    mem = sicm_alloc(device, sz);
+    mem = sicm_device_alloc(device, sz);
     pthread_setspecific(sicm_current_size, (const void*)sz);
   }
   if(mem == NULL)
@@ -22,7 +22,7 @@ void SicmClass::operator delete(void* mem) {
   if(device == NULL)
     free(mem);
   else
-    sicm_free(device, mem, sz);
+    sicm_device_free(device, mem, sz);
 }
 
 struct sicm_device_list sicm_init_cpp() {

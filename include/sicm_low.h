@@ -331,7 +331,7 @@ int sicm_move(sicm_device* src, sicm_device* dst, void* ptr, size_t size);
 /**
  * @param[in] device Device to pin the process to.
  */
-void sicm_pin(sicm_device* device);
+int sicm_pin(sicm_device* device);
 
 /// Query capacity of a device a device.
 /**
