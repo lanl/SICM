@@ -34,6 +34,11 @@ matrix:
              - CXX_COMPILER="g++-8"
              - FORTRAN_COMPILER="gfortran-8"
 
+before_install:
+    - export CC="${C_COMPILER}"
+    - export CXX="${CXX_COMPILER}"
+    - export FC="${FORTRAN_COMPILER}"
+
 install:
     - git clone https://github.com/jemalloc/jemalloc.git
     - cd jemalloc
@@ -47,10 +52,9 @@ install:
     - cd ../..
 
 script:
-    - export CC="${C_COMPILER}"
-    - export CXX="${CXX_COMPILER}"
-    - export FC="${FORTRAN_COMPILER}"
     - make
+    - make fortran
     - make -C test
     - numactl --hardware
-    - LD_LIBRARY_PATH=.:${JEPATH}/lib find test -type f -executable -exec echo "Running {}" \; -exec {} \;
+    - export LD_LIBRARY_PATH=$(pwd):${JEPATH}/lib
+    - find test -type f -executable -exec echo "Running {}" \; -exec {} \;

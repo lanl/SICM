@@ -7,7 +7,7 @@ FFLAG2 =
 DEFS =
 PP =
 
-MPI = no
+MPI = yes
 OPENMP = yes
 
 FORTRAN = mpif90
@@ -21,9 +21,9 @@ TARGET = gsnap
 
 #HASWELL = yes
 
-JEPATH?=$(HOME)/jemalloc
-SICM_INCLUDE = ../../..
-SICM_LIB = ../../..
+JEPATH ?= $(HOME)/jemalloc
+SICM_INCLUDE ?= $(HOME)/SICM
+SICM_LIB ?= $(HOME)/SICM
 
 ifeq ($(MPI),yes)
   DEFS := $(DEFS) MPI
@@ -92,7 +92,7 @@ endif
 OBJS = global.o snap_main.o utils.o version.o plib.o geom.o sn.o \
        data.o control.o input.o setup.o dealloc.o translv.o solvar.o \
        outer.o expxs.o inner.o sweep.o octsweep.o dim1_sweep.o dim3_sweep.o \
-       output.o time.o mms.o analyze.o thrd_comm.o mkba_sweep.o ../../../libsicm_f90.so
+       output.o time.o mms.o analyze.o thrd_comm.o mkba_sweep.o $(SICM_LIB)/libsicm_f90.so
 
 SRCS = global.f90 snap_main.f90 utils.f90 version.f90 plib.F90 geom.f90 \
        sn.f90 data.f90 control.f90 input.f90 setup.f90 dealloc.f90 \
