@@ -22,8 +22,9 @@ TARGET = gsnap
 #HASWELL = yes
 
 JEPATH ?= $(HOME)/jemalloc
-SICM_INCLUDE ?= $(HOME)/SICM
-SICM_LIB ?= $(HOME)/SICM
+SICM_ROOT ?= $(HOME)/SICM
+SICM_LIB ?= $(SICM_ROOT)
+MPI_INCLUDE ?= $(HOME)/openmpi/include
 
 ifeq ($(MPI),yes)
   DEFS := $(DEFS) MPI
@@ -50,7 +51,7 @@ endif
 PPFLAGS = $(foreach def,$(DEFS),-D$(def))
 
 ifeq ($(TARGET),gsnap)
-  FFLAGS = -g $(OMPFLAG) -I$(SICM_INCLUDE) -L$(SICM_LIB) -L$(JEPATH)/lib -ljemalloc -lsicm_f90
+  FFLAGS = -g $(OMPFLAG) -I$(MPI_INCLUDE) -I$(SICM_ROOT) -L$(SICM_LIB) -L$(JEPATH)/lib -ljemalloc -lsicm_f90
   FFLAG2 =
   PP = cpp
   ifeq ($(OPT),no)
