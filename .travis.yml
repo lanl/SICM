@@ -67,8 +67,7 @@ install:
 
 script:
     # build SICM
-    - make
-    - make fortran
+    - make -j $(nproc --all)
     - export SICM_ROOT=$(pwd)
     - export LD_LIBRARY_PATH=${SICM_ROOT}:${JEPATH}/lib:${MPI_PATH}/lib:$LD_LIBRARY_PATH
     - export PATH=${MPI_PATH}/bin:$PATH

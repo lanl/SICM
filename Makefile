@@ -16,6 +16,8 @@ DEPS=$(patsubst %,$(IDIR)/%,$(INCLUDES))
 
 OBJ = $(patsubst %,$(ODIR)/%.o,$(SOURCES))
 
+all: sicm sg fortran
+
 sg: $(OBJ) obj/sg_fshim.o obj/sg.o src/sg.f90 src/sg.cpp sicm
 	$(CC) -o libsg.so obj/sg.o $(OBJ) -shared $(CFLAGS)
 	$(CXX) -o libsgcpp.so src/sg.cpp obj/sg.o $(OBJ) -shared $(CFLAGS)
