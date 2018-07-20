@@ -19,7 +19,7 @@ OBJ = $(patsubst %,$(ODIR)/%.o,$(SOURCES))
 all: sicm sg fortran
 
 sg: $(OBJ) obj/sg_fshim.o obj/sg.o src/sg.f90 src/sg.cpp sicm
-	$(CC) -o libsg.so obj/sg.o $(OBJ) -shared $(CFLAGS)
+	$(CC) -o libsg.so obj/sg.o $(OBJ) -shared $(CFLAGS) $(LDFLAGS)
 	$(CXX) -o libsgcpp.so src/sg.cpp obj/sg.o $(OBJ) -shared $(CFLAGS)
 	$(FC) -o libsgf.so src/sg.f90 obj/sg_fshim.o obj/sg.o $(OBJ) -shared $(CFLAGS)
 
