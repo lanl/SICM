@@ -2,38 +2,41 @@ CC?=gcc
 FC?=gfortran
 CXX?=g++
 INCLUDES=sicm_low.h
-SOURCES=sicm_low sicm_arena rbtree
+LOW_SOURCES=sicm_low sicm_arena rbtree
+HIGH_SOURCES=sg_fshim sg
 
 JEPATH?=$(HOME)/jemalloc
 IDIR=include
 CFLAGS=-I$(IDIR) -I$(JEPATH)/include -fPIC -Wall -fopenmp -O2
 LDFLAGS=-L$(JEPATH)/lib -lnuma -ljemalloc
 
-ODIR=obj
-SDIR=src
+LOW_ODIR=obj/low
+HIGH_ODIR=obj/high
+LOW_SDIR=src/low
+HIGH_SDIR=src/high
 
 DEPS=$(patsubst %,$(IDIR)/%,$(INCLUDES))
-
-OBJ = $(patsubst %,$(ODIR)/%.o,$(SOURCES))
+LOW_OBJ = $(patsubst %,$(LOW_ODIR)/%.o,$(LOW_SOURCES))
+HIGH_OBJ = $(patsubst %,$(HIGH_ODIR)/%.o,$(HIGH_SOURCES))
 
 all: sicm sg fortran
 
-sg: $(OBJ) obj/sg_fshim.o obj/sg.o src/sg.f90 src/sg.cpp sicm
-	$(CC) -o libsg.so obj/sg.o $(OBJ) -shared $(CFLAGS) $(LDFLAGS)
-	$(CXX) -o libsgcpp.so src/sg.cpp obj/sg.o $(OBJ) -shared $(CFLAGS)
-	$(FC) -o libsgf.so src/sg.f90 obj/sg_fshim.o obj/sg.o $(OBJ) -shared $(CFLAGS)
+sg: $(LOW_OBJ) $(HIGH_OBJ) src/high/sg.f90 src/high/sg.cpp sicm
+	$(CC) -o libsg.so obj/high/sg.o $(LOW_OBJ) -shared $(CFLAGS) $(LDFLAGS)
+	$(CXX) -o libsgcpp.so src/high/sg.cpp obj/high/sg.o $(LOW_OBJ) -shared $(CFLAGS)
+	$(FC) -o libsgf.so src/high/sg.f90 obj/high/sg_fshim.o obj/high/sg.o $(LOW_OBJ) -shared $(CFLAGS)
 
-sicm: $(OBJ)
+sicm: $(LOW_OBJ)
 	$(CC) -o lib$@.so $^ -shared $(CFLAGS) $(LDFLAGS)
 
-fortran: src/fbinding.f90 $(OBJ) obj/fbinding.o
-	$(FC) -o libsicm_f90.so src/fbinding.f90 obj/fbinding.o $(OBJ) -shared $(CFLAGS) $(LDFLAGS)
+fortran: src/low/fbinding.f90 $(LOW_OBJ) obj/low/fbinding.o
+	$(FC) -o libsicm_f90.so src/low/fbinding.f90 obj/low/fbinding.o $(LOW_OBJ) -shared $(CFLAGS) $(LDFLAGS)
 
-obj/sicm_cpp.o: src/sicm_cpp.cpp include/sicm_cpp.hpp $(OBJ)
-	$(CXX) -o obj/sicm_cpp.o -c src/sicm_cpp.cpp $(CFLAGS)
+obj/low/sicm_cpp.o: src/low/sicm_cpp.cpp include/sicm_cpp.hpp $(LOW_OBJ)
+	$(CXX) -o obj/low/sicm_cpp.o -c src/low/sicm_cpp.cpp $(CFLAGS)
 
-cpp: obj/sicm_cpp.o $(OBJ)
-	$(CXX) -o libsicm_cpp.so obj/sicm_cpp.o $(OBJ) -shared $(CFLAGS)
+cpp: obj/low/sicm_cpp.o $(LOW_OBJ)
+	$(CXX) -o libsicm_cpp.so obj/low/sicm_cpp.o $(LOW_OBJ) -shared $(CFLAGS)
 
 .PHONY: examples
 
@@ -50,5 +53,14 @@ examples: sicm sg cpp
 clean:
 	rm -rf obj/* *.so
 
-$(ODIR)/%.o: $(SDIR)/%.c $(DEPS)
+lowdir:
+	mkdir -p $(LOW_ODIR)
+
+highdir:
+	mkdir -p $(HIGH_ODIR)
+
+$(LOW_ODIR)/%.o: $(LOW_SDIR)/%.c $(DEPS) lowdir
+	$(CC) $(CFLAGS) -o $@ -c $<
+
+$(HIGH_ODIR)/%.o: $(HIGH_SDIR)/%.c $(DEPS) highdir
 	$(CC) $(CFLAGS) -o $@ -c $<
