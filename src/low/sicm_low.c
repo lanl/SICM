@@ -51,7 +51,7 @@ struct sicm_device_list sicm_init() {
   struct bitmask* non_dram_nodes = numa_bitmask_alloc(node_count);
 
   struct sicm_device* devices = malloc(device_count * sizeof(struct sicm_device));
-  int* huge_page_sizes = malloc(huge_page_size_count);
+  int* huge_page_sizes = malloc(huge_page_size_count * sizeof(int));
 
   int i, j;
   int idx = 0;
