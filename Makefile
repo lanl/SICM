@@ -1,42 +1,66 @@
+# Compilers
 CC?=gcc
 FC?=gfortran
 CXX?=g++
-INCLUDES=sicm_low.h
+
+# Source files
 LOW_SOURCES=sicm_low sicm_arena rbtree
-HIGH_SOURCES=sg_fshim sg
+HIGH_SOURCES=sg_fshim sg high
+INCLUDES=sicm_low.h
 
+# External dependencies, set these to let the Makefile find them
 JEPATH?=$(HOME)/jemalloc
+LLVMPATH?=/usr/lib/llvm-6.0
+
+# Local directories
 IDIR=include
-CFLAGS=-I$(IDIR) -I$(JEPATH)/include -fPIC -Wall -fopenmp -O2
-LDFLAGS=-L$(JEPATH)/lib -lnuma -ljemalloc
+LIBDIR=lib
+ODIR=obj
+SDIR=src
+LOW_ODIR=$(ODIR)/low
+HIGH_ODIR=$(ODIR)/high
+LOW_SDIR=$(SDIR)/low
+HIGH_SDIR=$(SDIR)/high
 
-LOW_ODIR=obj/low
-HIGH_ODIR=obj/high
-LOW_SDIR=src/low
-HIGH_SDIR=src/high
+# Flags
+CFLAGS=-I$(IDIR) -I$(JEPATH)/include -fPIC -Wall -fopenmp -O2 -g 
+LDFLAGS=-L$(JEPATH)/lib -lnuma -ljemalloc -Wl,-rpath,$(realpath $(JEPATH)/lib)
 
+# Generated targets
 DEPS=$(patsubst %,$(IDIR)/%,$(INCLUDES))
 LOW_OBJ = $(patsubst %,$(LOW_ODIR)/%.o,$(LOW_SOURCES))
 HIGH_OBJ = $(patsubst %,$(HIGH_ODIR)/%.o,$(HIGH_SOURCES))
 
-all: sicm sg fortran
+all: sicm sg fortran compass
 
-sg: $(LOW_OBJ) $(HIGH_OBJ) src/high/sg.f90 src/high/sg.cpp sicm
-	$(CC) -o libsg.so obj/high/sg.o $(LOW_OBJ) -shared $(CFLAGS) $(LDFLAGS)
-	$(CXX) -o libsgcpp.so src/high/sg.cpp obj/high/sg.o $(LOW_OBJ) -shared $(CFLAGS)
-	$(FC) -o libsgf.so src/high/sg.f90 obj/high/sg_fshim.o obj/high/sg.o $(LOW_OBJ) -shared $(CFLAGS)
+# Make sure all directories exist
+libdir:
+	mkdir -p $(LIBDIR)
+lowdir:
+	mkdir -p $(LOW_ODIR)
+highdir:
+	mkdir -p $(HIGH_ODIR)
+
+sg: $(LOW_OBJ) $(HIGH_OBJ) $(HIGH_SDIR)/sg.f90 $(HIGH_SDIR)/sg.cpp sicm libdir
+	$(CC) -o $(LIBDIR)/libhigh.so obj/high/high.o $(LOW_OBJ) -shared $(CFLAGS) $(LDFLAGS)
+	$(CC) -o $(LIBDIR)/libsg.so obj/high/sg.o $(LOW_OBJ) -shared $(CFLAGS) $(LDFLAGS)
+	$(CXX) -o $(LIBDIR)/libsgcpp.so $(HIGH_SDIR)/sg.cpp obj/high/sg.o $(LOW_OBJ) -shared $(CFLAGS)
+	$(FC) -o $(LIBDIR)/libsgf.so $(HIGH_SDIR)/sg.f90 obj/high/sg_fshim.o obj/high/sg.o $(LOW_OBJ) -shared $(CFLAGS)
 
 sicm: $(LOW_OBJ)
-	$(CC) -o lib$@.so $^ -shared $(CFLAGS) $(LDFLAGS)
+	$(CC) -o $(LIBDIR)/lib$@.so $^ -shared $(CFLAGS) $(LDFLAGS)
 
-fortran: src/low/fbinding.f90 $(LOW_OBJ) obj/low/fbinding.o
-	$(FC) -o libsicm_f90.so src/low/fbinding.f90 obj/low/fbinding.o $(LOW_OBJ) -shared $(CFLAGS) $(LDFLAGS)
+fortran: $(LOW_SDIR)/fbinding.f90 $(LOW_OBJ) $(LOW_ODIR)/fbinding.o libdir
+	$(FC) -o $(LIBDIR)/libsicm_f90.so $(LOW_SDIR)/fbinding.f90 $(LOW_ODIR)/fbinding.o $(LOW_OBJ) -shared $(CFLAGS) $(LDFLAGS)
 
-obj/low/sicm_cpp.o: src/low/sicm_cpp.cpp include/sicm_cpp.hpp $(LOW_OBJ)
-	$(CXX) -o obj/low/sicm_cpp.o -c src/low/sicm_cpp.cpp $(CFLAGS)
+obj/low/sicm_cpp.o: $(LOW_SDIR)/sicm_cpp.cpp include/sicm_cpp.hpp $(LOW_OBJ)
+	$(CXX) -o $(LOW_ODIR)/sicm_cpp.o -c $(LOW_SDIR)/sicm_cpp.cpp $(CFLAGS)
 
-cpp: obj/low/sicm_cpp.o $(LOW_OBJ)
-	$(CXX) -o libsicm_cpp.so obj/low/sicm_cpp.o $(LOW_OBJ) -shared $(CFLAGS)
+cpp: $(LOW_ODIR)/sicm_cpp.o $(LOW_OBJ) libdir
+	$(CXX) -o $(LIBDIR)/libsicm_cpp.so $(LOW_ODIR)/sicm_cpp.o $(LOW_OBJ) -shared $(CFLAGS)
+
+compass:
+	$(CXX) $(CFLAGS) -I$(LLVMPATH)/include -Wl,-rpath,"$(LLVMPATH)/lib" -shared -o $(LIBDIR)/compass.so $(HIGH_SDIR)/compass.cpp
 
 .PHONY: examples
 
@@ -51,13 +75,7 @@ examples: sicm sg cpp
 	$(CC) -o examples/simple_knl_test examples/simple_knl_test.c -L. -lsg $(CFLAGS) $(LDFLAGS)
 
 clean:
-	rm -rf obj/* *.so
-
-lowdir:
-	mkdir -p $(LOW_ODIR)
-
-highdir:
-	mkdir -p $(HIGH_ODIR)
+	rm -rf $(ODIR)/* $(LIBDIR)/*
 
 $(LOW_ODIR)/%.o: $(LOW_SDIR)/%.c $(DEPS) lowdir
 	$(CC) $(CFLAGS) -o $@ -c $<
