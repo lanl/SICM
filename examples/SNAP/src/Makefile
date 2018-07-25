@@ -23,7 +23,7 @@ TARGET = gsnap
 
 JEPATH ?= $(HOME)/jemalloc
 SICM_ROOT ?= $(HOME)/SICM
-SICM_LIB ?= $(SICM_ROOT)
+SICM_LIB ?= $(SICM_ROOT)/lib
 MPI_INCLUDE ?= $(HOME)/openmpi/include
 
 ifeq ($(MPI),yes)
