@@ -3,12 +3,18 @@
 
 #include "llvm/Analysis/CallGraph.h"
 #include "llvm/Analysis/CallGraphSCCPass.h"
+#include <llvm/Config/llvm-config.h>
+#if LLVM_VERSION_MAJOR >= 4
+/* Required for CompassQuickExit, requires LLVM 4.0 or newer */
 #include "llvm/Bitcode/BitcodeWriter.h"
+#endif
 #include "llvm/IR/Constants.h"
 #include "llvm/IR/Function.h"
 #include "llvm/Pass.h"
 #include "llvm/Support/CommandLine.h"
+#if 0
 #include "llvm/Support/Error.h"
+#endif
 #include "llvm/Support/FileSystem.h"
 #include "llvm/Support/raw_ostream.h"
 #include "llvm/Transforms/Utils/BasicBlockUtils.h"
@@ -278,7 +284,11 @@ struct compass : public ModulePass {
             fclone->copyAttributesFrom(fn);
         } else {
             ValueToValueMapTy VMap;
+#if (LLVM_VERSION_MAJOR <= 3 && LLVM_VERSION_MINOR <= 8)
+            fclone = CloneFunction(fn, VMap, false);
+#else
             fclone = CloneFunction(fn, VMap);
+#endif
             fclone->setName(name);
         }
 
@@ -697,6 +707,8 @@ struct compass : public ModulePass {
             fprintf(stderr, "%u function clones created\n", ncloned);
             fprintf(stderr, "%llu allocation sites\n", n_sites);
 
+#if LLVM_VERSION_MAJOR >= 4
+            /* Exits compass early, requires 4.0 or newer. */
             if (CompassQuickExit) {
                 // Writing the bitcode ourselves is faster.
                 fprintf(stderr, "writing bitcode..\n");
@@ -720,6 +732,7 @@ struct compass : public ModulePass {
                 // Exit now. Skip verification.
                 _exit(0);
             }
+#endif
             return true;
         } else {
             fprintf(stderr, "'%s' is an invalid compass mode.\n",
