@@ -16,7 +16,7 @@ matrix:
                 - numactl
                 - libnuma-dev
                 - wget
-                - llvm-3.8-dev
+                - llvm-3.9-dev
           env:
              - C_COMPILER="gcc-7"
              - CXX_COMPILER="g++-7"
@@ -32,7 +32,7 @@ matrix:
                 - numactl
                 - libnuma-dev
                 - wget
-                - llvm-3.8-dev
+                - llvm-3.9-dev
           env:
              - C_COMPILER="gcc-8"
              - CXX_COMPILER="g++-8"
