@@ -10,7 +10,7 @@ INCLUDES=sicm_low.h
 
 # External dependencies, set these to let the Makefile find them
 JEPATH?=$(HOME)/jemalloc
-LLVMPATH?=/usr/lib/llvm-3.4
+LLVMPATH?=/usr/lib/llvm-3.8
 
 # Local directories
 IDIR=include
