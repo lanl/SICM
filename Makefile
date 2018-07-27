@@ -4,8 +4,6 @@ FC?=gfortran
 CXX?=g++
 
 # Source files
-LOW_SOURCES=sicm_low sicm_arena rbtree
-HIGH_SOURCES=sg_fshim sg high
 INCLUDES=sicm_low.h
 
 # External dependencies, set these to let the Makefile find them
@@ -23,62 +21,61 @@ LOW_SDIR=$(SDIR)/low
 HIGH_SDIR=$(SDIR)/high
 
 # Flags
-CFLAGS=-I$(IDIR) -I$(JEPATH)/include -fPIC -Wall -fopenmp -O2 -g 
+CFLAGS=-I$(IDIR) -I$(JEPATH)/include -fPIC -Wall -fopenmp -O2 -g
 LDFLAGS=-L$(JEPATH)/lib -lnuma -ljemalloc -Wl,-rpath,$(realpath $(JEPATH)/lib)
 
 # Generated targets
 DEPS=$(patsubst %,$(IDIR)/%,$(INCLUDES))
 LOW_OBJ = $(patsubst %,$(LOW_ODIR)/%.o,$(LOW_SOURCES))
-HIGH_OBJ = $(patsubst %,$(HIGH_ODIR)/%.o,$(HIGH_SOURCES))
 
-all: sicm sg fortran compass
+.PHONY: $(LIBDIR) $(LOW_ODIR) $(HIGH_ODIR) dirs examples
+
+all: $(LIBDIR)/libsicm.so $(LIBDIR)/libsicm_cpp.so $(LIBDIR)/libsicm_f90.so \
+     $(LIBDIR)/libsg.so $(LIBDIR)/libsgcpp.so $(LIBDIR)/libsgf.so           \
+     $(LIBDIR)/libhigh.so                                                   \
+     $(LIBDIR)/compass.so
 
 # Make sure all directories exist
-libdir:
-	mkdir -p $(LIBDIR)
-lowdir:
-	mkdir -p $(LOW_ODIR)
-highdir:
-	mkdir -p $(HIGH_ODIR)
+$(shell mkdir -p $(LIBDIR) $(LOW_ODIR) $(HIGH_ODIR))
 
-sg: $(LOW_OBJ) $(HIGH_OBJ) $(HIGH_SDIR)/sg.f90 $(HIGH_SDIR)/sg.cpp sicm libdir
-	$(CC) -o $(LIBDIR)/libhigh.so obj/high/high.o $(LOW_OBJ) -shared $(CFLAGS) $(LDFLAGS)
-	$(CC) -o $(LIBDIR)/libsg.so obj/high/sg.o $(LOW_OBJ) -shared $(CFLAGS) $(LDFLAGS)
-	$(CXX) -o $(LIBDIR)/libsgcpp.so $(HIGH_SDIR)/sg.cpp obj/high/sg.o $(LOW_OBJ) -shared $(CFLAGS)
-	$(FC) -o $(LIBDIR)/libsgf.so $(HIGH_SDIR)/sg.f90 obj/high/sg_fshim.o obj/high/sg.o $(LOW_OBJ) -shared $(CFLAGS)
+$(LIBDIR)/libhigh.so: $(HIGH_ODIR)/high.o
+	$(CC) -o $@ $^ -shared $(CFLAGS) $(LDFLAGS)
 
-sicm: $(LOW_OBJ)
-	$(CC) -o $(LIBDIR)/lib$@.so $^ -shared $(CFLAGS) $(LDFLAGS)
+$(LIBDIR)/libsg.so: obj/high/sg.o
+	$(CC) -o $@ $^ -shared $(CFLAGS) $(LDFLAGS)
 
-fortran: $(LOW_SDIR)/fbinding.f90 $(LOW_OBJ) $(LOW_ODIR)/fbinding.o libdir
-	$(FC) -o $(LIBDIR)/libsicm_f90.so $(LOW_SDIR)/fbinding.f90 $(LOW_ODIR)/fbinding.o $(LOW_OBJ) -shared $(CFLAGS) $(LDFLAGS)
+$(LIBDIR)/libsgcpp.so: $(HIGH_SDIR)/sg.cpp obj/high/sg.o
+	$(CXX) -o $@ $^ -shared $(CFLAGS)
 
-obj/low/sicm_cpp.o: $(LOW_SDIR)/sicm_cpp.cpp include/sicm_cpp.hpp $(LOW_OBJ)
-	$(CXX) -o $(LOW_ODIR)/sicm_cpp.o -c $(LOW_SDIR)/sicm_cpp.cpp $(CFLAGS)
+$(LIBDIR)/libsgf.so: $(HIGH_SDIR)/sg.f90 obj/high/sg_fshim.o obj/high/sg.o
+	$(FC) -o $@ $^ -shared $(CFLAGS) -J $(LIBDIR)
 
-cpp: $(LOW_ODIR)/sicm_cpp.o $(LOW_OBJ) libdir
-	$(CXX) -o $(LIBDIR)/libsicm_cpp.so $(LOW_ODIR)/sicm_cpp.o $(LOW_OBJ) -shared $(CFLAGS)
+$(LIBDIR)/libsicm.so: $(LOW_ODIR)/sicm_low.o $(LOW_ODIR)/sicm_arena.o $(LOW_ODIR)/rbtree.o
+	$(CC) -o $@ $^ -shared $(CFLAGS) $(LDFLAGS)
 
-compass:
-	$(CXX) $(CFLAGS) -I$(LLVMPATH)/include -Wl,-rpath,"$(LLVMPATH)/lib" -shared -o $(LIBDIR)/compass.so $(HIGH_SDIR)/compass.cpp
+$(LIBDIR)/libsicm_f90.so: $(LOW_SDIR)/fbinding.f90 $(LOW_ODIR)/fbinding.o
+	$(FC) -o $@ $^ -shared $(CFLAGS) -J $(LIBDIR) $(LDFLAGS)
 
-.PHONY: examples
+$(LIBDIR)/libsicm_cpp.so: $(LOW_ODIR)/sicm_cpp.o
+	$(CXX) -o $@ $^ -shared $(CFLAGS)
 
-examples: sicm sg cpp
-	$(CC) -o examples/basic examples/basic.c -L. -lsicm $(CFLAGS) $(LDFLAGS)
-	$(CC) -o examples/hugepages examples/hugepages.c -L. -lsicm $(CFLAGS) $(LDFLAGS)
-	$(CXX) -o examples/class examples/class.cpp -L. -lsicm_cpp $(CFLAGS) $(LDFLAGS)
-	$(CXX) -o examples/stl examples/stl.cpp -L. -lsicm_cpp $(CFLAGS) $(LDFLAGS)
-	$(CC) -o examples/greedy examples/greedy.c -L. -lsg $(CFLAGS) $(LDFLAGS)
-	$(CXX) -o examples/greedypp examples/greedypp.cpp -L. -lsgcpp $(CFLAGS) $(LDFLAGS)
-	$(FC) -o examples/greedyf examples/greedyf.f90 -L. -lsgf $(CFLAGS) $(LDFLAGS)
-	$(CC) -o examples/simple_knl_test examples/simple_knl_test.c -L. -lsg $(CFLAGS) $(LDFLAGS)
+$(LIBDIR)/compass.so:
+	$(CXX) $(CFLAGS) -I$(LLVMPATH)/include -Wl,-rpath,"$(LLVMPATH)/lib" -shared -o $@ $(HIGH_SDIR)/compass.cpp
+
+examples:
+	$(MAKE) -C examples
 
 clean:
 	rm -rf $(ODIR)/* $(LIBDIR)/*
 
-$(LOW_ODIR)/%.o: $(LOW_SDIR)/%.c $(DEPS) lowdir
+$(LOW_ODIR)/%.o: $(LOW_SDIR)/%.c $(DEPS)
 	$(CC) $(CFLAGS) -o $@ -c $<
 
-$(HIGH_ODIR)/%.o: $(HIGH_SDIR)/%.c $(DEPS) highdir
+$(HIGH_ODIR)/%.o: $(HIGH_SDIR)/%.c $(DEPS)
 	$(CC) $(CFLAGS) -o $@ -c $<
+
+$(LOW_ODIR)/%.o: $(LOW_SDIR)/%.cpp $(DEPS)
+	$(CXX) $(CFLAGS) -o $@ -c $<
+
+$(HIGH_ODIR)/%.o: $(HIGH_SDIR)/%.cpp $(DEPS)
+	$(CXX) $(CFLAGS) -o $@ -c $<
