@@ -69,9 +69,9 @@ struct compass : public ModulePass {
     std::map<std::string, std::string> dallocFnMap;
 
     compass() : ModulePass(ID), ncloned(0), n_sites(0), theModule(nullptr) {
-        allocFnMap["malloc"] = "sg_alloc_exact";
-        allocFnMap["_Znam"] = "sg_alloc_exact";
-        allocFnMap["_Znwm"] = "sg_alloc_exact";
+        allocFnMap["malloc"] = "sh_alloc";
+        allocFnMap["_Znam"] = "sh_alloc";
+        allocFnMap["_Znwm"] = "sh_alloc";
         /*
         allocFnMap["calloc"] = "ben_calloc";
         allocFnMap["realloc"] = "ben_realloc";
@@ -104,9 +104,9 @@ struct compass : public ModulePass {
         allocFnMap["f90_auto_calloc04"] = "f90_ben_auto_calloc04";
         */
 
-        dallocFnMap["free"] = "sg_free";
-        dallocFnMap["_ZdaPv"] = "sg_free";
-        dallocFnMap["_ZdlPv"] = "sg_free";
+        dallocFnMap["free"] = "sh_free";
+        dallocFnMap["_ZdaPv"] = "sh_free";
+        dallocFnMap["_ZdlPv"] = "sh_free";
         /*
         dallocFnMap["f90_dealloc"] = "f90_ben_dealloc";
         dallocFnMap["f90_dealloc03"] = "f90_ben_dealloc03";

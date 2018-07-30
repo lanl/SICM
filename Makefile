@@ -31,7 +31,7 @@ DEPS=$(patsubst %,$(IDIR)/%,$(INCLUDES))
 LOW_OBJ = $(patsubst %,$(LOW_ODIR)/%.o,$(LOW_SOURCES))
 HIGH_OBJ = $(patsubst %,$(HIGH_ODIR)/%.o,$(HIGH_SOURCES))
 
-all: sicm sg fortran compass
+all: sicm sg fortran
 
 # Make sure all directories exist
 libdir:
@@ -60,7 +60,7 @@ cpp: $(LOW_ODIR)/sicm_cpp.o $(LOW_OBJ) libdir
 	$(CXX) -o $(LIBDIR)/libsicm_cpp.so $(LOW_ODIR)/sicm_cpp.o $(LOW_OBJ) -shared $(CFLAGS)
 
 compass:
-	$(CXX) $(CFLAGS) -I$(LLVMPATH)/include -Wl,-rpath,"$(LLVMPATH)/lib" -shared -o $(LIBDIR)/compass.so $(HIGH_SDIR)/compass.cpp
+	$(CXX) -o $(LIBDIR)/compass.so $(CFLAGS) -I$(LLVMPATH)/include -Wl,-rpath,"$(LLVMPATH)/lib" -shared $(HIGH_SDIR)/compass.cpp
 
 .PHONY: examples
 

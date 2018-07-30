@@ -28,10 +28,12 @@
 typedef enum sicm_device_tag {
   SICM_DRAM,
   SICM_KNL_HBM,
-  SICM_POWERPC_HBM
+  SICM_POWERPC_HBM,
+  INVALID_TAG
 } sicm_device_tag;
 
 const char * const sicm_device_tag_str(sicm_device_tag tag);
+sicm_device_tag sicm_get_device_tag(char *env);
 
 /// Data specific to a DRAM device.
 typedef struct sicm_dram_data {

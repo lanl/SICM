@@ -1,299 +1,261 @@
-#include "high.h"
-#include "sicm_low.h"
 #include <fcntl.h>
 #include <numa.h>
-#include <semaphore.h>
 #include <stdlib.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
 #include <stdio.h>
+#include <errno.h>
+#include <string.h>
+#include <inttypes.h>
+#include <pthread.h>
+
+#include "high.h"
+#include "sicm_low.h"
 #include "sicmimpl.h"
 
-struct suballoc_t {
-  void* ptr;
-  struct sicm_device* device;
-  size_t sz;
-};
+struct sicm_device_list device_list;
+enum sicm_device_tag default_device_tag;
+struct sicm_device *default_device;
+enum arena_layout layout;
+int max_threads, max_arenas;
+int arenas_per_thread;
+arena_info **arenas;
+pthread_key_t thread_key;
+int *thread_indices, *thread_index;
 
-struct allocation_t {
-  void* ptr;
-  size_t count;
-  struct suballoc_t* suballocs;
-};
+/* Takes a string as input and outputs which arena layout it is */
+enum arena_layout parse_layout(char *env) {
+	size_t max_chars;
 
-struct alloc_table_t {
-  size_t used, capacity;
-  struct allocation_t* data;
-};
+	max_chars = 32;
 
-struct alloc_table_t alloc_table;
+	if(strncmp(env, "SHARED_ONE_ARENA", max_chars) == 0) {
+		return SHARED_ONE_ARENA;
+	} else if(strncmp(env, "EXCLUSIVE_ONE_ARENA", max_chars) == 0) {
+		return EXCLUSIVE_ONE_ARENA;
+	} else if(strncmp(env, "SHARED_TWO_ARENAS", max_chars) == 0) {
+		return SHARED_TWO_ARENAS;
+	} else if(strncmp(env, "EXCLUSIVE_TWO_ARENAS", max_chars) == 0) {
+		return EXCLUSIVE_TWO_ARENAS;
+	} else if(strncmp(env, "SHARED_SITE_ARENAS", max_chars) == 0) {
+		return SHARED_SITE_ARENAS;
+	} else if(strncmp(env, "EXCLUSIVE_SITE_ARENAS", max_chars) == 0) {
+		return EXCLUSIVE_SITE_ARENAS;
+	}
 
-struct sicm_device_list sg_performance_list;
-struct sicm_device_list sg_capacity_list;
+  return INVALID_LAYOUT;
+}
 
-sem_t* sem;
-
-void add_allocation(void* ptr, struct suballoc_t* suballocs, size_t count) {
-  size_t k;
-  alloc_table.used++;
-  if(100 * alloc_table.used / alloc_table.capacity >= 80) {
-    struct allocation_t* old_data = alloc_table.data;
-    size_t old_capacity = alloc_table.capacity;
-    alloc_table.capacity *= 2;
-    alloc_table.used = 0;
-    alloc_table.data = malloc(alloc_table.capacity * sizeof(struct alloc_table_t));
-    for(k = 0; k < alloc_table.capacity; k++) alloc_table.data[k].ptr = NULL;
-    for(k = 0; k < old_capacity; k++)
-      if(old_data[k].ptr != NULL)
-        add_allocation(old_data[k].ptr, old_data[k].suballocs, old_data[k].count);
-    free(old_data);
-  }
-  k = sicm_hash((size_t)ptr) % alloc_table.capacity;
-  while(1) {
-    if(alloc_table.data[k].ptr == NULL) {
-      alloc_table.data[k].ptr = ptr;
-      alloc_table.data[k].count = count;
-      alloc_table.data[k].suballocs = suballocs;
+/* Converts an arena_layout to a string */
+char *layout_str(enum arena_layout layout) {
+  switch(layout) {
+    case SHARED_ONE_ARENA:
+      return "SHARED_ONE_ARENA";
+    case EXCLUSIVE_ONE_ARENA:
+      return "EXCLUSIVE_ONE_ARENA";
+    case SHARED_TWO_ARENAS:
+      return "SHARED_TWO_ARENAS";
+    case EXCLUSIVE_TWO_ARENAS:
+      return "EXCLUSIVE_TWO_ARENAS";
+    case SHARED_SITE_ARENAS:
+      return "SHARED_SITE_ARENAS";
+    case EXCLUSIVE_SITE_ARENAS:
+      return "SHARED_SITE_ARENAS";
+    case INVALID_LAYOUT:
       break;
+  }
+
+  return "INVALID_LAYOUT";
+}
+
+/* Gets environment variables and sets up globals */
+void set_options() {
+  char *env, *endptr;
+  long long tmp_val;
+  struct sicm_device *device;
+  int i;
+
+  /* Get the arena layout */
+  env = getenv("SH_ARENA_LAYOUT");
+  if(env) {
+    layout = parse_layout(env);
+  } else {
+    layout = DEFAULT_ARENA_LAYOUT;
+  }
+  printf("Arena layout: %s\n", layout_str(layout));
+
+  /* Get max_threads */
+  max_threads = numa_num_possible_cpus();
+  env = getenv("SH_MAX_THREADS");
+  if(env) {
+    endptr = NULL;
+    tmp_val = strtoimax(env, &endptr, 10);
+    if((tmp_val == 0) || (tmp_val > INT_MAX)) {
+      printf("Invalid thread number given. Defaulting to %d.\n", max_threads);
+    } else {
+      max_threads = (int) tmp_val;
     }
-    k = (k + 1) % alloc_table.capacity;
   }
-}
+  printf("Maximum threads: %d\n", max_threads);
 
-struct allocation_t* get_allocation(void* ptr) {
-  size_t k = sicm_hash((size_t)ptr) % alloc_table.capacity;
-  size_t initial_k = k;
-  while(1) {
-    if(alloc_table.data[k].ptr == ptr)
-      return &alloc_table.data[k];
-    k = (k + 1) % alloc_table.capacity;
-    if(k == initial_k) return NULL;
-  }
-}
-
-void remove_allocation(void* ptr) {
-  alloc_table.used--;
-  size_t k = sicm_hash((size_t)ptr) % alloc_table.capacity;
-  size_t initial_k = k;
-  while(1) {
-    if(alloc_table.data[k].ptr == ptr) {
-      alloc_table.data[k].ptr = NULL;
-      alloc_table.data[k].count = 0;
-      free(alloc_table.data[k].suballocs);
-      alloc_table.data[k].suballocs = NULL;
-      break;
+  /* Get max_arenas */
+  max_arenas = 4096;
+  env = getenv("SH_MAX_ARENAS");
+  if(env) {
+    endptr = NULL;
+    tmp_val = strtoimax(env, &endptr, 10);
+    if((tmp_val == 0) || (tmp_val > INT_MAX)) {
+      printf("Invalid arena number given. Defaulting to %d.\n", max_arenas);
+    } else {
+      max_arenas = (int) tmp_val;
     }
-    k = (k + 1) % alloc_table.capacity;
-    if(k == initial_k) break;
   }
-}
+  printf("Maximum arenas: %d\n", max_arenas);
 
-int compare_perf(struct sicm_device* a, struct sicm_device* b) {
-  int a_near = sicm_is_near(a);
-  int b_near = sicm_is_near(b);
-  if(a_near && !b_near) return -1;
-  if(!a_near && b_near) return 1;
-  if(a_near) {
-    if(a->tag == SICM_KNL_HBM && b->tag != SICM_KNL_HBM) return -1;
-    if(a->tag == SICM_KNL_HBM) { // b is also KNL HBM
-      if(a->data.knl_hbm.page_size > b->data.knl_hbm.page_size) return -1;
-      return 1;
-    }
-    if(b->tag == SICM_KNL_HBM) return 1; // a is not KNL HBM
-    // at this point a and b are not KNL HBM
-    if(a->data.dram.page_size > b->data.dram.page_size) return -1;
-    return 1;
+  /* Get default_device_tag */
+  env = getenv("SH_DEFAULT_DEVICE");
+  if(env) {
+    default_device_tag = sicm_get_device_tag(env);
+  } else {
+    default_device_tag = INVALID_TAG;
   }
-  else {
-    // If we have to go to a far node, we want reverse preferences (i.e., DO NOT
-    // allocate on a performant far node)
-    if(a->tag == SICM_DRAM && b->tag != SICM_DRAM) return -1;
-    if(a->tag == SICM_DRAM) { // b is also KNL HBM
-      if(a->data.dram.page_size > b->data.dram.page_size) return -1;
-      return 1;
-    }
-    if(b->tag == SICM_DRAM) return 1; // a is not KNL HBM
-    // at this point a and b are not KNL HBM
-    if(a->data.knl_hbm.page_size > b->data.knl_hbm.page_size) return -1;
-    return 1;
-  }
-  return 0;
-}
-
-int compare_cap(struct sicm_device* a, struct sicm_device* b) {
-  int a_near = sicm_is_near(a);
-  int b_near = sicm_is_near(b);
-  if(a_near && !b_near) return -1;
-  if(!a_near && b_near) return 1;
-  if(a->tag == SICM_DRAM && b->tag != SICM_DRAM) return -1;
-  if(a->tag == SICM_DRAM) { // b is also KNL HBM
-    if(a->data.dram.page_size > b->data.dram.page_size) return -1;
-    return 1;
-  }
-  if(b->tag == SICM_DRAM) return 1; // a is not KNL HBM
-  // at this point a and b are not KNL HBM
-  if(a->data.knl_hbm.page_size > b->data.knl_hbm.page_size) return -1;
-  return 1;
-}
-
-void sort_list(struct sicm_device_list* list, int (*cmp)(struct sicm_device*, struct sicm_device*)) {
-
-  /* List already sorted */
-  if(list->count == 1) {
-    return;
-  }
-
-  /* This is the iterative version, so we need an explicit stack. */
-  int* stack = malloc(list->count * sizeof(int));
-  int top = -1;
-  stack[++top] = 0;
-  stack[++top] = list->count - 1;
-  int h, l;
-  while(top >= 0) {
-    h = stack[top--];
-    l = stack[top--];
-
-    // Partition the list and move the pivot to the right place
-    // The pivot is list->devices[h]
-    struct sicm_device swap;
-    int i = l - 1;
-    int j;
-    for(j = l; j < h; j++) {
-      if(cmp(&list->devices[j], &list->devices[h]) == -1) {
-        i++;
-        swap = list->devices[i];
-        list->devices[i] = list->devices[j];
-        list->devices[j] = swap;
+  printf("Default device tag: %s.\n", sicm_device_tag_str(default_device_tag));
+  
+  /* Get default_device */
+  if(default_device_tag == INVALID_TAG) {
+    default_device = device_list.devices;
+  } else {
+    device = device_list.devices;
+    for(i = 0; i < device_list.count; i++) {
+      if(device->tag == default_device_tag) {
+        break;
       }
+      device++;
     }
-    swap = list->devices[i+1];
-    list->devices[i+1] = list->devices[h];
-    list->devices[h] = swap;
-
-    // Set up the "recursive call"
-    // The pivot is now at location i + 1
-    // Check if there are devices left of the pivot
-    if(i > l) {
-      stack[++top] = l;
-      stack[++top] = i;
+    if(device == device_list.devices + device_list.count) {
+      device = device_list.devices;
     }
-    // Check if there are devices right of the pivot
-    if(i+2 < h) {
-      stack[++top] = i + 2;
-      stack[++top] = h;
-    }
+    default_device = device;
   }
-  free(stack);
+  printf("Default device: %s\n", sicm_device_tag_str(default_device->tag));
+
+  /* Get arenas_per_thread */
+  arenas_per_thread = 0;
+  switch(layout) {
+    case SHARED_ONE_ARENA:
+    case EXCLUSIVE_ONE_ARENA:
+      arenas_per_thread = 1;
+      break;
+    case SHARED_TWO_ARENAS:
+    case EXCLUSIVE_TWO_ARENAS:
+      arenas_per_thread = 2;
+      break;
+    case SHARED_SITE_ARENAS:
+    case EXCLUSIVE_SITE_ARENAS:
+      printf("Setting\n");
+      arenas_per_thread = max_arenas;
+      break;
+    case INVALID_LAYOUT:
+      fprintf(stderr, "Invalid arena layout. Aborting.\n");
+      exit(1);
+      break;
+  };
+  printf("Arenas per thread: %d\n", arenas_per_thread);
+}
+
+int get_thread_index() {
+
+  /* Get this thread's index */
+  int *val = (int *) pthread_getspecific(thread_key);
+
+  /* If nonexistent, increment the counter and set it */
+  if(val == NULL) {
+    pthread_setspecific(thread_key, (void *) thread_index);
+    thread_index++;
+    val = thread_index;
+  }
+
+  return *val;
+}
+
+/* Gets the index that the ID should go into */
+int get_arena_index(int id)
+{
+  int ret, tmp;
+
+  /* First get the index that we'll return */
+  ret = 0;
+  switch(layout) {
+    case SHARED_ONE_ARENA:
+      ret = 0;
+      break;
+    case EXCLUSIVE_ONE_ARENA:
+      ret = get_thread_index();
+      break;
+    case SHARED_TWO_ARENAS:
+      /* Should have one hot and one cold arena */
+      break;
+    case EXCLUSIVE_TWO_ARENAS:
+      /* Same */
+      break;
+    case SHARED_SITE_ARENAS:
+      ret = id;
+      break;
+    case EXCLUSIVE_SITE_ARENAS:
+      tmp = get_thread_index();
+      ret = (tmp * arenas_per_thread) + id;
+      break;
+    case INVALID_LAYOUT:
+      fprintf(stderr, "Invalid arena layout. Aborting.\n");
+      exit(1);
+      break;
+  };
+  printf("Allocating to arena %d\n", ret);
+
+  /* Create the arena if it doesn't exist */
+  if(arenas[ret] == NULL) {
+    sicm_arena_create(0, default_device);
+  }
+
+  return ret;
 }
 
 /* Accepts an allocation site ID and a size, does the allocation */
-void* sg_alloc_exact(int id, size_t sz) {
-  void* ptr = NULL;
-  #pragma omp critical(sicm_greedy)
-  {
-    sem_wait(sem);
-    printf("Allocating to id %d\n", id);
-    int i;
-    size_t j;
-    for(i = 0; i < sg_performance_list.count; i++) {
-      struct sicm_device* device = &sg_performance_list.devices[i];
-      if(sicm_avail(device) * 1024 >= sz) {
-        ptr = sicm_device_alloc(device, sz);
-        size_t step = sicm_device_page_size(device);
-        if(step > 0) {
-          step *= 1024; // page size is reported in KiB
-          for(j = 0; j < sz; j += step) ((char*)ptr)[j] = 0;
-        }
-        struct suballoc_t* suballoc = malloc(sizeof(struct suballoc_t));
-        suballoc->ptr = ptr;
-        suballoc->device = device;
-        suballoc->sz = sz;
-        add_allocation(ptr, suballoc, 1);
-        break;
-      }
-    }
-    sem_post(sem);
-  }
-  return ptr;
+void* sh_alloc(int id, size_t sz) {
+  int index;
+
+  index = get_arena_index(id);
+  return sicm_arena_alloc(arenas[index], sz);
 }
 
-void sg_free(void* ptr) {
-  #pragma omp critical(sicm_greedy)
-  {
-    sem_wait(sem);
-    printf("Freeing.\n");
-    struct allocation_t* a = get_allocation(ptr);
-    if(a) {
-      int i;
-      for(i = 0; i < a->count; i++)
-        sicm_device_free(a->suballocs[i].device, a->suballocs[i].ptr, a->suballocs[i].sz);
-      remove_allocation(ptr);
-    }
-    else {
-      printf("failed to free\n");
-    }
-    sem_post(sem);
-  }
+void sh_free(void* ptr) {
+  sicm_free(ptr);
 }
 
 __attribute__((constructor))
-void sg_init() {
-  sem = sem_open("/sg_sem", O_CREAT | O_RDWR, 0644, 1);
-  printf("Initializing...\n");
-  int i, j;
-  int node_count = numa_max_node() + 1;
-  struct bitmask* cpumask = numa_allocate_cpumask();
-  int cpu_count = numa_num_possible_cpus();
-  int* compute_nodes = malloc(cpu_count * sizeof(int));
-  int compute_node_count = 0;
-  for(i = 0; i < node_count; i++) {
-    numa_node_to_cpus(i, cpumask);
-    for(j = 0; j < cpu_count; j++) {
-      if(numa_bitmask_isbitset(cpumask, j)) {
-        compute_nodes[compute_node_count] = i;
-        compute_node_count++;
-        break;
-      }
-    }
+void sh_init() {
+  int i;
+
+  device_list = sicm_init();
+  set_options();
+  
+  /* `arenas` is a pseudo-two-dimensional array, first dimension is per-thread */
+  /* Second dimension is one for each arena that each thread will have */
+  arenas = (arena_info **) calloc(max_threads * arenas_per_thread, sizeof(arena_info *));
+  printf("Arenas is %d elements.\n", max_threads * arenas_per_thread);
+
+  /* Stores the index into the `arenas` array for each thread */
+  pthread_key_create(&thread_key, NULL);
+  thread_indices = (int *) malloc(max_threads * sizeof(int));
+  for(i = 0; i < max_threads; i++) {
+    thread_indices[i] = i;
   }
-  numa_free_cpumask(cpumask);
-  /* numa_run_on_node(compute_nodes[id % compute_node_count]); */
-  free(compute_nodes);
-
-  alloc_table.used = 0;
-  alloc_table.capacity = 32;
-  alloc_table.data = malloc(alloc_table.capacity * sizeof(struct alloc_table_t));
-  for(i = 0; i < 32; i++) alloc_table.data[i].ptr = NULL;
-
-  sg_performance_list = sicm_init();
-  int p = 0;
-  for(i = 0; i < sg_performance_list.count; i++) {
-    int page_size = sicm_device_page_size(&sg_performance_list.devices[i]);
-    if(page_size == -1 || page_size == normal_page_size) {
-      sg_performance_list.devices[p++] = sg_performance_list.devices[i];
-    }
-  }
-  sg_performance_list.devices = realloc(sg_performance_list.devices, p * sizeof(struct sicm_device));
-  sg_performance_list.count = p;
-  sg_capacity_list = (struct sicm_device_list){
-      .devices = malloc(sg_performance_list.count * sizeof(struct sicm_device)),
-      .count = sg_performance_list.count
-    };
-
-  // Sort the performance list first, since that's an okay ordering for the
-  // capacity list
-  sort_list(&sg_performance_list, compare_perf);
-
-  for(i = 0; i < sg_performance_list.count; i++)
-    sg_capacity_list.devices[i] = sg_performance_list.devices[i];
-  sort_list(&sg_capacity_list, compare_cap);
+  pthread_setspecific(thread_key, (void *) thread_index);
+  thread_index++;
 }
 
 __attribute__((destructor))
-void sg_terminate() {
-  printf("Terminating.\n");
-  free(sg_performance_list.devices);
-  free(sg_capacity_list.devices);
-  free(alloc_table.data);
-  sem_close(sem);
+void sh_terminate() {
+  free(arenas);
+  free(thread_indices);
 }
