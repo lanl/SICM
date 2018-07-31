@@ -33,6 +33,25 @@ const char * const sicm_device_tag_str(sicm_device_tag tag) {
   return NULL;
 }
 
+void read_dev_prop(struct sicm_device * device, int node_id){
+	char * line = NULL;
+	size_t len;
+	FILE * conf = fopen("../sicm_numa_config", "r");
+	if (conf == NULL){
+		printf("Run get_numa_config.sh first\n");
+        	exit(EXIT_FAILURE);
+	}
+	while ((getline(&line, &len, conf)) != -1) {
+        	fscanf(conf, "%d %s %lf %lf %lf %.10lf %.10lf %.10lf", &(device->properties.numa_id), device->properties.tag, &(device->properties.avg_bw), &(device->properties.read_bw), &(device->properties.write_bw), &(device->properties.avg_lat), &(device->properties.read_lat), &(device->properties.write_lat));
+		if(device->properties.numa_id == node_id){
+			break;
+		};
+    	}
+
+	fclose(conf);
+
+}
+
 struct sicm_device_list sicm_init() {
   int node_count = numa_max_node() + 1;
   normal_page_size = getpagesize() / 1024;
@@ -129,6 +148,7 @@ struct sicm_device_list sicm_init() {
               devices[idx].tag = SICM_KNL_HBM;
               devices[idx].data.knl_hbm = (struct sicm_knl_hbm_data){ .node=i,
                 .compute_node=compute_node, .page_size=huge_page_sizes[j] };
+	      read_dev_prop(devices, i);
               idx++;
           }
         }
@@ -151,6 +171,7 @@ struct sicm_device_list sicm_init() {
         for(j = 0; j < huge_page_size_count; j++) {
           devices[idx].tag = SICM_POWERPC_HBM;
           devices[idx].data.powerpc_hbm = (struct sicm_powerpc_hbm_data){ .node=i, .page_size=huge_page_sizes[j] };
+	  read_dev_prop(devices, i);
           idx++;
         }
       }
@@ -169,6 +190,7 @@ struct sicm_device_list sicm_init() {
         for(j = 0; j < huge_page_size_count; j++) {
           devices[idx].tag = SICM_DRAM;
           devices[idx].data.dram = (struct sicm_dram_data){ .node=i, .page_size=huge_page_sizes[j] };
+	  read_dev_prop(devices, i);
           idx++;
         }
       }

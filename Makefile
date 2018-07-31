@@ -4,9 +4,9 @@ CXX?=g++
 INCLUDES=sicm_low.h
 SOURCES=sicm_low sicm_arena rbtree
 
-JEPATH?=$(HOME)/jemalloc
+JEPATH?=$(HOME)/sicm/jemalloc
 IDIR=include
-CFLAGS=-I$(IDIR) -I$(JEPATH)/include -fPIC -Wall -fopenmp -O2
+CFLAGS=-I$(IDIR) -I$(JEPATH)/include -fPIC -Wall -fopenmp -O2 -std=gnu99
 LDFLAGS=-L$(JEPATH)/lib -lnuma -ljemalloc
 
 ODIR=obj

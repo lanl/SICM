@@ -1,4 +1,4 @@
-JEPATH?=$(HOME)/jemalloc
+JEPATH?=$(HOME)/sicm/jemalloc
 
 CC?=gcc
 CFLAGS=-Wall -std=c11 -g -I$(JEPATH)/include -I../include -DJEMALLOC_NO_RENAME

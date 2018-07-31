@@ -65,6 +65,18 @@ typedef union sicm_device_data {
   sicm_powerpc_hbm_data powerpc_hbm;
 } sicm_device_data;
 
+//Bandwidth, Latency and Tag
+typedef struct sicm_numa_device_prop{
+  int numa_id;
+  char * tag;
+  double write_bw;
+  double read_bw;
+  double avg_bw;
+  double write_lat;
+  double read_lat;
+  double avg_lat;
+}sicm_numa_device_prop;
+
 /// Tagged/discriminated union that fully identifies a device.
 /**
  * The combination of a sicm_device_tag and sicm_device_data identifies
@@ -75,6 +87,7 @@ typedef union sicm_device_data {
 typedef struct sicm_device {
   sicm_device_tag tag; ///< Type of memory device
   sicm_device_data data; ///< Per-type identifying information
+  sicm_numa_device_prop properties;
 } sicm_device;
 
 /// Explicitly-sized sicm_device array.
@@ -82,6 +95,7 @@ typedef struct sicm_device_list {
   unsigned int count; ///< Number of devices in the array.
   sicm_device* devices; ///< Array of devices of count elements.
 } sicm_device_list;
+
 
 /// Results of a latency timing.
 /**
@@ -102,6 +116,8 @@ typedef struct sicm_arena_list {
 	unsigned int count;
 	sicm_arena *arenas;
 } sicm_arena_list;
+
+void read_dev_prop();
 
 /// Initialize the low-level interface.
 /**
