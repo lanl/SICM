@@ -28,12 +28,21 @@ LDFLAGS=-L$(JEPATH)/lib -lnuma -ljemalloc -Wl,-rpath,$(realpath $(JEPATH)/lib)
 DEPS=$(patsubst %,$(IDIR)/%,$(INCLUDES))
 LOW_OBJ = $(patsubst %,$(LOW_ODIR)/%.o,$(LOW_SOURCES))
 
-.PHONY: $(LIBDIR) $(LOW_ODIR) $(HIGH_ODIR) dirs examples
+# Install paths
+# https://www.gnu.org/software/make/manual/make.html#Directory-Variables
+prefix?=/usr/local
+exec_prefix?=$(prefix)
+includedir?=$(prefix)/include
+libdir?=$(exec_prefix)/lib
 
-all: $(LIBDIR)/libsicm.so $(LIBDIR)/libsicm_cpp.so $(LIBDIR)/libsicm_f90.so \
-     $(LIBDIR)/libsg.so $(LIBDIR)/libsgcpp.so $(LIBDIR)/libsgf.so           \
-     $(LIBDIR)/libhigh.so                                                   \
-     $(LIBDIR)/compass.so
+TARGETS=$(LIBDIR)/libsicm.so $(LIBDIR)/libsicm_cpp.so $(LIBDIR)/libsicm_f90.so \
+        $(LIBDIR)/libsg.so $(LIBDIR)/libsgcpp.so $(LIBDIR)/libsgf.so           \
+        $(LIBDIR)/libhigh.so                                                   \
+        $(LIBDIR)/compass.so
+
+.PHONY: $(LIBDIR) $(LOW_ODIR) $(HIGH_ODIR) install examples
+
+all: $(TARGETS)
 
 # Make sure all directories exist
 $(shell mkdir -p $(LIBDIR) $(LOW_ODIR) $(HIGH_ODIR))
@@ -61,6 +70,11 @@ $(LIBDIR)/libsicm_cpp.so: $(LOW_ODIR)/sicm_cpp.o
 
 $(LIBDIR)/compass.so:
 	$(CXX) $(CFLAGS) -I$(LLVMPATH)/include -Wl,-rpath,"$(LLVMPATH)/lib" -shared -o $@ $(HIGH_SDIR)/compass.cpp
+
+install: $(TARGETS) # technically should not be done
+	mkdir -p $(includedir) $(libdir)
+	cp  $(IDIR)/* $(includedir)
+	cp $(LIBDIR)/* $(libdir)
 
 examples:
 	$(MAKE) -C examples
