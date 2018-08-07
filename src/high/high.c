@@ -12,6 +12,7 @@
 #include "high.h"
 #include "sicm_low.h"
 #include "sicmimpl.h"
+#include "profile.h"
 
 struct sicm_device_list device_list;
 enum sicm_device_tag default_device_tag;
@@ -252,10 +253,13 @@ void sh_init() {
   }
   pthread_setspecific(thread_key, (void *) thread_index);
   thread_index++;
+
+  sh_start_profile_thread();
 }
 
 __attribute__((destructor))
 void sh_terminate() {
+  sh_stop_profile_thread();
   free(arenas);
   free(thread_indices);
 }

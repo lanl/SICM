@@ -5,12 +5,15 @@ CXX?=g++
 
 # Source files
 LOW_SOURCES=sicm_low sicm_arena rbtree
-HIGH_SOURCES=sg_fshim sg high
+HIGH_SOURCES=high profile
 INCLUDES=sicm_low.h
 
 # External dependencies, set these to let the Makefile find them
-JEPATH?=$(HOME)/jemalloc
-LLVMPATH?=/usr/lib/llvm-3.9
+JELIB?=./jemalloc-5.1.0/lib
+JEINC?=./jemalloc-5.1.0/include
+LLVMPATH?=/usr/lib/llvm-4.0
+LLVMFLAGS=$(shell $(LLVMPATH)/bin/llvm-config --cxxflags)
+LLVMLIBS=$(shell $(LLVMPATH)/bin/llvm-config --ldflags)$(shell $(LLVMPATH)/bin/llvm-config --libs)
 
 # Local directories
 IDIR=include
@@ -23,15 +26,16 @@ LOW_SDIR=$(SDIR)/low
 HIGH_SDIR=$(SDIR)/high
 
 # Flags
-CFLAGS=-I$(IDIR) -I$(JEPATH)/include -fPIC -Wall -fopenmp -O2 -g 
-LDFLAGS=-L$(JEPATH)/lib -lnuma -ljemalloc -Wl,-rpath,$(realpath $(JEPATH)/lib)
+CFLAGS=-I$(IDIR) -I$(JEINC) -fPIC -Wall -fopenmp -O2 -g 
+LDFLAGS=-L$(JELIB) -lnuma -ljemalloc -Wl,-rpath,$(realpath $(JELIB))
+HIGHLDFLAGS=-lpfm
 
 # Generated targets
 DEPS=$(patsubst %,$(IDIR)/%,$(INCLUDES))
 LOW_OBJ = $(patsubst %,$(LOW_ODIR)/%.o,$(LOW_SOURCES))
 HIGH_OBJ = $(patsubst %,$(HIGH_ODIR)/%.o,$(HIGH_SOURCES))
 
-all: sicm sg fortran
+all: sicm fortran
 
 # Make sure all directories exist
 libdir:
@@ -41,11 +45,8 @@ lowdir:
 highdir:
 	mkdir -p $(HIGH_ODIR)
 
-sg: $(LOW_OBJ) $(HIGH_OBJ) $(HIGH_SDIR)/sg.f90 $(HIGH_SDIR)/sg.cpp sicm libdir
-	$(CC) -o $(LIBDIR)/libhigh.so obj/high/high.o $(LOW_OBJ) -shared $(CFLAGS) $(LDFLAGS)
-	$(CC) -o $(LIBDIR)/libsg.so obj/high/sg.o $(LOW_OBJ) -shared $(CFLAGS) $(LDFLAGS)
-	$(CXX) -o $(LIBDIR)/libsgcpp.so $(HIGH_SDIR)/sg.cpp obj/high/sg.o $(LOW_OBJ) -shared $(CFLAGS)
-	$(FC) -o $(LIBDIR)/libsgf.so $(HIGH_SDIR)/sg.f90 obj/high/sg_fshim.o obj/high/sg.o $(LOW_OBJ) -shared $(CFLAGS)
+high: $(LOW_OBJ) $(HIGH_OBJ) sicm libdir
+	$(CC) -o $(LIBDIR)/libhigh.so obj/high/high.o obj/high/profile.o $(HIGHLDFLAGS) $(LOW_OBJ) -shared $(CFLAGS) $(LDFLAGS)
 
 sicm: $(LOW_OBJ)
 	$(CC) -o $(LIBDIR)/lib$@.so $^ -shared $(CFLAGS) $(LDFLAGS)
@@ -60,19 +61,15 @@ cpp: $(LOW_ODIR)/sicm_cpp.o $(LOW_OBJ) libdir
 	$(CXX) -o $(LIBDIR)/libsicm_cpp.so $(LOW_ODIR)/sicm_cpp.o $(LOW_OBJ) -shared $(CFLAGS)
 
 compass:
-	$(CXX) -o $(LIBDIR)/compass.so $(CFLAGS) -I$(LLVMPATH)/include -Wl,-rpath,"$(LLVMPATH)/lib" -shared $(HIGH_SDIR)/compass.cpp
+	$(LLVMPATH)/bin/clang++ $(LLVMFLAGS) $(LLVMLIBS) -o $(LIBDIR)/compass.so $(CFLAGS) -shared $(HIGH_SDIR)/compass.cpp
 
 .PHONY: examples
 
-examples: sicm sg cpp
+examples: sicm cpp
 	$(CC) -o examples/basic examples/basic.c -L. -lsicm $(CFLAGS) $(LDFLAGS)
 	$(CC) -o examples/hugepages examples/hugepages.c -L. -lsicm $(CFLAGS) $(LDFLAGS)
 	$(CXX) -o examples/class examples/class.cpp -L. -lsicm_cpp $(CFLAGS) $(LDFLAGS)
 	$(CXX) -o examples/stl examples/stl.cpp -L. -lsicm_cpp $(CFLAGS) $(LDFLAGS)
-	$(CC) -o examples/greedy examples/greedy.c -L. -lsg $(CFLAGS) $(LDFLAGS)
-	$(CXX) -o examples/greedypp examples/greedypp.cpp -L. -lsgcpp $(CFLAGS) $(LDFLAGS)
-	$(FC) -o examples/greedyf examples/greedyf.f90 -L. -lsgf $(CFLAGS) $(LDFLAGS)
-	$(CC) -o examples/simple_knl_test examples/simple_knl_test.c -L. -lsg $(CFLAGS) $(LDFLAGS)
 
 clean:
 	rm -rf $(ODIR)/* $(LIBDIR)/*

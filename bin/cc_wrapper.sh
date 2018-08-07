@@ -8,6 +8,7 @@ ARGS=$@
 EXTRA_ARGS=""
 FILE=""
 ONLY_COMPILE=false
+LLVMPATH="${LLVMPATH:- }"
 
 # Iterate over all arguments
 for word in $ARGS; do
@@ -32,6 +33,6 @@ fi
 EXTRA_ARGS="-emit-llvm -o $FILE.bc $EXTRA_ARGS"
 
 # Compile to both a '.bc' file as well as a '.o', in parallel
-clang $ARGS $EXTRA_ARGS &
-clang $ARGS &
+${LLVMPATH}clang $ARGS $EXTRA_ARGS &
+${LLVMPATH}clang $ARGS &
 wait
