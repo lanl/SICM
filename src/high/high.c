@@ -18,7 +18,7 @@ struct sicm_device_list device_list;
 enum sicm_device_tag default_device_tag;
 struct sicm_device *default_device;
 enum arena_layout layout;
-int max_threads, max_arenas;
+int max_threads, max_arenas, max_index;
 int arenas_per_thread;
 arena_info **arenas;
 pthread_key_t thread_key;
@@ -153,7 +153,6 @@ void set_options() {
       break;
     case SHARED_SITE_ARENAS:
     case EXCLUSIVE_SITE_ARENAS:
-      printf("Setting\n");
       arenas_per_thread = max_arenas;
       break;
     case INVALID_LAYOUT:
@@ -213,9 +212,17 @@ int get_arena_index(int id)
   };
   printf("Allocating to arena %d\n", ret);
 
+  /* Put an upper bound on the indices that need to be searched */
+  if(ret > max_index) {
+    max_index = ret;
+  }
+
   /* Create the arena if it doesn't exist */
   if(arenas[ret] == NULL) {
-    sicm_arena_create(0, default_device);
+    arenas[ret] = malloc(sizeof(arena_info));
+    arenas[ret]->index = ret;
+    arenas[ret]->accesses = 0;
+    arenas[ret]->arena = sicm_arena_create(0, default_device);
   }
 
   return ret;
@@ -226,7 +233,7 @@ void* sh_alloc(int id, size_t sz) {
   int index;
 
   index = get_arena_index(id);
-  return sicm_arena_alloc(arenas[index], sz);
+  return sicm_arena_alloc(arenas[index]->arena, sz);
 }
 
 void sh_free(void* ptr) {

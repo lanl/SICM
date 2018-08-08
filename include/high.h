@@ -4,7 +4,8 @@
 
 typedef struct arena_info {
   unsigned index;
-  sicm_arena *arena;
+  sicm_arena arena;
+  unsigned long long accesses;
 } arena_info;
 
 enum arena_layout {
@@ -16,6 +17,10 @@ enum arena_layout {
   EXCLUSIVE_SITE_ARENAS, /* One arena per allocation site per thread */
   INVALID_LAYOUT
 };
+
+extern int max_threads, max_arenas, max_index;
+extern int arenas_per_thread;
+extern arena_info **arenas;
 
 #define DEFAULT_ARENA_LAYOUT SHARED_SITE_ARENAS
 

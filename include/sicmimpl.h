@@ -90,6 +90,7 @@ struct sarena {
 
 	/* jemalloc extent ranges */
 	struct sicm_tree_t*	ranges;
+  void *start, *end;
 
 	int		err;
 };

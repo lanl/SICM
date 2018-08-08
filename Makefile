@@ -49,6 +49,7 @@ high: $(LOW_OBJ) $(HIGH_OBJ) sicm libdir
 	$(CC) -o $(LIBDIR)/libhigh.so obj/high/high.o obj/high/profile.o $(HIGHLDFLAGS) $(LOW_OBJ) -shared $(CFLAGS) $(LDFLAGS)
 
 sicm: $(LOW_OBJ)
+	mkdir -p $(LIBDIR)
 	$(CC) -o $(LIBDIR)/lib$@.so $^ -shared $(CFLAGS) $(LDFLAGS)
 
 fortran: $(LOW_SDIR)/fbinding.f90 $(LOW_OBJ) $(LOW_ODIR)/fbinding.o libdir

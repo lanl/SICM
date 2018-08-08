@@ -60,15 +60,17 @@ error:
 
 	sa->ranges = sicm_create_tree();
 	sa->hooks = sa_hooks;
+  new_hooks = &sa->hooks;
 	arena_ind_sz = sizeof(unsigned); // sa->arena_ind);
 	arena_ind = -1;
-	err = je_mallctl("arenas.create", (void *) &arena_ind, &arena_ind_sz, NULL, 0);
+	err = je_mallctl("arenas.create", (void *) &arena_ind, &arena_ind_sz, (void *)&new_hooks, sizeof(extent_hooks_t *));
 	if (err != 0) {
 		fprintf(stderr, "can't create an arena: %d\n", err);
 		goto error;
 	}
 
 	sa->arena_ind = arena_ind;
+  /*
 	snprintf(buf, sizeof(buf), "arena.%d.extent_hooks", sa->arena_ind);
 	hooks_miblen = 3;
 	err = je_mallctlnametomib(buf, hooks_mib, &hooks_miblen);
@@ -86,6 +88,7 @@ error:
 		fprintf(stderr, "can't setup hooks: %d\n", err);
 		goto error;
 	}
+  */
 
 	// add the arena to the global list of arenas
 	pthread_mutex_lock(&sa_mutex);
@@ -389,6 +392,7 @@ success:
 		ret = NULL;
 		goto restore_mempolicy;
 	}
+  printf("%u CHUNK: %p -> %p\n", arena_ind, ret, (char *)ret + size);
 
 	pthread_mutex_lock(&sa->mutex);
 	sicm_insert(sa->ranges, ret, (char *)ret + size);

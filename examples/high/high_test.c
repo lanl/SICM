@@ -2,15 +2,29 @@
 #include <stdlib.h>
 #include <time.h>
 
-#define SIZE 2000
+#define SIZE 1000000000
 
 int main() {
   int i;
-  char* ptr;
+  char* data, c;
 
-  ptr = malloc(sizeof(char) * SIZE);
+
+  /* Do some work */
+  data = malloc(sizeof(char) * SIZE);
   for(i = 0; i < SIZE; i++) {
-    ptr[i] = 42;
+    data[i] = i;
   }
-  free(ptr);
+  for(i = 1; i < SIZE; i++) {
+    data[i] = data[i - 1];
+  }
+  for(i = 0; i < SIZE; i++) {
+    c = data[i];
+    c = c + 1;
+  }
+
+  printf("DATA: %p -> %p\n", data, ((char *)data) + SIZE);
+  printf("I: %p\n", &i);
+  printf("C: %p\n", &c);
+
+  free(data);
 }

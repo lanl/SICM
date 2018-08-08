@@ -17,19 +17,22 @@
 #include <pthread.h>
 #include <errno.h>
 
+struct __attribute__ ((__packed__)) sample {
+    uint64_t addr;
+};
+
 typedef struct profile_thread {
   pthread_t id;
   pthread_mutex_t mtx;
 
   /* For perf */
-  struct perf_event_attr pe;
+  size_t size;
+  struct perf_event_attr *pe;
   struct perf_event_mmap_page *metadata;
-  struct perf_event_header *header;
-  uint64_t head, consumed;
   int fd;
 
   /* For libpfm */
-  pfm_perf_encode_arg_t pfm;
+  pfm_perf_encode_arg_t *pfm;
   size_t page_size;
 } profile_thread;
 
