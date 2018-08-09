@@ -35,11 +35,14 @@ class Sicm(MakefilePackage):
             git='https://github.com/lanl/SICM.git',
             commit='HEAD')
 
-    depends_on('numactl')
-    depends_on('llvm')
+    # depends_on('jemalloc') # need to modify the jemalloc spack file to add '--with-jemalloc-prefix=je_' when configuring
+    # depends_on('numactl')
+    # depends_on('llvm')
 
     def build(self, spec, prefix):
-        make()
+        make(# 'JEPATH={0}'.format(spec['jemalloc'].prefix),
+             # 'LLVMPATH={0}'.format(spec['llvm'].prefix)
+        )
 
     def install(self, spec, prefix):
         make('prefix={0}'.format(self.prefix), 'install')

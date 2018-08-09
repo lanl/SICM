@@ -73,7 +73,7 @@ $(LIBDIR)/compass.so:
 
 install: $(TARGETS) # technically should not be done
 	mkdir -p $(includedir) $(libdir)
-	cp  $(IDIR)/* $(includedir)
+	cp $(IDIR)/* $(includedir)
 	cp $(LIBDIR)/* $(libdir)
 
 examples:
