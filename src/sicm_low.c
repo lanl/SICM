@@ -19,6 +19,7 @@
 #define X86_CPUID_MODEL_MASK        (0xf<<4)
 #define X86_CPUID_EXT_MODEL_MASK    (0xf<<16)
 
+int ** numa_dist_matrix;
 int normal_page_size = -1;
 
 const char * const sicm_device_tag_str(sicm_device_tag tag) {
@@ -42,8 +43,8 @@ void read_dev_prop(struct sicm_device * device, int node_id){
         	exit(EXIT_FAILURE);
 	}
 	while ((getline(&line, &len, conf)) != -1) {
-        	fscanf(conf, "%d %s %lf %lf %lf %.10lf %.10lf %.10lf", &(device->properties.numa_id), device->properties.tag, &(device->properties.avg_bw), &(device->properties.read_bw), &(device->properties.write_bw), &(device->properties.avg_lat), &(device->properties.read_lat), &(device->properties.write_lat));
-		if(device->properties.numa_id == node_id){
+        	fscanf(conf, "%d %s %lf %lf %lf %lf %lf %lf", &((device->properties).numa_id), (device->properties).tag, &((device->properties).avg_bw), &((device->properties).read_bw), &((device->properties).write_bw), &((device->properties).avg_lat), &((device->properties).read_lat), &((device->properties).write_lat));
+		if((device->properties).numa_id == node_id){
 			break;
 		};
     	}
@@ -142,13 +143,13 @@ struct sicm_device_list sicm_init() {
           devices[idx].tag = SICM_KNL_HBM;
           devices[idx].data.knl_hbm = (struct sicm_knl_hbm_data){ .node=i,
             .compute_node=compute_node, .page_size=normal_page_size };
+	  read_dev_prop(devices, i);
           numa_bitmask_setbit(non_dram_nodes, i);
           idx++;
           for(j = 0; j < huge_page_size_count; j++) {
               devices[idx].tag = SICM_KNL_HBM;
               devices[idx].data.knl_hbm = (struct sicm_knl_hbm_data){ .node=i,
                 .compute_node=compute_node, .page_size=huge_page_sizes[j] };
-	      read_dev_prop(devices, i);
               idx++;
           }
         }
@@ -166,12 +167,12 @@ struct sicm_device_list sicm_init() {
       if ((numa_node_size(i, &size) != -1) && size) {
         devices[idx].tag = SICM_POWERPC_HBM;
         devices[idx].data.powerpc_hbm = (struct sicm_powerpc_hbm_data){ .node=i, .page_size=normal_page_size };
+	read_dev_prop(devices, i);
         numa_bitmask_setbit(non_dram_nodes, i);
         idx++;
         for(j = 0; j < huge_page_size_count; j++) {
           devices[idx].tag = SICM_POWERPC_HBM;
           devices[idx].data.powerpc_hbm = (struct sicm_powerpc_hbm_data){ .node=i, .page_size=huge_page_sizes[j] };
-	  read_dev_prop(devices, i);
           idx++;
         }
       }
@@ -186,16 +187,30 @@ struct sicm_device_list sicm_init() {
       if ((numa_node_size(i, &size) != -1) && size) {
         devices[idx].tag = SICM_DRAM;
         devices[idx].data.dram = (struct sicm_dram_data){ .node=i, .page_size=normal_page_size };
+	read_dev_prop(devices, i);
         idx++;
         for(j = 0; j < huge_page_size_count; j++) {
           devices[idx].tag = SICM_DRAM;
           devices[idx].data.dram = (struct sicm_dram_data){ .node=i, .page_size=huge_page_sizes[j] };
-	  read_dev_prop(devices, i);
           idx++;
         }
       }
     }
   }
+
+//NUMA Distance matrix
+  numa_dist_matrix = (int **)malloc(sizeof(int*)*idx);
+  for(i = 0; i < idx; i++){
+  	numa_dist_matrix[i] = (int *)malloc(sizeof(int)*idx);
+  }
+
+  for(i = 0; i < idx; i++){
+    for(j = 0; j < idx; j++){
+      numa_dist_matrix[i][j] = numa_distance(sicm_numa_id(&devices[j]), sicm_numa_id(&devices[i])); 
+    }
+  }
+
+//Group numa ids to type of memory
 
   numa_bitmask_free(compute_nodes);
   numa_bitmask_free(non_dram_nodes);

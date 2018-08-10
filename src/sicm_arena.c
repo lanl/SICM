@@ -5,6 +5,7 @@
 #include <sys/time.h>
 #include <numa.h>
 #include <numaif.h>
+#include <sched.h>
 #include <pthread.h>
 #include <errno.h>
 #include <sicm_low.h>
@@ -95,6 +96,23 @@ error:
 	pthread_mutex_unlock(&sa_mutex);
 
 	return sa;
+}
+
+sicm_arena sicm_na_arena_create(size_t s, char * alloc_type, struct sicm_device_list * devices){
+	int i, dist=9999, did = -1;
+	for(i = 0; i < devices->count; i++){
+		if(strcmp(devices->devices[i].properties.tag, alloc_type) == 0){
+			if(numa_distance(devices->devices[i].properties.numa_id, numa_node_of_cpu(sched_getcpu())) < dist){
+				dist = numa_distance(devices->devices[i].properties.numa_id, numa_node_of_cpu(sched_getcpu()));
+				did = i;
+			}
+		}
+	}
+	if(did == -1){
+		return NULL;
+	}
+	return sicm_arena_create(s, &(devices->devices[did]));
+	
 }
 
 sicm_arena_list *sicm_arenas_list() {
