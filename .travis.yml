@@ -71,7 +71,7 @@ script:
     # build SICM
     - make -j $(nproc --all)
     - export SICM_ROOT=$(pwd)
-    - export LD_LIBRARY_PATH=${SICM_ROOT}:${JEPATH}/lib:${MPI_PATH}/lib:$LD_LIBRARY_PATH
+    - export LD_LIBRARY_PATH=${SICM_ROOT}/lib:${JEPATH}/lib:${MPI_PATH}/lib:$LD_LIBRARY_PATH
     - export PATH=${MPI_PATH}/bin:$PATH
 
     # build tests
