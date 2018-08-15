@@ -1,13 +1,7 @@
 #pragma once
 
 #include "sicm_low.h"
-
-typedef struct arena_info {
-  unsigned index, id;
-  sicm_arena arena;
-  unsigned long long accesses;
-  pthread_mutex_t mutex;
-} arena_info;
+#include "sicmimpl.h"
 
 enum arena_layout {
   SHARED_ONE_ARENA, /* One arena between all threads */

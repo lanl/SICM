@@ -301,4 +301,5 @@ void sh_terminate() {
     free(arenas);
     free(orig_thread_indices);
   }
+  MEM5_CREATE_MEMMAP;
 }

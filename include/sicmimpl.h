@@ -90,10 +90,21 @@ struct sarena {
 
 	/* jemalloc extent ranges */
 	struct sicm_tree_t*	ranges;
-  void *start, *end;
 
 	int		err;
 };
+
+typedef struct arena_info {
+  unsigned index, id;
+  sicm_arena arena;
+  unsigned long long accesses;
+  pthread_mutex_t mutex;
+} arena_info;
+
+typedef struct chunk_info {
+  uint64_t begin, end;
+  arena_info *arena;
+} chunk_info;
 
 extern sarena *sarena_ptr2sarena(void *ptr);
 extern int sicm_arena_init(void);

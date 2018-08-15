@@ -162,6 +162,8 @@ void *sh_profile_thread(void *a) {
           if(!arenas[i] || !arenas[i]->arena) continue;
           arena = arenas[i]->arena;
           args.arena = arenas[i];
+
+          /* Lock the mutex and search this arena */
           pthread_mutex_lock(&arena->mutex);
           sicm_map_tree(arena->ranges, &args, sh_check_arena);
           pthread_mutex_unlock(&arena->mutex);
@@ -177,7 +179,7 @@ void *sh_profile_thread(void *a) {
   for(i = 0; i <= max_index; i++) {
     if(!arenas[i]) continue;
     associated += arenas[i]->accesses;
-    printf("%u: %llu / %llu\n", arenas[i]->id, arenas[i]->accesses, count);
+    printf("%u: %llu\n", arenas[i]->id, arenas[i]->accesses);
   }
   printf("Totals: %llu / %llu\n", associated, count);
 
