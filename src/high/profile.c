@@ -38,8 +38,6 @@ void sh_start_profile_thread() {
   char *data;
   int i;
 
-  printf("Initializing profiling.\n"); fflush(stdout);
-
   /* Initialize the pe struct */
   prof.pe = malloc(sizeof(struct perf_event_attr));
   memset(prof.pe, 0, sizeof(struct perf_event_attr));
@@ -51,7 +49,7 @@ void sh_start_profile_thread() {
   memset(prof.pfm, 0, sizeof(pfm_perf_encode_arg_t));
   prof.pfm->size = sizeof(pfm_perf_encode_arg_t);
   prof.pfm->attr = prof.pe;
-  err = pfm_get_os_event_encoding("MEM_LOAD_UOPS_RETIRED:L3_MISS", PFM_PLM2 | PFM_PLM3, PFM_OS_PERF_EVENT, prof.pfm);
+  err = pfm_get_os_event_encoding("MEM_LOAD_UOPS_RETIRED.L3_MISS", PFM_PLM2 | PFM_PLM3, PFM_OS_PERF_EVENT, prof.pfm);
   if(err != PFM_SUCCESS) {
     check_error(err);
     exit(1);
@@ -60,7 +58,7 @@ void sh_start_profile_thread() {
 
   /* Make sure we grab PEBS addresses */
   prof.pe->sample_type = PERF_SAMPLE_ADDR;
-  prof.pe->sample_period = 128;
+  prof.pe->sample_period = 512;
 
   /* Generic options */
   prof.pe->disabled = 1;
@@ -81,19 +79,16 @@ void sh_start_profile_thread() {
 
   /* mmap the file */
   prof.page_size = (size_t) sysconf(_SC_PAGESIZE);
-  prof.metadata = mmap(NULL, prof.page_size + (prof.page_size * 64), PROT_WRITE, MAP_SHARED, prof.fd, 0);
+  prof.metadata = mmap(NULL, prof.page_size + (prof.page_size * 64), PROT_READ, MAP_SHARED, prof.fd, 0);
 
   /* Start the sampling */
   ioctl(prof.fd, PERF_EVENT_IOC_RESET, 0);
   ioctl(prof.fd, PERF_EVENT_IOC_ENABLE, 0);
 
-  printf("finished init\n");
-
-  /* Start the profiling thread
+  /* Start the profiling thread */
   pthread_mutex_init(&prof.mtx, NULL);
   pthread_mutex_lock(&prof.mtx);
   pthread_create(&prof.id, NULL, &sh_profile_thread, NULL);
-  */
 }
 
 
@@ -106,70 +101,18 @@ struct args {
 static void sh_check_arena(void *aux, void *start, void *end) {
   struct args *args = aux;
   if((args->addr >= start) && (args->addr <= end)) {
-    printf("YES in this chunk. %p %p %p\n", start, end, args->addr);
     args->arena->accesses++;
-  } else {
-    printf("not in this chunk. %p %p %p\n", start, end, args->addr);
   }
 }
 
 void sh_stop_profile_thread() {
-	uint64_t consumed, head;
-	struct perf_event_header *header;
-	struct sample *sample;
-  unsigned long long count;
-  int i;
-  sarena *arena;
-  struct args args;
-
-  printf("Starting stop\n");
-
 	/* Stop the actual sampling */
 	ioctl(prof.fd, PERF_EVENT_IOC_DISABLE, 0);
-
-  /* Get ready to read */
-  consumed = 0;
-  head = prof.metadata->data_head;
-  header = (struct perf_event_header *)((char *)prof.metadata + prof.page_size);
-
-  /* Read all of the samples */
-  count = 0;
-  while(consumed < head) {
-    if(header->size == 0) {
-      printf("header is 0\n");
-    }
-    sample = (struct sample *)((char *)(header) + 8);
-    count++;
-    if(sample->addr) {
-      args.addr = sample->addr;
-
-      /* Search for which arena it belongs to */
-      for(i = 0; i <= max_index; i++) {
-        if(!arenas[i]) continue;
-        arena = arenas[i]->arena;
-        args.arena = arenas[i];
-        pthread_mutex_lock(&arena->mutex);
-        printf("Searching arena %u\n", arena->arena_ind);
-        sicm_map_tree(arena->ranges, &args, sh_check_arena);
-        pthread_mutex_unlock(&arena->mutex);
-      }
-    }
-    consumed += header->size;
-    header = (struct perf_event_header *)((char *)header + header->size);
-  }
-
-  for(i = 0; i <= max_index; i++) {
-    if(!arenas[i]) continue;
-    printf("%llu / %llu\n", arenas[i]->accesses, count);
-  }
-
-  //printf("%llu\n", count);
   close(prof.fd);
 
-  /* Signal the profiling thread to stop
+  /* Signal the profiling thread to stop */
   pthread_mutex_unlock(&prof.mtx);
   pthread_join(prof.id, NULL);
-	*/
 }
 
 int sh_should_stop() {
@@ -183,10 +126,61 @@ int sh_should_stop() {
   return 1;
 }
 
-void *sh_profile_thread(void *args) {
+void *sh_profile_thread(void *a) {
+  uint64_t consumed, head;
+  struct perf_event_header *header;
+  struct sample *sample;
+  unsigned long long count, associated;
+  int i;
+  sarena *arena;
+  struct args args;
+  
+  consumed = 0;
+  count = 0;
+  header = (struct perf_event_header *)((char *)prof.metadata + prof.page_size);
   while(!sh_should_stop()) {
-    
+    /* Get ready to read */
+    head = prof.metadata->data_head;
+
+    //printf("Head is %llu\n", head);
+
+    /* Read all of the samples */
+    //printf("Consumed is %llu.\n", consumed);
+    while(consumed < head) {
+      //printf("Reading another batch\n");
+      if(header->size == 0) {
+        break;
+      }
+      sample = (struct sample *)((char *)(header) + 8);
+      if(sample->addr) {
+        args.addr = sample->addr;
+        count++;
+        //printf("%p\n", sample->addr);
+
+        /* Search for which arena it belongs to */
+        for(i = 0; i <= max_index; i++) {
+          if(!arenas[i] || !arenas[i]->arena) continue;
+          arena = arenas[i]->arena;
+          args.arena = arenas[i];
+          pthread_mutex_lock(&arena->mutex);
+          sicm_map_tree(arena->ranges, &args, sh_check_arena);
+          pthread_mutex_unlock(&arena->mutex);
+        }
+      }
+      consumed = head;//header->size;
+      //prof.metadata->data_tail = consumed;
+      header = (struct perf_event_header *)((char *)header + header->size);
+    }
   }
+
+  associated = 0;
+  for(i = 0; i <= max_index; i++) {
+    if(!arenas[i]) continue;
+    associated += arenas[i]->accesses;
+    printf("%u: %llu / %llu\n", arenas[i]->id, arenas[i]->accesses, count);
+  }
+  printf("Totals: %llu / %llu\n", associated, count);
+
   printf("Cleaning up thread.\n");
   return NULL;
 }

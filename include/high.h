@@ -3,9 +3,10 @@
 #include "sicm_low.h"
 
 typedef struct arena_info {
-  unsigned index;
+  unsigned index, id;
   sicm_arena arena;
   unsigned long long accesses;
+  pthread_mutex_t mutex;
 } arena_info;
 
 enum arena_layout {

@@ -392,7 +392,6 @@ success:
 		ret = NULL;
 		goto restore_mempolicy;
 	}
-  printf("%u CHUNK: %p -> %p\n", arena_ind, ret, (char *)ret + size);
 
 	pthread_mutex_lock(&sa->mutex);
 	sicm_insert(sa->ranges, ret, (char *)ret + size);

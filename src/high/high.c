@@ -19,10 +19,11 @@ enum sicm_device_tag default_device_tag;
 struct sicm_device *default_device;
 enum arena_layout layout;
 int max_threads, max_arenas, max_index;
+int should_profile;
 int arenas_per_thread;
 arena_info **arenas;
 pthread_key_t thread_key;
-int *thread_indices, *thread_index;
+int *thread_indices, *orig_thread_indices;
 
 /* Takes a string as input and outputs which arena layout it is */
 enum arena_layout parse_layout(char *env) {
@@ -61,8 +62,8 @@ char *layout_str(enum arena_layout layout) {
     case SHARED_SITE_ARENAS:
       return "SHARED_SITE_ARENAS";
     case EXCLUSIVE_SITE_ARENAS:
-      return "SHARED_SITE_ARENAS";
-    case INVALID_LAYOUT:
+      return "EXCLUSIVE_SITE_ARENAS";
+    default:
       break;
   }
 
@@ -113,6 +114,14 @@ void set_options() {
   }
   printf("Maximum arenas: %d\n", max_arenas);
 
+  /* Should we profile? */
+  env = getenv("SH_PROFILING");
+  should_profile = 0;
+  if(env) {
+    should_profile = 1;
+    printf("Profiling.\n");
+  }
+
   /* Get default_device_tag */
   env = getenv("SH_DEFAULT_DEVICE");
   if(env) {
@@ -141,7 +150,6 @@ void set_options() {
   printf("Default device: %s\n", sicm_device_tag_str(default_device->tag));
 
   /* Get arenas_per_thread */
-  arenas_per_thread = 0;
   switch(layout) {
     case SHARED_ONE_ARENA:
     case EXCLUSIVE_ONE_ARENA:
@@ -155,32 +163,31 @@ void set_options() {
     case EXCLUSIVE_SITE_ARENAS:
       arenas_per_thread = max_arenas;
       break;
-    case INVALID_LAYOUT:
-      fprintf(stderr, "Invalid arena layout. Aborting.\n");
-      exit(1);
+    default:
+      arenas_per_thread = 1;
       break;
   };
   printf("Arenas per thread: %d\n", arenas_per_thread);
 }
 
 int get_thread_index() {
+  int *val;
 
   /* Get this thread's index */
-  int *val = (int *) pthread_getspecific(thread_key);
+  val = (int *) pthread_getspecific(thread_key);
 
   /* If nonexistent, increment the counter and set it */
   if(val == NULL) {
-    pthread_setspecific(thread_key, (void *) thread_index);
-    thread_index++;
-    val = thread_index;
+    pthread_setspecific(thread_key, (void *) thread_indices);
+    val = thread_indices;
+    thread_indices++;
   }
 
   return *val;
 }
 
 /* Gets the index that the ID should go into */
-int get_arena_index(int id)
-{
+int get_arena_index(int id) {
   int ret, tmp;
 
   /* First get the index that we'll return */
@@ -205,12 +212,11 @@ int get_arena_index(int id)
       tmp = get_thread_index();
       ret = (tmp * arenas_per_thread) + id;
       break;
-    case INVALID_LAYOUT:
+    default:
       fprintf(stderr, "Invalid arena layout. Aborting.\n");
       exit(1);
       break;
   };
-  printf("Allocating to arena %d\n", ret);
 
   /* Put an upper bound on the indices that need to be searched */
   if(ret > max_index) {
@@ -219,25 +225,43 @@ int get_arena_index(int id)
 
   /* Create the arena if it doesn't exist */
   if(arenas[ret] == NULL) {
-    arenas[ret] = malloc(sizeof(arena_info));
+    arenas[ret] = calloc(1, sizeof(arena_info));
     arenas[ret]->index = ret;
     arenas[ret]->accesses = 0;
+    arenas[ret]->id = id;
     arenas[ret]->arena = sicm_arena_create(0, default_device);
   }
 
   return ret;
 }
 
+void* sh_realloc(int id, void *ptr, size_t sz) {
+  if(layout == INVALID_LAYOUT) {
+    return realloc(ptr, sz);
+  }
+
+  return sicm_realloc(ptr, sz);
+}
+
 /* Accepts an allocation site ID and a size, does the allocation */
 void* sh_alloc(int id, size_t sz) {
   int index;
+  void *ptr;
+
+  if(layout == INVALID_LAYOUT) {
+    return je_malloc(sz);
+  }
 
   index = get_arena_index(id);
   return sicm_arena_alloc(arenas[index]->arena, sz);
 }
 
 void sh_free(void* ptr) {
-  sicm_free(ptr);
+  if(layout == INVALID_LAYOUT) {
+    je_free(ptr);
+  } else {
+    sicm_free(ptr);
+  }
 }
 
 __attribute__((constructor))
@@ -247,26 +271,34 @@ void sh_init() {
   device_list = sicm_init();
   set_options();
   
-  /* `arenas` is a pseudo-two-dimensional array, first dimension is per-thread */
-  /* Second dimension is one for each arena that each thread will have */
-  arenas = (arena_info **) calloc(max_threads * arenas_per_thread, sizeof(arena_info *));
-  printf("Arenas is %d elements.\n", max_threads * arenas_per_thread);
+  if(layout != INVALID_LAYOUT) {
+    /* `arenas` is a pseudo-two-dimensional array, first dimension is per-thread */
+    /* Second dimension is one for each arena that each thread will have */
+    arenas = (arena_info **) calloc(max_threads * arenas_per_thread, sizeof(arena_info *));
 
-  /* Stores the index into the `arenas` array for each thread */
-  pthread_key_create(&thread_key, NULL);
-  thread_indices = (int *) malloc(max_threads * sizeof(int));
-  for(i = 0; i < max_threads; i++) {
-    thread_indices[i] = i;
+    /* Stores the index into the `arenas` array for each thread */
+    pthread_key_create(&thread_key, NULL);
+    thread_indices = (int *) malloc(max_threads * sizeof(int));
+    orig_thread_indices = thread_indices;
+    for(i = 0; i < max_threads; i++) {
+      thread_indices[i] = i;
+    }
+    pthread_setspecific(thread_key, (void *) thread_indices);
+    thread_indices++;
+
+    if(should_profile) {
+      sh_start_profile_thread();
+    }
   }
-  pthread_setspecific(thread_key, (void *) thread_index);
-  thread_index++;
-
-  sh_start_profile_thread();
 }
 
 __attribute__((destructor))
 void sh_terminate() {
-  sh_stop_profile_thread();
-  free(arenas);
-  free(thread_indices);
+  if(layout != INVALID_LAYOUT) {
+    if(should_profile) {
+      sh_stop_profile_thread();
+    }
+    free(arenas);
+    free(orig_thread_indices);
+  }
 }
