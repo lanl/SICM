@@ -102,7 +102,7 @@ typedef struct arena_info {
 } arena_info;
 
 typedef struct chunk_info {
-  uint64_t begin, end;
+  void *begin, *end;
   arena_info *arena;
 } chunk_info;
 

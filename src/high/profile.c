@@ -35,8 +35,6 @@ void check_error(int err) {
 
 void sh_start_profile_thread() {
   int err;
-  char *data;
-  int i;
 
   /* Initialize the pe struct */
   prof.pe = malloc(sizeof(struct perf_event_attr));
@@ -105,6 +103,10 @@ static void sh_check_arena(void *aux, void *start, void *end) {
   }
 }
 
+static void sh_print_chunk(void *aux, void *start, void *end) {
+  printf("  (%p -> %p)\n", start, end);
+}
+
 void sh_stop_profile_thread() {
 	/* Stop the actual sampling */
 	ioctl(prof.fd, PERF_EVENT_IOC_DISABLE, 0);
@@ -142,35 +144,25 @@ void *sh_profile_thread(void *a) {
     /* Get ready to read */
     head = prof.metadata->data_head;
 
-    //printf("Head is %llu\n", head);
-
     /* Read all of the samples */
-    //printf("Consumed is %llu.\n", consumed);
     while(consumed < head) {
-      //printf("Reading another batch\n");
       if(header->size == 0) {
         break;
       }
       sample = (struct sample *)((char *)(header) + 8);
       if(sample->addr) {
-        args.addr = sample->addr;
+        args.addr = (void *) sample->addr;
         count++;
-        //printf("%p\n", sample->addr);
 
-        /* Search for which arena it belongs to */
-        for(i = 0; i <= max_index; i++) {
-          if(!arenas[i] || !arenas[i]->arena) continue;
-          arena = arenas[i]->arena;
-          args.arena = arenas[i];
-
-          /* Lock the mutex and search this arena */
-          pthread_mutex_lock(&arena->mutex);
-          sicm_map_tree(arena->ranges, &args, sh_check_arena);
-          pthread_mutex_unlock(&arena->mutex);
+        /* Search for which chunk it goes into */
+        for(i = 0; i < chunk_index; i++) {
+          //printf("Checking %p %p\n", chunks[i].begin, chunks[i].end);
+          if((sample->addr >= chunks[i].begin) && (sample->addr <= chunks[i].end)) {
+            chunks[i].arena->accesses++;
+          }
         }
       }
-      consumed = head;//header->size;
-      //prof.metadata->data_tail = consumed;
+      consumed = head;
       header = (struct perf_event_header *)((char *)header + header->size);
     }
   }
@@ -178,6 +170,7 @@ void *sh_profile_thread(void *a) {
   associated = 0;
   for(i = 0; i <= max_index; i++) {
     if(!arenas[i]) continue;
+    arena = arenas[i]->arena;
     associated += arenas[i]->accesses;
     printf("%u: %llu\n", arenas[i]->id, arenas[i]->accesses);
   }

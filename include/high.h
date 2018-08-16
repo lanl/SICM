@@ -13,9 +13,12 @@ enum arena_layout {
   INVALID_LAYOUT
 };
 
+/* So we can access these things from profile.c */
 extern int max_threads, max_arenas, max_index;
 extern int arenas_per_thread;
 extern arena_info **arenas;
+extern chunk_info *chunks;
+extern int chunk_index;
 
 #define DEFAULT_ARENA_LAYOUT SHARED_SITE_ARENAS
 
@@ -26,5 +29,7 @@ __attribute__((destructor))
 void sh_terminate();
 
 void* sh_alloc_exact(int id, size_t sz);
+
+void sh_create_chunk(void *begin, void *end);
 
 void sh_free(void* ptr);

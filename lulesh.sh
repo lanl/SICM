@@ -14,18 +14,18 @@ export LD_WRAPPER="../../../bin/ld_wrapper.sh -g"
 #export LD_WRAPPER="clang-4.0 -g"
 
 # Compile SICM
-make
+#make
 make high
-make compass
+#make compass
 
 cd examples/high/lulesh
-make clean
-make -j5
+#make clean
+#make -j5
 cd ../../..
 
 # Turn off prefetching
-#sudo ../msr-tools/wrmsr -a 0x1A4 0xf
-#sudo ../msr-tools/rdmsr -a -x 0x1A4
+sudo ../msr-tools/wrmsr -a 0x1A4 0xf
+sudo ../msr-tools/rdmsr -a -x 0x1A4
 
 # Turn on profiling and use 3 threads
 export SH_PROFILING="yes"

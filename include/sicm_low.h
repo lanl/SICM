@@ -209,6 +209,15 @@ void *sicm_arena_alloc(sicm_arena sa, size_t sz);
  */
 void *sicm_arena_alloc_aligned(sicm_arena sa, size_t sz, size_t align);
 
+/// Resize a memory region in an arena
+/**
+ * @param sa arena that should be used for the allocation. ARENA_DEFAULT is allowed.
+ * @param ptr pointer to the memory to be resized
+ * @param sz new size
+ * @return pointer to the new allocation, or NULL if unable to reallocate
+ */
+void *sicm_arena_realloc(sicm_arena sa, void *ptr, size_t sz);
+
 /// Allocate memory region
 /**
  * @param sz size of the region

@@ -10,6 +10,7 @@
 #include <sicm_low.h>
 #include "sicmimpl.h"
 #include "rbtree.h"
+#include "high.h"
 
 static pthread_mutex_t sa_mutex = PTHREAD_MUTEX_INITIALIZER;
 static int sa_num;
@@ -33,12 +34,8 @@ static void sarena_init() {
 sicm_arena sicm_arena_create(size_t sz, sicm_device *dev) {
 	int err;
 	sarena *sa;
-	char buf[32];
 	size_t arena_ind_sz;
-	size_t hooks_mib[3];
-	size_t hooks_miblen;
-	size_t old_size, new_size;
-	extent_hooks_t *new_hooks, *old_hooks;
+	extent_hooks_t *new_hooks;
 	unsigned arena_ind;
 
 	pthread_once(&sa_init, sarena_init);
@@ -70,25 +67,6 @@ error:
 	}
 
 	sa->arena_ind = arena_ind;
-  /*
-	snprintf(buf, sizeof(buf), "arena.%d.extent_hooks", sa->arena_ind);
-	hooks_miblen = 3;
-	err = je_mallctlnametomib(buf, hooks_mib, &hooks_miblen);
-	if (err != 0) {
-		fprintf(stderr, "can't get mib: %d\n", err);
-		goto error;
-	}
-
-	old_size = sizeof(old_hooks);
-	new_size = old_size;
-	new_hooks = &sa->hooks;
-
-	err = je_mallctlbymib(hooks_mib, hooks_miblen, (void *)&old_hooks, &old_size, (void *)&new_hooks, new_size);
-	if (err != 0) {
-		fprintf(stderr, "can't setup hooks: %d\n", err);
-		goto error;
-	}
-  */
 
 	// add the arena to the global list of arenas
 	pthread_mutex_lock(&sa_mutex);
@@ -222,6 +200,20 @@ void *sicm_arena_alloc_aligned(sicm_arena a, size_t sz, size_t align) {
 		flags = MALLOCX_ARENA(sa->arena_ind) | MALLOCX_TCACHE_NONE | MALLOCX_ALIGN(align);
 
 	ret = je_mallocx(sz, flags);
+	return ret;
+}
+
+void *sicm_arena_realloc(sicm_arena a, void *ptr, size_t sz) {
+	sarena *sa;
+	int flags;
+	void *ret;
+
+	sa = a;
+	flags = 0;
+	if (sa != NULL)
+		flags = MALLOCX_ARENA(sa->arena_ind) | MALLOCX_TCACHE_NONE;
+
+	ret = je_rallocx(ptr, sz, flags);
 	return ret;
 }
 
@@ -395,6 +387,7 @@ success:
 
 	pthread_mutex_lock(&sa->mutex);
 	sicm_insert(sa->ranges, ret, (char *)ret + size);
+  sh_create_chunk(ret, (char *)ret + size);
 	sa->size += size;
 	pthread_mutex_unlock(&sa->mutex);
 
