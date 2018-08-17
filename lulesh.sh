@@ -15,7 +15,7 @@ export LD_WRAPPER="../../../bin/ld_wrapper.sh -g"
 
 # Compile SICM
 #make
-make high
+#make high
 #make compass
 
 cd examples/high/lulesh

@@ -2,6 +2,7 @@
 #define __SICMIMPL_H
 
 #include <jemalloc/jemalloc.h>
+#include "extent_arr.h"
 //MKL
 //#include "/usr/include/asm-generic/mman-common.h"
 /// Linear-feedback shift register PRNG algorithm.
@@ -75,6 +76,8 @@ extern int normal_page_size;
 
 typedef struct sarena sarena;
 
+
+/* Stores information about a jemalloc arena */
 struct sarena {
 	pthread_mutex_t	mutex;
 	sicm_device*	dev;
@@ -89,24 +92,15 @@ struct sarena {
 	extent_hooks_t	hooks;
 
 	/* jemalloc extent ranges */
-	struct sicm_tree_t*	ranges;
+  extent_arr *extents;
 
 	int		err;
 };
 
-typedef struct arena_info {
-  unsigned index, id;
-  sicm_arena arena;
-  unsigned long long accesses;
-  pthread_mutex_t mutex;
-} arena_info;
-
-typedef struct chunk_info {
-  void *begin, *end;
-  arena_info *arena;
-} chunk_info;
-
 extern sarena *sarena_ptr2sarena(void *ptr);
 extern int sicm_arena_init(void);
+
+/* Set by the user, called whenever an extent is allocated */
+extern void (*sicm_extent_alloc_callback)(void *start, void *end);
 
 #endif

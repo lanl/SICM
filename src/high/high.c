@@ -15,25 +15,27 @@
 #include "profile.h"
 #include "mem5_memmap.h"
 
-struct sicm_device_list device_list;
-enum sicm_device_tag default_device_tag;
-struct sicm_device *default_device;
-enum arena_layout layout;
-int max_threads, max_arenas, max_index;
-int max_chunks, chunk_index;
-int should_profile;
-int arenas_per_thread;
+static struct sicm_device_list device_list;
+static enum sicm_device_tag default_device_tag;
+static struct sicm_device *default_device;
 
-/* Keeps track of the arenas and chunks */
+static int should_profile;
+
+/* Keep track of all extents */
+extent_arr *extents;
+
+/* Keeps track of arenas */
 arena_info **arenas;
-chunk_info *chunks;
+static enum arena_layout layout;
+static int max_arenas, arenas_per_thread;
+int max_index;
 
 /* Associates a thread with an index (starting at 0) into the `arenas` array */
-pthread_key_t thread_key;
-int *thread_indices, *orig_thread_indices, *max_thread_indices;
+static pthread_key_t thread_key;
+static int *thread_indices, *orig_thread_indices, *max_thread_indices, max_threads;
 
 /* Passes an arena index to the extent hooks */
-int *pending_indices;
+static int *pending_indices;
 
 /* Takes a string as input and outputs which arena layout it is */
 enum arena_layout parse_layout(char *env) {
@@ -126,12 +128,6 @@ void set_options() {
     }
   }
   printf("Maximum arenas: %d\n", max_arenas);
-
-  /* Get max_chunks
-   * max_chunks is the initial maximum number of chunks. Size doubles if needed.
-   */
-  max_chunks = max_arenas * 2;
-  chunk_index = 0;
 
   /* Should we profile? */
   env = getenv("SH_PROFILING");
@@ -232,25 +228,21 @@ void sh_create_arena(int index, int id) {
   }
 }
 
-/* Adds a chunk to the `chunks` array. */
-void sh_create_chunk(void *begin, void *end) {
-  int thread_index, index;
+/* Adds a extent to the `extents` array. */
+void sh_create_extent(void *start, void *end) {
+  int thread_index, arena_index;
 
   /* Get this thread's current arena index from `pending_indices` */
   thread_index = get_thread_index();
-  index = pending_indices[thread_index];
+  arena_index = pending_indices[thread_index];
 
-  /* A chunk allocation is happening without an sh_alloc... */
-  if(index == 0) {
-    fprintf(stderr, "Unknown chunk allocation. Aborting.\n");
+  /* A extent allocation is happening without an sh_alloc... */
+  if(arena_index == 0) {
+    fprintf(stderr, "Unknown extent allocation. Aborting.\n");
     exit(1);
   }
 
-  /* Now add the chunk to `chunks` */
-  chunks[chunk_index].begin = begin;
-  chunks[chunk_index].end = end;
-  chunks[chunk_index].arena = arenas[index];
-  chunk_index++;
+  extent_arr_insert(extents, start, end, arenas[arena_index]);
 }
 
 /* Gets the index that the ID should go into */
@@ -334,10 +326,7 @@ void sh_init() {
     /* Second dimension is one for each arena that each thread will have */
     arenas = (arena_info **) calloc(max_threads * arenas_per_thread, sizeof(arena_info *));
 
-    /* `chunks` is an array of `chunk_info` structs. Stores the start and end addresses
-     * for each chunk. Designed to be iterated over very quickly for profiling.
-     */
-    chunks = (chunk_info *) calloc(max_chunks, sizeof(chunk_info));
+    extents = extent_arr_init();
 
     /* Stores the index into the `arenas` array for each thread */
     pthread_key_create(&thread_key, NULL);
@@ -353,6 +342,9 @@ void sh_init() {
     /* Stores an index into `arenas` for the extent hooks */
     pending_indices = (int *) calloc(max_threads, sizeof(int));
 
+    /* Set the arena allocator's callback function */
+    sicm_extent_alloc_callback = &sh_create_extent;
+
     if(should_profile) {
       sh_start_profile_thread();
     }
@@ -367,6 +359,7 @@ void sh_terminate() {
     }
     free(arenas);
     free(orig_thread_indices);
+    extent_arr_free(extents);
   }
   //MEM5_CREATE_MEMMAP;
 }

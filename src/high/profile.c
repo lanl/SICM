@@ -89,24 +89,6 @@ void sh_start_profile_thread() {
   pthread_create(&prof.id, NULL, &sh_profile_thread, NULL);
 }
 
-
-/* Used to look up an address in an arena */
-struct args {
-  void *addr;
-  arena_info *arena;
-};
-
-static void sh_check_arena(void *aux, void *start, void *end) {
-  struct args *args = aux;
-  if((args->addr >= start) && (args->addr <= end)) {
-    args->arena->accesses++;
-  }
-}
-
-static void sh_print_chunk(void *aux, void *start, void *end) {
-  printf("  (%p -> %p)\n", start, end);
-}
-
 void sh_stop_profile_thread() {
 	/* Stop the actual sampling */
 	ioctl(prof.fd, PERF_EVENT_IOC_DISABLE, 0);
@@ -133,9 +115,9 @@ void *sh_profile_thread(void *a) {
   struct perf_event_header *header;
   struct sample *sample;
   unsigned long long count, associated;
-  int i;
-  sarena *arena;
-  struct args args;
+  size_t i;
+  arena_info *arena;
+  void *addr;
   
   consumed = 0;
   count = 0;
@@ -150,15 +132,16 @@ void *sh_profile_thread(void *a) {
         break;
       }
       sample = (struct sample *)((char *)(header) + 8);
-      if(sample->addr) {
-        args.addr = (void *) sample->addr;
+      addr = (void *)sample->addr;
+      if(addr) {
         count++;
 
-        /* Search for which chunk it goes into */
-        for(i = 0; i < chunk_index; i++) {
-          //printf("Checking %p %p\n", chunks[i].begin, chunks[i].end);
-          if((sample->addr >= chunks[i].begin) && (sample->addr <= chunks[i].end)) {
-            chunks[i].arena->accesses++;
+        /* Search for which extent it goes into */
+        extent_arr_for(extents, i) {
+          if(!extents->arr[i].start && !extents->arr[i].end) continue;
+          arena = extents->arr[i].arena;
+          if((addr >= extents->arr[i].start) && (addr <= extents->arr[i].end)) {
+            arena->accesses++;
           }
         }
       }
@@ -170,7 +153,6 @@ void *sh_profile_thread(void *a) {
   associated = 0;
   for(i = 0; i <= max_index; i++) {
     if(!arenas[i]) continue;
-    arena = arenas[i]->arena;
     associated += arenas[i]->accesses;
     printf("%u: %llu\n", arenas[i]->id, arenas[i]->accesses);
   }

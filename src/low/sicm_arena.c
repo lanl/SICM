@@ -10,7 +10,6 @@
 #include <sicm_low.h>
 #include "sicmimpl.h"
 #include "rbtree.h"
-#include "high.h"
 
 static pthread_mutex_t sa_mutex = PTHREAD_MUTEX_INITIALIZER;
 static int sa_num;
@@ -19,10 +18,12 @@ static size_t sa_lookup_mib[2];
 static pthread_once_t sa_init = PTHREAD_ONCE_INIT;
 static pthread_key_t sa_default_key;
 static extent_hooks_t sa_hooks;
+void (*sicm_extent_alloc_callback)(void *start, void *end) = NULL;
 
 static void sarena_init() {
 	int err;
 	size_t miblen;
+  printf("Calling sarena_init\n");
 
 	pthread_key_create(&sa_default_key, NULL);
 	miblen = 2;
@@ -55,7 +56,7 @@ error:
 		return NULL;
 	}
 
-	sa->ranges = sicm_create_tree();
+  sa->extents = extent_arr_init();
 	sa->hooks = sa_hooks;
   new_hooks = &sa->hooks;
 	arena_ind_sz = sizeof(unsigned); // sa->arena_ind);
@@ -128,6 +129,7 @@ static void sicm_arena_range_move(void *aux, void *start, void *end) {
 // FIXME: doesn't support moving to huge pages
 int sicm_arena_set_device(sicm_arena a, sicm_device *dev) {
 	int err, node, oldnumaid;
+  size_t i;
 	sarena *sa;
 
 	sa = a;
@@ -147,13 +149,19 @@ int sicm_arena_set_device(sicm_arena a, sicm_device *dev) {
 	oldnumaid = sa->numaid;
 	sa->numaid = node;
 	sa->err = 0;
-	sicm_map_tree(sa->ranges, sa, sicm_arena_range_move);
+  extent_arr_for(sa->extents, i) {
+    if(!sa->extents->arr[i].start && !sa->extents->arr[i].end) continue;
+    sicm_arena_range_move(sa, sa->extents->arr[i].start, sa->extents->arr[i].end);
+  }
 	if (sa->err) {
 		// at least one extent wasn't moved, try to roll back them all
 		err = sa->err;
 		sa->numaid = oldnumaid;
 		sa->err = 0;
-		sicm_map_tree(sa->ranges, sa, sicm_arena_range_move);
+    extent_arr_for(sa->extents, i) {
+      if(!sa->extents->arr[i].start && !sa->extents->arr[i].end) continue;
+      sicm_arena_range_move(sa, sa->extents->arr[i].start, sa->extents->arr[i].end);
+    }
 		// TODO: not sure what to do if moving back fails
 	} else {
 		sa->dev = dev;
@@ -362,7 +370,7 @@ static void *sa_alloc(extent_hooks_t *h, void *new_addr, size_t size, size_t ali
 	munmap(ret, size);
 	ret = NULL;
 
-	// if new_addr is set, we can't fulful the alignment, so just fail
+	// if new_addr is set, we can't fulfill the alignment, so just fail
 	if (new_addr != NULL)
 		goto restore_mempolicy;
 
@@ -386,8 +394,15 @@ success:
 	}
 
 	pthread_mutex_lock(&sa->mutex);
-	sicm_insert(sa->ranges, ret, (char *)ret + size);
-  sh_create_chunk(ret, (char *)ret + size);
+
+  /* Add the extent to the array of extents */
+  extent_arr_insert(sa->extents, ret, (char *)ret + size, NULL);
+
+  /* Call the callback on this chunk if it's set */
+  if(sicm_extent_alloc_callback) {
+    (*sicm_extent_alloc_callback)(ret, (char *)ret + size);
+  }
+
 	sa->size += size;
 	pthread_mutex_unlock(&sa->mutex);
 
@@ -409,10 +424,10 @@ static bool sa_dalloc(extent_hooks_t *h, void *addr, size_t size, bool committed
 	sa = container_of(h, sarena, hooks);
 //	printf("sa_dalloc: sa %p addr %p size %ld sa->arena_ind %d arena_ind %d\n", sa, addr, size, sa->arena_ind, arena_ind);
 	pthread_mutex_lock(&sa->mutex);
-	sicm_delete(sa->ranges, addr, (char *)addr + size);
+  extent_arr_delete(sa->extents, addr);
 	if (munmap(addr, size) != 0) {
 		fprintf(stderr, "munmap failed: %p %ld\n", addr, size);
-		sicm_insert(sa->ranges, addr, (char *)addr + size);
+    extent_arr_insert(sa->extents, addr, (char *)addr + size, NULL);
 		ret = true;
 	}
 	pthread_mutex_unlock(&sa->mutex);

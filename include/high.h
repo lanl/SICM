@@ -13,12 +13,17 @@ enum arena_layout {
   INVALID_LAYOUT
 };
 
+/* Keeps track of additional information about arenas for profiling */
+typedef struct arena_info {
+  unsigned index, id;
+  sicm_arena arena;
+  unsigned long long accesses;
+} arena_info;
+
 /* So we can access these things from profile.c */
-extern int max_threads, max_arenas, max_index;
-extern int arenas_per_thread;
+extern extent_arr *extents;
 extern arena_info **arenas;
-extern chunk_info *chunks;
-extern int chunk_index;
+extern int max_index;
 
 #define DEFAULT_ARENA_LAYOUT SHARED_SITE_ARENAS
 
@@ -30,6 +35,6 @@ void sh_terminate();
 
 void* sh_alloc_exact(int id, size_t sz);
 
-void sh_create_chunk(void *begin, void *end);
+void sh_create_extent(void *begin, void *end);
 
 void sh_free(void* ptr);
