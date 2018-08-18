@@ -9,7 +9,6 @@
 #include <errno.h>
 #include <sicm_low.h>
 #include "sicmimpl.h"
-#include "rbtree.h"
 
 static pthread_mutex_t sa_mutex = PTHREAD_MUTEX_INITIALIZER;
 static int sa_num;

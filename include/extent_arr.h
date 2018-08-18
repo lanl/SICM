@@ -31,8 +31,6 @@ static inline extent_arr *extent_arr_init() {
   extent_arr *a;
   size_t i;
 
-  printf("Initializing.\n");
-
   a = (extent_arr *) malloc(sizeof(extent_arr));
   a->max_extents = 2;
   a->index = 0;

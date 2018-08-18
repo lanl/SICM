@@ -1,7 +1,6 @@
 #include "high.h"
 #include "profile.h"
 #include "sicmimpl.h"
-#include "rbtree.h"
 
 profile_thread prof;
 
