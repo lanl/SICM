@@ -13,7 +13,6 @@
 #include "sicm_low.h"
 #include "sicmimpl.h"
 #include "profile.h"
-#include "mem5_memmap.h"
 
 static struct sicm_device_list device_list;
 static enum sicm_device_tag default_device_tag;
@@ -361,5 +360,4 @@ void sh_terminate() {
     free(orig_thread_indices);
     extent_arr_free(extents);
   }
-  //MEM5_CREATE_MEMMAP;
 }
