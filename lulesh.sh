@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# Get the MSR tools
+export PATH="$PATH:$HOME/msr-tools"
+
 # Define the variables for the compiler wrappers
 export LD_COMPILER="clang++-4.0"
 export LD_LINKER="clang++-4.0"
@@ -14,22 +17,24 @@ export LD_WRAPPER="../../../bin/ld_wrapper.sh -g"
 #export LD_WRAPPER="clang-4.0 -g"
 
 # Compile SICM
-#make
-#make high
-#make compass
+make
+make high
+make compass
 
+# Compile Lulesh
 cd examples/high/lulesh
-#make clean
-#make -j5
-cd ../../..
+make clean
+make -j5
 
-# Turn off prefetching
-sudo ../msr-tools/wrmsr -a 0x1A4 0xf
-sudo ../msr-tools/rdmsr -a -x 0x1A4
-
-# Turn on profiling and use 3 threads
+# Now we're going to test profiling overhead
 export SH_PROFILING="yes"
-export OMP_NUM_THREADS=3
 export SH_ARENA_LAYOUT="SHARED_SITE_ARENAS"
-cd examples/high/lulesh
-time ./lulesh2.0
+export SH_MAX_SAMPLE_PAGES="512"
+export SH_SAMPLE_FREQ="2048"
+
+# Prefetching off
+sudo -E env PATH="$PATH:$HOME/msr-tools" wrmsr -a 0x1A4 0xf
+
+# 3 threads
+export OMP_NUM_THREADS=3
+time sudo -E ./lulesh2.0 -s 30

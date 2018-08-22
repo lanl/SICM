@@ -22,7 +22,6 @@ void (*sicm_extent_alloc_callback)(void *start, void *end) = NULL;
 static void sarena_init() {
 	int err;
 	size_t miblen;
-  printf("Calling sarena_init\n");
 
 	pthread_key_create(&sa_default_key, NULL);
 	miblen = 2;
@@ -118,7 +117,6 @@ static void sicm_arena_range_move(void *aux, void *start, void *end) {
 
 	numa_bitmask_setbit(nodemask, sa->numaid);
 	err = mbind((void *) start, (char*) end - (char*) start, MPOL_BIND, nodemask->maskp, nodemask->size, MPOL_MF_MOVE | MPOL_MF_STRICT);
-//	printf("sicm_arena_range_move %p %ld: %d\n", start, (char*)end - (char*)start, err);
 	if (err < 0 && sa->err == 0)
 		sa->err = err;
 
@@ -135,7 +133,6 @@ int sicm_arena_set_device(sicm_arena a, sicm_device *dev) {
 	if (sa == NULL)
 		return -EINVAL;
 
-//	printf("sicm_arena_set_device: %p\n", sa);
 	if (sa->pagesize != sicm_device_page_size(dev))
 		return -EINVAL;
 
@@ -185,15 +182,14 @@ size_t sicm_arena_size(sicm_arena a) {
 void *sicm_arena_alloc(sicm_arena a, size_t sz) {
 	sarena *sa;
 	int flags;
-	void *ret;
 
 	sa = a;
 	flags = 0;
-	if (sa != NULL)
+	if (sa != NULL) {
 		flags = MALLOCX_ARENA(sa->arena_ind) | MALLOCX_TCACHE_NONE;
+  }
 
-	ret = je_mallocx(sz, flags);
-	return ret;
+	return je_mallocx(sz, flags);
 }
 
 void *sicm_arena_alloc_aligned(sicm_arena a, size_t sz, size_t align) {
@@ -334,7 +330,6 @@ static void *sa_alloc(extent_hooks_t *h, void *new_addr, size_t size, size_t ali
 	ret = NULL;
 	sa = container_of(h, sarena, hooks);
 
-//	printf("sa_alloc: sa %p new_addr %p size %lx alignment %lx sa->arena_ind %d arena_ind %d\n", sa, new_addr, size, alignment, sa->arena_ind, arena_ind);
 
 	// TODO: figure out a way to prevent taking the mutex twice (sa_range_add also takes it)...
 	pthread_mutex_lock(&sa->mutex);
@@ -355,7 +350,7 @@ static void *sa_alloc(extent_hooks_t *h, void *new_addr, size_t size, size_t ali
 		goto free_nodemasks;
 	}
 
-	ret = mmap(new_addr, size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANON | MAP_POPULATE, -1, 0);
+	ret = mmap(new_addr, size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANON, -1, 0);
 	if (ret == MAP_FAILED) {
 		ret = NULL;
 		goto restore_mempolicy;
@@ -421,7 +416,6 @@ static bool sa_dalloc(extent_hooks_t *h, void *addr, size_t size, bool committed
 
 	ret = false;
 	sa = container_of(h, sarena, hooks);
-//	printf("sa_dalloc: sa %p addr %p size %ld sa->arena_ind %d arena_ind %d\n", sa, addr, size, sa->arena_ind, arena_ind);
 	pthread_mutex_lock(&sa->mutex);
   extent_arr_delete(sa->extents, addr);
 	if (munmap(addr, size) != 0) {

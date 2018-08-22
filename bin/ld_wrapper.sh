@@ -46,12 +46,12 @@ ${LLVMPATH}${LLVMLINK} $BC_STR -o .sicm_ir.bc
 
 # Run the compiler pass to generate the call graph
 ${LLVMPATH}${OPT} -load ${LIB_DIR}/compass.so -compass-mode=analyze \
-    -compass-quick-exit -compass -compass-depth=3 \
+    -compass-quick-exit -compass -compass-depth=0 \
     .sicm_ir.bc -o .sicm_ir.bc
 
 # Run the compiler pass on each individual file
 for file in "${FILES_ARR[@]}"; do
-  ${LLVMPATH}${OPT} -load ${LIB_DIR}/compass.so -compass-mode=transform -compass -compass-depth=3 $file.bc -o $file.bc &
+  ${LLVMPATH}${OPT} -load ${LIB_DIR}/compass.so -compass-mode=transform -compass -compass-depth=0 $file.bc -o $file.bc &
 done
 wait
 

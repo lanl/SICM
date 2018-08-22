@@ -18,7 +18,10 @@ static struct sicm_device_list device_list;
 static enum sicm_device_tag default_device_tag;
 static struct sicm_device *default_device;
 
+/* For profiling */
 static int should_profile;
+int max_sample_pages;
+int sample_freq;
 
 /* Keep track of all extents */
 extent_arr *extents;
@@ -136,6 +139,42 @@ void set_options() {
     printf("Profiling.\n");
   }
 
+  /* What sample frequency should we use? Default is 2048. Higher
+   * frequencies will fill up the sample pages (below) faster.
+   */
+  env = getenv("SH_SAMPLE_FREQ");
+  sample_freq = 2048;
+  if(env) {
+    endptr = NULL;
+    tmp_val = strtoimax(env, &endptr, 10);
+    if((tmp_val <= 0)) {
+      printf("Invalid sample frequency given. Defaulting to %d.\n", sample_freq);
+    } else {
+      sample_freq = (int) tmp_val;
+    }
+  }
+  printf("Sample frequency: %d\n", sample_freq);
+
+  /* How many samples should be collected by perf, maximum?
+   * Assuming we're only tracking addresses, this number is multiplied by 
+   * the page size and divided by 16 to get the maximum number of samples.
+   * 8 of those bytes are the header, and the other 8 are the address itself.
+   * By default this is 64 pages, which yields 16k samples.
+   */
+  env = getenv("SH_MAX_SAMPLE_PAGES");
+  max_sample_pages = 64;
+  if(env) {
+    endptr = NULL;
+    tmp_val = strtoimax(env, &endptr, 10);
+    /* Value needs to be non-negative, less than or equal to 512, and a power of 2. */
+    if((tmp_val <= 0) || (tmp_val > 512) || (tmp_val & (tmp_val - 1))) {
+      printf("Invalid number of pages given (%d). Defaulting to %d.\n", tmp_val, max_sample_pages);
+    } else {
+      max_sample_pages = (int) tmp_val;
+    }
+  }
+  printf("Maximum sample pages: %d\n", max_sample_pages);
+
   /* Get default_device_tag */
   env = getenv("SH_DEFAULT_DEVICE");
   if(env) {
@@ -223,6 +262,8 @@ void sh_create_arena(int index, int id) {
     arenas[index]->index = index;
     arenas[index]->accesses = 0;
     arenas[index]->id = id;
+    arenas[index]->rss = 0;
+    arenas[index]->peak_rss = 0;
     arenas[index]->arena = sicm_arena_create(0, default_device);
   }
 }
@@ -296,13 +337,15 @@ void* sh_realloc(int id, void *ptr, size_t sz) {
 /* Accepts an allocation site ID and a size, does the allocation */
 void* sh_alloc(int id, size_t sz) {
   int index;
+  void *ret;
 
-  if(layout == INVALID_LAYOUT) {
+  if((layout == INVALID_LAYOUT) || !sz) {
     return je_malloc(sz);
   }
 
   index = get_arena_index(id);
-  return sicm_arena_alloc(arenas[index]->arena, sz);
+  ret = sicm_arena_alloc(arenas[index]->arena, sz);
+  return ret;
 }
 
 void sh_free(void* ptr) {

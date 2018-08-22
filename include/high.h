@@ -17,15 +17,17 @@ enum arena_layout {
 typedef struct arena_info {
   unsigned index, id;
   sicm_arena arena;
-  unsigned long long accesses;
+  size_t accesses, rss, peak_rss;
 } arena_info;
 
 /* So we can access these things from profile.c */
 extern extent_arr *extents;
 extern arena_info **arenas;
 extern int max_index;
+extern int max_sample_pages;
+extern int sample_freq;
 
-#define DEFAULT_ARENA_LAYOUT SHARED_SITE_ARENAS
+#define DEFAULT_ARENA_LAYOUT INVALID_LAYOUT
 
 __attribute__((constructor))
 void sh_init();

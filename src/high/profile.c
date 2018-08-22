@@ -1,6 +1,8 @@
 #include "high.h"
 #include "profile.h"
 #include "sicmimpl.h"
+#include <unistd.h>
+#include <fcntl.h>
 
 profile_thread prof;
 
@@ -55,7 +57,7 @@ void sh_start_profile_thread() {
 
   /* Make sure we grab PEBS addresses */
   prof.pe->sample_type = PERF_SAMPLE_ADDR;
-  prof.pe->sample_period = 512;
+  prof.pe->sample_period = sample_freq;
 
   /* Generic options */
   prof.pe->disabled = 1;
@@ -75,12 +77,31 @@ void sh_start_profile_thread() {
   }
 
   /* mmap the file */
-  prof.page_size = (size_t) sysconf(_SC_PAGESIZE);
-  prof.metadata = mmap(NULL, prof.page_size + (prof.page_size * 64), PROT_READ, MAP_SHARED, prof.fd, 0);
+  prof.pagesize = (size_t) sysconf(_SC_PAGESIZE);
+  printf("Allocating %zu\n", prof.pagesize + (prof.pagesize * max_sample_pages));
+  prof.metadata = mmap(NULL, prof.pagesize + (prof.pagesize * max_sample_pages), PROT_READ, MAP_SHARED, prof.fd, 0);
+  if(prof.metadata == MAP_FAILED) {
+    fprintf(stderr, "Failed to mmap room for perf samples. Aborting with:\n%s\n", strerror(errno));
+    exit(1);
+  }
 
   /* Start the sampling */
   ioctl(prof.fd, PERF_EVENT_IOC_RESET, 0);
   ioctl(prof.fd, PERF_EVENT_IOC_ENABLE, 0);
+
+  /* Initialize for get_accesses */
+  prof.consumed = 0;
+  prof.total = 0;
+  prof.header = (struct perf_event_header *)((char *)prof.metadata + prof.pagesize);
+
+  /* Initialize for get_rss */
+  prof.pagemap_fd = open("/proc/self/pagemap", O_RDONLY);
+  if (prof.pagemap_fd < 0) {
+    fprintf(stderr, "Failed to open /proc/self/pagemap. Aborting.\n");
+    exit(1);
+  }
+  prof.pfndata = NULL;
+  prof.addrsize = sizeof(uint64_t);
 
   /* Start the profiling thread */
   pthread_mutex_init(&prof.mtx, NULL);
@@ -109,53 +130,114 @@ int sh_should_stop() {
   return 1;
 }
 
-void *sh_profile_thread(void *a) {
-  uint64_t consumed, head;
-  struct perf_event_header *header;
-  struct sample *sample;
-  unsigned long long count, associated;
-  size_t i;
+/* Adds up accesses to the arenas */
+static inline void get_accesses() {
+  uint64_t head;
   arena_info *arena;
   void *addr;
-  
-  consumed = 0;
-  count = 0;
-  header = (struct perf_event_header *)((char *)prof.metadata + prof.page_size);
-  while(!sh_should_stop()) {
-    /* Get ready to read */
-    head = prof.metadata->data_head;
+  size_t i;
+  struct sample *sample;
 
-    /* Read all of the samples */
-    while(consumed < head) {
-      if(header->size == 0) {
-        break;
-      }
-      sample = (struct sample *)((char *)(header) + 8);
-      addr = (void *)sample->addr;
-      if(addr) {
-        count++;
+  /* Get ready to read */
+  head = prof.metadata->data_head;
 
-        /* Search for which extent it goes into */
-        extent_arr_for(extents, i) {
-          if(!extents->arr[i].start && !extents->arr[i].end) continue;
-          arena = extents->arr[i].arena;
-          if((addr >= extents->arr[i].start) && (addr <= extents->arr[i].end)) {
-            arena->accesses++;
-          }
+  /* Read all of the samples */
+  while(prof.consumed < head) {
+    if(prof.header->size == 0) {
+      break;
+    }
+    sample = (struct sample *)((char *)(prof.header) + 8);
+    addr = (void *)sample->addr;
+    if(addr) {
+      prof.total++;
+
+      /* Search for which extent it goes into */
+      extent_arr_for(extents, i) {
+        if(!extents->arr[i].start && !extents->arr[i].end) continue;
+        arena = extents->arr[i].arena;
+        if((addr >= extents->arr[i].start) && (addr <= extents->arr[i].end)) {
+          arena->accesses++;
         }
       }
-      consumed = head;
-      header = (struct perf_event_header *)((char *)header + header->size);
     }
+    prof.consumed = head;
+    prof.header = (struct perf_event_header *)((char *)prof.header + prof.header->size);
+  }
+}
+
+static inline void get_rss() {
+	size_t i, n, numpages;
+  uint64_t start, end;
+  arena_info *arena;
+
+	/* Zero out the RSS values for each arena */
+	extent_arr_for(extents, i) {
+    arena = extents->arr[i].arena;
+		arena->rss = 0;
+	}
+
+	/* Iterate over the chunks */
+	extent_arr_for(extents, i) {
+
+		start = (uint64_t) extents->arr[i].start;
+		end = (uint64_t) extents->arr[i].end;
+		arena = extents->arr[i].arena;
+
+		numpages = (end - start) / prof.pagesize;
+		prof.pfndata = (union pfn_t *) realloc(prof.pfndata, numpages * prof.addrsize);
+
+		/* Seek to the starting of this chunk in the pagemap */
+		if(lseek64(prof.pagemap_fd, (start / prof.pagesize) * prof.addrsize, SEEK_SET) == ((off64_t) - 1)) {
+			close(prof.pagemap_fd);
+			fprintf(stderr, "Failed to seek in the PageMap file. Aborting.\n");
+			exit(1);
+		}
+
+		/* Read in all of the pfns for this chunk */
+		if(read(prof.pagemap_fd, prof.pfndata, prof.addrsize * numpages) != (prof.addrsize * numpages)) {
+			fprintf(stderr, "Failed to read the PageMap file. Aborting.\n");
+			exit(1);
+		}
+
+		/* Iterate over them and check them, sum up RSS in arena->rss */
+		for(n = 0; n < numpages; n++) {
+			if(!(prof.pfndata[n].obj.present)) {
+				continue;
+		  }
+      arena->rss += prof.pagesize;
+		}
+
+		/* Maintain the peak for this arena */
+		if(arena->rss > arena->peak_rss) {
+			arena->peak_rss = arena->rss;
+		}
+	}
+}
+
+void *sh_profile_thread(void *a) {
+  size_t i, associated;
+
+  /* Loop until we're stopped by the destructor */
+  i = 0;
+  while(!sh_should_stop()) {
+    get_accesses();
+    if(__builtin_expect(!!(i == 1000000), 0)) {
+      get_rss();
+      i = 0;
+    }
+    i++;
   }
 
+  /* Print out the results of the profiling */
   associated = 0;
   for(i = 0; i <= max_index; i++) {
     if(!arenas[i]) continue;
     associated += arenas[i]->accesses;
-    printf("%u: %llu\n", arenas[i]->id, arenas[i]->accesses);
+    printf("%u:\n", arenas[i]->id);
+    printf("  Accesses: %zu\n", arenas[i]->accesses);
+    printf("  Peak RSS: %zu\n", arenas[i]->peak_rss);
   }
-  printf("Totals: %llu / %llu\n", associated, count);
+  printf("Totals: %zu / %zu\n", associated, prof.total);
 
   printf("Cleaning up thread.\n");
   return NULL;
