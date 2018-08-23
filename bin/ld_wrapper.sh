@@ -10,6 +10,11 @@
 # Gets the location of the script to find Compass
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null && pwd )"
 LIB_DIR="$DIR/../lib"
+LLVMPATH="${LLVMPATH:- }"
+LLVMLINK="${LLVMLINK:-llvm-link}"
+OPT="${OPT:-opt}"
+LD_COMPILER="${LD_COMPILER:-clang}"
+LD_LINKER="${LD_LINKER:-clang}"
 
 # The original arguments and the ones we're going to add
 ARGS=$@
@@ -24,7 +29,6 @@ for word in $ARGS; do
 
   # Check if the argument is an object file that we need to link
   if [[ "$word" =~ (.*)\.o ]]; then
-    echo ${BASH_REMATCH[1]}
     FILES_ARR+=("${BASH_REMATCH[1]}")
     BC_STR="$BC_STR ${BASH_REMATCH[1]}.bc"
     OBJECT_STR="$OBJECT_STR ${BASH_REMATCH[1]}.o"
@@ -38,19 +42,25 @@ if [ ${#FILES_ARR[@]} -eq 0 ]; then
 fi
 
 # Link all of the IR files into one
-llvm-link $BC_STR -o .sicm_ir.bc
+${LLVMPATH}${LLVMLINK} $BC_STR -o .sicm_ir.bc
 
 # Run the compiler pass to generate the call graph
-opt -load ${LIB_DIR}/compass.so -compass-mode=analyze \
-    -compass-quick-exit -compass -compass-depth=3 \
+${LLVMPATH}${OPT} -load ${LIB_DIR}/compass.so -compass-mode=analyze \
+    -compass-quick-exit -compass -compass-depth=0 \
     .sicm_ir.bc -o .sicm_ir.bc
 
 # Run the compiler pass on each individual file
+for file in "${FILES_ARR[@]}"; do
+  ${LLVMPATH}${OPT} -load ${LIB_DIR}/compass.so -compass-mode=transform -compass -compass-depth=0 $file.bc -o $file.bc &
+done
+wait
+
 # Also compile each file to its transformed '.o', overwriting the old one
 for file in "${FILES_ARR[@]}"; do
-  opt -load ${LIB_DIR}/compass.so -compass-mode=transform -compass -compass-depth=3 $file.bc -o $file.bc;
-  clang -c $file.bc -o $file.o
+  FILEARGS=`cat $file.args`
+  ${LLVMPATH}${LD_COMPILER} $FILEARGS -c $file.bc -o $file.o &
 done
+wait
 
 # Now finally link the transformed '.o' files
-clang -L${LIB_DIR} -lhigh -Wl,-rpath,${LIB_DIR} $ARGS
+${LLVMPATH}${LD_LINKER} -L${LIB_DIR} -lhigh -Wl,-rpath,${LIB_DIR} $ARGS

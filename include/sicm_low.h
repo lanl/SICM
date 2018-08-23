@@ -28,10 +28,12 @@
 typedef enum sicm_device_tag {
   SICM_DRAM,
   SICM_KNL_HBM,
-  SICM_POWERPC_HBM
+  SICM_POWERPC_HBM,
+  INVALID_TAG
 } sicm_device_tag;
 
 const char * const sicm_device_tag_str(sicm_device_tag tag);
+sicm_device_tag sicm_get_device_tag(char *env);
 
 /// Data specific to a DRAM device.
 typedef struct sicm_dram_data {
@@ -206,6 +208,15 @@ void *sicm_arena_alloc(sicm_arena sa, size_t sz);
  * Specifying ARENA_DEFAULT makes the function equivalent to malloc.
  */
 void *sicm_arena_alloc_aligned(sicm_arena sa, size_t sz, size_t align);
+
+/// Resize a memory region in an arena
+/**
+ * @param sa arena that should be used for the allocation. ARENA_DEFAULT is allowed.
+ * @param ptr pointer to the memory to be resized
+ * @param sz new size
+ * @return pointer to the new allocation, or NULL if unable to reallocate
+ */
+void *sicm_arena_realloc(sicm_arena sa, void *ptr, size_t sz);
 
 /// Allocate memory region
 /**

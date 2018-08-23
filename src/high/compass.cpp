@@ -1,27 +1,24 @@
-/* This LLVM compiler pass was written by Brandon Kammerdiener
- * for the University of Tennessee, Knoxville. */
+// compass.cpp
+// llvm pass
+// Brandon Kammerdiener -- 2018
 
-#include "llvm/Analysis/CallGraph.h"
-#include "llvm/Analysis/CallGraphSCCPass.h"
-#include <llvm/Config/llvm-config.h>
-#if LLVM_VERSION_MAJOR >= 4
-/* Required for CompassQuickExit, requires LLVM 4.0 or newer */
 #include "llvm/Bitcode/BitcodeWriter.h"
-#endif
 #include "llvm/IR/Constants.h"
 #include "llvm/IR/Function.h"
+#include "llvm/IR/Operator.h"
 #include "llvm/Pass.h"
 #include "llvm/Support/CommandLine.h"
-#if 0
 #include "llvm/Support/Error.h"
-#endif
 #include "llvm/Support/FileSystem.h"
 #include "llvm/Support/raw_ostream.h"
 #include "llvm/Transforms/Utils/BasicBlockUtils.h"
 #include "llvm/Transforms/Utils/Cloning.h"
+#include "llvm/IR/DebugLoc.h"
+#include "llvm/IR/DebugInfoMetadata.h"
 #include <algorithm>
 #include <fstream>
 #include <iostream>
+#include <sstream>
 #include <map>
 #include <set>
 #include <stdio.h>
@@ -29,9 +26,20 @@
 #include <unistd.h>
 #include <vector>
 
+// Input/output files
+#define SOURCE_LOCATIONS_FILE "contexts.txt"
+#define NSITES_FILE "nsites.txt"
+#define NCLONES_FILE "nclones.txt"
+#define BOTTOM_UP_CALL_GRAPH_FILE "buCG.txt"
+
+// Defined if we are using an extended call graph.
+// i.e., Multiple if A calls B multiple times, there are multiple edges,
+// which is not the case in a classical call graph.
+#define EXTENDED_CG
+
 using namespace llvm;
 
-cl::opt<int>
+cl::opt<unsigned int>
     CompassDepth("compass-depth",
                  cl::desc("Specify context depth if in 'transform' mode"),
                  cl::value_desc("depth"));
@@ -52,6 +60,16 @@ static LLVMContext myContext;
 
 namespace {
 
+// Open a file that can be appended to simultaneously by multiple
+// processes in a safe way.
+FILE * sync_fopen(char * path) {
+    FILE * f = fopen(path, "a");
+    if (f) {
+        setvbuf(f, NULL, _IONBF, BUFSIZ);
+    }
+    return f;
+}
+
 struct compass : public ModulePass {
     static char ID;
 
@@ -59,22 +77,34 @@ struct compass : public ModulePass {
     std::map<Function *, std::set<Function *>> buCG;
     std::map<std::string, std::set<std::string>> str_buCG;
     std::map<std::string, std::set<std::string>> str_CG;
-    std::set<std::string> relevantNodes;
     std::map<std::string, std::string> cloneLink;
     std::map<std::string, unsigned int> sitesPerFn;
+    std::map<std::string, unsigned int> times1Calls2;
     std::map<std::string, unsigned int> namecount;
-    unsigned long long n_sites;
+    unsigned long long n_sites, pre_n_sites;
     Module * theModule;
     std::map<std::string, std::string> allocFnMap;
     std::map<std::string, std::string> dallocFnMap;
 
-    compass() : ModulePass(ID), ncloned(0), n_sites(0), theModule(nullptr) {
-        allocFnMap["malloc"] = "sg_alloc_exact";
-        allocFnMap["_Znam"] = "sg_alloc_exact";
-        allocFnMap["_Znwm"] = "sg_alloc_exact";
-        /*
+    FILE * contexts_file,
+         * nsites_file,
+         * nclones_file;
+
+    compass() :
+        ModulePass(ID),
+        ncloned(0),
+        n_sites(0),
+        pre_n_sites(0),
+        theModule(nullptr),
+        contexts_file(nullptr),
+        nsites_file(nullptr),
+        nclones_file(nullptr) {
+
+        allocFnMap["malloc"] = "sh_alloc";
         allocFnMap["calloc"] = "ben_calloc";
-        allocFnMap["realloc"] = "ben_realloc";
+        allocFnMap["realloc"] = "sh_realloc";
+        allocFnMap["_Znam"] = "sh_alloc";
+        allocFnMap["_Znwm"] = "sh_alloc";
         allocFnMap["f90_alloc"] = "f90_ben_alloc";
         allocFnMap["f90_alloc03"] = "f90_ben_alloc03";
         allocFnMap["f90_alloc03_chk"] = "f90_ben_alloc03_chk";
@@ -102,24 +132,55 @@ struct compass : public ModulePass {
         allocFnMap["f90_auto_alloc04"] = "f90_ben_auto_alloc04";
         allocFnMap["f90_auto_calloc"] = "f90_ben_auto_calloc";
         allocFnMap["f90_auto_calloc04"] = "f90_ben_auto_calloc04";
-        */
 
-        dallocFnMap["free"] = "sg_free";
-        dallocFnMap["_ZdaPv"] = "sg_free";
-        dallocFnMap["_ZdlPv"] = "sg_free";
-        /*
+        allocFnMap["f90_alloc_i8"] = "f90_ben_alloc_i8";
+        allocFnMap["f90_alloc03_i8"] = "f90_ben_alloc03_i8";
+        allocFnMap["f90_alloc03_chk_i8"] = "f90_ben_alloc03_chk_i8";
+        allocFnMap["f90_alloc04_i8"] = "f90_ben_alloc04_i8";
+        allocFnMap["f90_alloc04_chk_i8"] = "f90_ben_alloc04_chk_i8";
+        allocFnMap["f90_kalloc_i8"] = "f90_ben_kalloc_i8";
+        allocFnMap["f90_calloc_i8"] = "f90_ben_calloc_i8";
+        allocFnMap["f90_calloc03_i8"] = "f90_ben_calloc03_i8";
+        allocFnMap["f90_calloc04_i8"] = "f90_ben_calloc04_i8";
+        allocFnMap["f90_kcalloc_i8"] = "f90_ben_kcalloc_i8";
+        allocFnMap["f90_ptr_alloc_i8"] = "f90_ben_ptr_alloc_i8";
+        allocFnMap["f90_ptr_alloc03_i8"] = "f90_ben_ptr_alloc03_i8";
+        allocFnMap["f90_ptr_alloc04_i8"] = "f90_ben_ptr_alloc04_i8";
+        allocFnMap["f90_ptr_src_alloc03_i8"] = "f90_ben_ptr_src_alloc03_i8";
+        allocFnMap["f90_ptr_src_alloc04_i8"] = "f90_ben_ptr_src_alloc04_i8";
+        allocFnMap["f90_ptr_src_calloc03_i8"] = "f90_ben_ptr_src_calloc03_i8";
+        allocFnMap["f90_ptr_src_calloc04_i8"] = "f90_ben_ptr_src_calloc04_i8";
+        allocFnMap["f90_ptr_kalloc_i8"] = "f90_ben_ptr_kalloc_i8";
+        allocFnMap["f90_ptr_calloc_i8"] = "f90_ben_ptr_calloc_i8";
+        allocFnMap["f90_ptr_calloc03_i8"] = "f90_ben_ptr_calloc03_i8";
+        allocFnMap["f90_ptr_calloc04_i8"] = "f90_ben_ptr_calloc04_i8";
+        allocFnMap["f90_ptr_kcalloc_i8"] = "f90_ben_ptr_kcalloc_i8";
+        allocFnMap["f90_auto_allocv_i8"] = "f90_ben_auto_allocv_i8";
+        allocFnMap["f90_auto_alloc_i8"] = "f90_ben_auto_alloc_i8";
+        allocFnMap["f90_auto_alloc04_i8"] = "f90_ben_auto_alloc04_i8";
+        allocFnMap["f90_auto_calloc_i8"] = "f90_ben_auto_calloc_i8";
+        allocFnMap["f90_auto_calloc04_i8"] = "f90_ben_auto_calloc04_i8";
+
+        dallocFnMap["free"] = "sh_free";
+        dallocFnMap["_ZdaPv"] = "sh_free";
+        dallocFnMap["_ZdlPv"] = "sh_free";
+
         dallocFnMap["f90_dealloc"] = "f90_ben_dealloc";
         dallocFnMap["f90_dealloc03"] = "f90_ben_dealloc03";
         dallocFnMap["f90_dealloc_mbr"] = "f90_ben_dealloc_mbr";
         dallocFnMap["f90_dealloc_mbr03"] = "f90_ben_dealloc_mbr03";
         dallocFnMap["f90_deallocx"] = "f90_ben_deallocx";
         dallocFnMap["f90_auto_dealloc"] = "f90_ben_auto_dealloc";
-        */
+
+        dallocFnMap["f90_dealloc_i8"] = "f90_ben_dealloc_i8";
+        dallocFnMap["f90_dealloc03_i8"] = "f90_ben_dealloc03_i8";
+        dallocFnMap["f90_dealloc_mbr_i8"] = "f90_ben_dealloc_mbr_i8";
+        dallocFnMap["f90_dealloc_mbr03_i8"] = "f90_ben_dealloc_mbr03_i8";
+        dallocFnMap["f90_deallocx_i8"] = "f90_ben_deallocx_i8";
+        dallocFnMap["f90_auto_dealloc_i8"] = "f90_ben_auto_dealloc_i8";
     }
 
-    void getAnalysisUsage(AnalysisUsage & AU) const {
-        AU.addRequired<CallGraphWrapperPass>();
-    }
+    void getAnalysisUsage(AnalysisUsage & AU) const { }
 
     ///////////// Make the use of CallSite generic across CallInst and InvokeInst
     /////////////////////////////////////////////////////////////////////////////
@@ -127,11 +188,64 @@ struct compass : public ModulePass {
         return isa<CallInst>(inst) || isa<InvokeInst>(inst);
     }
 
-    Function * getCalledFunction(CallSite & site) {
+    Function * getDirectlyCalledFunction(CallSite & site) {
+        Function * fn  = nullptr;
+
         CallInst * call = dyn_cast<CallInst>(site.getInstruction());
-        if (call)
-            return call->getCalledFunction();
-        return dyn_cast<InvokeInst>(site.getInstruction())->getCalledFunction();
+        if (call) {
+            fn = call->getCalledFunction();
+        } else {
+            InvokeInst * inv = dyn_cast<InvokeInst>(site.getInstruction());
+            fn = inv->getCalledFunction();
+        }
+
+        return fn;
+    }
+    
+    Value * getCalledValue(CallSite & site) {
+        Value    * val = nullptr;
+
+        CallInst * call = dyn_cast<CallInst>(site.getInstruction());
+        if (call) {
+            val = call->getCalledValue();
+        } else {
+            InvokeInst * inv = dyn_cast<InvokeInst>(site.getInstruction());
+            val = inv->getCalledValue();
+        }
+
+        return val;
+    }
+
+    // Try to return the function that that a given call site calls.
+    // If the call is direct this is easy.
+    // If the call is indirect, we may still be able to get the function
+    // if it is known statically.
+    Function * getCalledFunction(CallSite & site) {
+        Function * fn  = nullptr;
+        Value    * val = nullptr;
+
+        fn = getDirectlyCalledFunction(site);
+        if (fn)
+            return fn;
+
+        // At this point, we are looking at an indirect call (common in code 
+        // generated by flang).
+        // We should still try to find the function if it is a simple bitcast:
+        //
+        //      %0 = bitcast void (...)* @f90_alloc04_chk to
+        //              void (i8*, i8*, i8*, i8*, i8*, i8*, i8*, i8*, i8*, i64, ...)*
+        //
+        // So, we will try to scan through bitcasts.
+        //
+        // @incomplete: are there other operations that would make a statically direct
+        // call look indirect?
+
+        val = getCalledValue(site);
+
+        if (BitCastOperator * op = dyn_cast<BitCastOperator>(val))
+            return cast<Function>(op->stripPointerCasts());
+
+        return nullptr;
     }
 
     void setCalledFunction(CallSite & site, Function * fn) {
@@ -161,35 +275,39 @@ struct compass : public ModulePass {
 
     ///////////////////////////////////////////////// construct bottom-up call graph
     ////////////////////////////////////////////////////////////////////////////////
-    void buildBottomUpCG(CallGraph & CG) {
-        std::set<CallGraphNode *> visited;
+    void buildBottomUpCG() {
+        std::set<Function *> visited;
 
         // recursive convenience lambda
-        std::function<void(CallGraphNode *)> rec_search =
-            [&](CallGraphNode * node) {
-                Function * f = node->getFunction();
-
+        std::function<void(Function *)> rec_search =
+            [&](Function * f) {
                 if (!f)
                     return;
 
-                if (visited.find(node) != visited.end())
+                if (visited.find(f) != visited.end())
                     return;
-                visited.insert(node);
+                visited.insert(f);
 
                 buCG[f];
 
-                for (auto & call_site : *node) {
-                    CallGraphNode * cgnode = call_site.second;
-                    Function * callee = cgnode->getFunction();
-                    if (callee) {
-                        buCG[callee].insert(f);
-                        rec_search(cgnode);
+                for (auto & BB : *f) {
+                    for (auto it = BB.begin(); it != BB.end(); it++) {
+                        if (isCallSite(&*it)) {
+                            CallSite site(&*it);
+                            Function * callee = getCalledFunction(site);
+                            if (callee) {
+                                std::string combined = f->getName().str() + callee->getName().str();
+                                times1Calls2[combined] += 1;
+                                buCG[callee].insert(f);
+                                rec_search(callee);
+                            }
+                        }
                     }
                 }
             };
 
-        for (auto & node : CG) {
-            rec_search(node.second.get());
+        for (Function & node : *theModule) {
+            rec_search(&node);
         }
     }
     ////////////////////////////////////////////////////////////////////////////////
@@ -223,8 +341,10 @@ struct compass : public ModulePass {
             stream << " " << n_sites;
             stream << " " << it.second.size();
             for (Function * caller : it.second) {
-                stream << " " << caller->getName().str();
+                std::string combined = caller->getName().str() + callee->getName().str();
+                stream << " " << caller->getName().str() << " " << times1Calls2[combined];
             }
+            stream << "\n";
         }
     }
 
@@ -246,9 +366,12 @@ struct compass : public ModulePass {
             sitesPerFn[callee] = n_sites;
             cloneLink[callee] = callee;
             stream >> n_callers;
-            for (unsigned int j = 0; j < n_callers; j += 1) {
+            for (int j = 0; j < n_callers; j += 1) {
+                int times_called;
                 stream >> caller;
                 str_buCG[callee].insert(caller);
+                stream >> times_called;
+                times1Calls2[caller+callee] = times_called;
             }
         }
 
@@ -284,11 +407,7 @@ struct compass : public ModulePass {
             fclone->copyAttributesFrom(fn);
         } else {
             ValueToValueMapTy VMap;
-#if (LLVM_VERSION_MAJOR <= 3 && LLVM_VERSION_MINOR <= 8)
-            fclone = CloneFunction(fn, VMap, false);
-#else
             fclone = CloneFunction(fn, VMap);
-#endif
             fclone->setName(name);
         }
 
@@ -342,7 +461,7 @@ struct compass : public ModulePass {
     //      main->b->d'->e->malloc
     ////////////////////////////////////////////////////////////////////////////////
 
-    void doCloning(CallGraph & CG) {
+    void doCloning() {
         std::vector<std::set<std::string>> layers;
 
         // Roots are at context layer -1.
@@ -399,25 +518,44 @@ struct compass : public ModulePass {
 
                 // There needs to be a copy of callee for each caller of callee.
                 for (auto & caller : callers) {
+#ifdef EXTENDED_CG
+                    // Loop through each call for extended call graph.
+                    for (int call_n = 0; call_n < times1Calls2[caller + callee]; call_n += 1) {
+                        // We already have one copy of the function, the original.
+                        if (call_n == 0 && &caller == &(*callers.begin()))
+                            continue;
+#else
                     // We already have one copy of the function, the original.
                     if (&caller == &(*callers.begin()))
                         continue;
-
+#endif
                     // We need to do some actual cloning.
                     if (!sym) {
                         Function * fclone = createClone(callee_fn);
                         std::string new_name = fclone->getName().str();
-                        CG.getOrInsertFunction(fclone);
+                        times1Calls2[caller+new_name] = 1;
 
                         // Copy edges for clone from callee.
                         str_buCG[new_name].clear();
                         str_CG[new_name] = str_CG[callee];
-                        for (auto & e : str_CG[new_name])
+                        for (auto & e : str_CG[new_name]) {
                             str_buCG[e].insert(new_name);
+                            times1Calls2[new_name+e] = times1Calls2[callee+e];
+                        }
 
+#ifdef EXTENDED_CG
+                        // If there is only one edge, but we have made it this far,
+                        // there is another caller taking the original edges, so we
+                        // remove ours here.
+                        if (times1Calls2[caller+callee] == 1) {
+#endif
                         // Remove edge from caller to/from callee.
+
                         str_CG[caller].erase(callee);
                         str_buCG[callee].erase(caller);
+#ifdef EXTENDED_CG
+                        }
+#endif
 
                         // Create edges for caller to/from clone.
                         str_CG[caller].insert(new_name);
@@ -449,6 +587,11 @@ struct compass : public ModulePass {
                                         ReplaceInstWithInst(
                                             BB.getInstList(), it,
                                             site_clone.getInstruction());
+#ifdef EXTENDED_CG
+                                        // Jump out early so that on the next iterations, clones
+                                        // for multiple calls will replace the next site.
+                                        goto out;
+#endif
                                     }
                                 }
                             }
@@ -456,17 +599,24 @@ struct compass : public ModulePass {
                     } else {
                         // We just need to symbolically clone the function.
                         std::string new_name = newCloneName(callee);
-
+                        times1Calls2[caller+new_name] = 1;
                         // Copy edges for clone from callee.
                         str_buCG[new_name].clear();
                         str_CG[new_name] = str_CG[callee];
-                        for (auto & e : str_CG[new_name])
+                        for (auto & e : str_CG[new_name]) {
                             str_buCG[e].insert(new_name);
+                            times1Calls2[new_name+e] = times1Calls2[callee+e];
+                        }
 
+#ifdef EXTENDED_CG
+                        if (times1Calls2[caller+callee] == 1) {
+#endif
                         // Remove edge from caller to/from callee.
                         str_CG[caller].erase(callee);
                         str_buCG[callee].erase(caller);
-
+#ifdef EXTENDED_CG
+                        }
+#endif
                         // Create edges for caller to/from clone.
                         str_CG[caller].insert(new_name);
                         str_buCG[new_name].insert(caller);
@@ -475,6 +625,13 @@ struct compass : public ModulePass {
 
                         cloneLink[new_name] = callee;
                     }
+
+#ifdef EXTENDED_CG
+                    // So sorry about this.
+out:
+                        (void)1;
+                    }
+#endif
                 }
             }
         }
@@ -490,7 +647,7 @@ struct compass : public ModulePass {
     // and maps (str_buCG).
     ////////////////////////////////////////////////////////////////////////////////
     unsigned int getSiteID(std::string fn, unsigned int site) {
-        unsigned int id = 1; // We want to start at 1 to reserve 0 for indirect calls
+        unsigned int id = 1;
 
         std::set<std::string> callers;
         for (auto & fn : allocFnMap)
@@ -509,6 +666,69 @@ struct compass : public ModulePass {
     }
     ////////////////////////////////////////////////////////////////////////////////
 
+    ////////////////////////////////////////////////////////////// emitDebugLocation
+    // Ouput the source locations and calling context for each allocation
+    // instruction after transformation.
+    ////////////////////////////////////////////////////////////////////////////////
+    void emitDebugLocation(Instruction * inst, const std::string & alloc_fn, unsigned int id) {
+        auto & loc = inst->getDebugLoc();
+        if (loc) {
+            std::stringstream buff;
+
+            auto BB = inst->getParent();
+            std::vector<std::string> bt;
+            std::string p = BB->getParent()->getName();
+            for (int i = 0; i <= CompassDepth; i += 1) {
+                bt.push_back(p);
+                if (str_buCG[p].empty())
+                    break;
+                p = *str_buCG[p].begin();
+            }
+
+            buff
+                << id
+                << " "
+                << alloc_fn
+                << " "
+                ;
+            if (loc.getInlinedAt())
+                buff 
+                    << "(inlined) "
+                    ;
+            buff
+                << cast<DIScope>(loc.getScope())->getFilename().str()
+                << ":"
+                << loc.getLine()
+                << " in "
+                << theModule->getName().str()
+                << "\n"
+                ;
+
+            std::string str_inst;
+            raw_string_ostream rso(str_inst);
+            inst->print(rso);
+
+            buff
+                << rso.str()
+                << "\n"
+                ;
+
+            for (const std::string & f : bt) {
+                buff
+                    << "    ("
+                    << f
+                    << ")"
+                    << "\n"
+                    ;
+            }
+
+            std::string _buff = buff.str();
+            fprintf(contexts_file, "%s\n", _buff.c_str());
+        } else {
+            fprintf(contexts_file, "no debug info.. did you compile with '-g'?\n");
+        }
+    }
+    ////////////////////////////////////////////////////////////////////////////////
 
     ///////////////////////////////////////////////////////////// transformCallSites
     ////////////////////////////////////////////////////////////////////////////////
@@ -614,6 +834,8 @@ struct compass : public ModulePass {
                 }
             }
 
+            std::map<Instruction*, unsigned int> ids;
+
             // Replace and add site ID argument.
             unsigned int i = 0;
             for (CallSite & site : sites) {
@@ -626,9 +848,10 @@ struct compass : public ModulePass {
                 if (allocFnMap.find(fn_name) != allocFnMap.end()) {
                     // If it's an allocation function, we will add a site ID
                     // argument to the call.
+                    unsigned int id = getSiteID(caller, i++);
                     args.push_back(
                         ConstantInt::get(IntegerType::get(myContext, 32),
-                                         getSiteID(caller, i++)));
+                                         id));
 
                     for (auto it = arg_begin(site); it != arg_end(site); it++)
                         args.push_back(*it);
@@ -645,6 +868,8 @@ struct compass : public ModulePass {
                         newcall = InvokeInst::Create(get(fn_name, allocFnMap),
                                                      norm, unwind, args);
                     }
+
+                    ids[newcall] = id;
 
                     n_sites += 1;
                 } else if (dallocFnMap.find(fn_name) != dallocFnMap.end()) {
@@ -665,6 +890,10 @@ struct compass : public ModulePass {
                 }
 
                 ReplaceInstWithInst(site.getInstruction(), newcall);
+
+                if (allocFnMap.find(fn_name) != allocFnMap.end()) {
+                    emitDebugLocation(newcall, fn_name, ids[newcall]);
+                }
             }
         }
     }
@@ -676,18 +905,24 @@ struct compass : public ModulePass {
     bool runOnModule(Module & module) {
         theModule = &module;
 
-        CallGraph & CG = getAnalysis<CallGraphWrapperPass>().getCallGraph();
-
         if (CompassMode == "analyze") {
-            buildBottomUpCG(CG);
+            // Clear files from previous runs.
+            contexts_file = fopen(SOURCE_LOCATIONS_FILE, "w");
+            nsites_file = fopen(NSITES_FILE, "w");
+            nclones_file = fopen(NCLONES_FILE, "w");
+            fclose(contexts_file);
+            fclose(nsites_file);
+            fclose(nclones_file);
 
-            std::ofstream os("buCG.txt");
+            buildBottomUpCG();
+
+            std::ofstream os(BOTTOM_UP_CALL_GRAPH_FILE);
 
             writeBottomUpCG(os);
 
             os.close();
 
-            fprintf(stderr, "wrote to buCG.txt\n");
+            //fprintf(stderr, "wrote to buCG.txt\n");
 
             // Don't bother doing verification or writing bitcode..
             if (CompassQuickExit)
@@ -695,23 +930,35 @@ struct compass : public ModulePass {
 
             return false;
         } else if (CompassMode == "transform") {
-            std::ifstream is("buCG.txt");
+            contexts_file = sync_fopen(SOURCE_LOCATIONS_FILE);
+            nsites_file   = sync_fopen(NSITES_FILE);
+            nclones_file   = sync_fopen(NCLONES_FILE);
+
+            std::ifstream is(BOTTOM_UP_CALL_GRAPH_FILE);
             readBottomUpCG(is);
+
+            for (auto & it : sitesPerFn) {
+                Function * f = theModule->getFunction(it.first);
+                if (f && !f->isDeclaration())
+                    pre_n_sites += it.second;
+            }
 
             flipCG();
 
-            doCloning(CG);
+            doCloning();
 
             transformCallSites();
 
-            fprintf(stderr, "%u function clones created\n", ncloned);
-            fprintf(stderr, "%llu allocation sites\n", n_sites);
+            //fprintf(stderr, "%u function clones created\n", ncloned);
+            //fprintf(stderr, "%llu allocation sites\n", n_sites);
 
-#if LLVM_VERSION_MAJOR >= 4
-            /* Exits compass early, requires 4.0 or newer. */
+            fprintf(nsites_file, "%llu %llu\n", pre_n_sites, n_sites);
+
+            fprintf(nclones_file, "%llu\n", ncloned);
+
             if (CompassQuickExit) {
                 // Writing the bitcode ourselves is faster.
-                fprintf(stderr, "writing bitcode..\n");
+                //fprintf(stderr, "writing bitcode..\n", n_sites);
 
                 // Try to stay consistent with the output behavior of opt.
                 auto * option = static_cast<llvm::cl::opt<std::string> *>(
@@ -732,7 +979,6 @@ struct compass : public ModulePass {
                 // Exit now. Skip verification.
                 _exit(0);
             }
-#endif
             return true;
         } else {
             fprintf(stderr, "'%s' is an invalid compass mode.\n",
@@ -750,3 +996,4 @@ char compass::ID = 0;
 static RegisterPass<compass> X("compass", "compass Pass",
                                false /* Only looks at CFG */,
                                false /* Analysis Pass */);
+
