@@ -4,7 +4,7 @@ FC?=gfortran
 CXX?=g++
 
 # Source files
-LOW_SOURCES=sicm_low sicm_arena rbtree
+LOW_SOURCES=sicm_low sicm_arena
 HIGH_SOURCES=high profile
 INCLUDES=sicm_low.h
 

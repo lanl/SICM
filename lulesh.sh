@@ -17,6 +17,7 @@ export LD_WRAPPER="../../../bin/ld_wrapper.sh -g"
 #export LD_WRAPPER="clang-4.0 -g"
 
 # Compile SICM
+make clean
 make
 make high
 make compass
@@ -30,11 +31,11 @@ make -j5
 export SH_PROFILING="yes"
 export SH_ARENA_LAYOUT="SHARED_SITE_ARENAS"
 export SH_MAX_SAMPLE_PAGES="512"
-export SH_SAMPLE_FREQ="2048"
+export SH_SAMPLE_FREQ="512"
 
 # Prefetching off
 sudo -E env PATH="$PATH:$HOME/msr-tools" wrmsr -a 0x1A4 0xf
 
 # 3 threads
 export OMP_NUM_THREADS=3
-time sudo -E ./lulesh2.0 -s 30
+time sudo -E ./lulesh2.0 -s 45

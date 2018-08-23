@@ -15,6 +15,7 @@
 #include <stdbool.h>
 #include <pthread.h>
 #include <errno.h>
+#include <poll.h>
 
 struct __attribute__ ((__packed__)) sample {
     uint64_t addr;
@@ -41,7 +42,7 @@ typedef struct profile_thread {
   struct perf_event_mmap_page *metadata;
   int fd;
   uint64_t consumed;
-  struct perf_event_header *header;
+  struct pollfd pfd;
 
   /* For libpfm */
   pfm_perf_encode_arg_t *pfm;
