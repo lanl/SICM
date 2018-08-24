@@ -9,4 +9,4 @@
 # $HEADER$
 #
 
-nobase_include_HEADERS = high.h  sg.h  sg.hpp  sicm_cpp.hpp  sicmimpl.h  sicm_low.h
+nobase_include_HEADERS = high.h  sicm_cpp.hpp  sicmimpl.h  sicm_low.h

@@ -11,7 +11,7 @@
 
 lib_LTLIBRARIES = libsicm.la libsicm_cpp.la libsicm_f90.la
 
-libsicm_la_SOURCES = sicm_low.c sicm_arena.c rbtree.c
+libsicm_la_SOURCES = sicm_low.c sicm_arena.c
 libsicm_la_LIBADD = 
 libsicm_la_LDFLAGS = -version-info 0:0:0
 

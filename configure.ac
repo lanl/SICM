@@ -83,6 +83,33 @@ AC_SUBST([LIBS],["$JEMALLOC_LIB $LIBS_save -ljemalloc"])
 AC_CHECK_HEADERS([jemalloc.h],[AC_DEFINE(HAVE_JEMALLOC)],[AC_MSG_ERROR([Cannot find jemalloc headers])])
 AC_CHECK_LIB([jemalloc],[malloc],,AC_MSG_ERROR([Cannot use jemalloc lib]))
 
+dnl# libpfm
+
+AC_MSG_CHECKING([libpfm installation])
+AC_ARG_WITH(libpfm,
+	    [AS_HELP_STRING([--with-libpfm=PATH],
+	    		    [Absolute path to the install directory for libpfm]
+	    		   )],
+	    [LIBPFM_INSTALL_DIR="${withval}"],
+	    [LIBPFM_INSTALL_DIR=""])
+
+LIBPFM_INC=""
+LIBPFM_LIB=""
+if test "x$LIBPFM_INSTALL_DIR" = "x" ; then
+	AC_MSG_RESULT([no])
+else
+	AC_MSG_RESULT([yes])
+	LIBPFM_INC="-I$LIBPFM_INSTALL_DIR/include -I$LIBPFM_INSTALL_DIR/include/jemalloc"
+	LIBPFM_LIB="-L$LIBPFM_INSTALL_DIR/lib"
+fi
+
+CPPFLAGS_save="$CPPFLAGS"
+LIBS_save="$LIBS"
+AC_SUBST([CPPFLAGS],["$LIBPFM_INC $CPPFLAGS_save"])
+AC_SUBST([LIBS],["$LIBPFM_LIB $LIBS_save -ljemalloc"])
+AC_CHECK_HEADERS([perfmon/pfmlib_perf_event.h],[AC_DEFINE(HAVE_LIBPFM)],[AC_MSG_ERROR([Cannot find libpfm headers])])
+AC_CHECK_LIB([pfm],[pfm_initialize],,AC_MSG_ERROR([Cannot use libpfm lib]))
+
 # dnl LLVM
 
 AC_MSG_CHECKING([LLVM installation])
