@@ -9,7 +9,6 @@
 #include <errno.h>
 #include <sicm_low.h>
 #include "sicmimpl.h"
-#include "rbtree.h"
 
 static pthread_mutex_t sa_mutex = PTHREAD_MUTEX_INITIALIZER;
 static int sa_num;
@@ -18,6 +17,7 @@ static size_t sa_lookup_mib[2];
 static pthread_once_t sa_init = PTHREAD_ONCE_INIT;
 static pthread_key_t sa_default_key;
 static extent_hooks_t sa_hooks;
+void (*sicm_extent_alloc_callback)(void *start, void *end) = NULL;
 
 static void sarena_init() {
 	int err;
@@ -33,12 +33,8 @@ static void sarena_init() {
 sicm_arena sicm_arena_create(size_t sz, sicm_device *dev) {
 	int err;
 	sarena *sa;
-	char buf[32];
 	size_t arena_ind_sz;
-	size_t hooks_mib[3];
-	size_t hooks_miblen;
-	size_t old_size, new_size;
-	extent_hooks_t *new_hooks, *old_hooks;
+	extent_hooks_t *new_hooks;
 	unsigned arena_ind;
 
 	pthread_once(&sa_init, sarena_init);
@@ -58,34 +54,18 @@ error:
 		return NULL;
 	}
 
-	sa->ranges = sicm_create_tree();
+  sa->extents = extent_arr_init();
 	sa->hooks = sa_hooks;
+  new_hooks = &sa->hooks;
 	arena_ind_sz = sizeof(unsigned); // sa->arena_ind);
 	arena_ind = -1;
-	err = je_mallctl("arenas.create", (void *) &arena_ind, &arena_ind_sz, NULL, 0);
+	err = je_mallctl("arenas.create", (void *) &arena_ind, &arena_ind_sz, (void *)&new_hooks, sizeof(extent_hooks_t *));
 	if (err != 0) {
 		fprintf(stderr, "can't create an arena: %d\n", err);
 		goto error;
 	}
 
 	sa->arena_ind = arena_ind;
-	snprintf(buf, sizeof(buf), "arena.%d.extent_hooks", sa->arena_ind);
-	hooks_miblen = 3;
-	err = je_mallctlnametomib(buf, hooks_mib, &hooks_miblen);
-	if (err != 0) {
-		fprintf(stderr, "can't get mib: %d\n", err);
-		goto error;
-	}
-
-	old_size = sizeof(old_hooks);
-	new_size = old_size;
-	new_hooks = &sa->hooks;
-
-	err = je_mallctlbymib(hooks_mib, hooks_miblen, (void *)&old_hooks, &old_size, (void *)&new_hooks, new_size);
-	if (err != 0) {
-		fprintf(stderr, "can't setup hooks: %d\n", err);
-		goto error;
-	}
 
 	// add the arena to the global list of arenas
 	pthread_mutex_lock(&sa_mutex);
@@ -95,6 +75,13 @@ error:
 	pthread_mutex_unlock(&sa_mutex);
 
 	return sa;
+}
+
+void sicm_arena_destroy(sicm_arena arena) {
+  sarena *sa = arena;
+  if(sa) {
+    extent_arr_free(sa->extents);
+  }
 }
 
 sicm_arena_list *sicm_arenas_list() {
@@ -137,7 +124,6 @@ static void sicm_arena_range_move(void *aux, void *start, void *end) {
 
 	numa_bitmask_setbit(nodemask, sa->numaid);
 	err = mbind((void *) start, (char*) end - (char*) start, MPOL_BIND, nodemask->maskp, nodemask->size, MPOL_MF_MOVE | MPOL_MF_STRICT);
-//	printf("sicm_arena_range_move %p %ld: %d\n", start, (char*)end - (char*)start, err);
 	if (err < 0 && sa->err == 0)
 		sa->err = err;
 
@@ -147,13 +133,13 @@ static void sicm_arena_range_move(void *aux, void *start, void *end) {
 // FIXME: doesn't support moving to huge pages
 int sicm_arena_set_device(sicm_arena a, sicm_device *dev) {
 	int err, node, oldnumaid;
+  size_t i;
 	sarena *sa;
 
 	sa = a;
 	if (sa == NULL)
 		return -EINVAL;
 
-//	printf("sicm_arena_set_device: %p\n", sa);
 	if (sa->pagesize != sicm_device_page_size(dev))
 		return -EINVAL;
 
@@ -166,13 +152,19 @@ int sicm_arena_set_device(sicm_arena a, sicm_device *dev) {
 	oldnumaid = sa->numaid;
 	sa->numaid = node;
 	sa->err = 0;
-	sicm_map_tree(sa->ranges, sa, sicm_arena_range_move);
+  extent_arr_for(sa->extents, i) {
+    if(!sa->extents->arr[i].start && !sa->extents->arr[i].end) continue;
+    sicm_arena_range_move(sa, sa->extents->arr[i].start, sa->extents->arr[i].end);
+  }
 	if (sa->err) {
 		// at least one extent wasn't moved, try to roll back them all
 		err = sa->err;
 		sa->numaid = oldnumaid;
 		sa->err = 0;
-		sicm_map_tree(sa->ranges, sa, sicm_arena_range_move);
+    extent_arr_for(sa->extents, i) {
+      if(!sa->extents->arr[i].start && !sa->extents->arr[i].end) continue;
+      sicm_arena_range_move(sa, sa->extents->arr[i].start, sa->extents->arr[i].end);
+    }
 		// TODO: not sure what to do if moving back fails
 	} else {
 		sa->dev = dev;
@@ -197,15 +189,14 @@ size_t sicm_arena_size(sicm_arena a) {
 void *sicm_arena_alloc(sicm_arena a, size_t sz) {
 	sarena *sa;
 	int flags;
-	void *ret;
 
 	sa = a;
 	flags = 0;
-	if (sa != NULL)
+	if (sa != NULL) {
 		flags = MALLOCX_ARENA(sa->arena_ind) | MALLOCX_TCACHE_NONE;
+  }
 
-	ret = je_mallocx(sz, flags);
-	return ret;
+	return je_mallocx(sz, flags);
 }
 
 void *sicm_arena_alloc_aligned(sicm_arena a, size_t sz, size_t align) {
@@ -219,6 +210,20 @@ void *sicm_arena_alloc_aligned(sicm_arena a, size_t sz, size_t align) {
 		flags = MALLOCX_ARENA(sa->arena_ind) | MALLOCX_TCACHE_NONE | MALLOCX_ALIGN(align);
 
 	ret = je_mallocx(sz, flags);
+	return ret;
+}
+
+void *sicm_arena_realloc(sicm_arena a, void *ptr, size_t sz) {
+	sarena *sa;
+	int flags;
+	void *ret;
+
+	sa = a;
+	flags = 0;
+	if (sa != NULL)
+		flags = MALLOCX_ARENA(sa->arena_ind) | MALLOCX_TCACHE_NONE;
+
+	ret = je_rallocx(ptr, sz, flags);
 	return ret;
 }
 
@@ -332,7 +337,6 @@ static void *sa_alloc(extent_hooks_t *h, void *new_addr, size_t size, size_t ali
 	ret = NULL;
 	sa = container_of(h, sarena, hooks);
 
-//	printf("sa_alloc: sa %p new_addr %p size %lx alignment %lx sa->arena_ind %d arena_ind %d\n", sa, new_addr, size, alignment, sa->arena_ind, arena_ind);
 
 	// TODO: figure out a way to prevent taking the mutex twice (sa_range_add also takes it)...
 	pthread_mutex_lock(&sa->mutex);
@@ -353,7 +357,7 @@ static void *sa_alloc(extent_hooks_t *h, void *new_addr, size_t size, size_t ali
 		goto free_nodemasks;
 	}
 
-	ret = mmap(new_addr, size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANON | MAP_POPULATE, -1, 0);
+	ret = mmap(new_addr, size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANON, -1, 0);
 	if (ret == MAP_FAILED) {
 		ret = NULL;
 		goto restore_mempolicy;
@@ -367,7 +371,7 @@ static void *sa_alloc(extent_hooks_t *h, void *new_addr, size_t size, size_t ali
 	munmap(ret, size);
 	ret = NULL;
 
-	// if new_addr is set, we can't fulful the alignment, so just fail
+	// if new_addr is set, we can't fulfill the alignment, so just fail
 	if (new_addr != NULL)
 		goto restore_mempolicy;
 
@@ -391,7 +395,15 @@ success:
 	}
 
 	pthread_mutex_lock(&sa->mutex);
-	sicm_insert(sa->ranges, ret, (char *)ret + size);
+
+  /* Add the extent to the array of extents */
+  extent_arr_insert(sa->extents, ret, (char *)ret + size, NULL);
+
+  /* Call the callback on this chunk if it's set */
+  if(sicm_extent_alloc_callback) {
+    (*sicm_extent_alloc_callback)(ret, (char *)ret + size);
+  }
+
 	sa->size += size;
 	pthread_mutex_unlock(&sa->mutex);
 
@@ -411,12 +423,11 @@ static bool sa_dalloc(extent_hooks_t *h, void *addr, size_t size, bool committed
 
 	ret = false;
 	sa = container_of(h, sarena, hooks);
-//	printf("sa_dalloc: sa %p addr %p size %ld sa->arena_ind %d arena_ind %d\n", sa, addr, size, sa->arena_ind, arena_ind);
 	pthread_mutex_lock(&sa->mutex);
-	sicm_delete(sa->ranges, addr, (char *)addr + size);
+  extent_arr_delete(sa->extents, addr);
 	if (munmap(addr, size) != 0) {
 		fprintf(stderr, "munmap failed: %p %ld\n", addr, size);
-		sicm_insert(sa->ranges, addr, (char *)addr + size);
+    extent_arr_insert(sa->extents, addr, (char *)addr + size, NULL);
 		ret = true;
 	}
 	pthread_mutex_unlock(&sa->mutex);

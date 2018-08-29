@@ -21,6 +21,22 @@
 
 int normal_page_size = -1;
 
+sicm_device_tag sicm_get_device_tag(char *env) {
+	size_t max_chars;
+
+	max_chars = 32;
+
+	if(strncmp(env, "SICM_DRAM", max_chars) == 0) {
+		return SICM_DRAM;
+	} else if(strncmp(env, "SICM_KNL_HBM", max_chars) == 0) {
+		return SICM_KNL_HBM;
+	} else if(strncmp(env, "SICM_POWERPC_HBM", max_chars) == 0) {
+		return SICM_POWERPC_HBM;
+  }
+
+  return INVALID_TAG;
+}
+
 const char * const sicm_device_tag_str(sicm_device_tag tag) {
   switch(tag) {
     case SICM_DRAM:
@@ -29,6 +45,8 @@ const char * const sicm_device_tag_str(sicm_device_tag tag) {
         return "SICM_KNL_HBM";
     case SICM_POWERPC_HBM:
         return "SICM_POWERPC_HBM";
+    case INVALID_TAG:
+        break;
   }
   return NULL;
 }
@@ -182,6 +200,13 @@ struct sicm_device_list sicm_init() {
   return (struct sicm_device_list){ .count = device_count, .devices = devices };
 }
 
+/* Frees memory up */
+void sicm_fini(sicm_device_list *devices) {
+  if (devices) {
+    free(devices->devices);
+  }
+}
+
 sicm_device *sicm_find_device(sicm_device_list *devs, const sicm_device_tag type, const int page_size, sicm_device *old) {
     sicm_device *dev = NULL;
     if (devs) {
@@ -227,6 +252,8 @@ void* sicm_device_alloc(struct sicm_device* device, size_t size) {
         set_mempolicy(old_mode, old_nodemask.n, numa_max_node() + 2);
         return ptr;
       }
+    case INVALID_TAG:
+      break;
   }
   printf("error in sicm_alloc: unknown tag\n");
   exit(-1);
@@ -238,6 +265,8 @@ int sicm_can_place_exact(struct sicm_device* device) {
     case SICM_KNL_HBM:
     case SICM_POWERPC_HBM:
       return 1;
+    case INVALID_TAG:
+      break;
   }
   return 0;
 }
@@ -287,6 +316,8 @@ void* sicm_alloc_exact(struct sicm_device* device, void* base, size_t size) {
         set_mempolicy(old_mode, old_nodemask.n, numa_max_node() + 2);
         return ptr;
       }
+    case INVALID_TAG:
+      break;
   }
   printf("error in sicm_alloc_exact: unknown tag\n");
   exit(-1);
@@ -307,6 +338,7 @@ void sicm_device_free(struct sicm_device* device, void* ptr, size_t size) {
         munmap(ptr, sicm_div_ceil(size, page_size * 1024) * page_size * 1024);
       }
       break;
+    case INVALID_TAG:
     default:
       printf("error in sicm_device_free: unknown tag\n");
       exit(-1);
@@ -321,6 +353,7 @@ int sicm_numa_id(struct sicm_device* device) {
       return device->data.knl_hbm.node;
     case SICM_POWERPC_HBM:
       return device->data.powerpc_hbm.node;
+    case INVALID_TAG:
     default:
       return -1;
   }
@@ -334,6 +367,7 @@ int sicm_device_page_size(struct sicm_device* device) {
       return device->data.knl_hbm.page_size;
     case SICM_POWERPC_HBM:
       return device->data.powerpc_hbm.page_size;
+    case INVALID_TAG:
     default:
       return -1;
   }
@@ -366,6 +400,7 @@ int sicm_device_eq(sicm_device* dev1, sicm_device* dev2) {
       return
           (dev1->data.powerpc_hbm.node == dev2->data.powerpc_hbm.node) &&
           (dev1->data.powerpc_hbm.page_size == dev2->data.powerpc_hbm.page_size);
+    case INVALID_TAG:
     default:
       return 0;
   }
@@ -400,6 +435,8 @@ int sicm_pin(struct sicm_device* device) {
     case SICM_POWERPC_HBM:
       #pragma omp parallel
       ret = numa_run_on_node(device->data.powerpc_hbm.node);
+      break;
+    case INVALID_TAG:
       break;
   }
   return ret;
@@ -446,6 +483,7 @@ size_t sicm_capacity(struct sicm_device* device) {
         close(fd);
         return pages * page_size;
       }
+    case INVALID_TAG:
     default:
       return -1;
   }
@@ -492,6 +530,7 @@ size_t sicm_avail(struct sicm_device* device) {
         close(fd);
         return pages * page_size;
       }
+    case INVALID_TAG:
     default:
       return -1;
   }
@@ -504,6 +543,7 @@ int sicm_model_distance(struct sicm_device* device) {
     case SICM_POWERPC_HBM:;
       int node = sicm_numa_id(device);
       return numa_distance(node, numa_node_of_cpu(sched_getcpu()));
+    case INVALID_TAG:
     default:
       return -1;
   }
@@ -521,6 +561,7 @@ int sicm_is_near(struct sicm_device* device) {
     case SICM_POWERPC_HBM:
       dist = numa_distance(sicm_numa_id(device), numa_node_of_cpu(sched_getcpu()));
       return dist == 80;
+    case INVALID_TAG:
     default:
       return 0;
   }

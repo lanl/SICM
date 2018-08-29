@@ -28,10 +28,12 @@
 typedef enum sicm_device_tag {
   SICM_DRAM,
   SICM_KNL_HBM,
-  SICM_POWERPC_HBM
+  SICM_POWERPC_HBM,
+  INVALID_TAG
 } sicm_device_tag;
 
 const char * const sicm_device_tag_str(sicm_device_tag tag);
+sicm_device_tag sicm_get_device_tag(char *env);
 
 /// Data specific to a DRAM device.
 typedef struct sicm_dram_data {
@@ -110,13 +112,14 @@ typedef struct sicm_arena_list {
  * non-NUMA memory devices such as CUDA GPUs) and allocates a
  * sicm_device_list. Per-device detection criteria are used to populate
  * the device list, which is then returned.
- *
- * There's no explicit way to free the device list, though
- * free(device_list.devices) would work, because it's assumed this
- * function is called once and the device list is needed for the entire
- * program lifetime.
  */
 sicm_device_list sicm_init();
+
+/// Clean up the low-level interface.
+/**
+ * Frees up the devices list.
+ */
+void sicm_fini(sicm_device_list *devices);
 
 /// Find and return a device that matches the given type and page size
 /**
@@ -145,6 +148,12 @@ sicm_arena_list *sicm_arenas_list();
  *         the function failed.
  */
 sicm_arena sicm_arena_create(size_t maxsize, sicm_device *dev);
+
+/// Free up arena
+/**
+ * @param handle to an arena you want to destroy
+ */
+void sicm_arena_destroy(sicm_arena arena);
 
 /// Set default arena for the current thread
 /**
@@ -206,6 +215,15 @@ void *sicm_arena_alloc(sicm_arena sa, size_t sz);
  * Specifying ARENA_DEFAULT makes the function equivalent to malloc.
  */
 void *sicm_arena_alloc_aligned(sicm_arena sa, size_t sz, size_t align);
+
+/// Resize a memory region in an arena
+/**
+ * @param sa arena that should be used for the allocation. ARENA_DEFAULT is allowed.
+ * @param ptr pointer to the memory to be resized
+ * @param sz new size
+ * @return pointer to the new allocation, or NULL if unable to reallocate
+ */
+void *sicm_arena_realloc(sicm_arena sa, void *ptr, size_t sz);
 
 /// Allocate memory region
 /**
