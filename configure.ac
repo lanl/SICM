@@ -78,10 +78,14 @@ fi
 
 CPPFLAGS_save="$CPPFLAGS"
 LIBS_save="$LIBS"
-AC_SUBST([CPPFLAGS],["$JEMALLOC_INC $CPPFLAGS_save"])
+AC_SUBST([CPPFLAGS],["$JEMALLOC_INC -DJEMALLOC_NO_DEMANGLE $CPPFLAGS_save"])
 AC_SUBST([LIBS],["$JEMALLOC_LIB $LIBS_save -ljemalloc"])
 AC_CHECK_HEADERS([jemalloc.h],[AC_DEFINE(HAVE_JEMALLOC)],[AC_MSG_ERROR([Cannot find jemalloc headers])])
 AC_CHECK_LIB([jemalloc],[malloc],,AC_MSG_ERROR([Cannot use jemalloc lib]))
+AC_SUBST([CPPFLAGS],["$CPPFLAGS_save"])
+AC_SUBST([LIBS],["$LIBS_save"])
+AC_SUBST([JEMALLOC_CPPFLAGS],["$JEMALLOC_INC -DJEMALLOC_NO_DEMANGLE"])
+AC_SUBST([JEMALLOC_LIBS],["$$JEMALLOC_LIB -ljemalloc"])
 
 dnl# libpfm
 
@@ -106,7 +110,7 @@ fi
 CPPFLAGS_save="$CPPFLAGS"
 LIBS_save="$LIBS"
 AC_SUBST([CPPFLAGS],["$LIBPFM_INC $CPPFLAGS_save"])
-AC_SUBST([LIBS],["$LIBPFM_LIB $LIBS_save -ljemalloc"])
+AC_SUBST([LIBS],["$LIBPFM_LIB $LIBS_save"])
 AC_CHECK_HEADERS([perfmon/pfmlib_perf_event.h],[AC_DEFINE(HAVE_LIBPFM)],[AC_MSG_ERROR([Cannot find libpfm headers])])
 AC_CHECK_LIB([pfm],[pfm_initialize],,AC_MSG_ERROR([Cannot use libpfm lib]))
 
@@ -135,10 +139,15 @@ LIBS_save="$LIBS"
 AC_SUBST([CPPFLAGS],["$LLVM_INC $CPPFLAGS_save"])
 AC_SUBST([LIBS],["$LLVM_LIB $LIBS_save"])
 AC_LANG_PUSH([C++])
-AC_CHECK_HEADERS([Pass.h],[AM_CONDITIONAL([HAVE_LLVM],[true])],[AM_CONDITIONAL([HAVE_LLVM],[false])])
+AC_CHECK_HEADERS([llvm/Pass.h],[AM_CONDITIONAL([HAVE_LLVM],[true])],[AM_CONDITIONAL([HAVE_LLVM],[false])])
 AC_SUBST([SICM_HAS_LLVM])
+# Reset CPPFLAGS and LIBS so that we don't link against LLVM by default
+AC_SUBST([CPPFLAGS],["$CPPFLAGS_save"]) 
+AC_SUBST([LIBS],["$LIBS_save"])
+AC_SUBST([LLVM_CPPFLAGS],[`$LLVM_INSTALL_DIR/bin/llvm-config --cxxflags`])
+AC_SUBST([LLVM_LIBS],[`$LLVM_INSTALL_DIR/bin/llvm-config --ldflags`])
 AC_LANG_POP([C++])
 
 # dnl Generate Makefiles
-AC_CONFIG_FILES([Makefile include/Makefile src/Makefile src/low/Makefile src/high/Makefile])
+AC_CONFIG_FILES([Makefile include/Makefile src/Makefile src/low/Makefile src/high/Makefile bin/Makefile])
 AC_OUTPUT

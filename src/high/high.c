@@ -8,6 +8,7 @@
 #include <string.h>
 #include <inttypes.h>
 #include <pthread.h>
+#include <jemalloc.h>
 
 #include "high.h"
 #include "sicm_low.h"
@@ -395,11 +396,26 @@ void sh_init() {
 
 __attribute__((destructor))
 void sh_terminate() {
+  size_t i;
+
+  /* Clean up the low-level interface */
+  sicm_fini(&device_list);
+
   if(layout != INVALID_LAYOUT) {
+
+    /* Clean up the profiler */
     if(should_profile) {
       sh_stop_profile_thread();
     }
+
+    /* Clean up the arenas */
+    for(i = 0; i <= max_index; i++) {
+      if(!arenas[i]) continue;
+      sicm_arena_destroy(arenas[i]->arena);
+      free(arenas[i]);
+    }
     free(arenas);
+
     free(orig_thread_indices);
     extent_arr_free(extents);
   }

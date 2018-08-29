@@ -6,14 +6,5 @@
 # 
 # Additional copyrights may follow
 # 
-# $HEADER$
-#
 
-SUBDIRS = src include bin
-
-EXTRA_DIST =    \
-    COPYING     \
-    INSTALL     \
-    README.md
-
-ACLOCAL_AMFLAGS = -I m4
+dist_bin_SCRIPTS = ld_wrapper.sh  compiler_wrapper.sh

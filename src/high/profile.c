@@ -156,8 +156,6 @@ static inline void get_accesses() {
   begin = base + tail % buf_size;
   end = base + head % buf_size;
 
-  printf("Reading from %p->%p\n", begin, end);
-
   /* Read all of the samples */
   while(begin != end) {
 
@@ -175,7 +173,6 @@ static inline void get_accesses() {
         if(!extents->arr[i].start && !extents->arr[i].end) continue;
         arena = extents->arr[i].arena;
         if((addr >= extents->arr[i].start) && (addr <= extents->arr[i].end)) {
-          printf("%u: %p %p\n", arena->id, addr, sample);
           arena->accesses++;
         }
       }
@@ -183,11 +180,9 @@ static inline void get_accesses() {
 
     /* Increment begin by the size of the sample */
     if(((char *)header + header->size) == base + buf_size) {
-      printf("Starting over\n");
       begin = base;
     } else {
       begin = begin + header->size;
-      printf("%p\n", begin);
     }
 
   }

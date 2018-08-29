@@ -112,13 +112,14 @@ typedef struct sicm_arena_list {
  * non-NUMA memory devices such as CUDA GPUs) and allocates a
  * sicm_device_list. Per-device detection criteria are used to populate
  * the device list, which is then returned.
- *
- * There's no explicit way to free the device list, though
- * free(device_list.devices) would work, because it's assumed this
- * function is called once and the device list is needed for the entire
- * program lifetime.
  */
 sicm_device_list sicm_init();
+
+/// Clean up the low-level interface.
+/**
+ * Frees up the devices list.
+ */
+void sicm_fini(sicm_device_list *devices);
 
 /// Find and return a device that matches the given type and page size
 /**
@@ -147,6 +148,12 @@ sicm_arena_list *sicm_arenas_list();
  *         the function failed.
  */
 sicm_arena sicm_arena_create(size_t maxsize, sicm_device *dev);
+
+/// Free up arena
+/**
+ * @param handle to an arena you want to destroy
+ */
+void sicm_arena_destroy(sicm_arena arena);
 
 /// Set default arena for the current thread
 /**

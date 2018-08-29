@@ -77,6 +77,13 @@ error:
 	return sa;
 }
 
+void sicm_arena_destroy(sicm_arena arena) {
+  sarena *sa = arena;
+  if(sa) {
+    extent_arr_free(sa->extents);
+  }
+}
+
 sicm_arena_list *sicm_arenas_list() {
 	int i;
 	sicm_arena_list *l;

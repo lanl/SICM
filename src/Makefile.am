@@ -9,4 +9,4 @@
 # $HEADER$
 #
 
-SUBDIRS = high low
+SUBDIRS = low high

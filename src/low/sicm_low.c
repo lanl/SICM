@@ -200,6 +200,13 @@ struct sicm_device_list sicm_init() {
   return (struct sicm_device_list){ .count = device_count, .devices = devices };
 }
 
+/* Frees memory up */
+void sicm_fini(sicm_device_list *devices) {
+  if (devices) {
+    free(devices->devices);
+  }
+}
+
 sicm_device *sicm_find_device(sicm_device_list *devs, const sicm_device_tag type, const int page_size, sicm_device *old) {
     sicm_device *dev = NULL;
     if (devs) {

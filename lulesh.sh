@@ -1,26 +1,38 @@
 #!/bin/bash
+# Compiles and runs Lulesh, using the SICM installation in the directory
+# that you pass as an argument.
+set -e
 
-# Get the MSR tools
-export PATH="$PATH:$HOME/msr-tools"
+if [ $# -eq 0 ]; then
+	echo "No arguments supplied"
+  exit 1
+fi
+
+DIR=$1
+export PATH="$DIR/bin:$PATH"
+export C_INCLUDE_PATH="$DIR/include:$C_INCLUDE_PATH"
 
 # Define the variables for the compiler wrappers
-export LD_COMPILER="clang++-4.0"
-export LD_LINKER="clang++-4.0"
-export CXX_COMPILER="clang++-4.0"
-export LLVMLINK="llvm-link-4.0"
-export OPT="opt-4.0"
+export LD_COMPILER="clang++"
+export LD_LINKER="clang++"
+#export CXX_COMPILER="clang++-4.0"
+#export LLVMLINK="llvm-link-4.0"
+#export OPT="opt-4.0"
 
 # Make sure the Lulesh Makefile finds our wrappers
-export COMPILER_WRAPPER="../../../bin/compiler_wrapper.sh -g -DUSE_MPI=0"
-export LD_WRAPPER="../../../bin/ld_wrapper.sh -g"
+export COMPILER_WRAPPER="$DIR/bin/compiler_wrapper.sh -g -DUSE_MPI=0"
+export LD_WRAPPER="$DIR/bin/ld_wrapper.sh -g"
 #export C_WRAPPER="clang-4.0 -g"
 #export LD_WRAPPER="clang-4.0 -g"
 
 # Compile SICM
-make clean
-make
-make high
-make compass
+make clean || true
+make distclean || true
+make uninstall || true
+./autogen.sh
+./configure --prefix=$DIR --with-jemalloc=$DIR --with-llvm=$DIR
+make -j5
+make install
 
 # Compile Lulesh
 cd examples/high/lulesh
@@ -38,4 +50,4 @@ sudo -E env PATH="$PATH:$HOME/msr-tools" wrmsr -a 0x1A4 0xf
 
 # 3 threads
 export OMP_NUM_THREADS=3
-time sudo -E ./lulesh2.0 -s 45
+gdb ./lulesh2.0 -s 10
