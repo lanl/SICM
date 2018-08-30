@@ -21,11 +21,11 @@ export LD_WRAPPER="$DIR/bin/ld_wrapper.sh -g"
 #export LD_WRAPPER="clang-4.0 -g"
 
 # Compile SICM
-make clean || true
-make distclean || true
-make uninstall || true
-./autogen.sh
-./configure --prefix=$DIR --with-jemalloc=$DIR --with-llvm=$DIR
+#make clean || true
+#make distclean || true
+#make uninstall || true
+#./autogen.sh
+#./configure --prefix=$DIR --with-jemalloc=$DIR --with-llvm=$DIR
 make -j5
 make install
 
@@ -35,14 +35,15 @@ make clean
 make -j5
 
 # Now we're going to test profiling overhead
-export SH_PROFILING="yes"
+#export SH_PROFILING="yes"
 export SH_ARENA_LAYOUT="SHARED_SITE_ARENAS"
 export SH_MAX_SAMPLE_PAGES="512"
 export SH_SAMPLE_FREQ="512"
 
 # Prefetching off
-sudo -E env PATH="$PATH:$HOME/msr-tools" wrmsr -a 0x1A4 0xf
+#sudo -E env PATH="$PATH:$HOME/msr-tools" wrmsr -a 0x1A4 0xf
+sudo -E env PATH="$PATH:$HOME/msr-tools" wrmsr -a 0x1A4 0x0
 
 # 3 threads
 export OMP_NUM_THREADS=3
-./lulesh2.0 -s 30
+valgrind --leak-check=full --show-leak-kinds=all ./lulesh2.0 -s 5

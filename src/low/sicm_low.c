@@ -101,8 +101,7 @@ struct sicm_device_list sicm_init() {
   struct bitmask* compute_nodes = numa_bitmask_alloc(node_count);
   printf("Bitmask size: %lu\n", cpumask->size);
   i = 0;
-  //for(i = 0; i < node_count; i++) {
-    printf("i: %d / %d\n", i, node_count);
+  for(i = 0; i < node_count; i++) {
     numa_node_to_cpus(i, cpumask);
     for(j = 0; j < cpu_count; j++) {
       if(numa_bitmask_isbitset(cpumask, j)) {
@@ -110,7 +109,7 @@ struct sicm_device_list sicm_init() {
         break;
       }
     }
-  //}
+  }
   numa_free_cpumask(cpumask);
 
   #ifdef __x86_64__

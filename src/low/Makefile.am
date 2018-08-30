@@ -19,6 +19,7 @@ libsicm_la_CFLAGS = @JEMALLOC_CPPFLAGS@
 libsicm_f90_la_SOURCES = fbinding_c.c fbinding_f90.f90
 libsicm_f90_la_LIBADD = 
 libsicm_f90_la_LDFLAGS = -version-info 0:0:0
+libsicm_f90_la_CFLAGS = @JEMALLOC_CPPFLAGS@
 
 libsicm_cpp_la_SOURCES = sicm_cpp.cpp
 libsicm_cpp_la_LIBADD = 

@@ -79,8 +79,21 @@ error:
 
 void sicm_arena_destroy(sicm_arena arena) {
   sarena *sa = arena;
+  char *str;
+  size_t arena_ind_sz, str_sz;
+
   if(sa) {
     extent_arr_free(sa->extents);
+
+    /* Free up the arena */
+    str_sz = 6 + log10(sa->arena_ind) + 10; /* Large enough to store the string below, plus NULL */
+    str = malloc(sizeof(char) * str_sz);
+    sprintf(str, "arena.%u.destroy", sa->arena_ind);
+    arena_ind_sz = sizeof(unsigned);
+    je_mallctl(str, (void *) &sa->arena_ind, &arena_ind_sz, NULL, 0);
+    printf("Freed up arena with %s, string is %zu\n", str, str_sz);
+    free(str);
+    free(sa);
   }
 }
 
@@ -96,6 +109,7 @@ sicm_arena_list *sicm_arenas_list() {
 		l->arenas[i] = a;
 	}
 	l->count = i;
+  free(l);
 	pthread_mutex_unlock(&sa_mutex);
 
 	return l;

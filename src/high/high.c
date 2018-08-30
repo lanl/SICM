@@ -416,6 +416,7 @@ void sh_terminate() {
     }
     free(arenas);
 
+    free(pending_indices);
     free(orig_thread_indices);
     extent_arr_free(extents);
   }
