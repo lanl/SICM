@@ -47,7 +47,7 @@ before_install:
 
 install:
     # Install the dependencies into ./deps
-    - ./install_deps.sh
+    - travis_wait ./install_deps.sh
 
     # install openmpi manually
     #- wget https://download.open-mpi.org/release/open-mpi/v3.1/openmpi-3.1.1.tar.bz2
