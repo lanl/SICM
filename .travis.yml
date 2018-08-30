@@ -16,7 +16,6 @@ matrix:
                 - numactl
                 - libnuma-dev
                 - wget
-                - llvm-3.9-dev
                 - libpfm4
                 - libpfm4-dev
           env:
@@ -34,7 +33,6 @@ matrix:
                 - numactl
                 - libnuma-dev
                 - wget
-                - llvm-3.9-dev
                 - libpfm4
                 - libpfm4-dev
           env:
@@ -48,38 +46,27 @@ before_install:
     - export FC="${FORTRAN_COMPILER}"
 
 install:
-    # install jemalloc
-    - git clone https://github.com/jemalloc/jemalloc.git
-    - cd jemalloc
-    - ./autogen.sh
-    - mkdir build
-    - cd build
-    - export JEPATH=$(pwd)
-    - ../configure --prefix=${JEPATH} --with-jemalloc-prefix=je_
-    - make -j $(nproc --all)
-    - make -j $(nproc --all) -i install
-    - cd ${TRAVIS_BUILD_DIR}
+    # Install the dependencies into ./deps
+    - ./install_deps.sh
 
     # install openmpi manually
-    - wget https://download.open-mpi.org/release/open-mpi/v3.1/openmpi-3.1.1.tar.bz2
-    - tar -xf openmpi-3.1.1.tar.bz2
-    - cd openmpi-3.1.1
-    - mkdir build && cd build
-    - export MPI_PATH=$(pwd)
-    - travis_wait ../configure --prefix=${MPI_PATH} --without-verbs --without-fca --without-mxm --without-ucx --without-portals4 --without-psm --without-psm2 --without-libfabric --without-usnic --without-udreg --without-ugni --without-xpmem --without-alps --without-sge --without-tm --without-lsf --without-slurm --without-pvfs2 --without-plfs --without-cuda --disable-oshmem --enable-mpi-fortran --disable-oshmem-fortran --disable-libompitrace --disable-io-romio --disable-static &> /dev/null
-    - travis_wait make -j $(nproc --all) &> /dev/null
-    - travis_wait make -j $(nproc --all) install &> /dev/null
-    - cd ${TRAVIS_BUILD_DIR}
+    #- wget https://download.open-mpi.org/release/open-mpi/v3.1/openmpi-3.1.1.tar.bz2
+    #- tar -xf openmpi-3.1.1.tar.bz2
+    #- cd openmpi-3.1.1
+    #- mkdir build && cd build
+    #- export MPI_PATH=$(pwd)
+    #- travis_wait ../configure --prefix=${MPI_PATH} --without-verbs --without-fca --without-mxm --without-ucx --without-portals4 --without-psm --without-psm2 --without-libfabric --without-usnic --without-udreg --without-ugni --without-xpmem --without-alps --without-sge --without-tm --without-lsf --without-slurm --without-pvfs2 --without-plfs --without-cuda --disable-oshmem --enable-mpi-fortran --disable-oshmem-fortran --disable-libompitrace --disable-io-romio --disable-static &> /dev/null
+    #- travis_wait make -j $(nproc --all) &> /dev/null
+    #- travis_wait make -j $(nproc --all) install &> /dev/null
+    #- cd ${TRAVIS_BUILD_DIR}
 
 script:
     # build SICM
+    - export DEPDIR=`realpath ./deps`
     - ./autogen.sh
-    - ./configure --with-jemalloc=${JEPATH} --prefix=${pwd}
+    - ./configure --with-jemalloc=${DEPDIR} --with-llvm=${DEPDIR} --prefix=${DEPDIR}
     - make -j $(nproc --all)
     - make install
-    - export SICM_ROOT=${pwd}
-    - export LD_LIBRARY_PATH=${SICM_ROOT}:${JEPATH}/lib:${MPI_PATH}/lib:$LD_LIBRARY_PATH
-    - export PATH=${MPI_PATH}/bin:$PATH
 
     # build tests
     #- make -C test

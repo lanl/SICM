@@ -246,18 +246,13 @@ void *sh_profile_thread(void *a) {
   size_t i, associated;
 
   /* Loop until we're stopped by the destructor */
-  //i = 0;
   while(!sh_should_stop()) {
 
     /* Use PEBS to get the accesses to each arena */
     get_accesses();
 
-    /* Gather the RSS every so often */
-    //if(__builtin_expect(!!(i == 1000000), 0)) {
-      get_rss();
-      //i = 0;
-    //}
-    //i++;
+    /* Gather the RSS */
+    get_rss();
   }
 
   /* Print out the results of the profiling */

@@ -3,12 +3,7 @@
 # that you pass as an argument.
 set -e
 
-if [ $# -eq 0 ]; then
-	echo "No arguments supplied"
-  exit 1
-fi
-
-DIR=$1
+DIR=`realpath ./deps`
 export PATH="$DIR/bin:$PATH"
 export C_INCLUDE_PATH="$DIR/include:$C_INCLUDE_PATH"
 
@@ -50,4 +45,4 @@ sudo -E env PATH="$PATH:$HOME/msr-tools" wrmsr -a 0x1A4 0xf
 
 # 3 threads
 export OMP_NUM_THREADS=3
-time ./lulesh2.0 -s 10
+./lulesh2.0 -s 30

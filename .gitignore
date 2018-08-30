@@ -18,3 +18,18 @@ missing
 compile
 configure
 *.swp
+
+# Lulesh
+lulesh2.0
+
+# Compass output
+buCG.txt
+contexts.txt
+nclones.txt
+nsites.txt
+*.bc
+*.args
+
+# From install_deps.sh
+build_deps
+deps

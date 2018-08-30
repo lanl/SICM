@@ -1,12 +1,10 @@
 #!/bin/bash
-# This is a helper script that accepts a directory as an argument,
-# and installs jemalloc and llvm into that directory.
+# This is a helper script that builds and installs SICM's deps,
+# jemalloc and LLVM.
 
-if [ $# -eq 0 ]; then
-	echo "No arguments supplied"
-fi
-
-DIR=$1
+DIR=`realpath ./build_deps`
+INSTALLDIR=`realpath ./deps`
+mkdir -p $DIR
 cd $DIR
 
 # Download the tarball for LLVM
@@ -36,7 +34,7 @@ cd ..
 rm -rf build
 mkdir build
 cd build
-cmake -DCMAKE_INSTALL_PREFIX=$DIR ..
+cmake -DCMAKE_INSTALL_PREFIX=$INSTALLDIR ..
 make -j $(nproc --all)
 make install
 
@@ -50,6 +48,6 @@ cd jemalloc
 mkdir build
 cd build
 export JEPATH=$DIR
-../configure --prefix=$DIR --with-jemalloc-prefix=je_
+../configure --prefix=$INSTALLDIR --with-jemalloc-prefix=je_
 make -j $(nproc --all)
 make -j $(nproc --all) -i install
