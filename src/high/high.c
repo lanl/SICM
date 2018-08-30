@@ -8,7 +8,7 @@
 #include <string.h>
 #include <inttypes.h>
 #include <pthread.h>
-#include <jemalloc.h>
+#include <jemalloc/jemalloc.h>
 
 #include "high.h"
 #include "sicm_low.h"

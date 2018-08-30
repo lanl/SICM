@@ -72,20 +72,20 @@ if test "x$JEMALLOC_INSTALL_DIR" = "x" ; then
 	AC_MSG_RESULT([no])
 else
 	AC_MSG_RESULT([yes])
-	JEMALLOC_INC="-I$JEMALLOC_INSTALL_DIR/include -I$JEMALLOC_INSTALL_DIR/include/jemalloc"
+	JEMALLOC_INC="-I$JEMALLOC_INSTALL_DIR/include -I$JEMALLOC_INSTALL_DIR/include"
 	JEMALLOC_LIB="-L$JEMALLOC_INSTALL_DIR/lib"
 fi
 
 CPPFLAGS_save="$CPPFLAGS"
 LIBS_save="$LIBS"
 AC_SUBST([CPPFLAGS],["$JEMALLOC_INC -DJEMALLOC_NO_DEMANGLE $CPPFLAGS_save"])
-AC_SUBST([LIBS],["$JEMALLOC_LIB $LIBS_save -ljemalloc"])
-AC_CHECK_HEADERS([jemalloc.h],[AC_DEFINE(HAVE_JEMALLOC)],[AC_MSG_ERROR([Cannot find jemalloc headers])])
+AC_SUBST([LIBS],["$JEMALLOC_LIB -ljemalloc $LIBS_save"])
+AC_CHECK_HEADERS([jemalloc/jemalloc.h],[AC_DEFINE(HAVE_JEMALLOC)],[AC_MSG_ERROR([Cannot find jemalloc headers])])
 AC_CHECK_LIB([jemalloc],[malloc],,AC_MSG_ERROR([Cannot use jemalloc lib]))
 AC_SUBST([CPPFLAGS],["$CPPFLAGS_save"])
 AC_SUBST([LIBS],["$LIBS_save"])
 AC_SUBST([JEMALLOC_CPPFLAGS],["$JEMALLOC_INC -DJEMALLOC_NO_DEMANGLE"])
-AC_SUBST([JEMALLOC_LIBS],["$$JEMALLOC_LIB -ljemalloc"])
+AC_SUBST([JEMALLOC_LIBS],["$JEMALLOC_LIB -ljemalloc -Wl,-rpath,$JEMALLOC_INSTALL_DIR/lib"])
 
 dnl# libpfm
 

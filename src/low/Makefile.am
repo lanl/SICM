@@ -12,8 +12,9 @@
 lib_LTLIBRARIES = libsicm.la libsicm_cpp.la libsicm_f90.la
 
 libsicm_la_SOURCES = sicm_low.c sicm_arena.c
-libsicm_la_LIBADD = 
+libsicm_la_LIBADD = @JEMALLOC_LIBS@ -lnuma
 libsicm_la_LDFLAGS = -version-info 0:0:0
+libsicm_la_CFLAGS = @JEMALLOC_CPPFLAGS@
 
 libsicm_f90_la_SOURCES = fbinding_c.c fbinding_f90.f90
 libsicm_f90_la_LIBADD = 
