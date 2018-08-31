@@ -3,7 +3,7 @@
 # that you pass as an argument.
 set -e
 
-DIR=`realpath ./deps`
+DIR=`readlink -f ./deps`
 
 # Define the variables for the compiler wrappers
 export LD_COMPILER="clang++-3.9"
