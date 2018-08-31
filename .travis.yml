@@ -19,7 +19,7 @@ matrix:
                 - libpfm4
                 - libpfm4-dev
                 - llvm-3.9-dev
-                - libomp-dev
+                - libiomp-dev
           env:
              - C_COMPILER="gcc-7"
              - CXX_COMPILER="g++-7"
@@ -38,7 +38,7 @@ matrix:
                 - libpfm4
                 - libpfm4-dev
                 - llvm-3.9-dev
-                - libomp-dev
+                - libiomp-dev
           env:
              - C_COMPILER="gcc-8"
              - CXX_COMPILER="g++-8"
