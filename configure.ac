@@ -144,8 +144,11 @@ AC_SUBST([SICM_HAS_LLVM])
 # Reset CPPFLAGS and LIBS so that we don't link against LLVM by default
 AC_SUBST([CPPFLAGS],["$CPPFLAGS_save"]) 
 AC_SUBST([LIBS],["$LIBS_save"])
-AC_SUBST([LLVM_CPPFLAGS],[`$LLVM_INSTALL_DIR/bin/llvm-config --cxxflags`])
-AC_SUBST([LLVM_LIBS],[`$LLVM_INSTALL_DIR/bin/llvm-config --ldflags`])
+# If we found LLVM, try to use llvm-config to get the right flags
+AM_COND_IF([HAVE_LLVM],
+  [AC_SUBST([LLVM_CPPFLAGS],[`$LLVM_INSTALL_DIR/bin/llvm-config --cxxflags`])])
+AM_COND_IF([HAVE_LLVM],
+  [AC_SUBST([LLVM_LIBS],[`$LLVM_INSTALL_DIR/bin/llvm-config --ldflags`])])
 AC_LANG_POP([C++])
 
 # dnl Generate Makefiles

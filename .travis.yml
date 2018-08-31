@@ -18,6 +18,8 @@ matrix:
                 - wget
                 - libpfm4
                 - libpfm4-dev
+                - llvm-3.9-dev
+                - libomp-dev
           env:
              - C_COMPILER="gcc-7"
              - CXX_COMPILER="g++-7"
@@ -35,6 +37,8 @@ matrix:
                 - wget
                 - libpfm4
                 - libpfm4-dev
+                - llvm-3.9-dev
+                - libomp-dev
           env:
              - C_COMPILER="gcc-8"
              - CXX_COMPILER="g++-8"
@@ -47,7 +51,7 @@ before_install:
 
 install:
     # Install the dependencies into ./deps
-    - travis_wait ./install_deps.sh
+    - travis_wait ./install_deps.sh --no-llvm
 
     # install openmpi manually
     #- wget https://download.open-mpi.org/release/open-mpi/v3.1/openmpi-3.1.1.tar.bz2
@@ -64,7 +68,7 @@ script:
     # build SICM
     - export DEPDIR=`realpath ./deps`
     - ./autogen.sh
-    - ./configure --with-jemalloc=${DEPDIR} --with-llvm=${DEPDIR} --prefix=${DEPDIR}
+    - ./configure --with-jemalloc=${DEPDIR} --prefix=${DEPDIR}
     - make -j $(nproc --all)
     - make install
 

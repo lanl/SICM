@@ -4,15 +4,13 @@
 set -e
 
 DIR=`realpath ./deps`
-export PATH="$DIR/bin:$PATH"
-export C_INCLUDE_PATH="$DIR/include:$C_INCLUDE_PATH"
 
 # Define the variables for the compiler wrappers
-export LD_COMPILER="clang++"
-export LD_LINKER="clang++"
-#export CXX_COMPILER="clang++-4.0"
-#export LLVMLINK="llvm-link-4.0"
-#export OPT="opt-4.0"
+export LD_COMPILER="clang++-3.9"
+export LD_LINKER="clang++-3.9"
+export CXX_COMPILER="clang++-3.9"
+export LLVMLINK="llvm-link-3.9"
+export OPT="opt-3.9"
 
 # Make sure the Lulesh Makefile finds our wrappers
 export COMPILER_WRAPPER="$DIR/bin/compiler_wrapper.sh -g -DUSE_MPI=0"
@@ -21,11 +19,11 @@ export LD_WRAPPER="$DIR/bin/ld_wrapper.sh -g"
 #export LD_WRAPPER="clang-4.0 -g"
 
 # Compile SICM
-#make clean || true
-#make distclean || true
-#make uninstall || true
-#./autogen.sh
-#./configure --prefix=$DIR --with-jemalloc=$DIR --with-llvm=$DIR
+make clean || true
+make distclean || true
+make uninstall || true
+./autogen.sh
+./configure CPPFLAGS="-I/usr/include/llvm-3.9 -I/usr/include/llvm-c-3.9" --prefix=$DIR --with-jemalloc=$DIR
 make -j5
 make install
 
