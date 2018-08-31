@@ -16,8 +16,8 @@ for arg in "$@"; do
   fi
 done
 
-DIR=`realpath ./build_deps`
-INSTALLDIR=`realpath ./deps`
+DIR=`readlink -f ./build_deps`
+INSTALLDIR=`readlink -f ./deps`
 mkdir -p $DIR
 cd $DIR
 
