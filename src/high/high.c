@@ -20,7 +20,7 @@ static enum sicm_device_tag default_device_tag;
 static struct sicm_device *default_device;
 
 /* For profiling */
-static int should_profile;
+int should_profile_all, should_profile_one;
 int max_sample_pages;
 int sample_freq;
 
@@ -133,11 +133,25 @@ void set_options() {
   printf("Maximum arenas: %d\n", max_arenas);
 
   /* Should we profile? */
-  env = getenv("SH_PROFILING");
-  should_profile = 0;
+  env = getenv("SH_PROFILE_ALL");
+  should_profile_all = 0;
   if(env) {
-    should_profile = 1;
-    printf("Profiling.\n");
+    should_profile_all = 1;
+    printf("Profiling all arenas.\n");
+  }
+
+  /* Should we profile (by isolating) a single allocation site? */
+  env = getenv("SH_PROFILE_ONE");
+  should_profile_one = 0;
+  if(env) {
+    endptr = NULL;
+    tmp_val = strtoimax(env, &endptr, 10);
+    if((tmp_val == 0) || (tmp_val > INT_MAX)) {
+      printf("Invalid allocation site ID given: %d.\n", tmp_val);
+      exit(1);
+    } else {
+      should_profile_one = (int) tmp_val;
+    }
   }
 
   /* What sample frequency should we use? Default is 2048. Higher
@@ -388,7 +402,7 @@ void sh_init() {
     /* Set the arena allocator's callback function */
     sicm_extent_alloc_callback = &sh_create_extent;
 
-    if(should_profile) {
+    if(should_profile_all) {
       sh_start_profile_thread();
     }
   }
@@ -404,7 +418,7 @@ void sh_terminate() {
   if(layout != INVALID_LAYOUT) {
 
     /* Clean up the profiler */
-    if(should_profile) {
+    if(should_profile_all) {
       sh_stop_profile_thread();
     }
 

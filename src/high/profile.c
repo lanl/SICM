@@ -34,6 +34,12 @@ void check_error(int err) {
   };
 }
 
+void sh_get_event() {
+  if(should_profile_all) {
+  } else if(should_profile_one) {
+  }
+}
+
 void sh_start_profile_thread() {
   int err;
 
@@ -66,10 +72,6 @@ void sh_start_profile_thread() {
   prof.pe->precise_ip = 2;
   prof.pe->mmap = 1;
   prof.pe->task = 1;
-  /*
-  prof.pe->use_clockid = 1;
-  prof.pe->clockid = CLOCK_MONOTONIC_RAW;
-  */
 
   /* Open the perf file descriptor */
   prof.fd = syscall(__NR_perf_event_open, prof.pe, 0, -1, -1, 0);

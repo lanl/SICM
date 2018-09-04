@@ -2,6 +2,7 @@
 // llvm pass
 // Brandon Kammerdiener -- 2018
 
+#include <llvm/Config/llvm-config.h>
 #if LLVM_VERSION_MAJOR >= 4
 /* Required for CompassQuickExit, requires LLVM 4.0 or newer */
 #include "llvm/Bitcode/BitcodeWriter.h"
