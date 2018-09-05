@@ -46,11 +46,6 @@ AM_PROG_CC_C_O
 m4_pattern_allow([AM_PROG_AR], [AM_PROG_AR])
 LT_INIT
 
-CPPFLAGS_save="$CPPFLAGS"
-LIBS_save="$LIBS"
-top_srcdir=`pwd`
-AC_SUBST([CPPFLAGS],["-I$top_srcdir/include $CPPFLAGS_save"])
-
 dnl# pthread
 
 AC_CHECK_HEADERS(pthread.h,, [AC_MSG_ERROR([pthread.h required])])
