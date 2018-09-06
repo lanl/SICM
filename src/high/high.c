@@ -20,7 +20,9 @@ static enum sicm_device_tag default_device_tag;
 static struct sicm_device *default_device;
 
 /* For profiling */
-int should_profile_all, should_profile_one;
+int should_profile_all; /* For sampling */
+int should_profile_one; /* For bandwidth profiling */
+struct sicm_device *profile_one_device;
 int max_sample_pages;
 int sample_freq;
 
@@ -132,7 +134,7 @@ void set_options() {
   }
   printf("Maximum arenas: %d\n", max_arenas);
 
-  /* Should we profile? */
+  /* Should we profile all allocation sites using sampling-based profiling? */
   env = getenv("SH_PROFILE_ALL");
   should_profile_all = 0;
   if(env) {
@@ -140,7 +142,10 @@ void set_options() {
     printf("Profiling all arenas.\n");
   }
 
-  /* Should we profile (by isolating) a single allocation site? */
+  /* Should we profile (by isolating) a single allocation site onto a NUMA node
+   * and getting the memory bandwidth on that node?  Pass the allocation site
+   * ID as the value of this environment variable.
+   */
   env = getenv("SH_PROFILE_ONE");
   should_profile_one = 0;
   if(env) {
@@ -151,6 +156,45 @@ void set_options() {
       exit(1);
     } else {
       should_profile_one = (int) tmp_val;
+    }
+  }
+
+  /* If the above is true, which NUMA node should we isolate the allocation site
+   * onto? The user should also set SH_DEFAULT_DEVICE to another device to avoid
+   * the two being the same, if the allocation site is to be isolated.
+   */
+  env = getenv("SH_PROFILE_ONE_NODE");
+  profile_one_device = NULL;
+  if(env) {
+    endptr = NULL;
+    tmp_val = strtoimax(env, &endptr, 10);
+    if((tmp_val < 0) || (tmp_val > INT_MAX)) {
+      printf("Invalid NUMA node given: %d.\n", tmp_val);
+      exit(1);
+    } else {
+      /* Figure out which device the NUMA node corresponds to */
+      device = device_list.devices;
+      for(i = 0; i < device_list.count; i++) {
+        /* If the device has a NUMA node, and if that node is the node we're
+         * looking for.
+         */
+        if((device->tag == SICM_DRAM ||
+           device->tag == SICM_KNL_HBM || 
+           device->tag == SICM_POWERPC_HBM) &&
+           sicm_numa_id(device) == tmp_val) {
+          profile_one_device = device;
+          printf("Isolating node: %s, node %d\n", sicm_device_tag_str(profile_one_device->tag), 
+                                                  sicm_numa_id(device));
+          break;
+        }
+        device++;
+      }
+      /* If we don't find an appropriate device, it stays NULL
+       * so that no allocation sites will be bound to it
+       */
+      if(!profile_one_device) {
+        printf("Couldn't find an appropriate device for NUMA node %d.\n", tmp_val);
+      }
     }
   }
 
@@ -260,6 +304,7 @@ int get_thread_index() {
 
 /* Adds an arena to the `arenas` array. */
 void sh_create_arena(int index, int id) {
+  struct sicm_device *device;
 
   if(index > (max_arenas - 1)) {
     fprintf(stderr, "Maximum number of arenas reached. Aborting.\n");
@@ -271,6 +316,13 @@ void sh_create_arena(int index, int id) {
     max_index = index;
   }
 
+  /* Figure out which device we should place the arena on */
+  device = default_device;
+  if(profile_one_device && (id == should_profile_one)) {
+    /* If the site is the one we're profiling, isolate it */
+    device = profile_one_device;
+  }
+
   /* Create the arena if it doesn't exist */
   if(arenas[index] == NULL) {
     arenas[index] = calloc(1, sizeof(arena_info));
@@ -279,7 +331,7 @@ void sh_create_arena(int index, int id) {
     arenas[index]->id = id;
     arenas[index]->rss = 0;
     arenas[index]->peak_rss = 0;
-    arenas[index]->arena = sicm_arena_create(0, default_device);
+    arenas[index]->arena = sicm_arena_create(0, device);
   }
 }
 
@@ -402,7 +454,7 @@ void sh_init() {
     /* Set the arena allocator's callback function */
     sicm_extent_alloc_callback = &sh_create_extent;
 
-    if(should_profile_all) {
+    if(should_profile_all || should_profile_one) {
       sh_start_profile_thread();
     }
   }

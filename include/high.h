@@ -37,6 +37,7 @@ __attribute__((destructor))
 void sh_terminate();
 
 void* sh_alloc_exact(int id, size_t sz);
+void* sh_alloc(int id, size_t sz);
 
 void sh_create_extent(void *begin, void *end);
 

@@ -91,7 +91,6 @@ void sicm_arena_destroy(sicm_arena arena) {
     sprintf(str, "arena.%u.destroy", sa->arena_ind);
     arena_ind_sz = sizeof(unsigned);
     je_mallctl(str, (void *) &sa->arena_ind, &arena_ind_sz, NULL, 0);
-    printf("Freed up arena with %s, string is %zu\n", str, str_sz);
     free(str);
     free(sa);
   }

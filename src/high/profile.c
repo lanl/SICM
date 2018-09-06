@@ -6,6 +6,12 @@
 
 profile_thread prof;
 
+const char* const event_strs[] = {
+  "MEM_LOAD_UOPS_RETIRED.L3_MISS",
+  "MEM_UOPS_RETIRED.L2_MISS_LOADS",
+  "CAS_COUNT.RD"
+};
+
 void check_error(int err) {
   switch(err) {
     case PFM_ERR_TOOSMALL:
@@ -34,19 +40,10 @@ void check_error(int err) {
   };
 }
 
+/* Uses libpfm to figure out the event we're going to use */
 void sh_get_event() {
-  if(should_profile_all) {
-  } else if(should_profile_one) {
-  }
-}
-
-void sh_start_profile_thread() {
+  char *event;
   int err;
-
-  /* Initialize the pe struct */
-  prof.pe = malloc(sizeof(struct perf_event_attr));
-  memset(prof.pe, 0, sizeof(struct perf_event_attr));
-  prof.pe->size = sizeof(struct perf_event_attr);
 
   /* Use libpfm to detect the event that we're going to use */
   pfm_initialize();
@@ -54,16 +51,39 @@ void sh_start_profile_thread() {
   memset(prof.pfm, 0, sizeof(pfm_perf_encode_arg_t));
   prof.pfm->size = sizeof(pfm_perf_encode_arg_t);
   prof.pfm->attr = prof.pe;
-  err = pfm_get_os_event_encoding("MEM_LOAD_UOPS_RETIRED.L3_MISS", PFM_PLM2 | PFM_PLM3, PFM_OS_PERF_EVENT, prof.pfm);
+
+  /* Figure out which perf event we're going to use */
+  if(should_profile_all) {
+    event = event_strs[0];
+  } else if(should_profile_one) {
+    event = event_strs[1];
+  }
+
+  /* Fill in the pe struct */
+  printf("Doing %s\n", event);
+  err = pfm_get_os_event_encoding(event, PFM_PLM2 | PFM_PLM3, PFM_OS_PERF_EVENT, prof.pfm);
   if(err != PFM_SUCCESS) {
     check_error(err);
     exit(1);
   }
-  printf("%llx\n", prof.pe->config);
 
-  /* Make sure we grab PEBS addresses */
-  prof.pe->sample_type = PERF_SAMPLE_ADDR;
-  prof.pe->sample_period = sample_freq;
+  /* We're going to get addresses */
+  if(should_profile_all) {
+    prof.pe->sample_type = PERF_SAMPLE_ADDR;
+    prof.pe->sample_period = sample_freq;
+  }
+
+}
+
+void sh_start_profile_thread() {
+
+  /* Initialize the pe struct */
+  prof.pe = malloc(sizeof(struct perf_event_attr));
+  memset(prof.pe, 0, sizeof(struct perf_event_attr));
+  prof.pe->size = sizeof(struct perf_event_attr);
+
+  /* Fill in the specifics of the pe struct with libpfm */
+  sh_get_event();
 
   /* Generic options */
   prof.pe->disabled = 1;
@@ -96,7 +116,6 @@ void sh_start_profile_thread() {
   /* Initialize for get_accesses */
   prof.consumed = 0;
   prof.total = 0;
-  //prof.header = (struct perf_event_header *)((char *)prof.metadata + prof.pagesize);
 
   /* Initialize for get_rss */
   prof.pagemap_fd = open("/proc/self/pagemap", O_RDONLY);
