@@ -6,73 +6,70 @@
 
 profile_thread prof;
 
-const char* const event_strs[] = {
+const char* accesses_event_strs[] = {
   "MEM_LOAD_UOPS_RETIRED.L3_MISS",
   "MEM_UOPS_RETIRED.L2_MISS_LOADS",
-  "CAS_COUNT.RD"
+  NULL
 };
 
-void check_error(int err) {
-  switch(err) {
-    case PFM_ERR_TOOSMALL:
-      printf("The code argument is too small for the encoding. \n");
-      break;
-    case PFM_ERR_INVAL:
-      printf("The code or count argument is NULL. \n");
-      break;
-    case PFM_ERR_NOMEM:
-      printf("Not enough memory. \n");
-      break;
-    case PFM_ERR_NOTFOUND:
-      printf("Event not found. \n");
-      break;
-    case PFM_ERR_ATTR:
-      printf("Invalid event attribute (unit mask or modifier) \n");
-      break;
-    case PFM_ERR_ATTR_VAL:
-      printf("Invalid modifier value. \n");
-      break;
-    case PFM_ERR_ATTR_SET:
-      printf("attribute already set, cannot be changed. \n");
-      break;
-    default:
-      printf("Other error.\n");
-  };
-}
+const char* bandwidth_event_strs[] = {
+  "UNC_M_CAS_COUNT.RD",
+  NULL
+};
 
 /* Uses libpfm to figure out the event we're going to use */
 void sh_get_event() {
-  char *event;
-  int err;
+  const char **event_strs;
+  char **event;
+  int err, found;
 
   /* Use libpfm to detect the event that we're going to use */
   pfm_initialize();
   prof.pfm = malloc(sizeof(pfm_perf_encode_arg_t));
-  memset(prof.pfm, 0, sizeof(pfm_perf_encode_arg_t));
-  prof.pfm->size = sizeof(pfm_perf_encode_arg_t);
-  prof.pfm->attr = prof.pe;
 
-  /* Figure out which perf event we're going to use */
+  /* Get the array of event strs that we want to use */
   if(should_profile_all) {
-    event = event_strs[0];
+    event_strs = accesses_event_strs;
   } else if(should_profile_one) {
-    event = event_strs[1];
+    event_strs = bandwidth_event_strs;
   }
 
-  /* Fill in the pe struct */
-  printf("Doing %s\n", event);
-  err = pfm_get_os_event_encoding(event, PFM_PLM2 | PFM_PLM3, PFM_OS_PERF_EVENT, prof.pfm);
-  if(err != PFM_SUCCESS) {
-    check_error(err);
+  /* Iterate through the array of event strs and see which one works */
+  event = event_strs;
+  found = 0;
+  while(*event != NULL) {
+    memset(prof.pfm, 0, sizeof(pfm_perf_encode_arg_t));
+    prof.pfm->size = sizeof(pfm_perf_encode_arg_t);
+    prof.pfm->attr = prof.pe;
+    err = pfm_get_os_event_encoding(*event, PFM_PLM2 | PFM_PLM3, PFM_OS_PERF_EVENT, prof.pfm);
+    if(err == PFM_SUCCESS) {
+      printf("Using event: %s\n", *event);
+      found = 1;
+      break;
+    }
+    event++;
+  }
+  if(!found) {
+    fprintf(stderr, "Couldn't find an appropriate event to use. Aborting.\n");
     exit(1);
   }
 
-  /* We're going to get addresses */
   if(should_profile_all) {
     prof.pe->sample_type = PERF_SAMPLE_ADDR;
     prof.pe->sample_period = sample_freq;
+    prof.pe->mmap = 1;
+    prof.pe->disabled = 1;
+    prof.pe->exclude_kernel = 1;
+    prof.pe->exclude_hv = 1;
+    prof.pe->precise_ip = 2;
+    prof.pe->task = 1;
+  } else if(should_profile_one) {
+    printf("Sample period: %llu\n", prof.pe->sample_period);
+    printf("Sample type: %llu\n", prof.pe->sample_type);
+    printf("Config: %llx\n", prof.pe->config);
+    //prof.pe->sample_type
+    //prof.pe->sample_period = sample_freq;
   }
-
 }
 
 void sh_start_profile_thread() {
@@ -85,28 +82,24 @@ void sh_start_profile_thread() {
   /* Fill in the specifics of the pe struct with libpfm */
   sh_get_event();
 
-  /* Generic options */
-  prof.pe->disabled = 1;
-  prof.pe->exclude_kernel = 1;
-  prof.pe->exclude_hv = 1;
-  prof.pe->precise_ip = 2;
-  prof.pe->mmap = 1;
-  prof.pe->task = 1;
-
   /* Open the perf file descriptor */
-  prof.fd = syscall(__NR_perf_event_open, prof.pe, 0, -1, -1, 0);
+  prof.fd = syscall(__NR_perf_event_open, prof.pe, -1, 0, -1, 0);
   if (prof.fd == -1) {
-    fprintf(stderr, "Error opening leader %llx\n", prof.pe->config);
+    fprintf(stderr, "Error opening perf event 0x%llx.\n", prof.pe->config);
+    printf("%d\n", errno);
+    strerror(errno);
     exit(EXIT_FAILURE);
   }
 
-  /* mmap the file */
-  prof.pagesize = (size_t) sysconf(_SC_PAGESIZE);
-  printf("Allocating %zu\n", prof.pagesize + (prof.pagesize * max_sample_pages));
-  prof.metadata = mmap(NULL, prof.pagesize + (prof.pagesize * max_sample_pages), PROT_READ | PROT_WRITE, MAP_SHARED, prof.fd, 0);
-  if(prof.metadata == MAP_FAILED) {
-    fprintf(stderr, "Failed to mmap room for perf samples. Aborting with:\n%s\n", strerror(errno));
-    exit(1);
+  if(should_profile_all) {
+    /* mmap the file */
+    prof.pagesize = (size_t) sysconf(_SC_PAGESIZE);
+    printf("Allocating %zu\n", prof.pagesize + (prof.pagesize * max_sample_pages));
+    prof.metadata = mmap(NULL, prof.pagesize + (prof.pagesize * max_sample_pages), PROT_READ | PROT_WRITE, MAP_SHARED, prof.fd, 0);
+    if(prof.metadata == MAP_FAILED) {
+      fprintf(stderr, "Failed to mmap room for perf samples. Aborting with:\n%s\n", strerror(errno));
+      exit(1);
+    }
   }
 
   /* Start the sampling */

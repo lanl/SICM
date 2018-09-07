@@ -99,7 +99,7 @@ if test "x$LIBPFM_INSTALL_DIR" = "x" ; then
 else
 	AC_MSG_RESULT([yes])
 	LIBPFM_INC="-I$LIBPFM_INSTALL_DIR/include -I$LIBPFM_INSTALL_DIR/include/jemalloc"
-	LIBPFM_LIB="-L$LIBPFM_INSTALL_DIR/lib"
+	LIBPFM_LIB="-L$LIBPFM_INSTALL_DIR/lib -Wl,-rpath,$LIBPFM_INSTALL_DIR/lib"
 fi
 
 CPPFLAGS_save="$CPPFLAGS"
