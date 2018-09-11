@@ -1,6 +1,8 @@
 # SICM
 Simplified Interface to Complex Memory
 
+[![Build Status](https://travis-ci.org/lanl/SICM.svg?branch=master)](https://travis-ci.org/lanl/SICM)
+
 ## Introduction
 This project is split into two interfaces: `low` and `high`.
 
@@ -174,5 +176,3 @@ initializes itself.  All heap allocation routines are replaced by calls to
 `void* sh_alloc(int id, size_t sz)`, which associates an ID with a given
 allocation and allocates the memory into an arena with other allocations of
 that ID.
-
-[![Build Status](https://travis-ci.org/lanl/SICM.svg?branch=master)](https://travis-ci.org/lanl/SICM)
