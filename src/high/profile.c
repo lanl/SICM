@@ -13,7 +13,7 @@ const char* accesses_event_strs[] = {
 };
 
 const char* bandwidth_event_strs[] = {
-  "UNC_M_CAS_COUNT.RD",
+  "UNC_M_CAS_COUNT.ALL",
   NULL
 };
 
@@ -38,12 +38,15 @@ void sh_get_event() {
   event = event_strs;
   found = 0;
   while(*event != NULL) {
+    memset(prof.pe, 0, sizeof(struct perf_event_attr));
+    prof.pe->size = sizeof(struct perf_event_attr);
     memset(prof.pfm, 0, sizeof(pfm_perf_encode_arg_t));
     prof.pfm->size = sizeof(pfm_perf_encode_arg_t);
     prof.pfm->attr = prof.pe;
     err = pfm_get_os_event_encoding(*event, PFM_PLM2 | PFM_PLM3, PFM_OS_PERF_EVENT, prof.pfm);
     if(err == PFM_SUCCESS) {
-      printf("Using event: %s\n", *event);
+      prof.pe->config = 0x20d1;
+      printf("Using event: %s (0x%llx)\n", *event, prof.pe->config);
       found = 1;
       break;
     }
@@ -76,14 +79,12 @@ void sh_start_profile_thread() {
 
   /* Initialize the pe struct */
   prof.pe = malloc(sizeof(struct perf_event_attr));
-  memset(prof.pe, 0, sizeof(struct perf_event_attr));
-  prof.pe->size = sizeof(struct perf_event_attr);
 
   /* Fill in the specifics of the pe struct with libpfm */
   sh_get_event();
 
   /* Open the perf file descriptor */
-  prof.fd = syscall(__NR_perf_event_open, prof.pe, -1, 0, -1, 0);
+  prof.fd = syscall(__NR_perf_event_open, prof.pe, 0, -1, -1, 0);
   if (prof.fd == -1) {
     fprintf(stderr, "Error opening perf event 0x%llx.\n", prof.pe->config);
     printf("%d\n", errno);
@@ -205,8 +206,25 @@ static inline void get_accesses() {
 
   /* Let perf know that we've read this far */
   __sync_synchronize();
-  printf("Setting data_tail to %p\n", (char *) head);
   prof.metadata->data_tail = head;
+}
+
+/* Just reads the perf counter */
+static inline void get_bandwith() {
+  long long count;
+  int num;
+
+  /* Stop the counter and read the value if it has been at least a second */
+  num = timer_getoverrun(prof.timerid);
+  printf("Timer has been overrun %d times.\n", num);
+  if(num) {
+    ioctl(prof.fd, PERF_EVENT_IOC_DISABLE, 0);
+    read(prof.fd, &count, sizeof(long long));
+
+    /* Start it back up again */
+    ioctl(prof.fd, PERF_EVENT_IOC_RESET, 0);
+    ioctl(prof.fd, PERF_EVENT_IOC_ENABLE, 0);
+  }
 }
 
 static inline void get_rss() {
@@ -260,28 +278,55 @@ static inline void get_rss() {
 
 void *sh_profile_thread(void *a) {
   size_t i, associated;
+  struct itimerspec its;
+
+  if(should_profile_one) {
+    /* Create a timer for the bandwdith counting */
+    if(timer_create(CLOCK_REALTIME, &prof.sev, &prof.timerid) == -1) {
+      fprintf(stderr, "Failed to create a timer. Aborting.\n");
+      exit(1);
+    }
+
+    /* Arm the timer for 1 second */
+    its.it_value.tv_sec = 1;
+    its.it_interval.tv_sec = 1;
+    if(timer_settime(prof.timerid, 0, &its, NULL) == -1) {
+      fprintf(stderr, "Failed to set the timer. Aborting.\n");
+      exit(1);
+    }
+  }
 
   /* Loop until we're stopped by the destructor */
   while(!sh_should_stop()) {
 
     /* Use PEBS to get the accesses to each arena */
-    get_accesses();
+    if(should_profile_all) {
+      get_accesses();
+    }
+
+    /* Grab the current bandwidth */
+    if(should_profile_one) {
+      get_bandwidth();
+    }
 
     /* Gather the RSS */
     get_rss();
   }
 
   /* Print out the results of the profiling */
-  associated = 0;
-  for(i = 0; i <= max_index; i++) {
-    if(!arenas[i]) continue;
-    associated += arenas[i]->accesses;
-    printf("%u:\n", arenas[i]->id);
-    printf("  Accesses: %zu\n", arenas[i]->accesses);
-    printf("  Peak RSS: %zu\n", arenas[i]->peak_rss);
+  if(should_profile_one) {
   }
-  printf("Totals: %zu / %zu\n", associated, prof.total);
+  if(should_profile_all) {
+    associated = 0;
+    for(i = 0; i <= max_index; i++) {
+      if(!arenas[i]) continue;
+      associated += arenas[i]->accesses;
+      printf("%u:\n", arenas[i]->id);
+      printf("  Accesses: %zu\n", arenas[i]->accesses);
+      printf("  Peak RSS: %zu\n", arenas[i]->peak_rss);
+    }
+    printf("Totals: %zu / %zu\n", associated, prof.total);
+  }
 
-  printf("Cleaning up thread.\n");
   return NULL;
 }

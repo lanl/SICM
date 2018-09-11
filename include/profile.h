@@ -12,6 +12,7 @@
 #include <asm/unistd.h>
 #include <perfmon/pfmlib_perf_event.h>
 #include <time.h>
+#include <signal.h>
 #include <stdbool.h>
 #include <pthread.h>
 #include <errno.h>
@@ -51,6 +52,10 @@ typedef struct profile_thread {
   int pagemap_fd;
   union pfn_t *pfndata;
   size_t pagesize, addrsize;
+
+  /* For measuring bandwidth */
+  timer_t timerid;
+  struct sigevent sev;
 } profile_thread;
 
 void sh_start_profile_thread();

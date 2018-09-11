@@ -9,7 +9,7 @@
 # $HEADER$
 #
 
-SUBDIRS = src include bin
+SUBDIRS = src include bin examples
 
 EXTRA_DIST =    \
     COPYING     \

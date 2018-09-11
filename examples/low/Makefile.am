@@ -9,4 +9,9 @@
 # $HEADER$
 #
 
-nobase_include_HEADERS = high.h  sicm_cpp.hpp  sicmimpl.h  sicm_low.h  extent_arr.h
+bin_PROGRAMS = basic
+
+basic_SOURCES = basic.c
+basic_LDADD = 
+basic_LDFLAGS = -L${prefix}/lib -lsicm
+basic_CFLAGS = -I${prefix}/include

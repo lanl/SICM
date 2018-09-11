@@ -54,12 +54,42 @@ libiomp-dev
 If you have a version of LLVM newer than 3.9, you can likely omit `libiomp-dev`
 in exchange for the builtin OpenMP implementation.
 
+On Debian Stable (9.5.0 at time of writing), the required packages (for both
+low- and high-level interfaces) are:
+```
+git
+autoconf
+automake
+make
+libtool
+libtool-bin
+gcc
+g++
+gfortran
+libpfm4-dev
+llvm-4.0-dev
+llvm-4.0
+libnuma-dev
+```
+
 ## Compilation
-To compile and install on a new system, run
+In general, to compile and install on a new system, run
 ```
 ./autogen.sh
 ./configure --prefix=[DIR]
 make
+make install
+```
+
+On a fresh Debian Stable (9.5.0) system, SICM can easily be installed with these commands:
+```
+sudo apt-get install git autoconf automake make gcc libpfm4-dev llvm-4.0-dev llvm-4.0 libtool g++ libnuma-dev libtool-bin gfortran
+git clone https://github.com/lanl/SICM.git
+cd SICM
+./install_deps.sh --no-llvm
+./autogen.sh
+./configure --prefix=$(readlink -f ./deps) --with-jemalloc=$(readlink -f ./deps) --with-llvm=$(llvm-config-4.0 --prefix)
+make -j$(nproc --all)
 make install
 ```
 

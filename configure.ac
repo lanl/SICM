@@ -146,6 +146,33 @@ AM_COND_IF([HAVE_LLVM],
   [AC_SUBST([LLVM_LIBS],[`$LLVM_INSTALL_DIR/bin/llvm-config --ldflags`])])
 AC_LANG_POP([C++])
 
+dnl# hwloc
+
+AC_MSG_CHECKING([hwloc installation])
+AC_ARG_WITH(hwloc,
+	    [AS_HELP_STRING([--with-hwloc=PATH],
+	    		    [Absolute path to the install directory for hwloc]
+	    		   )],
+	    [LIBPFM_INSTALL_DIR="${withval}"],
+	    [LIBPFM_INSTALL_DIR=""])
+
+LIBPFM_INC=""
+LIBPFM_LIB=""
+if test "x$HWLOC_INSTALL_DIR" = "x" ; then
+	AC_MSG_RESULT([no])
+else
+	AC_MSG_RESULT([yes])
+	HWLOC_INC="-I$HWLOC_INSTALL_DIR/include"
+	HWLOC_LIB="-L$HWLOC_INSTALL_DIR/lib -Wl,-rpath,$HWLOC_INSTALL_DIR/lib"
+fi
+
+CPPFLAGS_save="$CPPFLAGS"
+LIBS_save="$LIBS"
+AC_SUBST([CPPFLAGS],["$HWLOC_INC $CPPFLAGS_save"])
+AC_SUBST([LIBS],["$HWLOC_LIB $LIBS_save"])
+AC_CHECK_HEADERS([hwloc.h],[AC_DEFINE(HAVE_HWLOC)],[AC_MSG_ERROR([Cannot find hwloc headers])])
+AC_CHECK_LIB([hwloc],[hwloc_topology_init],,AC_MSG_ERROR([Cannot use hwloc lib]))
+
 # dnl Generate Makefiles
-AC_CONFIG_FILES([Makefile include/Makefile src/Makefile src/low/Makefile src/high/Makefile bin/Makefile])
+AC_CONFIG_FILES([Makefile include/Makefile src/Makefile src/low/Makefile src/high/Makefile bin/Makefile examples/Makefile examples/low/Makefile])
 AC_OUTPUT

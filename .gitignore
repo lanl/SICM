@@ -4,6 +4,8 @@
 *.mod
 *.lo
 *.la
+
+# Makefiles
 /Makefile.in
 /Makefile
 /bin/Makefile.in
@@ -16,6 +18,14 @@
 /src/high/Makefile
 /src/low/Makefile.in
 /src/low/Makefile
+/examples/Makefile.in
+/examples/Makefile
+/examples/low/Makefile.in
+/examples/low/Makefile
+
+# Binaries
+/examples/low/basic
+
 autom4te.cache
 *.m4
 .deps

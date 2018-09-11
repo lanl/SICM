@@ -11,6 +11,7 @@
 #include <time.h>
 #include <unistd.h>
 #include <sys/mman.h>
+#include <hwloc.h>
 #ifndef MAP_HUGE_SHIFT
 #include <linux/mman.h>
 #endif
@@ -52,8 +53,24 @@ const char * const sicm_device_tag_str(sicm_device_tag tag) {
 }
 
 struct sicm_device_list sicm_init() {
-  int node_count = numa_max_node() + 1;
+  hwloc_topology_t topology;
+  hwloc_obj_t node, retnode;
+  int node_count = numa_max_node() + 1, depth;
   normal_page_size = getpagesize() / 1024;
+  unsigned n;
+
+  /* Test using hwloc to get the entire hardware graph */
+  hwloc_topology_init(&topology);
+  hwloc_topology_load(topology);
+  n = hwloc_get_nbobjs_by_type(topology, HWLOC_OBJ_NUMANODE);
+  printf("Found %u memory devices on NUMA nodes:\n", n);
+
+  node = NULL;
+  depth = hwloc_get_type_depth(topology, HWLOC_OBJ_NUMANODE);
+  while(node = hwloc_get_next_obj_by_depth(topology, depth, node)) {
+    printf("Node: %p\n", node);
+    printf("  Memory: %llu\n", node->memory.total_memory);
+  }
 
   // Find the number of huge page sizes
   int huge_page_size_count = 0;
