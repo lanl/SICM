@@ -119,7 +119,7 @@ sicm_device_list sicm_init();
 /**
  * Frees up the devices list.
  */
-void sicm_fini(sicm_device_list *devices);
+void sicm_fini();
 
 /// Find and return a device that matches the given type and page size
 /**

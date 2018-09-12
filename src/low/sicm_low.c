@@ -58,7 +58,20 @@ const char * const sicm_device_tag_str(sicm_device_tag tag) {
   return NULL;
 }
 
+/* Only initialize SICM once */
+static int sicm_init_count = 0;
+static pthread_mutex_t sicm_init_count_mutex = PTHREAD_MUTEX_INITIALIZER;
+static sicm_device_list sicm_global_devices = {};
+
 struct sicm_device_list sicm_init() {
+  /* Check whether or not the global devices list has been initialized already */
+  pthread_mutex_lock(&sicm_init_count_mutex);
+  if (sicm_init_count) {
+      sicm_init_count++;
+      pthread_mutex_unlock(&sicm_init_count_mutex);
+      return sicm_global_devices;
+  }
+
   hwloc_topology_t topology;
   hwloc_obj_t node, retnode;
   int node_count = numa_max_node() + 1, depth;
@@ -222,14 +235,23 @@ struct sicm_device_list sicm_init() {
   numa_bitmask_free(non_dram_nodes);
   free(huge_page_sizes);
 
-  return (struct sicm_device_list){ .count = device_count, .devices = devices };
+  sicm_global_devices = (struct sicm_device_list){ .count = device_count, .devices = devices };
+  sicm_init_count++;
+  pthread_mutex_unlock(&sicm_init_count_mutex);
+  return sicm_global_devices;
 }
 
 /* Frees memory up */
-void sicm_fini(sicm_device_list *devices) {
-  if (devices) {
-    free(devices->devices);
+void sicm_fini() {
+  pthread_mutex_lock(&sicm_init_count_mutex);
+  if (sicm_init_count) {
+      sicm_init_count--;
+      if (sicm_init_count == 0) {
+          free(sicm_global_devices.devices);
+          memset(&sicm_global_devices, 0, sizeof(sicm_global_devices));
+      }
   }
+  pthread_mutex_unlock(&sicm_init_count_mutex);
 }
 
 sicm_device *sicm_find_device(sicm_device_list *devs, const sicm_device_tag type, const int page_size, sicm_device *old) {
