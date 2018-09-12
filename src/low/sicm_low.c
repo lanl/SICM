@@ -3,6 +3,7 @@
 #include <dirent.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <math.h>
 #include <numa.h>
 #include <numaif.h>
 #include <sched.h>
@@ -12,6 +13,11 @@
 #include <unistd.h>
 #include <sys/mman.h>
 #include <hwloc.h>
+// https://www.mail-archive.com/devel@lists.open-mpi.org/msg20403.html
+#if HWLOC_API_VERSION < 0x00010b00
+#define HWLOC_OBJ_NUMANODE HWLOC_OBJ_NODE
+#define HWLOC_OBJ_PACKAGE HWLOC_OBJ_SOCKET
+#endif
 #ifndef MAP_HUGE_SHIFT
 #include <linux/mman.h>
 #endif
@@ -69,7 +75,7 @@ struct sicm_device_list sicm_init() {
   depth = hwloc_get_type_depth(topology, HWLOC_OBJ_NUMANODE);
   while(node = hwloc_get_next_obj_by_depth(topology, depth, node)) {
     printf("Node: %p\n", node);
-    printf("  Memory: %llu\n", node->memory.total_memory);
+    printf("  Memory: %lu\n", node->memory.total_memory);
   }
 
   // Find the number of huge page sizes

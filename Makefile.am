@@ -3,13 +3,13 @@
 #                       All rights reserved.
 #
 # See COPYING in top-level directory.
-# 
+#
 # Additional copyrights may follow
-# 
+#
 # $HEADER$
 #
 
-SUBDIRS = src include bin examples
+SUBDIRS = src include bin #examples
 
 EXTRA_DIST =    \
     COPYING     \
