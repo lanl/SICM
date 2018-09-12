@@ -45,13 +45,13 @@ with whichever you want, or use Clang instead.
 ```
 g++-8
 gfortran-8
-numactl
+libhwloc-dev
+libiomp-dev
 libnuma-dev
-wget
 libpfm4
 libpfm4-dev
 llvm-3.9-dev
-libiomp-dev
+numactl
 ```
 If you have a version of LLVM newer than 3.9, you can likely omit `libiomp-dev`
 in exchange for the builtin OpenMP implementation.
@@ -59,19 +59,19 @@ in exchange for the builtin OpenMP implementation.
 On Debian Stable (9.5.0 at time of writing), the required packages (for both
 low- and high-level interfaces) are:
 ```
-git
 autoconf
 automake
-make
+g++
+gcc
+gfortran
+git
+libnuma-dev
+libpfm4-dev
 libtool
 libtool-bin
-gcc
-g++
-gfortran
-libpfm4-dev
-llvm-4.0-dev
 llvm-4.0
-libnuma-dev
+llvm-4.0-dev
+make
 ```
 
 ## Compilation

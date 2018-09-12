@@ -3,9 +3,9 @@
 # Copyright 2018        UT-Battelle, LLC.
 #                       All rights reserved.
 # See COPYING in top-level directory.
-# 
+#
 # Additional copyrights may follow
-# 
+#
 # $HEADER$
 #
 
@@ -67,7 +67,7 @@ if test "x$JEMALLOC_INSTALL_DIR" = "x" ; then
 	AC_MSG_RESULT([no])
 else
 	AC_MSG_RESULT([yes])
-	JEMALLOC_INC="-I$JEMALLOC_INSTALL_DIR/include -I$JEMALLOC_INSTALL_DIR/include"
+	JEMALLOC_INC="-I$JEMALLOC_INSTALL_DIR/include"
 	JEMALLOC_LIB="-L$JEMALLOC_INSTALL_DIR/lib"
 fi
 
@@ -98,7 +98,7 @@ if test "x$LIBPFM_INSTALL_DIR" = "x" ; then
 	AC_MSG_RESULT([no])
 else
 	AC_MSG_RESULT([yes])
-	LIBPFM_INC="-I$LIBPFM_INSTALL_DIR/include -I$LIBPFM_INSTALL_DIR/include/jemalloc"
+	LIBPFM_INC="-I$LIBPFM_INSTALL_DIR/include"
 	LIBPFM_LIB="-L$LIBPFM_INSTALL_DIR/lib -Wl,-rpath,$LIBPFM_INSTALL_DIR/lib"
 fi
 
@@ -137,7 +137,7 @@ AC_LANG_PUSH([C++])
 AC_CHECK_HEADERS([llvm/Pass.h],[AM_CONDITIONAL([HAVE_LLVM],[true])],[AM_CONDITIONAL([HAVE_LLVM],[false])])
 AC_SUBST([SICM_HAS_LLVM])
 # Reset CPPFLAGS and LIBS so that we don't link against LLVM by default
-AC_SUBST([CPPFLAGS],["$CPPFLAGS_save"]) 
+AC_SUBST([CPPFLAGS],["$CPPFLAGS_save"])
 AC_SUBST([LIBS],["$LIBS_save"])
 # If we found LLVM, try to use llvm-config to get the right flags
 AM_COND_IF([HAVE_LLVM],
