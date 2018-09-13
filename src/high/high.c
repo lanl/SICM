@@ -10,10 +10,10 @@
 #include <pthread.h>
 #include <jemalloc/jemalloc.h>
 
-#include "high.h"
+#include "sicm_high.h"
 #include "sicm_low.h"
-#include "sicmimpl.h"
-#include "profile.h"
+#include "sicm_impl.h"
+#include "sicm_profile.h"
 
 static struct sicm_device_list device_list;
 static enum sicm_device_tag default_device_tag;
@@ -22,9 +22,12 @@ static struct sicm_device *default_device;
 /* For profiling */
 int should_profile_all; /* For sampling */
 int should_profile_one; /* For bandwidth profiling */
+int should_profile_rss;
 struct sicm_device *profile_one_device;
 int max_sample_pages;
 int sample_freq;
+int num_imcs, max_imc_len;
+char **imcs; /* Array of strings of IMCs for the bandwidth profiling */
 
 /* Keep track of all extents */
 extent_arr *extents;
@@ -47,6 +50,8 @@ enum arena_layout parse_layout(char *env) {
 	size_t max_chars;
 
 	max_chars = 32;
+
+  printf("Parsing layout: %s\n", env);
 
 	if(strncmp(env, "SHARED_ONE_ARENA", max_chars) == 0) {
 		return SHARED_ONE_ARENA;
@@ -89,7 +94,7 @@ char *layout_str(enum arena_layout layout) {
 
 /* Gets environment variables and sets up globals */
 void set_options() {
-  char *env, *endptr;
+  char *env, *endptr, *str;
   long long tmp_val;
   struct sicm_device *device;
   int i;
@@ -159,44 +164,83 @@ void set_options() {
     }
   }
 
-  /* If the above is true, which NUMA node should we isolate the allocation site
-   * onto? The user should also set SH_DEFAULT_DEVICE to another device to avoid
-   * the two being the same, if the allocation site is to be isolated.
-   */
-  env = getenv("SH_PROFILE_ONE_NODE");
-  profile_one_device = NULL;
-  if(env) {
-    endptr = NULL;
-    tmp_val = strtoimax(env, &endptr, 10);
-    if((tmp_val < 0) || (tmp_val > INT_MAX)) {
-      printf("Invalid NUMA node given: %d.\n", tmp_val);
-      exit(1);
-    } else {
-      /* Figure out which device the NUMA node corresponds to */
-      device = device_list.devices;
-      for(i = 0; i < device_list.count; i++) {
-        /* If the device has a NUMA node, and if that node is the node we're
-         * looking for.
-         */
-        if((device->tag == SICM_DRAM ||
-           device->tag == SICM_KNL_HBM || 
-           device->tag == SICM_POWERPC_HBM) &&
-           sicm_numa_id(device) == tmp_val) {
-          profile_one_device = device;
-          printf("Isolating node: %s, node %d\n", sicm_device_tag_str(profile_one_device->tag), 
-                                                  sicm_numa_id(device));
-          break;
+  if(should_profile_one) {
+    /* If the above is true, which NUMA node should we isolate the allocation site
+     * onto? The user should also set SH_DEFAULT_DEVICE to another device to avoid
+     * the two being the same, if the allocation site is to be isolated.
+     */
+    env = getenv("SH_PROFILE_ONE_NODE");
+    profile_one_device = NULL;
+    if(env) {
+      endptr = NULL;
+      tmp_val = strtoimax(env, &endptr, 10);
+      if((tmp_val < 0) || (tmp_val > INT_MAX)) {
+        printf("Invalid NUMA node given: %d.\n", tmp_val);
+        exit(1);
+      } else {
+        /* Figure out which device the NUMA node corresponds to */
+        device = device_list.devices;
+        for(i = 0; i < device_list.count; i++) {
+          /* If the device has a NUMA node, and if that node is the node we're
+           * looking for.
+           */
+          if((device->tag == SICM_DRAM ||
+             device->tag == SICM_KNL_HBM || 
+             device->tag == SICM_POWERPC_HBM) &&
+             sicm_numa_id(device) == tmp_val) {
+            profile_one_device = device;
+            printf("Isolating node: %s, node %d\n", sicm_device_tag_str(profile_one_device->tag), 
+                                                    sicm_numa_id(device));
+            break;
+          }
+          device++;
         }
-        device++;
-      }
-      /* If we don't find an appropriate device, it stays NULL
-       * so that no allocation sites will be bound to it
-       */
-      if(!profile_one_device) {
-        printf("Couldn't find an appropriate device for NUMA node %d.\n", tmp_val);
+        /* If we don't find an appropriate device, it stays NULL
+         * so that no allocation sites will be bound to it
+         */
+        if(!profile_one_device) {
+          printf("Couldn't find an appropriate device for NUMA node %d.\n", tmp_val);
+        }
       }
     }
+
+    /* The user can also specify a comma-delimited list of IMCs to read the
+     * bandwidth from. This will be passed to libpfm. For example, on an Ivy
+     * Bridge server, this value is e.g. `ivbep_unc_imc0`, and on KNL it's
+     * `knl_unc_imc0`.
+     */
+    env = getenv("SH_PROFILE_ONE_IMC");
+    num_imcs = 0;
+    max_imc_len = 0;
+    imcs = NULL;
+    if(env) {
+      printf("Got IMC string: %s\n", env);
+      /* Parse out the IMCs into an array */
+      while((str = strtok(env, ",")) != NULL) {
+        printf("%s\n", str);
+        num_imcs++;
+        imcs = realloc(imcs, sizeof(char *) * num_imcs);
+        imcs[num_imcs - 1] = str;
+        if(strlen(str) > max_imc_len) {
+          max_imc_len = strlen(str);
+        }
+        env = NULL;
+      }
+    }
+    if(num_imcs == 0) {
+      fprintf(stderr, "No IMCs given. Can't measure bandwidth.\n");
+      exit(1);
+    }
   }
+
+  /* Should we get the RSS of each arena? */
+  env = getenv("SH_PROFILE_RSS");
+  should_profile_rss = 0;
+  if(env) {
+    should_profile_rss = 1;
+    printf("Profiling RSS of all arenas.\n");
+  }
+
 
   /* What sample frequency should we use? Default is 2048. Higher
    * frequencies will fill up the sample pages (below) faster.
@@ -454,7 +498,7 @@ void sh_init() {
     /* Set the arena allocator's callback function */
     sicm_extent_alloc_callback = &sh_create_extent;
 
-    if(should_profile_all || should_profile_one) {
+    if(should_profile_all || should_profile_one || should_profile_rss) {
       sh_start_profile_thread();
     }
   }

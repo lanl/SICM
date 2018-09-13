@@ -8,7 +8,8 @@
  * common abstractions over heterogeneous functions, and low-level
  * queries based on the common abstractions.
  */
-#pragma once
+#ifndef SICM_LOW_H
+#define SICM_LOW_H
 
 /// Prerequisite for sicm_model_distance.
 #ifndef _GNU_SOURCE
@@ -511,3 +512,5 @@ size_t sicm_triad_kernel_linear(double* a, double* b, double* c, size_t size);
  * This can be used as a template for other bandwidth kernels.
  */
 size_t sicm_triad_kernel_random(double* a, double* b, double* c, size_t* indexes, size_t size);
+
+#endif

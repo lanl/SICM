@@ -15,7 +15,7 @@
 #ifndef MAP_HUGE_SHIFT
 #include <linux/mman.h>
 #endif
-#include "sicmimpl.h"
+#include "sicm_impl.h"
 
 #define X86_CPUID_MODEL_MASK        (0xf<<4)
 #define X86_CPUID_EXT_MODEL_MASK    (0xf<<16)

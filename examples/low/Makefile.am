@@ -13,5 +13,5 @@ bin_PROGRAMS = basic
 
 basic_SOURCES = basic.c
 basic_LDADD = 
-basic_LDFLAGS = -L${prefix}/lib -lsicm
-basic_CFLAGS = -I${prefix}/include
+basic_LDFLAGS = @abs_top_srcdir@/src/low/libsicm.la
+basic_CFLAGS = -I@abs_top_srcdir@/include

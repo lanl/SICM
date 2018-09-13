@@ -1,7 +1,7 @@
 #pragma once
 
 #include "sicm_low.h"
-#include "sicmimpl.h"
+#include "sicm_impl.h"
 
 enum arena_layout {
   SHARED_ONE_ARENA, /* One arena between all threads */
@@ -20,13 +20,17 @@ typedef struct arena_info {
   size_t accesses, rss, peak_rss;
 } arena_info;
 
-/* So we can access these things from profile.c */
+/* So we can access these things from profile.c.
+ * These variables are defined in src/high/high.c.
+ */
 extern extent_arr *extents;
 extern arena_info **arenas;
-extern int should_profile_all, should_profile_one;
+extern int should_profile_all, should_profile_one, should_profile_rss;
 extern int max_index;
 extern int max_sample_pages;
 extern int sample_freq;
+int num_imcs, max_imc_len;
+char **imcs;
 
 #define DEFAULT_ARENA_LAYOUT INVALID_LAYOUT
 

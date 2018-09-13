@@ -1,4 +1,5 @@
 #pragma once
+
 #include <stdlib.h>
 #include <stdio.h>
 #include <unistd.h>
@@ -39,9 +40,9 @@ typedef struct profile_thread {
 
   /* For perf */
   size_t size, total;
-  struct perf_event_attr *pe;
+  struct perf_event_attr **pes; /* Array of pe structs, for multiple events */
   struct perf_event_mmap_page *metadata;
-  int fd;
+  int *fds;
   uint64_t consumed;
   struct pollfd pfd;
 

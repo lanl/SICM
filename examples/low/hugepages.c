@@ -1,5 +1,5 @@
 #include "sicm_low.h"
-#include "sicmimpl.h"
+#include "sicm_impl.h"
 #include <stdio.h>
 #include <time.h>
 #include <sys/mman.h>

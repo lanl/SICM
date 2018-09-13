@@ -7,8 +7,8 @@
 #include <numaif.h>
 #include <pthread.h>
 #include <errno.h>
-#include <sicm_low.h>
-#include "sicmimpl.h"
+#include "sicm_low.h"
+#include "sicm_impl.h"
 
 static pthread_mutex_t sa_mutex = PTHREAD_MUTEX_INITIALIZER;
 static int sa_num;

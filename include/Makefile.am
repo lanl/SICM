@@ -9,4 +9,4 @@
 # $HEADER$
 #
 
-nobase_include_HEADERS = high.h  sicm_cpp.hpp  sicmimpl.h  sicm_low.h  extent_arr.h
+nobase_include_HEADERS = sicm_profile.h  sicm_high.h  sicm_cpp.hpp  sicm_impl.h  sicm_low.h  extent_arr.h

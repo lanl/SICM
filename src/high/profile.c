@@ -1,6 +1,6 @@
-#include "high.h"
-#include "profile.h"
-#include "sicmimpl.h"
+#include "sicm_high.h"
+#include "sicm_profile.h"
+#include "sicm_impl.h"
 #include <unistd.h>
 #include <fcntl.h>
 
@@ -13,17 +13,18 @@ const char* accesses_event_strs[] = {
 };
 
 const char* bandwidth_event_strs[] = {
-  "UNC_M_CAS_COUNT.ALL",
+  "UNC_M_CAS_COUNT:ALL",
   NULL
 };
+
+int num_events;
 
 /* Uses libpfm to figure out the event we're going to use */
 void sh_get_event() {
   const char **event_strs;
-  char **event;
-  int err, found;
+  char **event, *buf;
+  int err, found, i;
 
-  /* Use libpfm to detect the event that we're going to use */
   pfm_initialize();
   prof.pfm = malloc(sizeof(pfm_perf_encode_arg_t));
 
@@ -34,19 +35,19 @@ void sh_get_event() {
     event_strs = bandwidth_event_strs;
   }
 
-  /* Iterate through the array of event strs and see which one works */
+  /* Iterate through the array of event strs and see which one works. 
+   * For should_profile_one, just use the first given IMC. */
   event = event_strs;
   found = 0;
   while(*event != NULL) {
-    memset(prof.pe, 0, sizeof(struct perf_event_attr));
-    prof.pe->size = sizeof(struct perf_event_attr);
+    memset(prof.pes[0], 0, sizeof(struct perf_event_attr));
+    prof.pes[0]->size = sizeof(struct perf_event_attr);
     memset(prof.pfm, 0, sizeof(pfm_perf_encode_arg_t));
     prof.pfm->size = sizeof(pfm_perf_encode_arg_t);
-    prof.pfm->attr = prof.pe;
+    prof.pfm->attr = prof.pes[0];
     err = pfm_get_os_event_encoding(*event, PFM_PLM2 | PFM_PLM3, PFM_OS_PERF_EVENT, prof.pfm);
     if(err == PFM_SUCCESS) {
-      prof.pe->config = 0x20d1;
-      printf("Using event: %s (0x%llx)\n", *event, prof.pe->config);
+      printf("Using event: %s (0x%llx)\n", *event, prof.pes[0]->config);
       found = 1;
       break;
     }
@@ -57,46 +58,89 @@ void sh_get_event() {
     exit(1);
   }
 
+  /* If should_profile_all, we're using PEBS and only one event */
   if(should_profile_all) {
-    prof.pe->sample_type = PERF_SAMPLE_ADDR;
-    prof.pe->sample_period = sample_freq;
-    prof.pe->mmap = 1;
-    prof.pe->disabled = 1;
-    prof.pe->exclude_kernel = 1;
-    prof.pe->exclude_hv = 1;
-    prof.pe->precise_ip = 2;
-    prof.pe->task = 1;
+    prof.pes[0]->sample_type = PERF_SAMPLE_ADDR;
+    prof.pes[0]->sample_period = sample_freq;
+    prof.pes[0]->mmap = 1;
+    prof.pes[0]->disabled = 1;
+    prof.pes[0]->exclude_kernel = 1;
+    prof.pes[0]->exclude_hv = 1;
+    prof.pes[0]->precise_ip = 2;
+    prof.pes[0]->task = 1;
+    prof.pes[0]->sample_period = sample_freq;
+
+  /* If we're doing memory bandwidth sampling, initialize the other IMCs with the same event */
   } else if(should_profile_one) {
-    printf("Sample period: %llu\n", prof.pe->sample_period);
-    printf("Sample type: %llu\n", prof.pe->sample_type);
-    printf("Config: %llx\n", prof.pe->config);
-    //prof.pe->sample_type
-    //prof.pe->sample_period = sample_freq;
+    buf = calloc(max_imc_len + 1, sizeof(char));
+    for(i = 1; i < num_imcs; i++) {
+
+      /* Initialize the pe struct */
+      memset(prof.pes[i], 0, sizeof(struct perf_event_attr));
+      prof.pes[i]->size = sizeof(struct perf_event_attr);
+      memset(prof.pfm, 0, sizeof(pfm_perf_encode_arg_t));
+      prof.pfm->size = sizeof(pfm_perf_encode_arg_t);
+      prof.pfm->attr = prof.pes[i];
+
+      /* Construct the event string from the IMC and the event */
+      memset(buf, 0, sizeof(char) * (max_imc_len + 1));
+      sprintf(buf, "%s::%s", imcs[i], *event);
+
+      err = pfm_get_os_event_encoding(buf, PFM_PLM2 | PFM_PLM3, PFM_OS_PERF_EVENT, prof.pfm);
+      if(err != PFM_SUCCESS) {
+        fprintf(stderr, "Failed to use libpfm with event string %s. Aborting.\n", buf);
+        exit(1);
+      }
+    }
+    
   }
 }
 
 void sh_start_profile_thread() {
+  int i, group_fd;
 
-  /* Initialize the pe struct */
-  prof.pe = malloc(sizeof(struct perf_event_attr));
+  /* Figure out how many events we're going to poll */
+  num_events = 0;
+  if(should_profile_all) {
+    num_events = 1;
+  } else if(should_profile_one) {
+    num_events = num_imcs;
+  }
 
-  /* Fill in the specifics of the pe struct with libpfm */
+  /* Initialize the pe structs */
+  prof.pes = malloc(sizeof(struct perf_event_attr *) * num_events);
+  prof.fds = malloc(sizeof(int) * num_events);
+  for(i = 0; i < num_events; i++) {
+    prof.pes[i] = malloc(sizeof(struct perf_event_attr));
+    prof.fds[i] = 0;
+  }
+
+  /* Fill in the specifics of the pe structs with libpfm */
   sh_get_event();
 
   /* Open the perf file descriptor */
-  prof.fd = syscall(__NR_perf_event_open, prof.pe, 0, -1, -1, 0);
-  if (prof.fd == -1) {
-    fprintf(stderr, "Error opening perf event 0x%llx.\n", prof.pe->config);
-    printf("%d\n", errno);
-    strerror(errno);
-    exit(EXIT_FAILURE);
+  if(should_profile_all) {
+    prof.fds[0] = syscall(__NR_perf_event_open, prof.pes[0], 0, -1, -1, 0);
+    if (prof.fds[0] == -1) {
+      fprintf(stderr, "Error opening perf event 0x%llx.\n", prof.pes[0]->config);
+      strerror(errno);
+      exit(EXIT_FAILURE);
+    }
+  } else if(should_profile_one) {
+    for(i = 0; i < num_events; i++) {
+      prof.fds[i] = syscall(__NR_perf_event_open, prof.pes[i], -1, 0, -1, 0);
+      if (prof.fds[i] == -1) {
+        fprintf(stderr, "Error opening perf event %d (0x%llx).\n", i, prof.pes[i]->config);
+        printf("%d\n", errno);
+        strerror(errno);
+        exit(EXIT_FAILURE);
+      }
+    }
   }
 
   if(should_profile_all) {
     /* mmap the file */
-    prof.pagesize = (size_t) sysconf(_SC_PAGESIZE);
-    printf("Allocating %zu\n", prof.pagesize + (prof.pagesize * max_sample_pages));
-    prof.metadata = mmap(NULL, prof.pagesize + (prof.pagesize * max_sample_pages), PROT_READ | PROT_WRITE, MAP_SHARED, prof.fd, 0);
+    prof.metadata = mmap(NULL, prof.pagesize + (prof.pagesize * max_sample_pages), PROT_READ | PROT_WRITE, MAP_SHARED, prof.fds[0], 0);
     if(prof.metadata == MAP_FAILED) {
       fprintf(stderr, "Failed to mmap room for perf samples. Aborting with:\n%s\n", strerror(errno));
       exit(1);
@@ -104,21 +148,27 @@ void sh_start_profile_thread() {
   }
 
   /* Start the sampling */
-  ioctl(prof.fd, PERF_EVENT_IOC_RESET, 0);
-  ioctl(prof.fd, PERF_EVENT_IOC_ENABLE, 0);
+  for(i = 0; i < num_events; i++) {
+    ioctl(prof.fds[i], PERF_EVENT_IOC_RESET, 0);
+    ioctl(prof.fds[i], PERF_EVENT_IOC_ENABLE, 0);
+  }
 
   /* Initialize for get_accesses */
-  prof.consumed = 0;
-  prof.total = 0;
+  if(should_profile_all) {
+    prof.consumed = 0;
+    prof.total = 0;
+  }
 
   /* Initialize for get_rss */
-  prof.pagemap_fd = open("/proc/self/pagemap", O_RDONLY);
-  if (prof.pagemap_fd < 0) {
-    fprintf(stderr, "Failed to open /proc/self/pagemap. Aborting.\n");
-    exit(1);
+  if(should_profile_rss) {
+    prof.pagemap_fd = open("/proc/self/pagemap", O_RDONLY);
+    if (prof.pagemap_fd < 0) {
+      fprintf(stderr, "Failed to open /proc/self/pagemap. Aborting.\n");
+      exit(1);
+    }
+    prof.pfndata = NULL;
+    prof.addrsize = sizeof(uint64_t);
   }
-  prof.pfndata = NULL;
-  prof.addrsize = sizeof(uint64_t);
 
   /* Start the profiling thread */
   pthread_mutex_init(&prof.mtx, NULL);
@@ -127,9 +177,13 @@ void sh_start_profile_thread() {
 }
 
 void sh_stop_profile_thread() {
+  int i;
+
 	/* Stop the actual sampling */
-	ioctl(prof.fd, PERF_EVENT_IOC_DISABLE, 0);
-  close(prof.fd);
+  for(i = 0; i < num_events; i++) {
+    ioctl(prof.fds[i], PERF_EVENT_IOC_DISABLE, 0);
+    close(prof.fds[i]);
+  }
 
   /* Signal the profiling thread to stop */
   pthread_mutex_unlock(&prof.mtx);
@@ -158,7 +212,7 @@ static inline void get_accesses() {
   struct perf_event_header *header;
 
   /* Wait for the perf buffer to be ready */
-  prof.pfd.fd = prof.fd;
+  prof.pfd.fd = prof.fds[0];
   prof.pfd.events = POLLIN;
   prof.pfd.revents = 0;
   poll(&prof.pfd, 1, 1000);
@@ -209,22 +263,27 @@ static inline void get_accesses() {
   prof.metadata->data_tail = head;
 }
 
-/* Just reads the perf counter */
-static inline void get_bandwith() {
+static void
+get_bandwidth(int sig, siginfo_t *si, void *uc)
+{
+  float count_f;
   long long count;
-  int num;
+  int num, i;
+  struct itimerspec it;
 
   /* Stop the counter and read the value if it has been at least a second */
-  num = timer_getoverrun(prof.timerid);
-  printf("Timer has been overrun %d times.\n", num);
-  if(num) {
-    ioctl(prof.fd, PERF_EVENT_IOC_DISABLE, 0);
-    read(prof.fd, &count, sizeof(long long));
+  printf("=========\n");
+  for(i = 0; i < num_events; i++) {
+    ioctl(prof.fds[i], PERF_EVENT_IOC_DISABLE, 0);
+    read(prof.fds[i], &count, sizeof(long long));
+    count_f = (float) count;
+    printf("%d: %.1f MB/s\n", i, count_f * 64 / 1024 / 1024);
 
     /* Start it back up again */
-    ioctl(prof.fd, PERF_EVENT_IOC_RESET, 0);
-    ioctl(prof.fd, PERF_EVENT_IOC_ENABLE, 0);
+    ioctl(prof.fds[i], PERF_EVENT_IOC_RESET, 0);
+    ioctl(prof.fds[i], PERF_EVENT_IOC_ENABLE, 0);
   }
+  printf("=========\n");
 }
 
 static inline void get_rss() {
@@ -256,7 +315,7 @@ static inline void get_rss() {
 		}
 
 		/* Read in all of the pfns for this chunk */
-		if(read(prof.pagemap_fd, prof.pfndata, prof.addrsize * numpages) != (prof.addrsize * numpages)) {
+	if(read(prof.pagemap_fd, prof.pfndata, prof.addrsize * numpages) != (prof.addrsize * numpages)) {
 			fprintf(stderr, "Failed to read the PageMap file. Aborting.\n");
 			exit(1);
 		}
@@ -279,9 +338,27 @@ static inline void get_rss() {
 void *sh_profile_thread(void *a) {
   size_t i, associated;
   struct itimerspec its;
+  struct sigaction sa;
+
+  /* Set the pagesize for the RSS and PEBS threads */
+  if(should_profile_rss || should_profile_all) {
+    prof.pagesize = (size_t) sysconf(_SC_PAGESIZE);
+  }
 
   if(should_profile_one) {
+    /* Signal handler for bandwidth */
+	  sa.sa_flags = SA_SIGINFO;
+	  sa.sa_sigaction = get_bandwidth;
+	  sigemptyset(&sa.sa_mask);
+	  if (sigaction(SIGRTMIN, &sa, NULL) == -1) {
+      fprintf(stderr, "Failed to create a signal. Aborting.\n");
+      exit(1);
+    }
+
     /* Create a timer for the bandwdith counting */
+    prof.sev.sigev_notify = SIGEV_SIGNAL;
+		prof.sev.sigev_signo = SIGRTMIN;
+    prof.sev.sigev_value.sival_ptr = &prof.timerid;
     if(timer_create(CLOCK_REALTIME, &prof.sev, &prof.timerid) == -1) {
       fprintf(stderr, "Failed to create a timer. Aborting.\n");
       exit(1);
@@ -289,7 +366,9 @@ void *sh_profile_thread(void *a) {
 
     /* Arm the timer for 1 second */
     its.it_value.tv_sec = 1;
+    its.it_value.tv_nsec = 0;
     its.it_interval.tv_sec = 1;
+    its.it_interval.tv_nsec = 0;
     if(timer_settime(prof.timerid, 0, &its, NULL) == -1) {
       fprintf(stderr, "Failed to set the timer. Aborting.\n");
       exit(1);
@@ -304,13 +383,10 @@ void *sh_profile_thread(void *a) {
       get_accesses();
     }
 
-    /* Grab the current bandwidth */
-    if(should_profile_one) {
-      get_bandwidth();
-    }
-
     /* Gather the RSS */
-    get_rss();
+    if(should_profile_rss) {
+      get_rss();
+    }
   }
 
   /* Print out the results of the profiling */
@@ -327,6 +403,8 @@ void *sh_profile_thread(void *a) {
     }
     printf("Totals: %zu / %zu\n", associated, prof.total);
   }
+
+  timer_delete(prof.timerid);
 
   return NULL;
 }
