@@ -3,6 +3,7 @@
 #include <sys/mman.h>
 #include <unistd.h>
 #include <sys/time.h>
+#include <math.h>
 #include <numa.h>
 #include <numaif.h>
 #include <pthread.h>
