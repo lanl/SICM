@@ -76,7 +76,7 @@ extern int normal_page_size;
 struct alloc_list{
         char name[50];
         size_t size;
-        void * addr = NULL;
+        void * dram = NULL;
         void * nv1 = NULL;
         void * nv2 = NULL;
 	struct alloc_list * next;

@@ -14,8 +14,14 @@ struct numa_node_bw{
 	char * mem_type;
 	double read_bw;
 	double write_bw;
+	double rw_bw;
+	double ran_bw;
+	double lin_bw;
 	double read_lat;
 	double write_lat;
+	double rw_lat;
+	double ran_lat;
+	double lin_lat;
 	double avg_lat;
 	double avg_bw;
 	struct numa_node_bw * next;
@@ -33,8 +39,6 @@ double * means;
 int * cluster_sizes;
 
 void calculate_distances(){
-//printf("calc_dist\n");
-//fflush(NULL);
 	int i;
         struct numa_node_bw * bw_it = numa_list_head;
 	while(bw_it != NULL){
@@ -42,7 +46,6 @@ void calculate_distances(){
 		double delta = 999999999.9999999;
 		while(i < mem_types){
 			double dist = abs(sqrt(abs((means[i] - bw_it->avg_bw))*abs((means[i] - bw_it->avg_bw))));
-//printf("Delta: %lf Dist: %lf\n", delta, dist);
 			if(dist < delta){
 				delta = dist;
 				if(strcmp(bw_it->mem_type, mem_tech[i])!=0){
@@ -55,20 +58,16 @@ void calculate_distances(){
                                                 cluster_sizes[i+1]--;
 						bw_it->mem_type = mem_tech[i];
 						cluster_sizes[i]++;
-                                        }
-					//bw_it->mem_type = mem_tech[i];
+                    }
 				}
 			}
 			i++;
 		}
-//		printf("Numa id:%d Type:%s BW:%lf\n",bw_it->numa_id, bw_it->mem_type, bw_it->avg_bw);
 		bw_it = bw_it->next;
 	}
 }
 
 void calculate_mean(){
-//printf("calculate_mean\n");
-//fflush(NULL);
 	int i = 0;
 	struct numa_node_bw * bw_it = numa_list_head;
 	while(i < mem_types){
@@ -80,37 +79,14 @@ void calculate_mean(){
 			bw_it = bw_it->next;
 		}
 		means[i] /= cluster_sizes[i];
-//printf("Mean: %lf\n", means[i]);
 		i++;
 	}
 	calculate_distances();
 }
 
 void classify(){
-//printf("classify\n");
-//fflush(NULL);
 	int cluster_size;
 	int last_cluster_size;
-	/*if((total_numa_nodes%mem_types) == 0){
-		cluster_size = (total_numa_nodes/mem_types);
-		last_cluster_size = cluster_size;
-	}
-	else if((total_numa_nodes%mem_types) > (mem_types/2)){
-		cluster_size = (total_numa_nodes/mem_types) + 1;
-		last_cluster_size = total_numa_nodes%cluster_size;
-	}
-	else if((total_numa_nodes%mem_types) < (mem_types/2)){
-		cluster_size = (total_numa_nodes/mem_types) - 1;
-		last_cluster_size = total_numa_nodes%cluster_size;
-	}
-	else if((total_numa_nodes%mem_types) == (mem_types/2)){
-                cluster_size = (total_numa_nodes/mem_types) + 1;
-                last_cluster_size = total_numa_nodes%cluster_size;
-        }
-	else{
-		cluster_size = (total_numa_nodes/mem_types);
-		last_cluster_size = last_cluster_size - cluster_size;
-	}*/
 	cluster_size = total_numa_nodes/mem_types;
 	last_cluster_size = cluster_size + (total_numa_nodes%mem_types);
 	cluster_sizes = (int *)malloc(sizeof(int)*mem_types);
@@ -126,8 +102,6 @@ void classify(){
 		}
 		i++;
 	}
-//printf("be %d\n", cluster_size);
-//fflush(NULL);
 	i = 0;
 	int j = 1;
 	while(bw_it != NULL){
@@ -139,7 +113,6 @@ void classify(){
 			j = 1;
 			i++;
 		}
-//		printf("%s\n",bw_it->mem_type);
 		bw_it = bw_it->next;
 	}
 	bw_it = numa_list_head;
@@ -155,33 +128,20 @@ void sort_list(struct numa_node_bw * new_node){
 	struct numa_node_bw * bw_it = numa_list_head;
 	struct numa_node_bw * prev_bw_it = NULL;
 	while(bw_it != NULL){
-//printf("insert %lf %lf\n", new_node->avg_bw, bw_it->avg_bw);
-//fflush(NULL);
-		//if((bw_it->write_bw > new_node->write_bw)&&(bw_it->read_bw > new_node->read_bw)){
 		if((bw_it->avg_bw > new_node->avg_bw)){
-//printf("insert1 %d\n", new_node->numa_id);
-//fflush(NULL);
 			if(prev_bw_it == NULL){
-//printf("insert2 %d\n", new_node->numa_id);
-//fflush(NULL);
 				new_node->next = bw_it;
 				numa_list_head = new_node;
 			}else{
-//printf("insert3 %d\n", new_node->numa_id);
-//fflush(NULL);
 				prev_bw_it->next = new_node;
 				new_node->next = bw_it;
 			}
 			return;
 		}
-//printf("insert4 %d\n", new_node->numa_id);
-//fflush(NULL);
 		prev_bw_it = bw_it;
 		bw_it = bw_it->next;
 	}
 	prev_bw_it->next = new_node;
-//printf("insert5 %d\n", new_node->numa_id);
-//fflush(NULL);
 	return;
 
 }
@@ -191,8 +151,8 @@ void write_config_file(){
 	conf = fopen("sicm_numa_config", "w");
 	struct numa_node_bw * bw_it = numa_list_head;
 	while(bw_it != NULL){	
-		fprintf(conf, "%d %s %lf %lf %lf %.10lf %.10lf %.10lf\n",bw_it->numa_id, bw_it->mem_type, bw_it->avg_bw, bw_it->read_bw, bw_it->write_bw, bw_it->avg_lat, bw_it->read_lat, bw_it->write_lat);
-		printf("Node id: %d Mem Type: %s Avg BW: %lf MB/s Read BW: %lf MB/s Write BW: %lf MB/s Avg Lat: %.10lf s Read Lat: %.10lf s Write Lat: %.10lf s\n",bw_it->numa_id, bw_it->mem_type, bw_it->avg_bw, bw_it->read_bw, bw_it->write_bw, bw_it->avg_lat, bw_it->read_lat, bw_it->write_lat);
+		fprintf(conf, "%d %s %lf %lf %lf %lf %lf %lf %.10lf %.10lf %.10lf %.10lf %.10lf %.10lf\n",bw_it->numa_id, bw_it->mem_type, bw_it->avg_bw, bw_it->read_bw, bw_it->write_bw, bw_it->rw_bw, bw_it->ran_bw, bw_it->lin_bw, bw_it->avg_lat, bw_it->read_lat, bw_it->write_lat, bw_it->rw_lat, bw_it->ran_lat, bw_it->lin_lat);
+		printf("%d %s %lf %lf %lf %lf %lf %lf %.10lf %.10lf %.10lf %.10lf %.10lf %.10lf\n",bw_it->numa_id, bw_it->mem_type, bw_it->avg_bw, bw_it->read_bw, bw_it->write_bw, bw_it->rw_bw, bw_it->ran_bw, bw_it->lin_bw, bw_it->avg_lat, bw_it->read_lat, bw_it->write_lat, bw_it->rw_lat, bw_it->ran_lat, bw_it->lin_lat);
 		bw_it = bw_it->next;
 	}
 	fclose(conf);
@@ -214,6 +174,8 @@ int main(int argc, char ** argv){
 	size_t size = 512*1024*1024;
 	int *a;
 	clock_t start, end;
+	srand(clock());
+	sleep(10);
 	if(argc == 1){
 		printf("Enter memory technologies available in ascending order of speed. eg: GPU NVRAM DRAM HBM\n");
 		return -1;
@@ -223,7 +185,6 @@ int main(int argc, char ** argv){
 		mem_tech = (char**)malloc(argc*sizeof(char*));
 		for(int a = 1; a < argc; a++){
 			mem_tech[a-1] = argv[a];
-//			printf("%s\n",mem_tech[a-1]);
 		}
 
 	}
@@ -232,10 +193,15 @@ int main(int argc, char ** argv){
 		int k = 0;
 		double wbw_avg=0.0;
 		double rbw_avg=0.0;
+		double rwbw_avg=0.0;
+		double ranbw_avg=0.0;
+		double linbw_avg=0.0;
 		double wlat_avg=0.0;
 		double rlat_avg=0.0;
+		double rwlat_avg=0.0;
+		double ranlat_avg=0.0;
+		double linlat_avg=0.0;
 		for(k = 0; k < 30; k++){
-			//printf("Device %d: ", numa_node_ids[i]);
 			a = (int*)numa_alloc_onnode(size, numa_node_ids[i]);
 			int j = 0;
 
@@ -246,10 +212,10 @@ int main(int argc, char ** argv){
 			}
 			end = clock();
 
-            		clock_t empty = end - start;
+            clock_t empty = end - start;
 
 
-            		j = 0;
+            j = 0;
 			start = clock();
 			while(j < (size/sizeof(int))){
 				a[j] = 1;
@@ -258,26 +224,56 @@ int main(int argc, char ** argv){
 			end = clock();
 			wbw_avg += 512/((double)(end - start - empty) / CLOCKS_PER_SEC);
 			wlat_avg += ((double)(end - start - empty) / CLOCKS_PER_SEC);
-			//printf("Write BW: %lf MB/s ", 512/((double)(end - start - empty) / CLOCKS_PER_SEC));
 			j = 0;
 			start = clock();
 			while(j < (size/sizeof(int))){
                 	        int t = a[j];
                 	        j++;
-                	}
+            }
 			end = clock();
 			rbw_avg += 512/((double)(end - start - empty) / CLOCKS_PER_SEC);
 			rlat_avg += ((double)(end - start - empty) / CLOCKS_PER_SEC);
-			//printf("Read BW: %lf MB/s\n", 512/((double)(end - start - empty) / CLOCKS_PER_SEC));
+			j = 0;
+			start = clock();
+            while(j < (size/sizeof(int))){
+                            a[j] += a[j];
+                            j++;
+            }
+            end = clock();                                                                                     
+            rwbw_avg += 512/((double)(end - start - empty) / CLOCKS_PER_SEC);
+            rwlat_avg += ((double)(end - start - empty) / CLOCKS_PER_SEC);
+			j = 0;
+			start = clock();
+            while(j < (size/sizeof(int))){
+                            a[((int)rand())%((int)(size/sizeof(int)))] += a[((int)rand())%((int)(size/sizeof(int)))];
+                            j++;
+            }
+            end = clock();                                                                                     
+            ranbw_avg += 512/((double)(end - start - empty) / CLOCKS_PER_SEC);
+            ranlat_avg += ((double)(end - start - empty) / CLOCKS_PER_SEC);
+			j = 0;
+			start = clock();
+            while(j < (size/sizeof(int))){
+                            a[(j+10)%((int)(size/sizeof(int)))] += a[(j+2j)%((int)(size/sizeof(int)))];
+                            j++;
+            }
+            end = clock();                                                                                     
+            linbw_avg += 512/((double)(end - start - empty) / CLOCKS_PER_SEC);
+            linlat_avg += ((double)(end - start - empty) / CLOCKS_PER_SEC);
 			numa_free(a, size);
-		//	k++;
 		}
 		struct numa_node_bw * node_bw = (struct numa_node_bw *)malloc(sizeof(struct numa_node_bw));
 		node_bw->numa_id = numa_node_ids[i];
 		node_bw->write_bw = wbw_avg/30;
 		node_bw->read_bw = rbw_avg/30;
+		node_bw->rw_bw = rwbw_avg/30;
+		node_bw->ran_bw = ranbw_avg/30;
+		node_bw->lin_bw = linbw_avg/30;
 		node_bw->write_lat = ((double)wlat_avg/(double)(size/sizeof(int)))/30;
 		node_bw->read_lat = ((double)rlat_avg/(double)(size/sizeof(int)))/30;
+        node_bw->rw_lat = ((double)rwlat_avg/(double)(size/sizeof(int)))/30;
+        node_bw->ran_lat = ((double)ranlat_avg/(double)(size/sizeof(int)))/30;
+        node_bw->lin_lat = ((double)linlat_avg/(double)(size/sizeof(int)))/30;
 		node_bw->avg_bw = (node_bw->write_bw + node_bw->read_bw)/2;
 		node_bw->avg_lat = (node_bw->write_lat + node_bw->read_lat)/2;
 		node_bw->next = NULL;
