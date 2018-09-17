@@ -98,7 +98,7 @@ make install
 ## Low-Level API
 - `sicm_device_list sicm_init()`
   - Detects all memory devices on system, returns a list of them.
-- `void sicm_fini(sicm_device_list *)`
+- `void sicm_fini()`
   - Frees up a device list and associated SICM data structures.
 - `sicm_device *sicm_find_device(sicm_device_list *devs, const sicm_device_tag type, const int page_size, sicm_device *old)`
   - Return the first device that matches a given type and page size.
