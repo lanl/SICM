@@ -96,74 +96,45 @@ make install
 ```
 
 ## Low-Level API
-- `sicm_device_list sicm_init()`
-  - Detects all memory devices on system, returns a list of them.
-- `void sicm_fini()`
-  - Frees up a device list and associated SICM data structures.
-- `sicm_device *sicm_find_device(sicm_device_list *devs, const sicm_device_tag type, const int page_size, sicm_device *old)`
-  - Return the first device that matches a given type and page size.
-- `void *sicm_device_alloc(struct sicm_device *device, size_t sz)`
-  - Allocates to a given device.
-- `void sicm_device_free(struct sicm_device *device, void *ptr, size_t size)`
-  - Frees memory on a device.
-- `int sicm_can_place_exact(struct sicm_device* device)`
-  - Returns whether or not a device supports exact placement.
-- `void* sicm_device_alloc_exact(struct sicm_device* device, void* base, size_t size)`
-  - Allocate memory on a device with an exact base address.
-- `int sicm_numa_id(sicm_device* device);`
-  - Returns the NUMA ID that a device is on.
-- `int sicm_device_page_size(sicm_device* device)`
-  - Returns the page size of a given device.
-- `int sicm_device_eq(sicm_device* dev1, sicm_device* dev2)`
-  - Returns if two devices are equal or not.
-- `int sicm_move(sicm_device* src, sicm_device* dst, void* ptr, size_t size)`
-  - Moves memory from one device to another.
-- `int sicm_pin(sicm_device* device)`
-  - Pin the current process to a device's memory.
-- `size_t sicm_capacity(sicm_device* device)`
-  - Returns the capacity of a given device.
-- `size_t sicm_avail(sicm_device* device)`
-  - Returns the amount of memory available on a given device.
-- `int sicm_model_distance(sicm_device* device)`
-  - Returns the distance of a given memory device.
-- `int sicm_is_near(sicm_device* device)`
-  - Returns whether or not a given memory device is nearby the current NUMA node.
-- `void sicm_latency(sicm_device* device, size_t size, int iter, struct sicm_timing* res)`
-  - Measures the latency of a memory device.
-- `size_t sicm_bandwidth_linear2(sicm_device* device, size_t size, size_t (*kernel)(double* a, double* b, size_t size))`
-  - Measures a memory device's linear access bandwidth.
-- `size_t sicm_bandwidth_random2(sicm_device* device, size_t size, size_t (*kernel)(double* a, double* b, size_t* indexes, size_t size))`
-  - Measures random access bandwidth of a memory device.
-- `size_t sicm_bandwidth_linear3(sicm_device* device, size_t size, size_t (*kernel)(double* a, double* b, double* c, size_t size))`
-  - Measures the linear bandwidth of a memory device.
-- `size_t sicm_bandwidth_random3(sicm_device* device, size_t size, size_t (*kernel)(double* a, double* b, double* c, size_t* indexes, size_t size))`
-  - Measures the random access bandwidth of a memory device.
+| Function Name | Description |
+|---------------|-------------|
+| `sicm_init`  | Detects all memory devices on system, returns a list of them. |
+| `sicm_fini`  | Frees up a device list and associated SICM data structures. |
+| `sicm_find_device` | Return the first device that matches a given type and page size. |
+| `sicm_device_alloc` | Allocates to a given device. |
+| `sicm_device_free` | Frees memory on a device. |
+| `sicm_can_place_exact` | Returns whether or not a device supports exact placement. |
+| `sicm_device_alloc_exact` | Allocate memory on a device with an exact base address. |
+| `sicm_numa_id` | Returns the NUMA ID that a device is on. |
+| `sicm_device_page_size` | Returns the page size of a given device. |
+| `sicm_device_eq` | Returns if two devices are equal or not. |
+| `sicm_move`| Moves memory from one device to another. |
+| `sicm_pin` | Pin the current process to a device's memory. |
+| `sicm_capacity` | Returns the capacity of a given device. |
+| `sicm_avail` | Returns the amount of memory available on a given device. |
+| `sicm_model_distance` | Returns the distance of a given memory device. |
+| `sicm_is_near` | Returns whether or not a given memory device is nearby the current NUMA node. |
+| `sicm_latency` | Measures the latency of a memory device. |
+| `sicm_bandwidth_linear2` | Measures a memory device's linear access bandwidth. |
+| `sicm_bandwidth_random2` | Measures random access bandwidth of a memory device. |
+| `sicm_bandwidth_linear3` | Measures the linear bandwidth of a memory device. |
+| `sicm_bandwidth_random3` | Measures the random access bandwidth of a memory device. |
 
 ## Arena Allocator API
-- `sicm_arena_list *sicm_arenas_list()`
-  - List all arenas created in the arena allocator.
-- `sicm_arena sicm_arena_create(size_t maxsize, sicm_device *dev)`
-  - Create a new arena on the given device.
-- `void sicm_arena_destroy(sicm_arena arena)`
-  - Frees up an arena, deleting all associated data structures.
-- `void sicm_arena_set_default(sicm_arena sa)`
-  - Sets an arena as the default for the current thread.
-- `sicm_arena sicm_arena_get_default(void)`
-  - Gets the default arena for the current thread.
-- `sicm_device *sicm_arena_get_device(sicm_arena sa)`
-  - Gets the device for a given arena.
-- `int sicm_arena_set_device(sicm_arena sa, sicm_device *dev)`
-  - Sets the memory device for a given arena. Moves all allocated memory already allocated to the arena.
-- `size_t sicm_arena_size(sicm_arena sa)`
-  - Gets the size of memory allocated to the given arena.
-- `void *sicm_arena_alloc(sicm_arena sa, size_t sz)`
-  - Allocate to a given arena.
-- `void *sicm_arena_alloc_aligned(sicm_arena sa, size_t sz, size_t align)`
-  - Allocate aligned memory to a given arena.
-- `void *sicm_arena_realloc(sicm_arena sa, void *ptr, size_t sz)`
-  - Resize allocated memory to a given arena.
-- `sicm_arena sicm_arena_lookup(void *ptr)`
-  - Returns which arena a given pointer belongs to.
+| Function Name | Description |
+|---------------|-------------|
+| `sicm_arenas_list` | List all arenas created in the arena allocator. |
+| `sicm_arena_create` | Create a new arena on the given device. |
+| `sicm_arena_destroy` | Frees up an arena, deleting all associated data structures. |
+| `sicm_arena_set_default` | Sets an arena as the default for the current thread. |
+| `sicm_arena_get_default` | Gets the default arena for the current thread. |
+| `sicm_arena_get_device` | Gets the device for a given arena. |
+| `sicm_arena_set_device` | Sets the memory device for a given arena. Moves all allocated memory already allocated to the arena. |
+| `sicm_arena_size` | Gets the size of memory allocated to the given arena. |
+| `sicm_arena_alloc` | Allocate to a given arena. |
+| `sicm_arena_alloc_aligned` | Allocate aligned memory to a given arena. |
+| `sicm_arena_realloc` | Resize allocated memory to a given arena. |
+| `sicm_arena_lookup` | Returns which arena a given pointer belongs to. |
 
 ## High-Level Interface
 The high-level interface is normally used with the compiler wrappers located in
