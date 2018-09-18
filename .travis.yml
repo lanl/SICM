@@ -4,6 +4,11 @@ os: linux
 dist: trusty
 sudo: required
 
+# cache dependencies build so they don't have to be built every time
+cache:
+      directories:
+        - ${TRAVIS_BUILD_DIR}/.local
+
 matrix:
       include:
         - addons:
@@ -52,39 +57,43 @@ before_install:
     - export FC="${FORTRAN_COMPILER}"
 
 install:
-    # Install the dependencies into ./deps
-    - travis_wait ./install_deps.sh --no-llvm
+    - export SWHOME="${TRAVIS_BUILD_DIR}/.local"
 
-    # install openmpi manually
-    #- wget https://download.open-mpi.org/release/open-mpi/v3.1/openmpi-3.1.1.tar.bz2
-    #- tar -xf openmpi-3.1.1.tar.bz2
-    #- cd openmpi-3.1.1
-    #- mkdir build && cd build
-    #- export MPI_PATH=$(pwd)
-    #- travis_wait ../configure --prefix=${MPI_PATH} --without-verbs --without-fca --without-mxm --without-ucx --without-portals4 --without-psm --without-psm2 --without-libfabric --without-usnic --without-udreg --without-ugni --without-xpmem --without-alps --without-sge --without-tm --without-lsf --without-slurm --without-pvfs2 --without-plfs --without-cuda --disable-oshmem --enable-mpi-fortran --disable-oshmem-fortran --disable-libompitrace --disable-io-romio --disable-static &> /dev/null
-    #- travis_wait make -j $(nproc --all) &> /dev/null
-    #- travis_wait make -j $(nproc --all) install &> /dev/null
-    #- cd ${TRAVIS_BUILD_DIR}
+    # Install the dependencies into SWHOME
+    - travis_wait 50 ./install_deps.sh --jemalloc --mpi --build_dir $(pwd) --install_dir ${SWHOME}
+
+    - export JEPATH="${SWHOME}/jemalloc"
+    - export MPI_PATH="${SWHOME}/openmpi-3.1.1"
+    - export LD_LIBRARY_PATH=${JEPATH}:${LD_LIBRARY_PATH}
+    - export PKG_CONFIG_PATH=${JEPATH}:${PKG_CONFIG_PATH}
+    - export PATH=${MPI_PATH}/bin:$PATH
 
 script:
+    - export SICM_ROOT=${SWHOME}/SICM
+
     # build SICM
-    - export DEPDIR=`readlink -f ./deps`
     - ./autogen.sh
-    - ./configure --with-jemalloc=${DEPDIR} --prefix=${DEPDIR}
+    - mkdir -p build
+    - cd build
+    - ../configure --with-jemalloc=${JEPATH} --prefix=${SICM_ROOT}
     - make -j $(nproc --all)
     - make install
+    - ls -R
+    - cp src/low/sicm_f90.mod ${SICM_ROOT}/lib
+    - export LD_LIBRARY_PATH=${SICM_ROOT}/lib:${LD_LIBRARY_PATH}
 
-    # build tests
-    #- make -C test
-    #- numactl --hardware
+    - cd ..
 
-    # run tests
-    #- find test -type f -executable -exec echo "Running {}" \; -exec {} \;
+    - numactl --hardware
+
+    # build and run tests
+    - SICM_ROOT=${SICM_ROOT} make -C test
+    - find test -type f -executable -exec echo "Running {}" \; -exec {} \;
 
     # run SNAP with SICM
-    #- cd examples/SNAP/src
-    #- CC=${MPI_PATH}/bin/mpicc CXX=${MPI_PATH}/bin/mpic++ FC=${MPI_PATH}/bin/mpif90 MPI_INCLUDE=${MPI_PATH}/include OMPI_FC=${FORTRAN_COMPILER} make -j $(nproc --all)
-    #- for input in ../qasnap/mms_src/1d_fixup_*.inp;  do mpirun -np 1 --oversubscribe ./gsnap $input /dev/null; done
+    - cd examples/SNAP/src
+    - CC=${MPI_PATH}/bin/mpicc CXX=${MPI_PATH}/bin/mpic++ FC=${MPI_PATH}/bin/mpif90 MPI_INCLUDE=${MPI_PATH}/include OMPI_FC=${FORTRAN_COMPILER} SICM_ROOT=${SICM_ROOT} make -j $(nproc --all)
+    - for input in ../qasnap/mms_src/1d_fixup_*.inp;  do mpirun -np 1 --oversubscribe ./gsnap $input /dev/null; done
     # - for input in ../qasnap/mms_src/2d_fixup_*.inp;  do mpirun -np 4 --oversubscribe ./gsnap $input /dev/null; done
     # - for input in ../qasnap/mms_src/3d_fixup_t*.inp; do mpirun -np 8 --oversubscribe ./gsnap $input /dev/null; done
     # - mpirun -np 4 --oversubscribe ./gsnap ../qasnap/mms_src/3d_fixup_st.inp /dev/null
