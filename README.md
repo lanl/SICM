@@ -34,10 +34,10 @@ will also need an installation of `libpfm`, which is a small helper library for
 found automatically, but again, the user can specify `--with-llvm=` and
 `--with-libpfm` to use a custom location.
 
-Both `jemalloc` and `llvm` can be installed by simply running
-`./install-deps.sh`, which downloads and compiles them in `build_deps/`, then
-installs them in `deps/`. If you do not want to install `llvm`, use the
-`--no-llvm` argument; you can also use `--no-jemalloc`.
+`jemalloc` and `llvm` can be installed by running `install_deps.sh` with
+the appropriate command line options. In order to assist with the automation
+of building and running SNAP, `OpenMPI-3.1.1` can also be installed through
+this script.
 
 As an example for using your package manager to install the dependencies,
 Ubuntu Trusty requires the following packages.  You can replace the GCC version
