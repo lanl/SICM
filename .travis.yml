@@ -4,10 +4,10 @@ os: linux
 dist: trusty
 sudo: required
 
-# # cache dependencies build so they don't have to be built every time
-# cache:
-#       directories:
-#         - ${TRAVIS_BUILD_DIR}/.local
+# cache dependencies build so they don't have to be built every time
+cache:
+      directories:
+        - ${TRAVIS_BUILD_DIR}/.local
 
 matrix:
       include:
