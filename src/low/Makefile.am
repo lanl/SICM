@@ -10,6 +10,7 @@
 #
 
 lib_LTLIBRARIES = libsicm.la libsicm_cpp.la libsicm_f90.la
+include_HEADERS = sicm_f90.mod
 
 libsicm_la_SOURCES = sicm_low.c sicm_arena.c
 libsicm_la_LIBADD = @JEMALLOC_LIBS@ -lnuma
