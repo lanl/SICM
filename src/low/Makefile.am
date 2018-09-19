@@ -12,6 +12,7 @@
 fortranmoddir = ${exec_prefix}/lib
 lib_LTLIBRARIES = libsicm.la libsicm_cpp.la libsicm_f90.la
 fortranmod_DATA = sicm_f90.mod
+bin_PROGRAMS = sicm_detect
 
 libsicm_la_SOURCES = sicm_low.c sicm_arena.c
 libsicm_la_LIBADD = @JEMALLOC_LIBS@ -lnuma
@@ -28,3 +29,7 @@ libsicm_cpp_la_LIBADD =
 libsicm_cpp_la_LDFLAGS = -version-info 0:0:0
 libsicm_cpp_la_CPPFLAGS = -I@top_srcdir@/include
 
+sicm_detect_SOURCES = sicm_detect.c
+sicm_detect_LDADD = 
+sicm_detect_LDFLAGS =
+sicm_detect_CFLAGS = -I@abs_top_srcdir@/include
