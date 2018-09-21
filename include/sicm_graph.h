@@ -135,6 +135,7 @@ static inline void sicm_graph_print(sicm_graph *graph) {
 
 static inline void sicm_graph_read(char *filename, sicm_graph *graph) {
   FILE *file;
+  size_t i, n;
   sicm_node *cur_node;
   sicm_edge *cur_edge;
   char *token;
@@ -190,35 +191,33 @@ static inline void sicm_graph_read(char *filename, sicm_graph *graph) {
     }
     if(comment) continue;
 
-    printf("Parsing token: '%s'\n", token);
-
-    /* We're in a node definition, only legal statements are edge
-     * definitions and field definitions
-     */
     if(node == 4) {
+      /* We're in a node definition, only legal statements are edge
+       * definitions and field definitions
+       */
       if(edge) {
-        /* Get the edge target */
         if(edge == 1) {
+          /* Get the edge target */
           printf("Making a new edge to node '%s'.\n", token);
           cur_edge->node = get_node_from_name(token, graph);
           edge = 2;
-        /* Get the start of the edge definition */
         } else if(edge == 2) {
+          /* Get the start of the edge definition */
           printf("Starting an edge definition\n");
           edge = 3;
-        /* Edge definition ends */
         } else if(edge == 3 && !strcmp(token, "};")) {
+          /* Edge definition ends */
           printf("Ending edge definition.\n");
           edge = 0;
-        /* In an edge definition, look for fields now */
         } else if(edge == 3) {
-          /* If field, we've already read the field name */
+          /* In an edge definition, look for fields now */
           if(field) {
+            /* If field, we've already read the field name */
             set_edge_field(field_name, token, cur_edge);
             free(field_name);
             field = 0;
-          /* Need to read the field name */
           } else {
+            /* Need to read the field name */
             field_name = malloc(sizeof(char) * (strlen(token) + 1));
             strcpy(field_name, token);
             field = 1;
@@ -227,35 +226,35 @@ static inline void sicm_graph_read(char *filename, sicm_graph *graph) {
           fprintf(stderr, "Impossible situation. Aborting.\n");
           exit(1);
         }
-      /* Declare a new edge */
       } else if(!strcmp(token, "edge")) {
+        /* Declare a new edge */
         printf("Making a new edge\n");
         cur_node->num_edges++;
         cur_node->edges = realloc(cur_node->edges, sizeof(sicm_edge) * cur_node->num_edges);
         cur_edge = &cur_node->edges[cur_node->num_edges - 1];
         edge = 1;
-      /* End the node definition. Go back to top-level. */
       } else if(!strcmp(token, "};")) {
+        /* End the node definition. Go back to top-level. */
         printf("Ending the node definition.\n");
         node = 0;
       } else {
-        /* Already read the field name. Read the value. */
         if(field) {
+          /* Already read the field name. Read the value. */
           set_node_field(field_name, token, cur_node);
           free(field_name);
           field = 0;
-        /* Has to be a field definition then. Store the field name. */
         } else {
+          /* Has to be a field definition then. Store the field name. */
           printf("Storing field name: %s\n", token);
           field_name = malloc(sizeof(char) * (strlen(token) + 1));
           strcpy(field_name, token);
           field = 1;
         }
       }
-    /* We're in a node declaration already */
     } else if(node) {
-      /* We've already gotten the node type and name, now for the definition */
+      /* We're in a node declaration already */
       if(node == 3) {
+        /* We've already gotten the node type and name, now for the definition */
         if(!strcmp(token, "{")) {
           printf("Starting definition of node.\n");
           node = 4;
@@ -263,14 +262,14 @@ static inline void sicm_graph_read(char *filename, sicm_graph *graph) {
           fprintf(stderr, "Expected '{' to begin a node definition. Aborting.\n");
           exit(1);
         }
-      /* We've already gotten the node type, now the token is the name */
       } else if(node == 2) {
+        /* We've already gotten the node type, now the token is the name */
         printf("Creating a node with the name '%s'.\n", token);
         cur_node->name = malloc(sizeof(char) * (strlen(token) + 1));
         strcpy(cur_node->name, token);
         node = 3;
-      /* Read the node type */
       } else if(node == 1) {
+        /* Read the node type */
         if(!strcmp(token, "compute")) {
           cur_node->type = SICM_NODE_COMPUTE;
           printf("Creating a compute node.\n");
@@ -302,14 +301,25 @@ static inline void sicm_graph_read(char *filename, sicm_graph *graph) {
       cur_node->edges = NULL;
       node = 1; /* The next token will be a node type */
       printf("Creating a node.\n");
-    /* Not a node statement, or in a node definition, or a comment. Error. */
     } else {
+      /* Not a node statement, or in a node definition, or a comment. Error. */
       fprintf(stderr, "Unrecognized top-level statement. Aborting.\n");
       exit(1);
     }
   }
 
-  /* Now fill in the derived edges */
+  /* Make sure each edge has a counterpart.
+   * This *could* be done while reading the file,
+   * but for code readability is here. Adjust if 
+   * it becomes a performance concern (it probably won't).
+   */
+  for(i = 0; i < graph->num_nodes; i++) {
+    cur_node = &graph->nodes[i];
+    for(n = 0; n < cur_node->num_edges; n++) {
+      cur_edge = &cur_node->edges[n];
+      printf("%s -> %s\n", cur_node->name, cur_edge->node->name);
+    }
+  }
 
   sicm_graph_print(graph);
   if(token) free(token);
