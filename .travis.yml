@@ -64,8 +64,8 @@ install:
 
     - export JEPATH="${SWHOME}/jemalloc"
     - export MPI_PATH="${SWHOME}/openmpi-3.1.1"
-    - export LD_LIBRARY_PATH=${JEPATH}:${LD_LIBRARY_PATH}
-    - export PKG_CONFIG_PATH=${JEPATH}:${PKG_CONFIG_PATH}
+    - export LD_LIBRARY_PATH=${JEPATH}/lib:${LD_LIBRARY_PATH}
+    - export PKG_CONFIG_PATH=${JEPATH}/lib/pkgconfig:${PKG_CONFIG_PATH}
     - export PATH=${MPI_PATH}/bin:$PATH
 
 script:
