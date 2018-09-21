@@ -25,6 +25,7 @@
 
 # Binaries
 /examples/low/basic
+/src/low/sicm_detect
 
 autom4te.cache
 *.m4
