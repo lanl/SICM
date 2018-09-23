@@ -76,7 +76,7 @@ script:
     - mkdir -p build
     - cd build
     - ../configure --with-jemalloc=${JEPATH} --prefix=${SICM_ROOT}
-    - make -j $(nproc --all)
+    - make 
     - make install
     - ls -R
     - cp src/low/sicm_f90.mod ${SICM_ROOT}/lib
