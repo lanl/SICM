@@ -4,37 +4,37 @@
  */
 
 /* Memory on node 0 */
-node mem b {
+node mem mem0 {
   numa 0;
   capacity 32;
 };
 
 /* Memory on node 1 */
-node mem d {
+node mem mem1 {
   numa 1;
   capacity 32;
 };
 
 /* Node 1 CPU */
-node compute c {
+node compute cpu1 {
   numa 1;
   /* Local DRAM */
-  edge d {
+  edge mem1 {
     bandwidth 30;
     latency 74;
   };
 };
 
 /* Node 0 CPU */
-node compute a {
+node compute cpu0 {
   numa 0;
   /* Local DRAM */
-  edge b {
+  edge mem0 {
     bandwidth 30;
     latency 74;
   };
   /* QPI link */
-  edge c {
+  edge cpu1 {
     bandwidth 20;
     latency 144;
   };
