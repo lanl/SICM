@@ -78,8 +78,6 @@ script:
     - ../configure --with-jemalloc=${JEPATH} --prefix=${SICM_ROOT}
     - make -j $(nproc --all)
     - make install
-    - ls -R
-    - cp src/low/sicm_f90.mod ${SICM_ROOT}/lib
     - export LD_LIBRARY_PATH=${SICM_ROOT}/lib:${LD_LIBRARY_PATH}
 
     - cd ..
