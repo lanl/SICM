@@ -12,7 +12,7 @@
 fortranmoddir = ${exec_prefix}/lib
 lib_LTLIBRARIES = libsicm.la libsicm_cpp.la libsicm_f90.la
 fortranmod_DATA = sicm_f90.mod
-BUILD_SOURCES = fbinding_f90.f90 # So that sicm_f90.mod is generated before any other targets
+BUILT_SOURCES = fbinding_f90.f90 # So that sicm_f90.mod is generated before any other targets
 
 libsicm_la_SOURCES = sicm_low.c sicm_arena.c
 libsicm_la_LIBADD = @JEMALLOC_LIBS@ -lnuma
