@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include "tree.h"
 
 #define MAX_TOKEN_LEN 20
 
@@ -17,7 +18,7 @@ typedef struct sicm_node sicm_node;
 struct sicm_edge {
   char derived;
   unsigned long bandwidth, latency;
-  sicm_node *node; /* Pointer to the node */
+  size_t node; /* Index into the node array of the node we're pointing to */
 };
 
 struct sicm_node {
@@ -28,6 +29,8 @@ struct sicm_node {
   size_t num_edges;
   sicm_edge *edges;
 };
+/* Need a single identifier for tree.h */
+typedef sicm_node * sicm_node_ptr;
 
 typedef struct sicm_graph {
   size_t num_nodes;
@@ -44,14 +47,14 @@ static inline sicm_graph *sicm_graph_init() {
 }
 
 /* Returns a node pointer, given a name */
-static inline sicm_node *get_node_from_name(char *node_name, sicm_graph *graph) {
+static inline size_t get_node_from_name(char *node_name, sicm_graph *graph) {
   size_t i;
   sicm_node *node;
   
   for(i = 0; i < graph->num_nodes; i++) {
     node = &graph->nodes[i];
     if(!strcmp(node_name, node->name)) {
-      return node;
+      return i;
     }
   }
   fprintf(stderr, "Node '%s' undefined. Aborting.\n", node_name);
@@ -106,23 +109,28 @@ static inline void set_edge_field(char *field_name, char *field_val, sicm_edge *
   }
 }
 
-/* Finds the shortest path from start to end, and fills in the edge with
- * the maximum bandwidth that can go through the path and the amount
- * of latency. Uses Dijkstra's.
+/* Finds the (perhaps multiple) shortest paths that go from start to end.
+ * "Shortest path" is defined as a path with the fewest number of hops.
+ * Returns an a derived edge. It uses a tree implementation as a priority
+ * queue by pushing and popping from the tree.
  */
-static inline void get_derived_edge(sicm_graph *graph, sicm_node *start, sicm_node *end, sicm_edge *edge) {
+static inline void get_derived_edge(sicm_graph *graph, sicm_node *start, sicm_node *end) {
   sicm_node *node;
   sicm_edge *edge;
   size_t i;
+  use_tree(size_t, sicm_node_ptr);
+  tree_it(size_t, sicm_node_ptr) it;
 
-  node = start;
-  while(node != end) {
-    /* Look for a node to traverse to */
-    for(i = 0; i < node->num_edges; i++) {
-      edge = &node->edges[i];
-      if(!edge->node->visited) {
-      }
-    }
+  printf("Getting derived edge from %s to %s.\n", start->name, end->name);
+  tree(size_t, sicm_node_ptr) t = tree_make(size_t, sicm_node_ptr);
+  tree_insert(t, 0, start);
+
+  while(tree_len(t)) {
+    /* Pop the last element from the tree */
+    it = tree_last(t);
+    node = tree_it_val(it);
+    tree_delete(t, tree_it_key(it));
+    printf("Looking at node %s\n", node->name);
   }
 }
 
@@ -136,7 +144,7 @@ static inline sicm_edge *new_edge(sicm_node *node) {
   edge->derived = 0;
   edge->bandwidth = 0;
   edge->latency = 0;
-  edge->node = NULL;
+  edge->node = SIZE_MAX;
   return edge;
 }
 
@@ -160,6 +168,7 @@ static inline void sicm_graph_print(sicm_graph *graph) {
     for(n = 0; n < node->num_edges; n++) {
       edge = &node->edges[n];
       printf("    Edge:\n");
+      printf("      To: %s\n", graph->nodes[edge->node].name);
       printf("      Bandwidth: %lu\n", edge->bandwidth);
       printf("      Latency: %lu\n", edge->latency);
     }
@@ -231,6 +240,7 @@ static inline void sicm_graph_read(char *filename, sicm_graph *graph) {
        * definitions and field definitions
        */
       if(edge) {
+        /* We're in an edge definition. */
         if(edge == 1) {
           /* Get the edge target */
           cur_edge->node = get_node_from_name(token, graph);
@@ -331,61 +341,25 @@ static inline void sicm_graph_read(char *filename, sicm_graph *graph) {
     }
   }
 
+  sicm_graph_print(graph);
+
   /* Make sure each edge has a counterpart.
    * This *could* be done while reading the file,
    * but for code readability is here. Adjust if 
    * it becomes a performance concern (it probably won't).
-   * This loop will also created the derived edges, which
-   * are defined as edges that aren't in the file,
-   * but are required to meet the requirement of having an
-   * edge between every compute node and each memory node.
    */
   for(i = 0; i < graph->num_nodes; i++) {
     cur_node = &graph->nodes[i];
     for(n = 0; n < cur_node->num_edges; n++) {
       cur_edge = &cur_node->edges[n];
-      
-      /* Handle derived edges first */
-      if(cur_node->type == SICM_NODE_COMPUTE) {
-        /* If it's a compute node, make sure it's got an edge to
-         * every memory node.
-         */
-        for(x = 0; x < graph->num_nodes; x++) {
-          tmp_node = &graph->nodes[x];
-          if(tmp_node->type == SICM_NODE_MEMORY) {
-            /* tmp_node is a memory node, make sure cur_node has an edge to it */
-            found = 0;
-            for(j = 0; j < cur_node->num_edges; j++) {
-              tmp_edge = &cur_node->edges[j];
-              if(tmp_edge->node == tmp_node) {
-                found = 1;
-                break;
-              }
-            }
-            if(!found) {
-              /* If we didn't find an edge between cur_node and tmp_node,
-               * create one.
-               */
-              tmp_edge = new_edge(cur_node);
-              tmp_edge->node = tmp_node;
-              tmp_edge->derived = 1;
-              /* These are NOT CORRECT. We need to find a non-derived path between
-               * cur_node and tmp_node to get these values.
-               */
-              tmp_edge->bandwidth = cur_edge->bandwidth;
-              tmp_edge->latency = cur_edge->latency;
-            }
-          }
-        }
-      }
 
       /* See if we already have a counterpart for this edge by iterating
        * over this edge's node's edges and comparing pointers
        */
       found = 0;
-      for(x = 0; x < cur_edge->node->num_edges; x++) {
-        tmp_edge = &cur_edge->node->edges[x];
-        if(tmp_edge->node == cur_node) {
+      for(x = 0; x < graph->nodes[cur_edge->node].num_edges; x++) {
+        tmp_edge = &graph->nodes[cur_edge->node].edges[x];
+        if(tmp_edge->node == i) {
           /* Already have the counterpart to cur_edge, so break */
           found = 1;
           break;
@@ -393,11 +367,47 @@ static inline void sicm_graph_read(char *filename, sicm_graph *graph) {
       }
       if(!found) {
         /* If we didn't find the counterpart already, create it */
-        tmp_edge = new_edge(cur_edge->node);
-        tmp_edge->node = cur_node;
+        tmp_edge = new_edge(&graph->nodes[cur_edge->node]);
+        tmp_edge->node = i;
         tmp_edge->bandwidth = cur_edge->bandwidth;
         tmp_edge->latency = cur_edge->latency;
         tmp_edge->derived = cur_edge->derived;
+      }
+    }
+  }
+
+  sicm_graph_print(graph);
+
+  /* Now create derived edges, which are defined as edges that aren't in the
+   * file, but are required to meet the requirement of having an edge between
+   * every compute node and each memory node.
+   */
+  for(i = 0; i < graph->num_nodes; i++) {
+    cur_node = &graph->nodes[i];
+    if(cur_node->type == SICM_NODE_COMPUTE) {
+      /* If it's a compute node, make sure it's got an edge to
+       * every memory node.
+       */
+      for(x = 0; x < graph->num_nodes; x++) {
+        tmp_node = &graph->nodes[x];
+        if((tmp_node != cur_node) && (tmp_node->type == SICM_NODE_MEMORY)) {
+          /* tmp_node is a memory node, make sure cur_node has an edge to it */
+          found = 0;
+          printf("Looking for an edge between %s and %s.\n", cur_node->name, tmp_node->name);
+          for(j = 0; j < cur_node->num_edges; j++) {
+            tmp_edge = &cur_node->edges[j];
+            printf("Looking at %s->%s\n", cur_node->name, graph->nodes[tmp_edge->node].name);
+            if(&graph->nodes[tmp_edge->node] == tmp_node) {
+              printf("Found an edge between %s and %s.\n", cur_node->name, tmp_node->name);
+              found = 1;
+              break;
+            }
+          }
+          if(!found) {
+            /* Didn't find an edge between cur_node and tmp_node */
+            get_derived_edge(graph, cur_node, tmp_node);
+          }
+        }
       }
     }
   }
