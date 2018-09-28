@@ -99,6 +99,13 @@ void sh_get_event() {
 void sh_start_profile_thread() {
   int i, group_fd;
 
+  /* Set the pagesize for the RSS and PEBS threads */
+  printf("About to get the page size.\n");
+  if(should_profile_rss || should_profile_all) {
+    prof.pagesize = (size_t) sysconf(_SC_PAGESIZE);
+    printf("The page size is %d.\n", prof.pagesize);
+  }
+
   /* Figure out how many events we're going to poll */
   num_events = 0;
   if(should_profile_all) {
@@ -142,7 +149,7 @@ void sh_start_profile_thread() {
     /* mmap the file */
     prof.metadata = mmap(NULL, prof.pagesize + (prof.pagesize * max_sample_pages), PROT_READ | PROT_WRITE, MAP_SHARED, prof.fds[0], 0);
     if(prof.metadata == MAP_FAILED) {
-      fprintf(stderr, "Failed to mmap room for perf samples. Aborting with:\n%s\n", strerror(errno));
+      fprintf(stderr, "Failed to mmap room (%zu bytes) for perf samples. Aborting with:\n%s\n", prof.pagesize + (prof.pagesize * max_sample_pages), strerror(errno));
       exit(1);
     }
   }
@@ -340,11 +347,6 @@ void *sh_profile_thread(void *a) {
   struct itimerspec its;
   struct sigaction sa;
 
-  /* Set the pagesize for the RSS and PEBS threads */
-  if(should_profile_rss || should_profile_all) {
-    prof.pagesize = (size_t) sysconf(_SC_PAGESIZE);
-  }
-
   if(should_profile_one) {
     /* Signal handler for bandwidth */
 	  sa.sa_flags = SA_SIGINFO;
@@ -404,7 +406,9 @@ void *sh_profile_thread(void *a) {
     printf("Totals: %zu / %zu\n", associated, prof.total);
   }
 
-  timer_delete(prof.timerid);
+  if(should_profile_one) {
+    timer_delete(prof.timerid);
+  }
 
   return NULL;
 }
