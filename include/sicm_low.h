@@ -17,6 +17,7 @@
 #endif
 #include <stdint.h>
 #include <stdlib.h>
+#include <sys/types.h>
 
 // default arena
 #define ARENA_DEFAULT NULL
@@ -149,6 +150,19 @@ sicm_arena_list *sicm_arenas_list();
  *         the function failed.
  */
 sicm_arena sicm_arena_create(size_t maxsize, sicm_device *dev);
+
+/// Create new mapped arena
+/**
+ * @param maxsize maximum size of the arena.
+ * @param dev initial device where the arena's allocations should use
+ * @param fd A valid file descriptor to map the memory into
+ * @param offset Starting offset within the file descriptor
+ * @param mutex_fd A valid file descriptor to map the mutex into
+ * @param mutex_offset Starting offset within the mutex file descriptor
+ * @return handle to the newly created arena, or ARENA_DEFAULT if the
+ *         the function failed.
+ */
+sicm_arena sicm_arena_create_mmapped(size_t maxsize, sicm_device *dev, int fd, off_t offset, int mutex_fd, off_t mutex_offset);
 
 /// Free up arena
 /**
@@ -303,6 +317,16 @@ int sicm_can_place_exact(struct sicm_device* device);
  * use this if you know what you're doing.
  */
 void* sicm_device_alloc_exact(struct sicm_device* device, void* base, size_t size);
+
+/// Allocate memory on a SICM device and mmap it to a file descriptor
+/**
+ * @param[in] device Pointer to a sicm_device to allocate on.
+ * @param[in] size Amount of memory to allocate.
+ * @param[in] fd A valid file descriptor to map the memory into
+ * @param[in] offset Starting offset within the file descriptor
+ * @return Pointer to the start of the allocation.
+ */
+void *sicm_device_alloc_mmapped(struct sicm_device* device, size_t size, int fd, off_t offset);
 
 /// Deallocate/free memory on a SICM device.
 /**

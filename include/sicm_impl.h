@@ -1,6 +1,8 @@
 #ifndef __SICMIMPL_H
 #define __SICMIMPL_H
 
+#include <sys/types.h>
+
 #include <jemalloc/jemalloc.h>
 #include "extent_arr.h"
 //MKL
@@ -79,22 +81,25 @@ typedef struct sarena sarena;
 
 /* Stores information about a jemalloc arena */
 struct sarena {
-	pthread_mutex_t	mutex;
-	sicm_device*	dev;
-	size_t		maxsize;
-	size_t		size;
-	size_t		pagesize;
-	int		numaid;
-	sarena*		next;
+    pthread_mutexattr_t attr;
+    pthread_mutex_t*    mutex;
+    sicm_device*        dev;
+    size_t              maxsize;
+    size_t              size;
+    size_t              pagesize;
+    int                 numaid;
+    sarena*             next;
 
-	/* jemalloc related */
-	unsigned	arena_ind;
-	extent_hooks_t	hooks;
+    /* jemalloc related */
+    unsigned            arena_ind;
+    extent_hooks_t      hooks;
 
-	/* jemalloc extent ranges */
-  extent_arr *extents;
+    /* jemalloc extent ranges */
+    extent_arr*         extents;
 
-	int		err;
+    int                 err;
+    int                 fd;
+    off_t               offset;
 };
 
 extern sarena *sarena_ptr2sarena(void *ptr);

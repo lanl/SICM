@@ -257,7 +257,8 @@ void sicm_fini() {
 sicm_device *sicm_find_device(sicm_device_list *devs, const sicm_device_tag type, const int page_size, sicm_device *old) {
     sicm_device *dev = NULL;
     if (devs) {
-      for(unsigned int i = 0; i < devs->count; i++) {
+      unsigned int i;
+      for(i = 0; i < devs->count; i++) {
         if ((devs->devices[i].tag == type) &&
             ((page_size == 0) || (sicm_device_page_size(&devs->devices[i]) == page_size)) &&
             !sicm_device_eq(&devs->devices[i], old)) {
@@ -293,7 +294,44 @@ void* sicm_device_alloc(struct sicm_device* device, size_t size) {
         set_mempolicy(MPOL_BIND, nodemask.n, numa_max_node() + 2);
         void* ptr = mmap(NULL, size, PROT_READ | PROT_WRITE,
           MAP_PRIVATE | MAP_ANONYMOUS | MAP_HUGETLB | (shift << MAP_HUGE_SHIFT), -1, 0);
-        if(ptr == (void*)-1) {
+        if(ptr == MAP_FAILED) {
+          printf("huge page allocation error: %s\n", strerror(errno));
+        }
+        set_mempolicy(old_mode, old_nodemask.n, numa_max_node() + 2);
+        return ptr;
+      }
+    case INVALID_TAG:
+      break;
+  }
+  printf("error in sicm_alloc: unknown tag\n");
+  exit(-1);
+}
+
+void* sicm_device_alloc_mmapped(struct sicm_device* device, size_t size, int fd, off_t offset) {
+  switch(device->tag) {
+    case SICM_DRAM:
+    case SICM_KNL_HBM:
+    case SICM_POWERPC_HBM:; // labels can't be followed by declarations
+      int page_size = sicm_device_page_size(device);
+      if(page_size == normal_page_size)
+        return numa_alloc_onnode(size, sicm_numa_id(device));
+      else {
+        int shift = 10; // i.e., 1024
+        int remaining = page_size;
+        while(remaining > 1) {
+          shift++;
+          remaining >>= 1;
+        }
+        int old_mode;
+        nodemask_t old_nodemask;
+        get_mempolicy(&old_mode, old_nodemask.n, numa_max_node() + 2, NULL, 0);
+        nodemask_t nodemask;
+        nodemask_zero(&nodemask);
+        nodemask_set_compat(&nodemask, sicm_numa_id(device));
+        set_mempolicy(MPOL_BIND, nodemask.n, numa_max_node() + 2);
+        void* ptr = mmap(NULL, size, PROT_READ | PROT_WRITE,
+          MAP_SHARED, fd, offset);
+        if(ptr == MAP_FAILED) {
           printf("huge page allocation error: %s\n", strerror(errno));
         }
         set_mempolicy(old_mode, old_nodemask.n, numa_max_node() + 2);
@@ -492,6 +530,7 @@ int sicm_pin(struct sicm_device* device) {
 size_t sicm_capacity(struct sicm_device* device) {
   static const size_t path_len = 100;
   char path[path_len];
+  int i;
   switch(device->tag) {
     case SICM_DRAM:
     case SICM_KNL_HBM:
@@ -509,7 +548,7 @@ size_t sicm_capacity(struct sicm_device* device) {
         close(fd);
         size_t res = 0;
         size_t factor = 1;
-        for(int i = 30; data[i] != ' '; i--) {
+        for(i = 30; data[i] != ' '; i--) {
           res += factor * (data[i] - '0');
           factor *= 10;
         }
@@ -521,7 +560,7 @@ size_t sicm_capacity(struct sicm_device* device) {
         int pages = 0;
         char data[10];
         while(read(fd, data, 10) > 0) {
-          for(int i = 0; i < 10; i++) {
+          for(i = 0; i < 10; i++) {
             if(data[i] < '0' || data[i] > '9') break;
             pages *= 10;
             pages += data[i] - '0';
@@ -539,6 +578,7 @@ size_t sicm_capacity(struct sicm_device* device) {
 size_t sicm_avail(struct sicm_device* device) {
   static const size_t path_len = 100;
   char path[path_len];
+  int i;
   switch(device->tag) {
     case SICM_DRAM:
     case SICM_KNL_HBM:
@@ -556,7 +596,7 @@ size_t sicm_avail(struct sicm_device* device) {
         close(fd);
         size_t res = 0;
         size_t factor = 1;
-        for(int i = 65; data[i] != ' '; i--) {
+        for(i = 65; data[i] != ' '; i--) {
           res += factor * (data[i] - '0');
           factor *= 10;
         }
@@ -568,7 +608,7 @@ size_t sicm_avail(struct sicm_device* device) {
         int pages = 0;
         char data[10];
         while(read(fd, data, 10) > 0) {
-          for(int i = 0; i < 10; i++) {
+          for(i = 0; i < 10; i++) {
             if(data[i] < '0' || data[i] > '9') break;
             pages *= 10;
             pages += data[i] - '0';
