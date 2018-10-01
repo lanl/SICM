@@ -45,9 +45,8 @@ sicm_arena sicm_arena_create(size_t sz, sicm_device *dev) {
 	if (sa == NULL)
 		return NULL;
 
-    sa->mutex = malloc(sizeof(pthread_mutex_t));
-    if (sa->mutex == NULL) {
-        free(sa->mutex);
+    sa->mutex = (pthread_mutex_t *) mmap(NULL, sizeof(pthread_mutex_t), PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+    if (sa->mutex == MAP_FAILED) {
         free(sa);
         return NULL;
     }
@@ -64,7 +63,7 @@ sicm_arena sicm_arena_create(size_t sz, sicm_device *dev) {
 
 	if (sa->numaid < 0) {
         pthread_mutex_destroy(sa->mutex);
-        free(sa->mutex);
+        munmap(sa->mutex, sizeof(pthread_mutex_t));
         free(sa);
 		return NULL;
 	}
@@ -78,7 +77,7 @@ sicm_arena sicm_arena_create(size_t sz, sicm_device *dev) {
 	if (err != 0) {
 		fprintf(stderr, "can't create an arena: %d\n", err);
         pthread_mutex_destroy(sa->mutex);
-        free(sa->mutex);
+        munmap(sa->mutex, sizeof(pthread_mutex_t));
         free(sa);
         return NULL;
 	}
@@ -133,7 +132,7 @@ sicm_arena sicm_arena_create_mmapped(size_t sz, sicm_device *dev, int fd, off_t 
 
 	if (sa->numaid < 0) {
         pthread_mutex_destroy(sa->mutex);
-        free(sa->mutex);
+        munmap(sa->mutex, sizeof(pthread_mutex_t));
         free(sa);
 		return NULL;
 	}
@@ -145,9 +144,9 @@ sicm_arena sicm_arena_create_mmapped(size_t sz, sicm_device *dev, int fd, off_t 
 	arena_ind = -1;
 	err = je_mallctl("arenas.create", (void *) &arena_ind, &arena_ind_sz, (void *)&new_hooks, sizeof(extent_hooks_t *));
 	if (err != 0) {
-		fprintf(stderr, "can't create an arena: %d\n", err);
+		fprintf(stderr, "can't create an arena: %s\n", strerror(err));
         pthread_mutex_destroy(sa->mutex);
-        free(sa->mutex);
+        munmap(sa->mutex, sizeof(pthread_mutex_t));
         free(sa);
         return NULL;
 	}
@@ -179,6 +178,7 @@ void sicm_arena_destroy(sicm_arena arena) {
     arena_ind_sz = sizeof(unsigned);
     je_mallctl(str, (void *) &sa->arena_ind, &arena_ind_sz, NULL, 0);
     free(str);
+    munmap(sa->mutex, sizeof(pthread_mutex_t));
     free(sa);
   }
 }
@@ -549,6 +549,7 @@ static void *sa_alloc_shared(extent_hooks_t *h, void *new_addr, size_t size, siz
 	maxsize = sa->maxsize;
 	pthread_mutex_unlock(sa->mutex);
 	if (maxsize > 0 && sasize + size > maxsize) {
+        perror("bad size");
 		return NULL;
 	}
 
@@ -567,16 +568,19 @@ static void *sa_alloc_shared(extent_hooks_t *h, void *new_addr, size_t size, siz
         ftruncate(sa->fd, sa->size);
     }
 
-	ret = mmap(new_addr, size, PROT_READ | PROT_WRITE, MAP_SHARED | MAP_POPULATE, sa->fd, sa->offset);
+	ret = mmap(new_addr, size, PROT_READ | PROT_WRITE, MAP_SHARED, sa->fd, sa->offset);
 	if (ret == MAP_FAILED) {
 		ret = NULL;
         perror("mmap");
 		goto restore_mempolicy;
 	}
 
-	if (alignment == 0 || ((uintptr_t) ret)%alignment == 0)
+	if (alignment == 0 || ((uintptr_t) ret)%alignment == 0) {
+        printf("sa_alloc_shared good alignment\n");
+
 		// we are lucky and got the right alignment
 		goto success;
+    }
 
 	// the alignment didn't work out, munmap and try again
 	munmap(ret, size);
@@ -590,7 +594,8 @@ static void *sa_alloc_shared(extent_hooks_t *h, void *new_addr, size_t size, siz
     if (sa->fd > -1) {
         ftruncate(sa->fd, sa->size);
     }
-	ret = mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_SHARED | MAP_POPULATE, sa->fd, sa->offset);
+
+	ret = mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_SHARED, sa->fd, sa->offset);
 	if (ret == MAP_FAILED) {
 		ret = NULL;
 		goto restore_mempolicy;
@@ -602,11 +607,15 @@ static void *sa_alloc_shared(extent_hooks_t *h, void *new_addr, size_t size, siz
 	ret = (void *) m;
 
 success:
+
 	if (mbind(ret, size, MPOL_BIND, nodemask->maskp, nodemask->size, MPOL_MF_MOVE | MPOL_MF_STRICT) < 0) {
 		munmap(ret, size);
+        perror("mbind");
 		ret = NULL;
 		goto restore_mempolicy;
 	}
+
+    memset(ret, 0, sa->size);
 
 	pthread_mutex_lock(sa->mutex);
 
