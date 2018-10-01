@@ -294,7 +294,7 @@ void *sicm_arena_alloc(sicm_arena a, size_t sz) {
 	flags = 0;
 	if (sa != NULL) {
 		flags = MALLOCX_ARENA(sa->arena_ind) | MALLOCX_TCACHE_NONE;
-  }
+    }
 
 	return je_mallocx(sz, flags);
 }
@@ -576,8 +576,6 @@ static void *sa_alloc_shared(extent_hooks_t *h, void *new_addr, size_t size, siz
 	}
 
 	if (alignment == 0 || ((uintptr_t) ret)%alignment == 0) {
-        printf("sa_alloc_shared good alignment\n");
-
 		// we are lucky and got the right alignment
 		goto success;
     }
@@ -614,8 +612,6 @@ success:
 		ret = NULL;
 		goto restore_mempolicy;
 	}
-
-    memset(ret, 0, sa->size);
 
 	pthread_mutex_lock(sa->mutex);
 
