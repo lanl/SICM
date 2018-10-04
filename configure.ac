@@ -153,11 +153,11 @@ AC_ARG_WITH(hwloc,
 	    [AS_HELP_STRING([--with-hwloc=PATH],
 	    		    [Absolute path to the install directory for hwloc]
 	    		   )],
-	    [LIBPFM_INSTALL_DIR="${withval}"],
-	    [LIBPFM_INSTALL_DIR=""])
+	    [HWLOC_INSTALL_DIR="${withval}"],
+	    [HWLOC_INSTALL_DIR=""])
 
-LIBPFM_INC=""
-LIBPFM_LIB=""
+HWLOC_INC=""
+HWLOC_LIB=""
 if test "x$HWLOC_INSTALL_DIR" = "x" ; then
 	AC_MSG_RESULT([no])
 else
