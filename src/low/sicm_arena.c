@@ -59,7 +59,6 @@ sicm_arena sicm_arena_create(size_t sz, sicm_device *dev) {
 	sa->pagesize = sicm_device_page_size(dev);
 	sa->numaid = sicm_numa_id(dev);
     sa->fd = -1;
-    sa->offset = 0;
 
 	if (sa->numaid < 0) {
         pthread_mutex_destroy(sa->mutex);
@@ -123,12 +122,11 @@ sicm_arena sicm_arena_create_mmapped(size_t sz, sicm_device *dev, int fd, off_t 
     pthread_mutexattr_setpshared(&sa->attr, PTHREAD_PROCESS_SHARED);
     pthread_mutex_init(sa->mutex, &sa->attr);
     sa->dev = dev;
-    sa->size = 0;
+    sa->size = offset;
     sa->maxsize = sz;
     sa->pagesize = sicm_device_page_size(dev);
     sa->numaid = sicm_numa_id(dev);
     sa->fd = fd;
-    sa->offset = offset;
 
 	if (sa->numaid < 0) {
         pthread_mutex_destroy(sa->mutex);
