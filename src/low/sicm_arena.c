@@ -59,7 +59,6 @@ sicm_arena sicm_arena_create(size_t sz, sicm_device *dev) {
 	sa->pagesize = sicm_device_page_size(dev);
 	sa->numaid = sicm_numa_id(dev);
     sa->fd = -1;
-    sa->offset = 0;
 
 	if (sa->numaid < 0) {
         pthread_mutex_destroy(sa->mutex);
@@ -123,12 +122,11 @@ sicm_arena sicm_arena_create_mmapped(size_t sz, sicm_device *dev, int fd, off_t 
     pthread_mutexattr_setpshared(&sa->attr, PTHREAD_PROCESS_SHARED);
     pthread_mutex_init(sa->mutex, &sa->attr);
     sa->dev = dev;
-    sa->size = 0;
+    sa->size = offset;
     sa->maxsize = sz;
     sa->pagesize = sicm_device_page_size(dev);
     sa->numaid = sicm_numa_id(dev);
     sa->fd = fd;
-    sa->offset = offset;
 
 	if (sa->numaid < 0) {
         pthread_mutex_destroy(sa->mutex);
@@ -534,7 +532,6 @@ static void *sa_alloc_shared(extent_hooks_t *h, void *new_addr, size_t size, siz
 	uintptr_t n, m;
 	int oldmode;
 	void *ret;
-	size_t sasize, maxsize;
 	struct bitmask *nodemask;
 	struct bitmask *oldnodemask;
 
@@ -547,10 +544,8 @@ static void *sa_alloc_shared(extent_hooks_t *h, void *new_addr, size_t size, siz
 
 	// TODO: figure out a way to prevent taking the mutex twice (sa_range_add also takes it)...
 	pthread_mutex_lock(sa->mutex);
-	sasize = sa->size;
-	maxsize = sa->maxsize;
 	pthread_mutex_unlock(sa->mutex);
-	if (maxsize > 0 && sasize + size > maxsize) {
+	if (sa->maxsize > 0 && sa->size + size > sa->maxsize) {
         perror("bad size");
 		return NULL;
 	}
@@ -565,12 +560,7 @@ static void *sa_alloc_shared(extent_hooks_t *h, void *new_addr, size_t size, siz
 		goto free_nodemasks;
 	}
 
-	sa->size = size;
-    if (sa->fd > -1) {
-        ftruncate(sa->fd, sa->size);
-    }
-
-	ret = mmap(new_addr, size, PROT_READ | PROT_WRITE, MAP_SHARED, sa->fd, sa->offset);
+	ret = mmap(new_addr, size, PROT_READ | PROT_WRITE, MAP_SHARED, sa->fd, sa->size);
 	if (ret == MAP_FAILED) {
 		ret = NULL;
         perror("mmap");
@@ -590,12 +580,8 @@ static void *sa_alloc_shared(extent_hooks_t *h, void *new_addr, size_t size, siz
 	if (new_addr != NULL)
 		goto restore_mempolicy;
 
-    sa->size = size += alignment;
-    if (sa->fd > -1) {
-        ftruncate(sa->fd, sa->size);
-    }
-
-	ret = mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_SHARED, sa->fd, sa->offset);
+    size += alignment;
+	ret = mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_SHARED, sa->fd, sa->size);
 	if (ret == MAP_FAILED) {
 		ret = NULL;
 		goto restore_mempolicy;
@@ -607,6 +593,7 @@ static void *sa_alloc_shared(extent_hooks_t *h, void *new_addr, size_t size, siz
 	ret = (void *) m;
 
 success:
+    sa->size += size;
 
 	if (mbind(ret, size, MPOL_BIND, nodemask->maskp, nodemask->size, MPOL_MF_MOVE | MPOL_MF_STRICT) < 0) {
 		munmap(ret, size);
@@ -625,6 +612,7 @@ success:
       (*sicm_extent_alloc_callback)(ret, (char *)ret + size);
     }
 
+    ftruncate(sa->fd, sa->size);
 	pthread_mutex_unlock(sa->mutex);
 
 restore_mempolicy:
@@ -638,20 +626,21 @@ free_nodemasks:
 }
 
 static bool sa_dalloc(extent_hooks_t *h, void *addr, size_t size, bool committed, unsigned arena_ind) {
-	sarena *sa;
-	bool ret;
+    sarena *sa;
+    bool ret;
 
-	ret = false;
-	sa = container_of(h, sarena, hooks);
-	pthread_mutex_lock(sa->mutex);
-  extent_arr_delete(sa->extents, addr);
-	if (munmap(addr, size) != 0) {
-		fprintf(stderr, "munmap failed: %p %ld\n", addr, size);
-    extent_arr_insert(sa->extents, addr, (char *)addr + size, NULL);
-		ret = true;
-	}
-	pthread_mutex_unlock(sa->mutex);
-	return ret;
+    ret = false;
+    sa = container_of(h, sarena, hooks);
+    pthread_mutex_lock(sa->mutex);
+    extent_arr_delete(sa->extents, addr);
+
+    if (munmap(addr, size) != 0) {
+        fprintf(stderr, "munmap failed: %p %ld\n", addr, size);
+        extent_arr_insert(sa->extents, addr, (char *)addr + size, NULL);
+        ret = true;
+    }
+    pthread_mutex_unlock(sa->mutex);
+    return ret;
 }
 
 static void sa_destroy(extent_hooks_t *h, void *addr, size_t size, bool committed, unsigned arena_ind) {

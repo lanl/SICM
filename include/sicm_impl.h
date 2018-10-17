@@ -99,7 +99,6 @@ struct sarena {
 
     int                 err;
     int                 fd;
-    off_t               offset;
 };
 
 extern sarena *sarena_ptr2sarena(void *ptr);
