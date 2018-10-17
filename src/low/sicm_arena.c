@@ -543,6 +543,8 @@ static void *sa_alloc_shared(extent_hooks_t *h, void *new_addr, size_t size, siz
 	ret = NULL;
 	sa = container_of(h, sarena, hooks);
 
+  printf("Allocating %zu bytes to arena %u\n", size, arena_ind);
+
 	// TODO: figure out a way to prevent taking the mutex twice (sa_range_add also takes it)...
 	pthread_mutex_lock(sa->mutex);
 	sasize = sa->size;

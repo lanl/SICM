@@ -24,13 +24,15 @@ typedef struct arena_info {
  * These variables are defined in src/high/high.c.
  */
 extern extent_arr *extents;
+extern extent_arr *rss_extents;
 extern arena_info **arenas;
 extern int should_profile_all, should_profile_one, should_profile_rss;
+extern char *profile_one_event, *profile_all_event;
 extern int max_index;
 extern int max_sample_pages;
 extern int sample_freq;
-int num_imcs, max_imc_len;
-char **imcs;
+extern int num_imcs, max_imc_len, max_event_len;
+extern char **imcs;
 
 #define DEFAULT_ARENA_LAYOUT INVALID_LAYOUT
 

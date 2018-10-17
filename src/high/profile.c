@@ -37,25 +37,30 @@ void sh_get_event() {
 
   /* Iterate through the array of event strs and see which one works. 
    * For should_profile_one, just use the first given IMC. */
-  event = event_strs;
-  found = 0;
-  while(*event != NULL) {
-    memset(prof.pes[0], 0, sizeof(struct perf_event_attr));
-    prof.pes[0]->size = sizeof(struct perf_event_attr);
-    memset(prof.pfm, 0, sizeof(pfm_perf_encode_arg_t));
-    prof.pfm->size = sizeof(pfm_perf_encode_arg_t);
-    prof.pfm->attr = prof.pes[0];
-    err = pfm_get_os_event_encoding(*event, PFM_PLM2 | PFM_PLM3, PFM_OS_PERF_EVENT, prof.pfm);
-    if(err == PFM_SUCCESS) {
-      printf("Using event: %s (0x%llx)\n", *event, prof.pes[0]->config);
-      found = 1;
-      break;
+  if(should_profile_one && profile_one_event) {
+    event = &profile_one_event;
+    printf("Using a user-specified event: %s\n", profile_one_event);
+  } else {
+    event = event_strs;
+    found = 0;
+    while(*event != NULL) {
+      memset(prof.pes[0], 0, sizeof(struct perf_event_attr));
+      prof.pes[0]->size = sizeof(struct perf_event_attr);
+      memset(prof.pfm, 0, sizeof(pfm_perf_encode_arg_t));
+      prof.pfm->size = sizeof(pfm_perf_encode_arg_t);
+      prof.pfm->attr = prof.pes[0];
+      err = pfm_get_os_event_encoding(*event, PFM_PLM2 | PFM_PLM3, PFM_OS_PERF_EVENT, prof.pfm);
+      if(err == PFM_SUCCESS) {
+        printf("Using event: %s (0x%llx)\n", *event, prof.pes[0]->config);
+        found = 1;
+        break;
+      }
+      event++;
     }
-    event++;
-  }
-  if(!found) {
-    fprintf(stderr, "Couldn't find an appropriate event to use. Aborting.\n");
-    exit(1);
+    if(!found) {
+      fprintf(stderr, "Couldn't find an appropriate event to use. Aborting.\n");
+      exit(1);
+    }
   }
 
   /* If should_profile_all, we're using PEBS and only one event */
@@ -72,8 +77,8 @@ void sh_get_event() {
 
   /* If we're doing memory bandwidth sampling, initialize the other IMCs with the same event */
   } else if(should_profile_one) {
-    buf = calloc(max_imc_len + 1, sizeof(char));
-    for(i = 1; i < num_imcs; i++) {
+    buf = calloc(max_imc_len + max_event_len + 3, sizeof(char));
+    for(i = 0; i < num_imcs; i++) {
 
       /* Initialize the pe struct */
       memset(prof.pes[i], 0, sizeof(struct perf_event_attr));
@@ -83,8 +88,9 @@ void sh_get_event() {
       prof.pfm->attr = prof.pes[i];
 
       /* Construct the event string from the IMC and the event */
-      memset(buf, 0, sizeof(char) * (max_imc_len + 1));
+      memset(buf, 0, sizeof(char) * (max_imc_len + max_event_len + 3));
       sprintf(buf, "%s::%s", imcs[i], *event);
+      printf("Using full event string: %s\n", buf);
 
       err = pfm_get_os_event_encoding(buf, PFM_PLM2 | PFM_PLM3, PFM_OS_PERF_EVENT, prof.pfm);
       if(err != PFM_SUCCESS) {
@@ -92,7 +98,7 @@ void sh_get_event() {
         exit(1);
       }
     }
-    
+    free(buf);
   }
 }
 
@@ -166,6 +172,12 @@ void sh_start_profile_thread() {
     prof.total = 0;
   }
 
+  /* Initialize for get_bandwidth */
+  if(should_profile_one) {
+    prof.num_intervals = 0;
+    prof.running_avg = 0;
+  }
+
   /* Initialize for get_rss */
   if(should_profile_rss) {
     prof.pagemap_fd = open("/proc/self/pagemap", O_RDONLY);
@@ -190,6 +202,11 @@ void sh_stop_profile_thread() {
   for(i = 0; i < num_events; i++) {
     ioctl(prof.fds[i], PERF_EVENT_IOC_DISABLE, 0);
     close(prof.fds[i]);
+  }
+
+  /* Stop the timer for bandwidth sampling */
+  if(should_profile_one) {
+    timer_delete(prof.timerid);
   }
 
   /* Signal the profiling thread to stop */
@@ -262,7 +279,6 @@ static inline void get_accesses() {
     } else {
       begin = begin + header->size;
     }
-
   }
 
   /* Let perf know that we've read this far */
@@ -273,24 +289,29 @@ static inline void get_accesses() {
 static void
 get_bandwidth(int sig, siginfo_t *si, void *uc)
 {
-  float count_f;
+  float count_f, total;
   long long count;
   int num, i;
   struct itimerspec it;
 
   /* Stop the counter and read the value if it has been at least a second */
-  printf("=========\n");
+  total = 0;
   for(i = 0; i < num_events; i++) {
     ioctl(prof.fds[i], PERF_EVENT_IOC_DISABLE, 0);
     read(prof.fds[i], &count, sizeof(long long));
-    count_f = (float) count;
-    printf("%d: %.1f MB/s\n", i, count_f * 64 / 1024 / 1024);
+    count_f = (float) count * 64 / 1024 / 1024;
+    total += count_f;
 
     /* Start it back up again */
     ioctl(prof.fds[i], PERF_EVENT_IOC_RESET, 0);
     ioctl(prof.fds[i], PERF_EVENT_IOC_ENABLE, 0);
   }
-  printf("=========\n");
+
+  printf("%.2f MB/s\n", total);
+  
+  /* Calculate the running average */
+  prof.num_intervals++;
+  prof.running_avg = ((prof.running_avg * (prof.num_intervals - 1)) + total) / prof.num_intervals;
 }
 
 static inline void get_rss() {
@@ -299,17 +320,17 @@ static inline void get_rss() {
   arena_info *arena;
 
 	/* Zero out the RSS values for each arena */
-	extent_arr_for(extents, i) {
-    arena = extents->arr[i].arena;
+	extent_arr_for(rss_extents, i) {
+    arena = rss_extents->arr[i].arena;
 		arena->rss = 0;
 	}
 
 	/* Iterate over the chunks */
-	extent_arr_for(extents, i) {
+	extent_arr_for(rss_extents, i) {
 
-		start = (uint64_t) extents->arr[i].start;
-		end = (uint64_t) extents->arr[i].end;
-		arena = extents->arr[i].arena;
+		start = (uint64_t) rss_extents->arr[i].start;
+		end = (uint64_t) rss_extents->arr[i].end;
+		arena = rss_extents->arr[i].arena;
 
 		numpages = (end - start) / prof.pagesize;
 		prof.pfndata = (union pfn_t *) realloc(prof.pfndata, numpages * prof.addrsize);
@@ -347,6 +368,7 @@ void *sh_profile_thread(void *a) {
   struct itimerspec its;
   struct sigaction sa;
 
+  /* Don't call get_bandwidth in the loop; just use a signal handler */
   if(should_profile_one) {
     /* Signal handler for bandwidth */
 	  sa.sa_flags = SA_SIGINFO;
@@ -393,6 +415,9 @@ void *sh_profile_thread(void *a) {
 
   /* Print out the results of the profiling */
   if(should_profile_one) {
+    printf("Average bandwidth: %.1f MB/s\n", prof.running_avg);
+    if(should_profile_rss) {
+    }
   }
   if(should_profile_all) {
     associated = 0;
@@ -401,13 +426,11 @@ void *sh_profile_thread(void *a) {
       associated += arenas[i]->accesses;
       printf("%u:\n", arenas[i]->id);
       printf("  Accesses: %zu\n", arenas[i]->accesses);
-      printf("  Peak RSS: %zu\n", arenas[i]->peak_rss);
+      if(should_profile_rss) {
+        printf("  Peak RSS: %zu\n", arenas[i]->peak_rss);
+      }
     }
     printf("Totals: %zu / %zu\n", associated, prof.total);
-  }
-
-  if(should_profile_one) {
-    timer_delete(prof.timerid);
   }
 
   return NULL;

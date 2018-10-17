@@ -16,7 +16,6 @@
 #include "sicm_profile.h"
 
 static struct sicm_device_list device_list;
-static enum sicm_device_tag default_device_tag;
 static struct sicm_device *default_device;
 
 /* For profiling */
@@ -24,13 +23,16 @@ int should_profile_all; /* For sampling */
 int should_profile_one; /* For bandwidth profiling */
 int should_profile_rss;
 struct sicm_device *profile_one_device;
+char *profile_one_event;
+char *profile_all_event;
 int max_sample_pages;
 int sample_freq;
-int num_imcs, max_imc_len;
+int num_imcs, max_imc_len, max_event_len;
 char **imcs; /* Array of strings of IMCs for the bandwidth profiling */
 
 /* Keep track of all extents */
 extent_arr *extents;
+extent_arr *rss_extents; /* The extents that we want to get the RSS of */
 
 /* Keeps track of arenas */
 arena_info **arenas;
@@ -231,14 +233,30 @@ void set_options() {
       fprintf(stderr, "No IMCs given. Can't measure bandwidth.\n");
       exit(1);
     }
+
+    /* What event should be used to measure the bandwidth? Default
+     * to the hardcoded list in profile.c if not specified.
+     */
+    env = getenv("SH_PROFILE_ONE_EVENT");
+    profile_one_event = NULL;
+    max_event_len = 64;
+    if(env) {
+      profile_one_event = env;
+      max_event_len = strlen(env);
+      printf("Using event: %s\n", profile_one_event);
+    }
   }
 
   /* Should we get the RSS of each arena? */
   env = getenv("SH_PROFILE_RSS");
   should_profile_rss = 0;
   if(env) {
-    should_profile_rss = 1;
-    printf("Profiling RSS of all arenas.\n");
+    if(layout == SHARED_SITE_ARENAS) {
+      should_profile_rss = 1;
+      printf("Profiling RSS of all arenas.\n");
+    } else {
+      printf("Can't profile RSS, because we're using the wrong arena layout.\n");
+    }
   }
 
 
@@ -279,29 +297,42 @@ void set_options() {
   printf("Maximum sample pages: %d\n", max_sample_pages);
 
   /* Get default_device_tag */
-  env = getenv("SH_DEFAULT_DEVICE");
+  env = getenv("SH_DEFAULT_NODE");
+  default_device = NULL;
   if(env) {
-    default_device_tag = sicm_get_device_tag(env);
-  } else {
-    default_device_tag = INVALID_TAG;
-  }
-  printf("Default device tag: %s.\n", sicm_device_tag_str(default_device_tag));
-  
-  /* Get default_device */
-  if(default_device_tag == INVALID_TAG) {
-    default_device = device_list.devices;
-  } else {
-    device = device_list.devices;
-    for(i = 0; i < device_list.count; i++) {
-      if(device->tag == default_device_tag) {
-        break;
-      }
-      device++;
-    }
-    if(device == device_list.devices + device_list.count) {
+    endptr = NULL;
+    tmp_val = strtoimax(env, &endptr, 10);
+    if((tmp_val < 0) || (tmp_val > INT_MAX)) {
+      printf("Invalid NUMA node given: %d.\n", tmp_val);
+      exit(1);
+    } else {
+      /* Figure out which device the NUMA node corresponds to */
       device = device_list.devices;
+      for(i = 0; i < device_list.count; i++) {
+        /* If the device has a NUMA node, and if that node is the node we're
+         * looking for.
+         */
+        if((device->tag == SICM_DRAM ||
+           device->tag == SICM_KNL_HBM || 
+           device->tag == SICM_POWERPC_HBM) &&
+           sicm_numa_id(device) == tmp_val) {
+          default_device = device;
+          printf("Default node: %s, node %d\n", sicm_device_tag_str(default_device->tag), 
+                                                  sicm_numa_id(device));
+          break;
+        }
+        device++;
+      }
+      /* If we don't find an appropriate device, it should be the
+       * first device we run across.
+       */
+      if(!default_device) {
+        printf("Couldn't find an appropriate device for NUMA node %d.\n", tmp_val);
+        default_device = device_list.devices;
+      }
     }
-    default_device = device;
+  } else {
+    default_device = device_list.devices;
   }
   printf("Default device: %s\n", sicm_device_tag_str(default_device->tag));
 
@@ -355,6 +386,11 @@ void sh_create_arena(int index, int id) {
     exit(1);
   }
 
+  /* If we've already created this arena */
+  if(arenas[index] != NULL) {
+    return;
+  }
+
   /* Put an upper bound on the indices that need to be searched */
   if(index > max_index) {
     max_index = index;
@@ -364,22 +400,21 @@ void sh_create_arena(int index, int id) {
   device = default_device;
   if(profile_one_device && (id == should_profile_one)) {
     /* If the site is the one we're profiling, isolate it */
+    printf("Isolating site %d\n", id);
     device = profile_one_device;
   }
 
   /* Create the arena if it doesn't exist */
-  if(arenas[index] == NULL) {
-    arenas[index] = calloc(1, sizeof(arena_info));
-    arenas[index]->index = index;
-    arenas[index]->accesses = 0;
-    arenas[index]->id = id;
-    arenas[index]->rss = 0;
-    arenas[index]->peak_rss = 0;
-    arenas[index]->arena = sicm_arena_create(0, device);
-  }
+  arenas[index] = calloc(1, sizeof(arena_info));
+  arenas[index]->index = index;
+  arenas[index]->accesses = 0;
+  arenas[index]->id = id;
+  arenas[index]->rss = 0;
+  arenas[index]->peak_rss = 0;
+  arenas[index]->arena = sicm_arena_create(0, device);
 }
 
-/* Adds a extent to the `extents` array. */
+/* Adds an extent to the `extents` array. */
 void sh_create_extent(void *start, void *end) {
   int thread_index, arena_index;
 
@@ -393,6 +428,10 @@ void sh_create_extent(void *start, void *end) {
     exit(1);
   }
 
+  if(arenas[arena_index]->id == should_profile_one) {
+    /* If we're just profiling one site */
+    extent_arr_insert(rss_extents, start, end, arenas[arena_index]);
+  }
   extent_arr_insert(extents, start, end, arenas[arena_index]);
 }
 
@@ -454,6 +493,9 @@ void* sh_alloc(int id, size_t sz) {
     return je_malloc(sz);
   }
 
+  if(id == should_profile_one) {
+    printf("sh_alloc: %zu bytes to %d\n", sz, id);
+  }
   index = get_arena_index(id);
   ret = sicm_arena_alloc(arenas[index]->arena, sz);
   return ret;
@@ -479,7 +521,18 @@ void sh_init() {
     /* Second dimension is one for each arena that each thread will have */
     arenas = (arena_info **) calloc(max_threads * arenas_per_thread, sizeof(arena_info *));
 
+    /* Initialize the extents array.
+     * If we're just doing MBI on one site, initialize a new array that has extents from just that site.
+     * If we're profiling all sites, rss_extents is just all extents.
+     */
     extents = extent_arr_init();
+    if(should_profile_rss) {
+      if(should_profile_one) {
+        rss_extents = extent_arr_init();
+      } else if(should_profile_all) {
+        rss_extents = extents;
+      }
+    }
 
     /* Stores the index into the `arenas` array for each thread */
     pthread_key_create(&thread_key, NULL);
@@ -514,7 +567,7 @@ void sh_terminate() {
   if(layout != INVALID_LAYOUT) {
 
     /* Clean up the profiler */
-    if(should_profile_all) {
+    if(should_profile_all || should_profile_one || should_profile_rss) {
       sh_stop_profile_thread();
     }
 

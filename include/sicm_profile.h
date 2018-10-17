@@ -57,6 +57,8 @@ typedef struct profile_thread {
   /* For measuring bandwidth */
   timer_t timerid;
   struct sigevent sev;
+  size_t num_intervals;
+  float running_avg;
 } profile_thread;
 
 void sh_start_profile_thread();
