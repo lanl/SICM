@@ -59,6 +59,7 @@ sicm_arena sicm_arena_create(size_t sz, sicm_device *dev) {
 	sa->pagesize = sicm_device_page_size(dev);
 	sa->numaid = sicm_numa_id(dev);
     sa->fd = -1;
+    sa->user = 0;
 
 	if (sa->numaid < 0) {
         pthread_mutex_destroy(sa->mutex);
@@ -82,6 +83,7 @@ sicm_arena sicm_arena_create(size_t sz, sicm_device *dev) {
 	}
 
 	sa->arena_ind = arena_ind;
+    sa->user = 1;
 
 	// add the arena to the global list of arenas
 	pthread_mutex_lock(&sa_mutex);
@@ -127,6 +129,7 @@ sicm_arena sicm_arena_create_mmapped(size_t sz, sicm_device *dev, int fd, off_t 
     sa->pagesize = sicm_device_page_size(dev);
     sa->numaid = sicm_numa_id(dev);
     sa->fd = fd;
+    sa->user = 0;
 
 	if (sa->numaid < 0) {
         pthread_mutex_destroy(sa->mutex);
@@ -150,6 +153,7 @@ sicm_arena sicm_arena_create_mmapped(size_t sz, sicm_device *dev, int fd, off_t 
 	}
 
 	sa->arena_ind = arena_ind;
+    sa->user = 1;
 
 	// add the arena to the global list of arenas
 	pthread_mutex_lock(&sa_mutex);
@@ -536,7 +540,7 @@ static void *sa_alloc_shared(extent_hooks_t *h, void *new_addr, size_t size, siz
 	struct bitmask *oldnodemask;
 
 	*commit = 1;
-	*zero = 1;
+	*zero = 0;
 	ret = NULL;
 	sa = container_of(h, sarena, hooks);
 
@@ -560,32 +564,64 @@ static void *sa_alloc_shared(extent_hooks_t *h, void *new_addr, size_t size, siz
 		goto free_nodemasks;
 	}
 
-	ret = mmap(new_addr, size, PROT_READ | PROT_WRITE, MAP_SHARED, sa->fd, sa->size);
-	if (ret == MAP_FAILED) {
-		ret = NULL;
-        perror("mmap");
-		goto restore_mempolicy;
-	}
+    // triggered by the user
+    if (sa->user) {
+        ret = mmap(new_addr, size, PROT_READ | PROT_WRITE, MAP_SHARED, sa->fd, sa->size);
+        if (ret == MAP_FAILED) {
+            ret = NULL;
+            perror("mmap");
+            goto restore_mempolicy;
+        }
 
-	if (alignment == 0 || ((uintptr_t) ret)%alignment == 0) {
-		// we are lucky and got the right alignment
-		goto success;
+        if (alignment == 0 || ((uintptr_t) ret)%alignment == 0) {
+            // we are lucky and got the right alignment
+            goto success;
+        }
+
+        // the alignment didn't work out, munmap and try again
+        munmap(ret, size);
+        ret = NULL;
+
+        // if new_addr is set, we can't fulfill the alignment, so just fail
+        if (new_addr != NULL)
+            goto restore_mempolicy;
+
+        size += alignment;
+        ret = mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_SHARED, sa->fd, sa->size);
+        if (ret == MAP_FAILED) {
+            ret = NULL;
+            goto restore_mempolicy;
+        }
     }
+    // automatic
+    else {
+        ret = mmap(new_addr, size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANON, -1, 0);
+        if (ret == MAP_FAILED) {
+            ret = NULL;
+            perror("mmap");
+            goto restore_mempolicy;
+        }
 
-	// the alignment didn't work out, munmap and try again
-	munmap(ret, size);
-	ret = NULL;
+        if (alignment == 0 || ((uintptr_t) ret)%alignment == 0) {
+            // we are lucky and got the right alignment
+            goto success;
+        }
 
-	// if new_addr is set, we can't fulfill the alignment, so just fail
-	if (new_addr != NULL)
-		goto restore_mempolicy;
+        // the alignment didn't work out, munmap and try again
+        munmap(ret, size);
+        ret = NULL;
 
-    size += alignment;
-	ret = mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_SHARED, sa->fd, sa->size);
-	if (ret == MAP_FAILED) {
-		ret = NULL;
-		goto restore_mempolicy;
-	}
+        // if new_addr is set, we can't fulfill the alignment, so just fail
+        if (new_addr != NULL)
+            goto restore_mempolicy;
+
+        size += alignment;
+        ret = mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANON, -1, 0);
+        if (ret == MAP_FAILED) {
+            ret = NULL;
+            goto restore_mempolicy;
+        }
+    }
 
 	n = (uintptr_t) ret;
 	m = n + alignment - (n%alignment);
@@ -593,8 +629,6 @@ static void *sa_alloc_shared(extent_hooks_t *h, void *new_addr, size_t size, siz
 	ret = (void *) m;
 
 success:
-    sa->size += size;
-
 	if (mbind(ret, size, MPOL_BIND, nodemask->maskp, nodemask->size, MPOL_MF_MOVE | MPOL_MF_STRICT) < 0) {
 		munmap(ret, size);
         perror("mbind");
@@ -612,7 +646,16 @@ success:
       (*sicm_extent_alloc_callback)(ret, (char *)ret + size);
     }
 
-    ftruncate(sa->fd, sa->size);
+    if (sa->user) {
+        sa->size += size;
+
+        // only extend file; do not shrink
+        if (sa->size > lseek(sa->fd, 0, SEEK_END)) {
+            ftruncate(sa->fd, sa->size);
+            fsync(sa->fd);
+        }
+    }
+
 	pthread_mutex_unlock(sa->mutex);
 
 restore_mempolicy:
@@ -639,6 +682,7 @@ static bool sa_dalloc(extent_hooks_t *h, void *addr, size_t size, bool committed
         extent_arr_insert(sa->extents, addr, (char *)addr + size, NULL);
         ret = true;
     }
+    sa->size -= size;
     pthread_mutex_unlock(sa->mutex);
     return ret;
 }
