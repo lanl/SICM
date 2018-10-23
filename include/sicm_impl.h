@@ -99,6 +99,7 @@ struct sarena {
 
     int                 err;
     int                 fd;
+    int                 user;
 };
 
 extern sarena *sarena_ptr2sarena(void *ptr);
