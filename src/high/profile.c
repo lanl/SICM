@@ -106,7 +106,6 @@ void sh_start_profile_thread() {
   int i, group_fd;
 
   /* Set the pagesize for the RSS and PEBS threads */
-  printf("About to get the page size.\n");
   if(should_profile_rss || should_profile_all) {
     prof.pagesize = (size_t) sysconf(_SC_PAGESIZE);
     printf("The page size is %d.\n", prof.pagesize);
@@ -415,22 +414,27 @@ void *sh_profile_thread(void *a) {
 
   /* Print out the results of the profiling */
   if(should_profile_one) {
+    printf("===== MBI RESULTS FOR SITE %u =====\n", should_profile_one);
     printf("Average bandwidth: %.1f MB/s\n", prof.running_avg);
     if(should_profile_rss) {
+      printf("Peak RSS: %zu\n", arenas[should_profile_one]->peak_rss);
     }
+    printf("===== END MBI RESULTS =====\n");
   }
   if(should_profile_all) {
+    printf("===== PEBS RESULTS =====\n");
     associated = 0;
     for(i = 0; i <= max_index; i++) {
       if(!arenas[i]) continue;
       associated += arenas[i]->accesses;
-      printf("%u:\n", arenas[i]->id);
+      printf("Site %u:\n", arenas[i]->id);
       printf("  Accesses: %zu\n", arenas[i]->accesses);
       if(should_profile_rss) {
         printf("  Peak RSS: %zu\n", arenas[i]->peak_rss);
       }
     }
     printf("Totals: %zu / %zu\n", associated, prof.total);
+    printf("===== END PEBS RESULTS =====\n");
   }
 
   return NULL;

@@ -3,7 +3,7 @@
 # an object file, it will output a binary LLVM IR format, putting it
 # into the .o file that would normally be the object file.
 # This wrapper also parses and outputs the arguments used to compile each
-# file, so that it can be read and used by the ld_wrapper. It removes
+# file, so that it can be read and used by the ld_wrapper.
 
 # The original arguments and the ones we're going to add
 ARGS=$@
@@ -57,6 +57,9 @@ export EXTRA_ARGS="-emit-llvm -o $FILE.bc $EXTRA_ARGS"
 echo $OUTPUT_ARGS > $FILE.args
 
 # Compile to both a '.bc' file as well as a '.o', in parallel
+echo IN COMPILER_WRAPPER
+echo ${LLVMPATH}${COMPILER} $ARGS $EXTRA_ARGS
 ${LLVMPATH}${COMPILER} $ARGS $EXTRA_ARGS &
+echo ${LLVMPATH}${COMPILER} $ARGS
 ${LLVMPATH}${COMPILER} $ARGS &
 wait

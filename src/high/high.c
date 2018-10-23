@@ -162,6 +162,7 @@ void set_options() {
       printf("Invalid allocation site ID given: %d.\n", tmp_val);
       exit(1);
     } else {
+      printf("foo\n");
       should_profile_one = (int) tmp_val;
     }
   }
@@ -428,8 +429,8 @@ void sh_create_extent(void *start, void *end) {
     exit(1);
   }
 
-  if(arenas[arena_index]->id == should_profile_one) {
-    /* If we're just profiling one site */
+  if(should_profile_rss && (arenas[arena_index]->id == should_profile_one)) {
+    /* If we're profiling RSS and this is the site that we're isolating */
     extent_arr_insert(rss_extents, start, end, arenas[arena_index]);
   }
   extent_arr_insert(extents, start, end, arenas[arena_index]);
@@ -447,13 +448,16 @@ int get_arena_index(int id) {
       ret = 0;
       break;
     case EXCLUSIVE_ONE_ARENA:
-      ret = thread_index;
+      ret = thread_index + 1;
       break;
     case SHARED_TWO_ARENAS:
       /* Should have one hot and one cold arena */
+      /* 0 = cold, 1 = hot */
+      /* Determine if the site is hot, if so, set to 1 */
+      ret = 0;
       break;
     case EXCLUSIVE_TWO_ARENAS:
-      /* Same */
+      /* Same as SHARED_TWO_ARENAS, except per thread */
       break;
     case SHARED_SITE_ARENAS:
       ret = id;

@@ -9,8 +9,11 @@
 # $HEADER$
 #
 
-bin_PROGRAMS =
+bin_PROGRAMS = hotset
 lib_LTLIBRARIES = libhigh.la
+
+hotset_SOURCES = hotset.c
+hotset_CFLAGS = -I@abs_top_srcdir@/include
 
 libhigh_la_SOURCES = high.c profile.c
 libhigh_la_LIBADD = @JEMALLOC_LIBS@ -lnuma @abs_top_builddir@/src/low/libsicm.la -lrt
