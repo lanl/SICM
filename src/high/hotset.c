@@ -131,7 +131,7 @@ size_t get_gcd(tree(unsigned, siteptr) sites) {
  * an approximation optimization to limit the amount of memory and runtime it
  * uses.
  */
-tree(unsigned, siteptr) get_knapsack(tree(unsigned, siteptr) sites, size_t capacity) {
+tree(unsigned, siteptr) get_knapsack(tree(unsigned, siteptr) sites, size_t capacity, char proftype) {
   size_t gcd, num_sites, num_weights, i, j, weight;
   float **table, a, b;
   tree_it(unsigned, siteptr) it;
@@ -148,9 +148,6 @@ tree(unsigned, siteptr) get_knapsack(tree(unsigned, siteptr) sites, size_t capac
     table[i] = calloc(num_weights, sizeof(float));
   }
 
-  printf("Allocating %zu bytes.\n", num_weights * sizeof(float) * (num_sites + 1));
-  printf("GCD: %zu, capacity: %zu, num_weights: %zu\n", gcd, capacity, num_weights);
-
   /* Build the table by going over all except the first site
    * and calculating the value of each weight limit with that
    * site included.
@@ -164,7 +161,11 @@ tree(unsigned, siteptr) get_knapsack(tree(unsigned, siteptr) sites, size_t capac
         table[i][j] = table[i - 1][j];
       } else {
         a = table[i - 1][j];
-        b = table[i - 1][j - weight] + tree_it_val(it)->bandwidth;
+        if(proftype == 0) {
+          b = table[i - 1][j - weight] + tree_it_val(it)->bandwidth;
+        } else {
+          b = table[i - 1][j - weight] + tree_it_val(it)->accesses;
+        }
         if(a > b) {
           table[i][j] = a;
         } else {
@@ -182,7 +183,31 @@ tree(unsigned, siteptr) get_knapsack(tree(unsigned, siteptr) sites, size_t capac
   /* Now figure out which sites that included by walking
    * the table backwards and accumulating the sites in the
    * output structure */
+  it = tree_last(sites);
+  i = num_sites;
+  j = num_weights - 1;
+  weight = 0;
+  printf("Final knapsack:\n");
+  while(j > 0) {
+    if(!tree_it_good(it) || (i == 0)) {
+      break;
+    }
+    if(table[i][j] != table[i - 1][j]) {
+      printf("%u ", tree_it_key(it));
+      weight += tree_it_val(it)->peak_rss;
+      j = j - (tree_it_val(it)->peak_rss / gcd);
+    }
+    i--;
+    tree_it_prev(it);
+  }
+  printf("\n");
+  printf("Used capacity: %zu bytes\n", weight);
+  printf("Total value: %f\n", table[num_sites][num_weights - 1]);
 
+  for(i = 0; i <= num_sites; i++) {
+    free(table[i]);
+  }
+  free(table);
 }
 
 /* Returns a filled hotset given a tree of sites */
@@ -197,17 +222,15 @@ tree(unsigned, siteptr) get_thermos(tree(unsigned, siteptr) sites) {
  * based on arguments. Prints the hotset to stdout.
  */
 int main(int argc, char **argv) {
-  char *line, *tok, *endptr, proftype, algo;
+  char *line, *tok, *endptr, proftype, algo, captype;
   ssize_t len, read;
   size_t cap_bytes;
   long long num_sites;
   siteptr cur_site;
-  int mbi, pebs, pebs_site, captype, i;
+  int mbi, pebs, pebs_site, i;
   float bandwidth, cap_float;
   tree(unsigned, siteptr) sites;
-  tree(siteptr, unsigned) sorted_sites;
   tree_it(unsigned, siteptr) it;
-  tree_it(siteptr, unsigned) sorted_it;
 
   /* Read in the arguments */
   if(argc != 5) {
@@ -418,12 +441,14 @@ int main(int argc, char **argv) {
   if(captype == 0) {
     /* Figure out cap_bytes from the ratio */
     cap_bytes = get_peak_rss(sites) * cap_float;
-    printf("Allowing %zu bytes in the upper tier, of %zu\n", cap_bytes, get_peak_rss(sites));
+    printf("Capacity Ratio: %f\n", cap_float);
   }
+  printf("Capacity: %zu bytes\n", cap_bytes);
+  printf("Peak RSS: %zu bytes\n", get_peak_rss(sites));
 
   /* Now run the packing algorithm */
   if(algo == 0) {
-    get_knapsack(sites, cap_bytes);
+    get_knapsack(sites, cap_bytes, proftype);
   } else if(algo == 1) {
     get_hotset(sites);
   } else if(algo == 2) {
@@ -431,6 +456,8 @@ int main(int argc, char **argv) {
   }
 
   /* Clean up */
+  tree_traverse(sites, it) {
+    free(tree_it_val(it));
+  }
 	tree_free(sites);
-  /* tree_free(sorted_sites); */
 }
