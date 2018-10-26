@@ -18,6 +18,9 @@
 static struct sicm_device_list device_list;
 static struct sicm_device *default_device;
 
+tree(unsigned, deviceptr) site_nodes;
+tree(deviceptr, int) device_arenas;
+
 /* For profiling */
 int should_profile_all; /* For sampling */
 int should_profile_one; /* For bandwidth profiling */
@@ -59,10 +62,10 @@ enum arena_layout parse_layout(char *env) {
 		return SHARED_ONE_ARENA;
 	} else if(strncmp(env, "EXCLUSIVE_ONE_ARENA", max_chars) == 0) {
 		return EXCLUSIVE_ONE_ARENA;
-	} else if(strncmp(env, "SHARED_TWO_ARENAS", max_chars) == 0) {
-		return SHARED_TWO_ARENAS;
-	} else if(strncmp(env, "EXCLUSIVE_TWO_ARENAS", max_chars) == 0) {
-		return EXCLUSIVE_TWO_ARENAS;
+	} else if(strncmp(env, "SHARED_DEVICE_ARENAS", max_chars) == 0) {
+		return SHARED_DEVICE_ARENAS;
+	} else if(strncmp(env, "EXCLUSIVE_DEVICE_ARENAS", max_chars) == 0) {
+		return EXCLUSIVE_DEVICE_ARENAS;
 	} else if(strncmp(env, "SHARED_SITE_ARENAS", max_chars) == 0) {
 		return SHARED_SITE_ARENAS;
 	} else if(strncmp(env, "EXCLUSIVE_SITE_ARENAS", max_chars) == 0) {
@@ -79,10 +82,10 @@ char *layout_str(enum arena_layout layout) {
       return "SHARED_ONE_ARENA";
     case EXCLUSIVE_ONE_ARENA:
       return "EXCLUSIVE_ONE_ARENA";
-    case SHARED_TWO_ARENAS:
-      return "SHARED_TWO_ARENAS";
-    case EXCLUSIVE_TWO_ARENAS:
-      return "EXCLUSIVE_TWO_ARENAS";
+    case SHARED_DEVICE_ARENAS:
+      return "SHARED_DEVICE_ARENAS";
+    case EXCLUSIVE_DEVICE_ARENAS:
+      return "EXCLUSIVE_DEVICE_ARENAS";
     case SHARED_SITE_ARENAS:
       return "SHARED_SITE_ARENAS";
     case EXCLUSIVE_SITE_ARENAS:
@@ -94,12 +97,48 @@ char *layout_str(enum arena_layout layout) {
   return "INVALID_LAYOUT";
 }
 
+/* Gets the SICM low-level device that corresponds to a NUMA node ID */
+sicm_device *get_device_from_numa_node(int id) {
+  struct sicm_device *retval, *device;
+  int i;
+
+  retval = NULL;
+  /* Figure out which device the NUMA node corresponds to */
+  device = device_list.devices;
+  for(i = 0; i < device_list.count; i++) {
+    /* If the device has a NUMA node, and if that node is the node we're
+     * looking for.
+     */
+    if((device->tag == SICM_DRAM ||
+       device->tag == SICM_KNL_HBM || 
+       device->tag == SICM_POWERPC_HBM) &&
+       sicm_numa_id(device) == id) {
+      retval = device;
+      break;
+    }
+    device++;
+  }
+  /* If we don't find an appropriate device, it stays NULL
+   * so that no allocation sites will be bound to it
+   */
+  if(!retval) {
+    fprintf(stderr, "Couldn't find an appropriate device for NUMA node %d.\n", id);
+  }
+
+  return retval;
+}
+
+
 /* Gets environment variables and sets up globals */
 void set_options() {
-  char *env, *endptr, *str;
+  char *env, *endptr, *str, *line, guidance, found_guidance;
   long long tmp_val;
   struct sicm_device *device;
-  int i;
+  int i, node;
+  FILE *guidance_file;
+  ssize_t len;
+  unsigned site;
+  tree_it(unsigned, deviceptr) it;
 
   /* Get the arena layout */
   env = getenv("SH_ARENA_LAYOUT");
@@ -162,7 +201,6 @@ void set_options() {
       printf("Invalid allocation site ID given: %d.\n", tmp_val);
       exit(1);
     } else {
-      printf("foo\n");
       should_profile_one = (int) tmp_val;
     }
   }
@@ -173,38 +211,12 @@ void set_options() {
      * the two being the same, if the allocation site is to be isolated.
      */
     env = getenv("SH_PROFILE_ONE_NODE");
-    profile_one_device = NULL;
     if(env) {
       endptr = NULL;
       tmp_val = strtoimax(env, &endptr, 10);
-      if((tmp_val < 0) || (tmp_val > INT_MAX)) {
-        printf("Invalid NUMA node given: %d.\n", tmp_val);
-        exit(1);
-      } else {
-        /* Figure out which device the NUMA node corresponds to */
-        device = device_list.devices;
-        for(i = 0; i < device_list.count; i++) {
-          /* If the device has a NUMA node, and if that node is the node we're
-           * looking for.
-           */
-          if((device->tag == SICM_DRAM ||
-             device->tag == SICM_KNL_HBM || 
-             device->tag == SICM_POWERPC_HBM) &&
-             sicm_numa_id(device) == tmp_val) {
-            profile_one_device = device;
-            printf("Isolating node: %s, node %d\n", sicm_device_tag_str(profile_one_device->tag), 
-                                                    sicm_numa_id(device));
-            break;
-          }
-          device++;
-        }
-        /* If we don't find an appropriate device, it stays NULL
-         * so that no allocation sites will be bound to it
-         */
-        if(!profile_one_device) {
-          printf("Couldn't find an appropriate device for NUMA node %d.\n", tmp_val);
-        }
-      }
+      profile_one_device = get_device_from_numa_node((int) tmp_val);
+      printf("Isolating node: %s, node %d\n", sicm_device_tag_str(profile_one_device->tag), 
+                                              sicm_numa_id(profile_one_device));
     }
 
     /* The user can also specify a comma-delimited list of IMCs to read the
@@ -303,36 +315,9 @@ void set_options() {
   if(env) {
     endptr = NULL;
     tmp_val = strtoimax(env, &endptr, 10);
-    if((tmp_val < 0) || (tmp_val > INT_MAX)) {
-      printf("Invalid NUMA node given: %d.\n", tmp_val);
-      exit(1);
-    } else {
-      /* Figure out which device the NUMA node corresponds to */
-      device = device_list.devices;
-      for(i = 0; i < device_list.count; i++) {
-        /* If the device has a NUMA node, and if that node is the node we're
-         * looking for.
-         */
-        if((device->tag == SICM_DRAM ||
-           device->tag == SICM_KNL_HBM || 
-           device->tag == SICM_POWERPC_HBM) &&
-           sicm_numa_id(device) == tmp_val) {
-          default_device = device;
-          printf("Default node: %s, node %d\n", sicm_device_tag_str(default_device->tag), 
-                                                  sicm_numa_id(device));
-          break;
-        }
-        device++;
-      }
-      /* If we don't find an appropriate device, it should be the
-       * first device we run across.
-       */
-      if(!default_device) {
-        printf("Couldn't find an appropriate device for NUMA node %d.\n", tmp_val);
-        default_device = device_list.devices;
-      }
-    }
-  } else {
+    default_device = get_device_from_numa_node((int) tmp_val);
+  }
+  if(!default_device) {
     default_device = device_list.devices;
   }
   printf("Default device: %s\n", sicm_device_tag_str(default_device->tag));
@@ -343,9 +328,9 @@ void set_options() {
     case EXCLUSIVE_ONE_ARENA:
       arenas_per_thread = 1;
       break;
-    case SHARED_TWO_ARENAS:
-    case EXCLUSIVE_TWO_ARENAS:
-      arenas_per_thread = 2;
+    case SHARED_DEVICE_ARENAS:
+    case EXCLUSIVE_DEVICE_ARENAS:
+      arenas_per_thread = (int) device_list.count;
       break;
     case SHARED_SITE_ARENAS:
     case EXCLUSIVE_SITE_ARENAS:
@@ -356,6 +341,67 @@ void set_options() {
       break;
   };
   printf("Arenas per thread: %d\n", arenas_per_thread);
+
+  /* Get the guidance file that tells where each site goes */
+  env = getenv("SH_GUIDANCE_FILE");
+  if(env) {
+    /* Open the file */
+    guidance_file = fopen(env, "r");
+    if(!guidance_file) {
+      fprintf(stderr, "Failed to open guidance file. Aborting.\n");
+      exit(1);
+    }
+
+    /* Read in the sites */
+    guidance = 0;
+    found_guidance = 0; /* Set if we find any site guidance at all */
+    line = NULL;
+    len = 0;
+    while(getline(&line, &len, guidance_file) != -1) {
+      str = strtok(line, " ");
+      if(guidance) {
+        if(!str) continue;
+
+        /* Look to see if it's the end */
+        if(str && (strcmp(str, "=====") == 0)) {
+          str = strtok(NULL, " ");
+          if(str && (strcmp(str, "END") == 0)) {
+            guidance = 0;
+          } else {
+            fprintf(stderr, "In a guidance section, and found five equals signs, but not the end. Aborting.\n");
+            exit(1);
+          }
+          continue;
+        }
+
+        /* Read in the actual guidance now that we're in a guidance section */
+        sscanf(str, "%u", &site);
+        str = strtok(NULL, " ");
+        if(!str) {
+          fprintf(stderr, "Read in a site number from the guidance file, but no node number. Aborting.\n");
+          exit(1);
+        }
+        sscanf(str, "%d", &node);
+        tree_insert(site_nodes, site, get_device_from_numa_node(node));
+
+      } else {
+        if(!str) continue;
+        /* Find the "===== GUIDANCE" tokens */
+        if(strcmp(str, "=====") != 0) continue;
+        str = strtok(NULL, " ");
+        if(str && (strcmp(str, "GUIDANCE") == 0)) {
+          /* Now we're in a guidance section */
+          guidance = 1;
+          found_guidance = 1;
+          continue;
+        }
+      }
+    }
+    if(!found_guidance) {
+      fprintf(stderr, "Didn't find any guidance in the file. Aborting.\n");
+      exit(1);
+    }
+  }
 }
 
 int get_thread_index() {
@@ -379,9 +425,7 @@ int get_thread_index() {
 }
 
 /* Adds an arena to the `arenas` array. */
-void sh_create_arena(int index, int id) {
-  struct sicm_device *device;
-
+void sh_create_arena(int index, int id, sicm_device *device) {
   if(index > (max_arenas - 1)) {
     fprintf(stderr, "Maximum number of arenas reached. Aborting.\n");
     exit(1);
@@ -397,12 +441,8 @@ void sh_create_arena(int index, int id) {
     max_index = index;
   }
 
-  /* Figure out which device we should place the arena on */
-  device = default_device;
-  if(profile_one_device && (id == should_profile_one)) {
-    /* If the site is the one we're profiling, isolate it */
-    printf("Isolating site %d\n", id);
-    device = profile_one_device;
+  if(!device) {
+    device = default_device;
   }
 
   /* Create the arena if it doesn't exist */
@@ -436,13 +476,50 @@ void sh_create_extent(void *start, void *end) {
   extent_arr_insert(extents, start, end, arenas[arena_index]);
 }
 
+/* Chooses an arena for the per-device arena layouts. */
+int get_device_arena(int id, sicm_device **device) {
+  tree_it(unsigned, deviceptr) it;
+  tree_it(deviceptr, int) devit;
+  int ret;
+
+  /* One arena per device */
+  it = tree_lookup(site_nodes, id);
+  if(tree_it_good(it)) {
+    /* This site was found in the guidance file.  Use its device pointer to
+     * find if this device has already got an arena.
+     */
+    *device = tree_it_val(it);
+  } else {
+    /* Site's not in the guidance file. Use the default device. */
+    *device = default_device;
+  }
+  devit = tree_lookup(device_arenas, *device);
+  if(tree_it_good(devit)) {
+    /* This device already has an arena associated with it. Return the
+     * index of that arena.
+     */
+    ret = tree_it_val(devit);
+  } else {
+    /* Choose an arena index for this device.  We're going to assume here
+     * that we never get a device that didn't exist on initialization.
+     * Remember our choice.
+     */
+    ret = max_index + 1;
+    tree_insert(device_arenas, *device, ret);
+  }
+
+  return ret;
+}
+
 /* Gets the index that the ID should go into */
 int get_arena_index(int id) {
   int ret, thread_index;
+  sicm_device *device;
 
   thread_index = get_thread_index();
 
   ret = 0;
+  device = NULL;
   switch(layout) {
     case SHARED_ONE_ARENA:
       ret = 0;
@@ -450,17 +527,21 @@ int get_arena_index(int id) {
     case EXCLUSIVE_ONE_ARENA:
       ret = thread_index + 1;
       break;
-    case SHARED_TWO_ARENAS:
-      /* Should have one hot and one cold arena */
-      /* 0 = cold, 1 = hot */
-      /* Determine if the site is hot, if so, set to 1 */
-      ret = 0;
+    case SHARED_DEVICE_ARENAS:
+      ret = get_device_arena(id, &device);
       break;
-    case EXCLUSIVE_TWO_ARENAS:
-      /* Same as SHARED_TWO_ARENAS, except per thread */
+    case EXCLUSIVE_DEVICE_ARENAS:
+      /* Same as SHARED_DEVICE_ARENAS, except per thread */
+      ret = get_device_arena(id, &device);
+      ret = (thread_index * arenas_per_thread) + ret;
       break;
     case SHARED_SITE_ARENAS:
       ret = id;
+      /* Special case for profiling */
+      if(profile_one_device && (id == should_profile_one)) {
+        /* If the site is the one we're profiling, isolate it */
+        device = profile_one_device;
+      }
       break;
     case EXCLUSIVE_SITE_ARENAS:
       ret = (thread_index * arenas_per_thread) + id;
@@ -471,8 +552,9 @@ int get_arena_index(int id) {
       break;
   };
 
+
   pending_indices[thread_index] = ret;
-  sh_create_arena(ret, id);
+  sh_create_arena(ret, id, device);
 
   return ret;
 }
@@ -518,12 +600,28 @@ void sh_init() {
   int i;
 
   device_list = sicm_init();
+  site_nodes = tree_make(unsigned, deviceptr);
+  device_arenas = tree_make(deviceptr, int);
   set_options();
   
   if(layout != INVALID_LAYOUT) {
     /* `arenas` is a pseudo-two-dimensional array, first dimension is per-thread */
-    /* Second dimension is one for each arena that each thread will have */
-    arenas = (arena_info **) calloc(max_threads * arenas_per_thread, sizeof(arena_info *));
+    /* Second dimension is one for each arena that each thread will have.
+     * If the arena layout isn't per-thread (`EXCLUSIVE_`), arenas_per_thread is just
+     * the total number of arenas.
+     */
+    switch(layout) {
+      case SHARED_ONE_ARENA:
+      case SHARED_DEVICE_ARENAS:
+      case SHARED_SITE_ARENAS:
+        arenas = (arena_info **) calloc(arenas_per_thread, sizeof(arena_info *));
+        break;
+      case EXCLUSIVE_SITE_ARENAS:
+      case EXCLUSIVE_ONE_ARENA:
+      case EXCLUSIVE_DEVICE_ARENAS:
+        arenas = (arena_info **) calloc(max_threads * arenas_per_thread, sizeof(arena_info *));
+        break;
+    }
 
     /* Initialize the extents array.
      * If we're just doing MBI on one site, initialize a new array that has extents from just that site.

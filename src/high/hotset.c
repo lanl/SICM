@@ -9,15 +9,15 @@
 #include <stdio.h>
 #include <string.h>
 #include <inttypes.h>
+#include <limits.h>
+#include "sicm_high.h"
 #include "tree.h"
 
-typedef struct site {
-  float bandwidth;
-  size_t peak_rss, accesses;
-} site;
-typedef site * siteptr;
+union metric {
+  float band;
+  size_t acc;
+};
 
-use_tree(unsigned, siteptr);
 use_tree(siteptr, unsigned);
 
 /* A comparison function to compare two site structs.  Used to created the
@@ -82,20 +82,6 @@ int accesses_cmp(siteptr a, siteptr b) {
   return retval;
 }
 
-/* Gets the peak RSS of the whole application by summing the peak_rss of each
- * site
- */
-size_t get_peak_rss(tree(unsigned, siteptr) sites) {
-  tree_it(unsigned, siteptr) it;
-  size_t total;
-
-  total = 0;
-  tree_traverse(sites, it) {
-    total += tree_it_val(it)->peak_rss;
-  }
-
-  return total;
-}
 
 /* Gets the greatest common divisor of all given sites' sizes
  * by just iterating over them and finding the GCD of the current
@@ -133,7 +119,8 @@ size_t get_gcd(tree(unsigned, siteptr) sites) {
  */
 tree(unsigned, siteptr) get_knapsack(tree(unsigned, siteptr) sites, size_t capacity, char proftype) {
   size_t gcd, num_sites, num_weights, i, j, weight;
-  float **table, a, b;
+  union metric **table, a, b;
+  tree(unsigned, siteptr) knapsack;
   tree_it(unsigned, siteptr) it;
 
   /* Create a matrix with 'i' rows and 'j' columns, where 'i' is the number of
@@ -143,9 +130,9 @@ tree(unsigned, siteptr) get_knapsack(tree(unsigned, siteptr) sites, size_t capac
   gcd = get_gcd(sites);
   num_sites = tree_len(sites);
   num_weights = (capacity / gcd) + 1;
-  table = malloc(sizeof(float *) * (num_sites + 1));
+  table = malloc(sizeof(union metric *) * (num_sites + 1));
   for(i = 0; i <= num_sites; i++) {
-    table[i] = calloc(num_weights, sizeof(float));
+    table[i] = calloc(num_weights, sizeof(union metric));
   }
 
   /* Build the table by going over all except the first site
@@ -160,16 +147,23 @@ tree(unsigned, siteptr) get_knapsack(tree(unsigned, siteptr) sites, size_t capac
       if(weight > j) {
         table[i][j] = table[i - 1][j];
       } else {
-        a = table[i - 1][j];
+        /* Two cases: MBI and PEBS */
         if(proftype == 0) {
-          b = table[i - 1][j - weight] + tree_it_val(it)->bandwidth;
+          a = table[i - 1][j];
+          b.band = table[i - 1][j - weight].band + tree_it_val(it)->bandwidth;
+          if(a.band > b.band) {
+            table[i][j] = a;
+          } else {
+            table[i][j] = b;
+          }
         } else {
-          b = table[i - 1][j - weight] + tree_it_val(it)->accesses;
-        }
-        if(a > b) {
-          table[i][j] = a;
-        } else {
-          table[i][j] = b;
+          a = table[i - 1][j];
+          b.acc = table[i - 1][j - weight].acc + tree_it_val(it)->accesses;
+          if(a.acc > b.acc) {
+            table[i][j] = a;
+          } else {
+            table[i][j] = b;
+          }
         }
       }
     }
@@ -183,31 +177,28 @@ tree(unsigned, siteptr) get_knapsack(tree(unsigned, siteptr) sites, size_t capac
   /* Now figure out which sites that included by walking
    * the table backwards and accumulating the sites in the
    * output structure */
+  knapsack = tree_make(unsigned, siteptr);
   it = tree_last(sites);
   i = num_sites;
   j = num_weights - 1;
-  weight = 0;
-  printf("Final knapsack:\n");
   while(j > 0) {
     if(!tree_it_good(it) || (i == 0)) {
       break;
     }
-    if(table[i][j] != table[i - 1][j]) {
-      printf("%u ", tree_it_key(it));
-      weight += tree_it_val(it)->peak_rss;
+    if(table[i][j].acc != table[i - 1][j].acc) {
+      tree_insert(knapsack, tree_it_key(it), tree_it_val(it));
       j = j - (tree_it_val(it)->peak_rss / gcd);
     }
     i--;
     tree_it_prev(it);
   }
-  printf("\n");
-  printf("Used capacity: %zu bytes\n", weight);
-  printf("Total value: %f\n", table[num_sites][num_weights - 1]);
 
   for(i = 0; i <= num_sites; i++) {
     free(table[i]);
   }
   free(table);
+
+  return knapsack;
 }
 
 /* Returns a filled hotset given a tree of sites */
@@ -222,24 +213,23 @@ tree(unsigned, siteptr) get_thermos(tree(unsigned, siteptr) sites) {
  * based on arguments. Prints the hotset to stdout.
  */
 int main(int argc, char **argv) {
-  char *line, *tok, *endptr, proftype, algo, captype;
-  ssize_t len, read;
-  size_t cap_bytes;
-  long long num_sites;
-  siteptr cur_site;
-  int mbi, pebs, pebs_site, i;
-  float bandwidth, cap_float;
-  tree(unsigned, siteptr) sites;
+  char proftype, algo, captype, *endptr;
+  size_t cap_bytes, total_weight;
+  union metric total_value;
+  long long node;
+  float cap_float;
+  tree(unsigned, siteptr) sites, chosen_sites;
   tree_it(unsigned, siteptr) it;
 
   /* Read in the arguments */
-  if(argc != 5) {
-    fprintf(stderr, "USAGE: ./hotset proftype algo captype cap\n");
+  if(argc != 6) {
+    fprintf(stderr, "USAGE: ./hotset proftype algo captype cap node\n");
     fprintf(stderr, "proftype: mbi or pebs, the type of profiling.\n");
     fprintf(stderr, "algo: knapsack, hotset, or thermos. The packing algorithm.\n");
     fprintf(stderr, "captype: ratio or constant. The type of capacity.\n");
-    fprintf(stderr, "cap: The capacity. A float 0-1 if captype is 'ratio', or a\n");
+    fprintf(stderr, "cap: the capacity. A float 0-1 if captype is 'ratio', or a\n");
     fprintf(stderr, "  constant number of bytes otherwise.\n");
+    fprintf(stderr, "node: the node that chosen sites should be associated with.\n");
     exit(1);
   }
   if(strcmp(argv[1], "mbi") == 0) {
@@ -271,152 +261,14 @@ int main(int argc, char **argv) {
     fprintf(stderr, "Captype not recognized. Aborting.\n");
     exit(1);
   }
-
-  sites = tree_make(unsigned, siteptr);
-
-  /* Read in from stdin and fill in the tree with the sites */
-  num_sites = 0;
-  mbi = 0;
-  pebs = 0;
-  pebs_site = 0;
-  line = NULL;
-  len = 0;
-  while(read = getline(&line, &len, stdin) != -1) {
-
-    /* Find the beginning or end of some results */
-    tok = strtok(line, " ");
-    if(!tok) break;
-    if(strcmp(tok, "=====") == 0) {
-      /* Get whether it's the end of results, or MBI, or PEBS */
-      tok = strtok(NULL, " ");
-      if(!tok) break;
-      if(strcmp(tok, "MBI") == 0) {
-        /* Need to keep parsing to get the site number */
-        tok = strtok(NULL, " ");
-        if(!tok || strcmp(tok, "RESULTS") != 0) {
-          fprintf(stderr, "Error parsing.\n");
-          exit(1);
-        }
-        tok = strtok(NULL, " ");
-        if(!tok || strcmp(tok, "FOR") != 0) {
-          fprintf(stderr, "Error parsing.\n");
-          exit(1);
-        }
-        tok = strtok(NULL, " ");
-        if(!tok || strcmp(tok, "SITE") != 0) {
-          fprintf(stderr, "Error parsing.\n");
-          exit(1);
-        }
-        tok = strtok(NULL, " ");
-        if(!tok) break;
-        endptr = NULL;
-        mbi = strtoimax(tok, &endptr, 10);
-        it = tree_lookup(sites, mbi);
-        if(tree_it_good(it)) {
-          cur_site = tree_it_val(it);
-        } else {
-          cur_site = malloc(sizeof(site));
-          cur_site->bandwidth = 0;
-          cur_site->peak_rss = 0;
-          cur_site->accesses = 0;
-          tree_insert(sites, mbi, cur_site);
-        }
-      } else if(strcmp(tok, "PEBS") == 0) {
-        pebs = 1;
-        continue; /* Don't need the rest of this line */
-      } else if(strcmp(tok, "END") == 0) {
-        mbi = 0;
-        pebs = 0;
-        continue;
-      } else {
-        fprintf(stderr, "Found '=====', but no descriptor. Aborting.\n");
-        fprintf(stderr, "%s\n", line);
-        exit(1);
-      }
-      len = 0;
-      free(line);
-      line = NULL;
-      continue;
-    }
-
-    /* If we're already in a block of results */
-    if(mbi) {
-      /* We've already gotten the first token, use it */
-      if(tok && strcmp(tok, "Average") == 0) {
-        tok = strtok(NULL, " ");
-        if(tok && strcmp(tok, "bandwidth:") == 0) {
-          /* Get the average bandwidth value for this site */
-          tok = strtok(NULL, " ");
-          endptr = NULL;
-          bandwidth = strtof(tok, &endptr);
-          cur_site->bandwidth = bandwidth;
-        } else {
-          fprintf(stderr, "Got 'Average', but no expected tokens. Aborting.\n");
-          exit(1);
-        }
-      } else {
-        fprintf(stderr, "In a block of MBI results, but no expected tokens.\n");
-        exit(1);
-      }
-      continue;
-    } else if(pebs) {
-      /* We're in a block of PEBS results */
-      if(tok && (strcmp(tok, "Site") == 0)) {
-        /* Get the site number */
-        tok = strtok(NULL, " ");
-        if(tok) {
-          /* Get the site number, then wait for the next line */
-          endptr = NULL;
-          pebs_site = strtoimax(tok, &endptr, 10);
-          it = tree_lookup(sites, pebs_site);
-          if(tree_it_good(it)) {
-            cur_site = tree_it_val(it);
-          } else {
-            cur_site = malloc(sizeof(site));
-            cur_site->bandwidth = 0;
-            cur_site->peak_rss = 0;
-            cur_site->accesses = 0;
-            tree_insert(sites, mbi, cur_site);
-          }
-        } else {
-          fprintf(stderr, "Got 'Site' but no expected site number. Aborting.\n");
-          exit(1);
-        }
-      } else if(tok && (strcmp(tok, "Totals:") == 0)) {
-        /* Ignore the totals */
-        continue;
-      } else {
-        /* Get some information about a site */
-        if(tok && (strcmp(tok, "Accesses:") == 0)) {
-          tok = strtok(NULL, " ");
-          if(!tok) {
-            fprintf(stderr, "Got 'Accesses:' but no value. Aborting.\n");
-            exit(1);
-          }
-          endptr = NULL;
-          cur_site->accesses = strtoimax(tok, &endptr, 10);
-        } else if(tok && (strcmp(tok, "Peak") == 0)) {
-          tok = strtok(NULL, " ");
-          if(tok && (strcmp(tok, "RSS:") == 0)) {
-            tok = strtok(NULL, " ");
-            if(!tok) {
-              fprintf(stderr, "Got 'Peak RSS:' but no value. Aborting.\n");
-              exit(1);
-            }
-            endptr = NULL;
-            cur_site->peak_rss = strtoimax(tok, &endptr, 10);
-          } else {
-            fprintf(stderr, "Got 'Peak' but not 'RSS:'. Aborting.\n");
-            exit(1);
-          }
-        } else {
-          fprintf(stderr, "Got a site number but no expected information. Aborting.\n");
-          exit(1);
-        }
-      }
-    }
+  endptr = NULL;
+  node = strtoimax(argv[5], &endptr, 10);
+  if(node > INT_MAX) {
+    fprintf(stderr, "The node that you specified is greater than an integer can store. Aborting.\n");
+    exit(1);
   }
-  free(line);
+
+  sites = sh_parse_site_info(stdin);
 
 #if 0
   /* Now sort the sites by accesses/byte or bandwidth/byte */
@@ -440,24 +292,49 @@ int main(int argc, char **argv) {
 
   if(captype == 0) {
     /* Figure out cap_bytes from the ratio */
-    cap_bytes = get_peak_rss(sites) * cap_float;
-    printf("Capacity Ratio: %f\n", cap_float);
+    cap_bytes = sh_get_peak_rss(sites) * cap_float;
   }
-  printf("Capacity: %zu bytes\n", cap_bytes);
-  printf("Peak RSS: %zu bytes\n", get_peak_rss(sites));
 
   /* Now run the packing algorithm */
   if(algo == 0) {
-    get_knapsack(sites, cap_bytes, proftype);
+    chosen_sites = get_knapsack(sites, cap_bytes, proftype);
   } else if(algo == 1) {
-    get_hotset(sites);
+    chosen_sites = get_hotset(sites);
   } else if(algo == 2) {
-    get_thermos(sites);
+    chosen_sites = get_thermos(sites);
   }
+
+  printf("===== GUIDANCE =====\n");
+  total_weight = 0;
+  total_value.acc = 0;
+  total_value.band = 0;
+  tree_traverse(chosen_sites, it) {
+    printf("%u %d\n", tree_it_key(it), (int) node);
+    total_weight += tree_it_val(it)->peak_rss;
+    if(proftype == 0) { 
+      total_value.band += tree_it_val(it)->bandwidth;
+    } else {
+      total_value.acc += tree_it_val(it)->accesses;
+    }
+  }
+  printf("===== END GUIDANCE =====\n");
+  printf("Strategy: Knapsack\n");
+  printf("Used capacity: %zu bytes\n", total_weight);
+  if(proftype == 0) {
+    printf("Total value: %f\n", total_value.band);
+  } else {
+    printf("Total value: %zu\n", total_value.acc);
+  }
+  printf("Capacity: %zu bytes\n", cap_bytes);
+  if(captype == 0) {
+    printf("Capacity Ratio: %f\n", cap_float);
+  }
+  printf("Peak RSS: %zu bytes\n", sh_get_peak_rss(sites));
 
   /* Clean up */
   tree_traverse(sites, it) {
     free(tree_it_val(it));
   }
 	tree_free(sites);
+  tree_free(chosen_sites);
 }

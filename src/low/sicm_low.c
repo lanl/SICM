@@ -72,25 +72,6 @@ struct sicm_device_list sicm_init() {
       return sicm_global_devices;
   }
 
-  hwloc_topology_t topology;
-  hwloc_obj_t node, retnode;
-  int node_count = numa_max_node() + 1, depth;
-  normal_page_size = getpagesize() / 1024;
-  unsigned n;
-
-  /* Test using hwloc to get the entire hardware graph */
-  hwloc_topology_init(&topology);
-  hwloc_topology_load(topology);
-  n = hwloc_get_nbobjs_by_type(topology, HWLOC_OBJ_NUMANODE);
-  printf("Found %u memory devices on NUMA nodes:\n", n);
-
-  node = NULL;
-  depth = hwloc_get_type_depth(topology, HWLOC_OBJ_NUMANODE);
-  while(node = hwloc_get_next_obj_by_depth(topology, depth, node)) {
-    printf("Node: %p\n", node);
-    printf("  Memory: %lu\n", node->memory.total_memory);
-  }
-
   // Find the number of huge page sizes
   int huge_page_size_count = 0;
   DIR* dir;
@@ -100,6 +81,7 @@ struct sicm_device_list sicm_init() {
     if(entry->d_name[0] != '.') huge_page_size_count++;
   closedir(dir);
 
+  int node_count = numa_max_node() + 1, depth;
   int device_count = node_count * (huge_page_size_count + 1);
 
   struct bitmask* non_dram_nodes = numa_bitmask_alloc(node_count);
