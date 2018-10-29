@@ -15,6 +15,113 @@
 #include "sicm_impl.h"
 #include "sicm_profile.h"
 
+/* !!!rdspy */
+int get_thread_index();
+#define MAX_TRIS 1024
+ThreadReadsInfo * tris[MAX_TRIS];
+int n_tris;
+
+int should_run_rdspy;
+
+void * recalloc(void * ptr, size_t new_bytes, size_t used_bytes) {
+    void * new_region = calloc(new_bytes, 1);
+    if (ptr) {
+        memcpy(new_region, ptr, used_bytes);
+        free(ptr);
+    }
+    return new_region;
+}
+
+SiteReadsAgg    agg_hist;
+pthread_mutex_t sra_lock;
+pthread_mutex_t tri_lock;
+pthread_key_t   tri_key;
+
+void SiteReadsAgg_init(SiteReadsAgg * sra) {
+    sra->used_sites   = tree_make(unsigned, empty_tree_val);
+    sra->site_map     = tree_make(addr_t, unsigned);
+    sra->chunks_end   = 0;
+    sra->histograms   = NULL;
+    sra->n_histograms = 0;
+}
+
+void SiteReadsAgg_finish(SiteReadsAgg * sra) {
+    FILE * f = fopen("read_times.csv", "w");
+
+    fprintf(f, "site");
+    for (int b = 0; b < READ_TIMES_MAX - READ_TIMES_BUCKET_SIZE; b += READ_TIMES_BUCKET_SIZE) {
+        int next_b = b + READ_TIMES_BUCKET_SIZE;
+        fprintf(f, ", %d - %d", b, next_b);
+    }
+    fprintf(f, ", %d+\n", READ_TIMES_MAX - READ_TIMES_BUCKET_SIZE);
+
+    tree_it(unsigned, empty_tree_val) it;
+    tree_traverse(sra->used_sites, it) {
+        int sid = tree_it_key(it);
+
+        fprintf(f, "%d", sid);
+        for (int b = 0; b < READ_TIMES_NBUCKETS; b += 1) {
+            fprintf(f, ", %llu", sra->histograms[sid][b]);
+        }
+        fprintf(f, "\n");
+    }
+
+    fclose(f);
+
+    tree_free(sra->used_sites);
+    tree_free(sra->site_map);
+    if (sra->n_histograms)
+        free(sra->histograms);
+}
+
+void SiteReadsAgg_give_histogram(SiteReadsAgg * sra, ThreadReadsInfo * tri) {
+    tree_it(unsigned, empty_tree_val) it;
+    tree_traverse(sra->used_sites, it) {
+        unsigned site = tree_it_key(it);
+        for (int b = 0; b < READ_TIMES_NBUCKETS; b += 1)
+            sra->histograms[site][b] += tri->histograms[site][b];
+    }
+}
+
+void ThreadReadsInfo_init(ThreadReadsInfo * tri) {
+    tri->histograms   = calloc(agg_hist.n_histograms, sizeof(hist_t));
+    tri->n_histograms = agg_hist.n_histograms;
+}
+
+void ThreadReadsInfo_finish(ThreadReadsInfo * tri) {
+    for (int i = 0; i < MAX_TRIS; i += 1) {
+        if (tris[i] == tri) {
+            pthread_mutex_lock(&tri_lock);
+            SiteReadsAgg_give_histogram(&agg_hist, tri);
+            pthread_mutex_unlock(&tri_lock);
+
+            if (tri->n_histograms)
+                free(tri->histograms);
+            free(tri);
+            tris[i] = NULL;
+            return;
+        }
+    }
+}
+
+static ThreadReadsInfo * get_tri() {
+    ThreadReadsInfo * tri = pthread_getspecific(tri_key);
+    if (tri == NULL) {
+        pthread_mutex_lock(&tri_lock);
+        if (pthread_getspecific(tri_key) == NULL) {
+            int idx = get_thread_index();
+            tri = (ThreadReadsInfo*)malloc(sizeof(ThreadReadsInfo));
+            pthread_setspecific(tri_key, tri);
+            ThreadReadsInfo_init(tri);
+            tris[n_tris++] = tri;
+        }
+        pthread_mutex_unlock(&tri_lock);
+    }
+
+    return tri;
+}
+/* !!!end */
+
 static struct sicm_device_list device_list;
 static struct sicm_device *default_device;
 
@@ -402,6 +509,15 @@ void set_options() {
       exit(1);
     }
   }
+
+  /* !!!rdspy */
+  env = getenv("SH_RDSPY");
+  should_run_rdspy = 0;
+  if (env) {
+      should_run_rdspy = 1;
+      printf("Running with rdspy.\n");
+  }
+  /* !!!end */
 }
 
 int get_thread_index() {
@@ -576,14 +692,38 @@ void* sh_alloc(int id, size_t sz) {
   void *ret;
 
   if((layout == INVALID_LAYOUT) || !sz) {
-    return je_malloc(sz);
+    ret = je_malloc(sz);
+  } else {
+      if(id == should_profile_one) {
+          printf("sh_alloc: %zu bytes to %d\n", sz, id);
+      }
+      index = get_arena_index(id);
+      ret = sicm_arena_alloc(arenas[index]->arena, sz);
   }
 
-  if(id == should_profile_one) {
-    printf("sh_alloc: %zu bytes to %d\n", sz, id);
+  /* !!!rdspy */
+  if (should_run_rdspy) {
+      pthread_mutex_lock(&sra_lock);
+      tree_insert(agg_hist.site_map, ret, id);
+      tree_insert(agg_hist.used_sites, id, (empty_tree_val){});
+      if (id + 1 > agg_hist.n_histograms) {
+          agg_hist.histograms = recalloc(agg_hist.histograms, sizeof(hist_t) * (id + 1), sizeof(hist_t) * agg_hist.n_histograms);
+          agg_hist.n_histograms = id + 1;
+      }
+      if (ret + sz > agg_hist.chunks_end)
+          agg_hist.chunks_end = ret + sz;
+      pthread_mutex_unlock(&sra_lock);
+
+      for (int i = 0; i < n_tris; i += 1) {
+          ThreadReadsInfo * tri = tris[i];
+          if (id + 1 > tri->n_histograms) {
+              tri->histograms = recalloc(tri->histograms, sizeof(hist_t) * (id + 1), sizeof(hist_t) * tri->n_histograms);
+              tri->n_histograms = id + 1;
+          }
+      }
   }
-  index = get_arena_index(id);
-  ret = sicm_arena_alloc(arenas[index]->arena, sz);
+  /* !!!end */
+  
   return ret;
 }
 
@@ -594,6 +734,32 @@ void sh_free(void* ptr) {
     sicm_free(ptr);
   }
 }
+
+/* !!!rdspy */
+unsigned long long sh_read(void * ptr, uint64_t beg, uint64_t end) {
+    ThreadReadsInfo * tri;
+    tree_it(addr_t, unsigned) it = tree_gtr(agg_hist.site_map, ptr);
+
+    tree_it_prev(it);
+
+    if (!tree_it_good(it)
+    || ptr >= agg_hist.chunks_end)
+        return 0;
+
+    unsigned site  = tree_it_val(it);
+    uint64_t ticks = end - beg;
+
+    int bucket = ticks > READ_TIMES_MAX
+                 ? READ_TIMES_NBUCKETS - 1
+                 : ticks >> (READ_TIMES_BUCKET_SIZE / 2);
+
+    tri = get_tri();
+
+    tri->histograms[site][bucket] += 1;
+
+    return 1;
+}
+/* !!!end */
 
 __attribute__((constructor))
 void sh_init() {
@@ -657,6 +823,15 @@ void sh_init() {
       sh_start_profile_thread();
     }
   }
+  
+  /* !!!rdspy */
+    if (should_run_rdspy) {
+      SiteReadsAgg_init(&agg_hist);
+      pthread_mutex_init(&sra_lock, NULL);
+      pthread_mutex_init(&tri_lock, NULL);
+      pthread_key_create(&tri_key, (void(*)(void*))ThreadReadsInfo_finish);
+  }
+  /* !!!end */
 }
 
 __attribute__((destructor))
@@ -685,4 +860,15 @@ void sh_terminate() {
     free(orig_thread_indices);
     extent_arr_free(extents);
   }
+
+  /* !!!rdspy */
+  if (should_run_rdspy) {
+      for (int i = 0; i < MAX_TRIS; i += 1) {
+          if (tris[i]) {
+              ThreadReadsInfo_finish(tris[i]);
+          }
+      }
+      SiteReadsAgg_finish(&agg_hist);
+  }
+  /* !!!end */
 }

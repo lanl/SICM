@@ -50,9 +50,16 @@ ${LLVMPATH}${OPT} -load ${LIB_DIR}/libcompass.so -compass-mode=analyze \
     .sicm_ir.bc -o .sicm_ir.bc
 
 # Run the compiler pass on each individual file
-for file in "${FILES_ARR[@]}"; do
-  ${LLVMPATH}${OPT} -load ${LIB_DIR}/libcompass.so -compass-mode=transform -compass -compass-depth=3 $file.bc -o $file.bc &
-done
+if [ -z ${SH_RDSPY+x} ]; then
+    for file in "${FILES_ARR[@]}"; do
+      ${LLVMPATH}${OPT} -load ${LIB_DIR}/libcompass.so -compass-mode=transform -compass -compass-depth=3 $file.bc -o $file.bc &
+    done
+else
+    echo "compiling with rdspy"
+    for file in "${FILES_ARR[@]}"; do
+      ${LLVMPATH}${OPT} -load ${LIB_DIR}/libcompass.so -load ${LIB_DIR}/librdspy.so -compass-mode=transform -compass -compass-depth=3 -rdspy -rdspy-sampling-threshold=${RDSPY_SAMPLE} $file.bc -o $file.bc &
+    done
+fi
 wait
 
 # Also compile each file to its transformed '.o', overwriting the old one
