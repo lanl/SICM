@@ -285,6 +285,11 @@ static inline void get_accesses() {
   /* Let perf know that we've read this far */
   __sync_synchronize();
   prof.metadata->data_tail = head;
+
+  /* Resort all sites by their hotness by deleting and re-inserting
+   * any sites that are already in the tree
+   */
+  
 }
 
 static void
