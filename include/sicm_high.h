@@ -5,6 +5,42 @@
 #include "sicm_impl.h"
 #include "tree.h"
 
+/* !!!rdspy */
+#define READ_TIMES_BUCKET_SIZE (8)
+#define READ_TIMES_MAX (80)
+#define READ_TIMES_NBUCKETS (READ_TIMES_MAX / READ_TIMES_BUCKET_SIZE)
+
+#include <stdint.h>
+#include "tree.h"
+
+typedef void *addr_t;
+use_tree(addr_t, unsigned);
+typedef struct {} empty_tree_val;
+use_tree(unsigned, empty_tree_val);
+
+typedef unsigned long long hist_t[READ_TIMES_NBUCKETS];
+
+typedef struct {
+    hist_t * histograms;
+    unsigned n_histograms; 
+} ThreadReadsInfo;
+
+void ThreadReadsInfo_init(ThreadReadsInfo*);
+void ThreadReadsInfo_finish(ThreadReadsInfo*);
+
+typedef struct {
+    tree(unsigned, empty_tree_val) used_sites;
+    tree(addr_t, unsigned)         site_map;
+    void *                         chunks_end;
+    hist_t *                       histograms;
+    unsigned                       n_histograms;
+} SiteReadsAgg;
+
+void SiteReadsAgg_init(SiteReadsAgg*);
+void SiteReadsAgg_finish(SiteReadsAgg*);
+void SiteReadsAgg_give_histogram(SiteReadsAgg*, ThreadReadsInfo*);
+/* !!!end */
+
 enum arena_layout {
   SHARED_ONE_ARENA, /* One arena between all threads */
   EXCLUSIVE_ONE_ARENA, /* One arena per thread */

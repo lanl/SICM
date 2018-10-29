@@ -25,10 +25,15 @@ libhigh_la_LDFLAGS = -version-info 0:0:0
 libhigh_la_CFLAGS = @JEMALLOC_CPPFLAGS@ -I@abs_top_srcdir@/include
 
 if HAVE_LLVM
-lib_LTLIBRARIES += libcompass.la
+lib_LTLIBRARIES += libcompass.la librdspy.la
 
 libcompass_la_SOURCES = compass.cpp
 libcompass_la_LIBADD = @LLVM_LIBS@
 libcompass_la_LDFLAGS = -version-info 0:0:0
 libcompass_la_CPPFLAGS = @LLVM_CPPFLAGS@ -I@abs_top_srcdir@/include
+
+librdspy_la_SOURCES = rdspy.cpp
+librdspy_la_LIBADD = @LLVM_LIBS@
+librdspy_la_LDFLAGS = -version-info 0:0:0
+librdspy_la_CPPFLAGS = @LLVM_CPPFLAGS@
 endif
