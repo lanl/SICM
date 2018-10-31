@@ -37,8 +37,12 @@ use_tree(deviceptr, int);
 extern extent_arr *extents;
 extern extent_arr *rss_extents;
 extern arena_info **arenas;
-extern int should_profile_all, should_profile_one, should_profile_rss;
+extern tree(unsigned, deviceptr) site_nodes;
+extern int should_profile_all, should_profile_one, should_profile_rss, should_profile_online;
 extern char *profile_one_event, *profile_all_event;
+extern sicm_device *online_device;
+extern sicm_device *default_device;
+extern ssize_t online_device_cap;
 extern int max_index;
 extern int max_sample_pages;
 extern int sample_freq;
@@ -59,6 +63,7 @@ void* sh_alloc(int id, size_t sz);
 void sh_create_extent(void *begin, void *end);
 
 void sh_free(void* ptr);
+int get_arena_index(int id);
 
 /* For parsing information about sites */
 typedef struct site {

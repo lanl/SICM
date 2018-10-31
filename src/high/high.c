@@ -16,16 +16,19 @@
 #include "sicm_profile.h"
 
 static struct sicm_device_list device_list;
-static struct sicm_device *default_device;
+struct sicm_device *default_device;
 
 tree(unsigned, deviceptr) site_nodes;
-tree(deviceptr, int) device_arenas;
+tree(deviceptr, int) device_arenas; /* For per-device arena layouts only */
 
 /* For profiling */
+int should_profile_online;
 int should_profile_all; /* For sampling */
 int should_profile_one; /* For bandwidth profiling */
 int should_profile_rss;
 struct sicm_device *profile_one_device;
+struct sicm_device *online_device;
+ssize_t online_device_cap, online_device_packed_size;
 char *profile_one_event;
 char *profile_all_event;
 int max_sample_pages;
@@ -131,7 +134,7 @@ sicm_device *get_device_from_numa_node(int id) {
 
 /* Gets environment variables and sets up globals */
 void set_options() {
-  char *env, *endptr, *str, *line, guidance, found_guidance;
+  char *env, *str, *line, guidance, found_guidance;
   long long tmp_val;
   struct sicm_device *device;
   int i, node;
@@ -140,6 +143,17 @@ void set_options() {
   unsigned site;
   tree_it(unsigned, deviceptr) it;
 
+  /* Do we want to use the online approach, moving arenas around devices automatically? */
+  env = getenv("SH_ONLINE_PROFILING");
+  should_profile_online = 0;
+  if(env) {
+    should_profile_online = 1;
+    tmp_val = strtoimax(env, NULL, 10);
+    online_device = get_device_from_numa_node((int) tmp_val);
+    online_device_cap = sicm_avail(online_device) * 1024; /* sicm_avail() returns kilobytes */
+    printf("Doing online profiling, packing onto NUMA node %lld with a capacity of %zu.\n", tmp_val, online_device_cap);
+  }
+
   /* Get the arena layout */
   env = getenv("SH_ARENA_LAYOUT");
   if(env) {
@@ -147,14 +161,16 @@ void set_options() {
   } else {
     layout = DEFAULT_ARENA_LAYOUT;
   }
+  if(should_profile_online) {
+    layout = SHARED_SITE_ARENAS;
+  }
   printf("Arena layout: %s\n", layout_str(layout));
 
   /* Get max_threads */
   max_threads = numa_num_possible_cpus();
   env = getenv("SH_MAX_THREADS");
   if(env) {
-    endptr = NULL;
-    tmp_val = strtoimax(env, &endptr, 10);
+    tmp_val = strtoimax(env, NULL, 10);
     if((tmp_val == 0) || (tmp_val > INT_MAX)) {
       printf("Invalid thread number given. Defaulting to %d.\n", max_threads);
     } else {
@@ -170,8 +186,7 @@ void set_options() {
   max_arenas = 4096;
   env = getenv("SH_MAX_ARENAS");
   if(env) {
-    endptr = NULL;
-    tmp_val = strtoimax(env, &endptr, 10);
+    tmp_val = strtoimax(env, NULL, 10);
     if((tmp_val == 0) || (tmp_val > INT_MAX)) {
       printf("Invalid arena number given. Defaulting to %d.\n", max_arenas);
     } else {
@@ -187,6 +202,9 @@ void set_options() {
     should_profile_all = 1;
     printf("Profiling all arenas.\n");
   }
+  if(should_profile_online) {
+    should_profile_all = 1;
+  }
 
   /* Should we profile (by isolating) a single allocation site onto a NUMA node
    * and getting the memory bandwidth on that node?  Pass the allocation site
@@ -195,8 +213,7 @@ void set_options() {
   env = getenv("SH_PROFILE_ONE");
   should_profile_one = 0;
   if(env) {
-    endptr = NULL;
-    tmp_val = strtoimax(env, &endptr, 10);
+    tmp_val = strtoimax(env, NULL, 10);
     if((tmp_val == 0) || (tmp_val > INT_MAX)) {
       printf("Invalid allocation site ID given: %d.\n", tmp_val);
       exit(1);
@@ -212,8 +229,7 @@ void set_options() {
      */
     env = getenv("SH_PROFILE_ONE_NODE");
     if(env) {
-      endptr = NULL;
-      tmp_val = strtoimax(env, &endptr, 10);
+      tmp_val = strtoimax(env, NULL, 10);
       profile_one_device = get_device_from_numa_node((int) tmp_val);
       printf("Isolating node: %s, node %d\n", sicm_device_tag_str(profile_one_device->tag), 
                                               sicm_numa_id(profile_one_device));
@@ -271,6 +287,9 @@ void set_options() {
       printf("Can't profile RSS, because we're using the wrong arena layout.\n");
     }
   }
+  if(should_profile_online) {
+    should_profile_rss = 1;
+  }
 
 
   /* What sample frequency should we use? Default is 2048. Higher
@@ -279,8 +298,7 @@ void set_options() {
   env = getenv("SH_SAMPLE_FREQ");
   sample_freq = 2048;
   if(env) {
-    endptr = NULL;
-    tmp_val = strtoimax(env, &endptr, 10);
+    tmp_val = strtoimax(env, NULL, 10);
     if((tmp_val <= 0)) {
       printf("Invalid sample frequency given. Defaulting to %d.\n", sample_freq);
     } else {
@@ -298,8 +316,7 @@ void set_options() {
   env = getenv("SH_MAX_SAMPLE_PAGES");
   max_sample_pages = 64;
   if(env) {
-    endptr = NULL;
-    tmp_val = strtoimax(env, &endptr, 10);
+    tmp_val = strtoimax(env, NULL, 10);
     /* Value needs to be non-negative, less than or equal to 512, and a power of 2. */
     if((tmp_val <= 0) || (tmp_val > 512) || (tmp_val & (tmp_val - 1))) {
       printf("Invalid number of pages given (%d). Defaulting to %d.\n", tmp_val, max_sample_pages);
@@ -313,14 +330,14 @@ void set_options() {
   env = getenv("SH_DEFAULT_NODE");
   default_device = NULL;
   if(env) {
-    endptr = NULL;
-    tmp_val = strtoimax(env, &endptr, 10);
+    tmp_val = strtoimax(env, NULL, 10);
     default_device = get_device_from_numa_node((int) tmp_val);
   }
   if(!default_device) {
     default_device = device_list.devices;
   }
   printf("Default device: %s\n", sicm_device_tag_str(default_device->tag));
+
 
   /* Get arenas_per_thread */
   switch(layout) {
@@ -476,23 +493,31 @@ void sh_create_extent(void *start, void *end) {
   extent_arr_insert(extents, start, end, arenas[arena_index]);
 }
 
-/* Chooses an arena for the per-device arena layouts. */
-int get_device_arena(int id, sicm_device **device) {
+/* Gets the device that this site should go onto from the site_nodes tree */
+sicm_device *get_site_device(int id) {
+  sicm_device *device;
   tree_it(unsigned, deviceptr) it;
-  tree_it(deviceptr, int) devit;
-  int ret;
 
-  /* One arena per device */
   it = tree_lookup(site_nodes, id);
   if(tree_it_good(it)) {
     /* This site was found in the guidance file.  Use its device pointer to
      * find if this device has already got an arena.
      */
-    *device = tree_it_val(it);
+    device = tree_it_val(it);
   } else {
     /* Site's not in the guidance file. Use the default device. */
-    *device = default_device;
+    device = default_device;
   }
+
+  return device;
+}
+
+/* Chooses an arena for the per-device arena layouts. */
+int get_device_arena(int id, sicm_device **device) {
+  tree_it(deviceptr, int) devit;
+  int ret;
+
+  *device = get_site_device(id);
   devit = tree_lookup(device_arenas, *device);
   if(tree_it_good(devit)) {
     /* This device already has an arena associated with it. Return the
@@ -537,6 +562,7 @@ int get_arena_index(int id) {
       break;
     case SHARED_SITE_ARENAS:
       ret = id;
+      device = get_site_device(id);
       /* Special case for profiling */
       if(profile_one_device && (id == should_profile_one)) {
         /* If the site is the one we're profiling, isolate it */

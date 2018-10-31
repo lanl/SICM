@@ -7,6 +7,8 @@
 #include <fcntl.h>
 
 profile_thread prof;
+use_tree(double, size_t);
+use_tree(size_t, deviceptr);
 
 const char* accesses_event_strs[] = {
   "MEM_LOAD_UOPS_RETIRED.L3_MISS",
@@ -231,10 +233,16 @@ static inline void get_accesses() {
   uint64_t head, tail, buf_size;
   arena_info *arena;
   void *addr;
-  char *base, *begin, *end;
-  size_t i;
+  char *base, *begin, *end, break_next_site;
+  size_t i, packed_size;
   struct sample *sample;
   struct perf_event_header *header;
+  double acc_per_byte;
+  tree(double, size_t) sorted_arenas;
+  tree(size_t, deviceptr) new_knapsack;
+  tree_it(double, size_t) it;
+  tree_it(size_t, deviceptr) kit;
+  tree_it(unsigned, deviceptr) sit;
 
   /* Wait for the perf buffer to be ready */
   prof.pfd.fd = prof.fds[0];
@@ -286,10 +294,75 @@ static inline void get_accesses() {
   __sync_synchronize();
   prof.metadata->data_tail = head;
 
-  /* Resort all sites by their hotness by deleting and re-inserting
-   * any sites that are already in the tree
-   */
-  
+  if(should_profile_online) {
+    //printf("===== RECONFIGURING =====\n");
+    /* Sort all sites by accesses/byte */
+    sorted_arenas = tree_make(double, size_t);
+    new_knapsack = tree_make(size_t, deviceptr);
+    packed_size = 0;
+    for(i = 0; i <= max_index; i++) {
+      if(!arenas[i]) continue;
+      if(arenas[i]->peak_rss == 0) continue;
+      if(arenas[i]->accesses == 0) continue;
+      acc_per_byte = ((double)arenas[i]->accesses) / ((double) arenas[i]->peak_rss);
+      it = tree_lookup(sorted_arenas, acc_per_byte);
+      while(tree_it_good(it)) {
+        /* Inch this site a little higher to avoid collisions in the tree */
+        acc_per_byte += 0.00000000000001;
+        it = tree_lookup(sorted_arenas, acc_per_byte);
+      }
+      tree_insert(sorted_arenas, acc_per_byte, i);
+    }
+    //printf("sorted_sites:\n");
+    it = tree_last(sorted_arenas);
+    while(tree_it_good(it)) {
+      //printf("(%f, %zu)\n", tree_it_key(it), tree_it_val(it));
+      tree_it_prev(it);
+    }
+
+    /* Use a greedy algorithm to pack sites into the knapsack */
+    break_next_site = 0;
+    it = tree_last(sorted_arenas);
+    while(tree_it_good(it)) {
+      packed_size += arenas[tree_it_val(it)]->peak_rss;
+      tree_insert(new_knapsack, tree_it_val(it), online_device);
+      //printf("(%u, %f)\n", arenas[tree_it_val(it)]->id, tree_it_key(it));
+      if(break_next_site) {
+        break;
+      }
+      if(packed_size > online_device_cap) {
+        break_next_site = 1;
+      }
+      tree_it_prev(it);
+    }
+
+    /* Get rid of sites that aren't in the new knapsack but are in the old */
+    tree_traverse(site_nodes, sit) {
+      i = get_arena_index(tree_it_key(sit));
+      kit = tree_lookup(new_knapsack, i);
+      if(!tree_it_good(kit)) {
+        /* The site isn't in the new, so remove it from the upper tier */
+        //printf("Removing site %u\n", tree_it_key(sit));
+        tree_delete(site_nodes, tree_it_key(sit));
+        sicm_arena_set_device(arenas[i]->arena, default_device);
+      }
+    }
+
+    /* Add sites that weren't in the old knapsack but are in the new */
+    tree_traverse(new_knapsack, kit) {
+      /* Lookup this site in the old knapsack */
+      sit = tree_lookup(site_nodes, arenas[tree_it_key(kit)]->id);
+      if(!tree_it_good(sit)) {
+        /* This site is in the new but not the old */
+        //printf("Adding site %u\n", arenas[tree_it_key(kit)]->id);
+        tree_insert(site_nodes, arenas[tree_it_key(kit)]->id, online_device);
+        sicm_arena_set_device(arenas[tree_it_key(kit)]->arena, online_device);
+      }
+    }
+
+    tree_free(sorted_arenas);
+    //printf("===== END RECONFIGURATION =====\n");
+  }
 }
 
 static void
