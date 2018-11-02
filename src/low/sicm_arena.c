@@ -1,3 +1,7 @@
+#ifndef _GNU_SOURCE
+#define _GNU_SOURCE /* for mmap flags */
+#endif
+
 #include <errno.h>
 #include <math.h>
 #include <numa.h>
