@@ -108,22 +108,28 @@ typedef struct site {
 } site;
 typedef site * siteptr;
 use_tree(unsigned, siteptr);
+typedef struct app_info {
+  size_t peak_rss;
+  tree(unsigned, siteptr) sites;
+} app_info;
 
 /* Reads in profiling information from the file pointer, returns
  * a tree containing all sites and their bandwidth, peak RSS,
  * and number of accesses (if applicable).
  */
-static inline tree(unsigned, siteptr) sh_parse_site_info(FILE *file) {
-  char *line, *tok, *endptr;
+static inline app_info *sh_parse_site_info(FILE *file) {
+  char *line, *tok;
   ssize_t len, read;
   long long num_sites, node;
   siteptr cur_site;
   int mbi, pebs, pebs_site, i;
   float bandwidth;
-  tree(unsigned, siteptr) sites;
   tree_it(unsigned, siteptr) it;
+  app_info *info;
 
-  sites = tree_make(unsigned, siteptr);
+  info = malloc(sizeof(app_info));
+  info->sites = tree_make(unsigned, siteptr);
+  info->peak_rss = 0;
 
   if(!file) {
     fprintf(stderr, "Invalid file pointer. Aborting.\n");
@@ -139,9 +145,10 @@ static inline tree(unsigned, siteptr) sh_parse_site_info(FILE *file) {
   len = 0;
   while(read = getline(&line, &len, file) != -1) {
 
-    /* Find the beginning or end of some results */
-    tok = strtok(line, " ");
+    tok = strtok(line, " \t");
     if(!tok) break;
+
+    /* Find the beginning or end of some results */
     if(strcmp(tok, "=====") == 0) {
       /* Get whether it's the end of results, or MBI, or PEBS */
       tok = strtok(NULL, " ");
@@ -165,9 +172,8 @@ static inline tree(unsigned, siteptr) sh_parse_site_info(FILE *file) {
         }
         tok = strtok(NULL, " ");
         if(!tok) break;
-        endptr = NULL;
-        mbi = strtoimax(tok, &endptr, 10);
-        it = tree_lookup(sites, mbi);
+        mbi = strtoimax(tok, NULL, 10);
+        it = tree_lookup(info->sites, mbi);
         if(tree_it_good(it)) {
           cur_site = tree_it_val(it);
         } else {
@@ -175,7 +181,7 @@ static inline tree(unsigned, siteptr) sh_parse_site_info(FILE *file) {
           cur_site->bandwidth = 0;
           cur_site->peak_rss = 0;
           cur_site->accesses = 0;
-          tree_insert(sites, mbi, cur_site);
+          tree_insert(info->sites, mbi, cur_site);
         }
       } else if(strcmp(tok, "PEBS") == 0) {
         pebs = 1;
@@ -203,8 +209,7 @@ static inline tree(unsigned, siteptr) sh_parse_site_info(FILE *file) {
         if(tok && strcmp(tok, "bandwidth:") == 0) {
           /* Get the average bandwidth value for this site */
           tok = strtok(NULL, " ");
-          endptr = NULL;
-          bandwidth = strtof(tok, &endptr);
+          bandwidth = strtof(tok, NULL);
           cur_site->bandwidth = bandwidth;
         } else {
           fprintf(stderr, "Got 'Average', but no expected tokens. Aborting.\n");
@@ -222,9 +227,8 @@ static inline tree(unsigned, siteptr) sh_parse_site_info(FILE *file) {
         tok = strtok(NULL, " ");
         if(tok) {
           /* Get the site number, then wait for the next line */
-          endptr = NULL;
-          pebs_site = strtoimax(tok, &endptr, 10);
-          it = tree_lookup(sites, pebs_site);
+          pebs_site = strtoimax(tok, NULL, 10);
+          it = tree_lookup(info->sites, pebs_site);
           if(tree_it_good(it)) {
             cur_site = tree_it_val(it);
           } else {
@@ -232,7 +236,7 @@ static inline tree(unsigned, siteptr) sh_parse_site_info(FILE *file) {
             cur_site->bandwidth = 0;
             cur_site->peak_rss = 0;
             cur_site->accesses = 0;
-            tree_insert(sites, pebs_site, cur_site);
+            tree_insert(info->sites, pebs_site, cur_site);
           }
         } else {
           fprintf(stderr, "Got 'Site' but no expected site number. Aborting.\n");
@@ -249,8 +253,7 @@ static inline tree(unsigned, siteptr) sh_parse_site_info(FILE *file) {
             fprintf(stderr, "Got 'Accesses:' but no value. Aborting.\n");
             exit(1);
           }
-          endptr = NULL;
-          cur_site->accesses = strtoimax(tok, &endptr, 10);
+          cur_site->accesses = strtoimax(tok, NULL, 10);
         } else if(tok && (strcmp(tok, "Peak") == 0)) {
           tok = strtok(NULL, " ");
           if(tok && (strcmp(tok, "RSS:") == 0)) {
@@ -259,8 +262,7 @@ static inline tree(unsigned, siteptr) sh_parse_site_info(FILE *file) {
               fprintf(stderr, "Got 'Peak RSS:' but no value. Aborting.\n");
               exit(1);
             }
-            endptr = NULL;
-            cur_site->peak_rss = strtoimax(tok, &endptr, 10);
+            cur_site->peak_rss = strtoimax(tok, NULL, 10);
           } else {
             fprintf(stderr, "Got 'Peak' but not 'RSS:'. Aborting.\n");
             exit(1);
@@ -270,25 +272,51 @@ static inline tree(unsigned, siteptr) sh_parse_site_info(FILE *file) {
           exit(1);
         }
       }
+    } else {
+      /* Parse the output of /usr/bin/time to get peak RSS */
+      if(strcmp(tok, "Maximum") == 0) {
+        tok = strtok(NULL, " ");
+        if(!tok || !(strcmp(tok, "resident") == 0)) {
+          continue;
+        }
+        tok = strtok(NULL, " ");
+        if(!tok || !(strcmp(tok, "set") == 0)) {
+          continue;
+        }
+        tok = strtok(NULL, " ");
+        if(!tok || !(strcmp(tok, "size") == 0)) {
+          continue;
+        }
+        tok = strtok(NULL, " ");
+        if(!tok || !(strcmp(tok, "(kbytes):") == 0)) {
+          continue;
+        }
+        tok = strtok(NULL, " ");
+        if(!tok) {
+          continue;
+        }
+        info->peak_rss = strtoimax(tok, NULL, 10) * 1024; /* it's in kilobytes */
+      }
     }
   }
   free(line);
 
-  printf("Tree length: %zu\n", tree_len(sites));
-
-  return sites;
+  return info;
 }
 
 /* Gets the peak RSS of the whole application by summing the peak_rss of each
  * site
  */
-static inline size_t sh_get_peak_rss(tree(unsigned, siteptr) sites) {
+static inline size_t sh_get_peak_rss(app_info *info) {
   tree_it(unsigned, siteptr) it;
   size_t total;
 
-  total = 0;
-  tree_traverse(sites, it) {
-    total += tree_it_val(it)->peak_rss;
+  total = info->peak_rss;
+
+  if(!total) {
+    tree_traverse(info->sites, it) {
+      total += tree_it_val(it)->peak_rss;
+    }
   }
 
   return total;

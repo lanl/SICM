@@ -20,6 +20,19 @@ union metric {
 
 use_tree(siteptr, unsigned);
 
+static inline int both_cmp(float a, float b) {
+  int retval;
+  /* Maximize bandwidth/byte */
+  if(a < b) {
+    retval = 1;
+  } else if(a > b) {
+    retval = -1;
+  } else {
+    retval = 1;
+  }
+  return retval;
+}
+
 /* A comparison function to compare two site structs.  Used to created the
  * sorted_sites tree. Uses bandwidth/byte as the metric for comparison, and
  * size of the site if those are exactly equal.
@@ -30,25 +43,10 @@ int bandwidth_cmp(siteptr a, siteptr b) {
 
   if(a == b) return 0;
 
-  a_bpb = a->bandwidth / a->peak_rss;
-  b_bpb = b->bandwidth / b->peak_rss;
+  a_bpb = ((float)a->bandwidth) / ((float)a->peak_rss);
+  b_bpb = ((float)b->bandwidth) / ((float)b->peak_rss);
 
-  /* Maximize bandwidth/byte */
-  if(a_bpb < b_bpb) {
-    retval = 1;
-  } else if(a_bpb > b_bpb) {
-    retval = -1;
-  } else {
-    /* If identical bandwidth/byte, get smaller of the two */
-    if(a->peak_rss < b->peak_rss) {
-      retval = 1;
-    } else if(a->peak_rss > b->peak_rss) {
-      retval = -1;
-    } else {
-      retval = -1;
-    }
-  }
-  return retval;
+  return both_cmp(a_bpb, b_bpb);
 }
 
 /* A comparison function to compare two site structs.  Used to created the
@@ -61,25 +59,10 @@ int accesses_cmp(siteptr a, siteptr b) {
 
   if(a == b) return 0;
 
-  a_bpb = a->accesses / a->peak_rss;
-  b_bpb = b->accesses / b->peak_rss;
+  a_bpb = ((float)a->accesses) / ((float)a->peak_rss);
+  b_bpb = ((float)b->accesses) / ((float)b->peak_rss);
 
-  /* Maximize bandwidth/byte */
-  if(a_bpb < b_bpb) {
-    retval = 1;
-  } else if(a_bpb > b_bpb) {
-    retval = -1;
-  } else {
-    /* If identical bandwidth/byte, get smaller of the two */
-    if(a->peak_rss < b->peak_rss) {
-      retval = 1;
-    } else if(a->peak_rss > b->peak_rss) {
-      retval = -1;
-    } else {
-      retval = -1;
-    }
-  }
-  return retval;
+  return both_cmp(a_bpb, b_bpb);
 }
 
 
@@ -201,12 +184,105 @@ tree(unsigned, siteptr) get_knapsack(tree(unsigned, siteptr) sites, size_t capac
   return knapsack;
 }
 
-/* Returns a filled hotset given a tree of sites */
-tree(unsigned, siteptr) get_hotset(tree(unsigned, siteptr) sites) {
+/* Input is a tree of sites and the capacity (in bytes) that you want to fill
+ * up to. Outputs a greedy hotset.
+ */
+tree(unsigned, siteptr) get_hotset(tree(unsigned, siteptr) sites, size_t capacity, char proftype) {
+  tree(siteptr, unsigned) sorted_sites;
+  tree(unsigned, siteptr) ret;
+  tree_it(unsigned, siteptr) it;
+  tree_it(siteptr, unsigned) sit;
+  char break_next_site;
+  size_t packed_size;
+
+  ret = tree_make(unsigned, siteptr);
+
+  /* Now sort the sites by accesses/byte or bandwidth/byte */
+  if(proftype == 0) {
+    /* bandwidth/byte */
+    sorted_sites = tree_make_c(siteptr, unsigned, &bandwidth_cmp);
+  } else {
+    /* accesses/byte */
+    sorted_sites = tree_make_c(siteptr, unsigned, &accesses_cmp);
+  }
+  tree_traverse(sites, it) {
+    /* Only insert if the site has a peak_rss and either a bandwidth or an accesses value */
+    if((tree_it_val(it)->peak_rss) &&
+       (tree_it_val(it)->bandwidth || tree_it_val(it)->accesses)) {
+      tree_insert(sorted_sites, tree_it_val(it), tree_it_key(it));
+    } else {
+      fprintf(stderr, "WARNING: Site %d doesn't have sufficient information to insert.\n", tree_it_key(it));
+    }
+  }
+
+  /* Now iterate over the sorted sites and add them until we overflow */
+	break_next_site = 0;
+  packed_size = 0;
+  tree_traverse(sorted_sites, sit) {
+		packed_size += tree_it_key(sit)->peak_rss;
+		tree_insert(ret, tree_it_val(sit), tree_it_key(sit));
+		if(break_next_site) {
+			break;
+		}
+		if(packed_size > capacity) {
+      /* Break on next iteration of the loop,
+       * so we overflow by one site */
+			break_next_site = 1;
+		}
+	}
+
+	return ret;
 }
 
 /* Returns a filled Thermos hotset given a tree of sites */
-tree(unsigned, siteptr) get_thermos(tree(unsigned, siteptr) sites) {
+tree(unsigned, siteptr) get_thermos(tree(unsigned, siteptr) sites, size_t capacity, char proftype) {
+  tree(siteptr, unsigned) sorted_sites;
+  tree(unsigned, siteptr) ret;
+  tree_it(unsigned, siteptr) it;
+  tree_it(siteptr, unsigned) sit;
+  char break_next_site;
+  size_t packed_size;
+
+  /* Now sort the sites by accesses/byte or bandwidth/byte */
+  if(proftype == 0) {
+    /* bandwidth/byte */
+    sorted_sites = tree_make_c(siteptr, unsigned, &bandwidth_cmp);
+  } else {
+    /* accesses/byte */
+    sorted_sites = tree_make_c(siteptr, unsigned, &accesses_cmp);
+  }
+  tree_traverse(sites, it) {
+    /* Only insert if the site has a peak_rss and either a bandwidth or an accesses value */
+    if((tree_it_val(it)->peak_rss) &&
+       (tree_it_val(it)->bandwidth || tree_it_val(it)->accesses)) {
+      tree_insert(sorted_sites, tree_it_val(it), tree_it_key(it));
+    } else {
+      fprintf(stderr, "WARNING: Site %d doesn't have sufficient information to insert.\n", tree_it_key(it));
+    }
+  }
+
+  /* Now iterate over the sorted sites and add them until we overflow */
+	break_next_site = 0;
+  packed_size = 0;
+	sit = tree_last(sorted_sites);
+	while(tree_it_good(sit)) {
+    /* Decide whether or not to put this last site in the hotset */
+		if(break_next_site) {
+      tree_traverse(ret, it) {
+        
+      }
+		}
+		packed_size += tree_it_key(sit)->peak_rss;
+		tree_insert(ret, tree_it_val(sit), tree_it_key(sit));
+		if(packed_size > capacity) {
+      /* Break on next iteration of the loop,
+       * so we overflow by one site */
+			break_next_site = 1;
+		}
+		tree_it_prev(sit);
+	}
+
+	return ret;
 }
 
 /* Reads in profiling information from stdin, then runs the packing algorithm
@@ -220,6 +296,7 @@ int main(int argc, char **argv) {
   float cap_float;
   tree(unsigned, siteptr) sites, chosen_sites;
   tree_it(unsigned, siteptr) it;
+  app_info *info;
 
   /* Read in the arguments */
   if(argc != 6) {
@@ -268,40 +345,20 @@ int main(int argc, char **argv) {
     exit(1);
   }
 
-  sites = sh_parse_site_info(stdin);
-
-#if 0
-  /* Now sort the sites by accesses/byte or bandwidth/byte */
-  if(proftype == 0) {
-    /* bandwidth/byte */
-    sorted_sites = tree_make_c(siteptr, unsigned, &bandwidth_cmp);
-  } else {
-    /* accesses/byte */
-    sorted_sites = tree_make_c(siteptr, unsigned, &accesses_cmp);
-  }
-  tree_traverse(sites, it) {
-    /* Only insert if the site has a peak_rss and either a bandwidth or an accesses value */
-    if((tree_it_val(it)->peak_rss) &&
-       (tree_it_val(it)->bandwidth || tree_it_val(it)->accesses)) {
-      tree_insert(sorted_sites, tree_it_val(it), tree_it_key(it));
-    } else {
-      fprintf(stderr, "WARNING: Site %d doesn't have sufficient information to insert.\n", tree_it_key(it));
-    }
-  }
-#endif
+  info = sh_parse_site_info(stdin);
 
   if(captype == 0) {
     /* Figure out cap_bytes from the ratio */
-    cap_bytes = sh_get_peak_rss(sites) * cap_float;
+    cap_bytes = sh_get_peak_rss(info) * cap_float;
   }
 
   /* Now run the packing algorithm */
   if(algo == 0) {
-    chosen_sites = get_knapsack(sites, cap_bytes, proftype);
+    chosen_sites = get_knapsack(info->sites, cap_bytes, proftype);
   } else if(algo == 1) {
-    chosen_sites = get_hotset(sites);
+    chosen_sites = get_hotset(info->sites, cap_bytes, proftype);
   } else if(algo == 2) {
-    chosen_sites = get_thermos(sites);
+    chosen_sites = get_thermos(info->sites, cap_bytes, proftype);
   }
 
   printf("===== GUIDANCE =====\n");
@@ -318,7 +375,13 @@ int main(int argc, char **argv) {
     }
   }
   printf("===== END GUIDANCE =====\n");
-  printf("Strategy: Knapsack\n");
+  if(algo == 0) {
+    printf("Strategy: Knapsack\n");
+  } else if(algo == 1) {
+    printf("Strategy: Hotset\n");
+  } else if(algo == 2) {
+    printf("Strategy: Thermos\n");
+  }
   printf("Used capacity: %zu bytes\n", total_weight);
   if(proftype == 0) {
     printf("Total value: %f\n", total_value.band);
@@ -329,12 +392,13 @@ int main(int argc, char **argv) {
   if(captype == 0) {
     printf("Capacity Ratio: %f\n", cap_float);
   }
-  printf("Peak RSS: %zu bytes\n", sh_get_peak_rss(sites));
+  printf("Peak RSS: %zu bytes\n", sh_get_peak_rss(info));
 
   /* Clean up */
-  tree_traverse(sites, it) {
+  tree_traverse(info->sites, it) {
     free(tree_it_val(it));
   }
-	tree_free(sites);
+	tree_free(info->sites);
+  free(info);
   tree_free(chosen_sites);
 }

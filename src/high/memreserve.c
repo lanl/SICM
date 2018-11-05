@@ -32,10 +32,10 @@ int main(int argc, char **argv)
   char *data, *ptr, ***ranges, captype;
   float ratio;
   unsigned long long constant;
-  tree(unsigned, siteptr) sites;
   size_t peak_rss;
   struct bitmask *nodemask;
   long long freemem;
+  app_info *info;
   
   if(argc != 5) {
     fprintf(stderr, "USAGE: ./memreserve [node] [num_threads] ['ratio','constant'] [value]\n");
@@ -71,8 +71,8 @@ int main(int argc, char **argv)
      * to get the total peak RSS of the application.
      */
     printf("Reading from 'stdin', which should contain the profiling information.\n");
-    sites = sh_parse_site_info(stdin);
-    peak_rss = sh_get_peak_rss(sites);
+    info = sh_parse_site_info(stdin);
+    peak_rss = sh_get_peak_rss(info);
     for(i = 0; i <= numa_max_node(); i++) {
        if(numa_bitmask_isbitset(nodemask, i)) {
          break;
@@ -82,6 +82,7 @@ int main(int argc, char **argv)
     numa_node_size64(i, &freemem);
     /* We want to allocate all pages *except* the ones that the application requires */
     num_pages = (freemem - (peak_rss * ratio)) / pagesize;
+    printf("There is %lld free memory on the MCDRAM.\n", freemem);
   }
 
   printf("Allocating %llu pages.\n", num_pages);

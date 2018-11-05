@@ -295,7 +295,6 @@ static inline void get_accesses() {
   prof.metadata->data_tail = head;
 
   if(should_profile_online) {
-    //printf("===== RECONFIGURING =====\n");
     /* Sort all sites by accesses/byte */
     sorted_arenas = tree_make(double, size_t);
     new_knapsack = tree_make(size_t, deviceptr);
@@ -313,12 +312,6 @@ static inline void get_accesses() {
       }
       tree_insert(sorted_arenas, acc_per_byte, i);
     }
-    //printf("sorted_sites:\n");
-    it = tree_last(sorted_arenas);
-    while(tree_it_good(it)) {
-      //printf("(%f, %zu)\n", tree_it_key(it), tree_it_val(it));
-      tree_it_prev(it);
-    }
 
     /* Use a greedy algorithm to pack sites into the knapsack */
     break_next_site = 0;
@@ -326,7 +319,6 @@ static inline void get_accesses() {
     while(tree_it_good(it)) {
       packed_size += arenas[tree_it_val(it)]->peak_rss;
       tree_insert(new_knapsack, tree_it_val(it), online_device);
-      //printf("(%u, %f)\n", arenas[tree_it_val(it)]->id, tree_it_key(it));
       if(break_next_site) {
         break;
       }
@@ -342,7 +334,6 @@ static inline void get_accesses() {
       kit = tree_lookup(new_knapsack, i);
       if(!tree_it_good(kit)) {
         /* The site isn't in the new, so remove it from the upper tier */
-        //printf("Removing site %u\n", tree_it_key(sit));
         tree_delete(site_nodes, tree_it_key(sit));
         sicm_arena_set_device(arenas[i]->arena, default_device);
       }
@@ -354,14 +345,12 @@ static inline void get_accesses() {
       sit = tree_lookup(site_nodes, arenas[tree_it_key(kit)]->id);
       if(!tree_it_good(sit)) {
         /* This site is in the new but not the old */
-        //printf("Adding site %u\n", arenas[tree_it_key(kit)]->id);
         tree_insert(site_nodes, arenas[tree_it_key(kit)]->id, online_device);
         sicm_arena_set_device(arenas[tree_it_key(kit)]->arena, online_device);
       }
     }
 
     tree_free(sorted_arenas);
-    //printf("===== END RECONFIGURATION =====\n");
   }
 }
 
