@@ -1,12 +1,13 @@
 #!/usr/bin/env bash
 # This is a helper script that builds and installs SICM's deps,
-# jemalloc and LLVM.
+# jemalloc, libpfm4, LLVM, and MPI.
 
 set -e
 
 JEMALLOC=false
 LLVM=false
 MPI=false
+LIBPFM4=false
 DIR=`readlink -f ./build_deps`
 INSTALLDIR=`readlink -f ./deps`
 
@@ -16,6 +17,7 @@ function usage() {
     echo "        --llvm         Download and build LLVM"
     echo "        --jemalloc     Download and build jemalloc"
     echo "        --mpi          Download build MPI"
+    echo "        --libpfm4      Download build libpfm4"
     echo "        --build_dir    Directory to download and build dependencies (default: ${DIR})"
     echo "        --install_dir  Directory to install dependencies into       (default: ${INSTALLDIR})"
 }
@@ -40,6 +42,9 @@ case $key in
         ;;
     --mpi)
         MPI=true
+        ;;
+    --libpfm4)
+        LIBPFM4=true
         ;;
     --build_dir)
         shift
@@ -137,4 +142,19 @@ if [[ ( "${MPI}" = true ) && ! -d "${INSTALLDIR}/openmpi-3.1.1" ]]; then
   ../configure --prefix=${INSTALLDIR}/openmpi-3.1.1 --without-verbs --without-fca --without-mxm --without-ucx --without-portals4 --without-psm --without-psm2 --without-libfabric --without-usnic --without-udreg --without-ugni --without-xpmem --without-alps --without-sge --without-tm --without-lsf --without-slurm --without-pvfs2 --without-plfs --without-cuda --disable-oshmem --enable-mpi-fortran --disable-oshmem-fortran --disable-libompitrace --disable-io-romio --disable-static &> /dev/null
   make -j $(nproc --all) &> /dev/null
   make -j $(nproc --all) install &> /dev/null
+fi
+
+# if LIBPFM4
+if [[ ( "${LIBPFM4}" = true ) ]]; then
+  if [[ ! -d libpfm-4.10.1 ]]; then
+    if [[ ! -f libpfm-4.10.1.tar.gz ]]; then
+      wget https://sourceforge.net/projects/perfmon2/files/libpfm4/libpfm-4.10.1.tar.gz/download
+      mv download libpfm-4.10.1.tar.gz
+    fi
+    tar xf libpfm-4.10.1.tar.gz
+  fi
+
+  cd libpfm-4.10.1
+  make -j $(nproc --all) &> /dev/null
+  make PREFIX=${INSTALLDIR} -j $(nproc --all) install &> /dev/null
 fi
