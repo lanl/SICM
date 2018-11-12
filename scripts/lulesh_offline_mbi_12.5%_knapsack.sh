@@ -26,6 +26,6 @@ for iter in {1..5}; do
   ./lulesh2.0 -s 220 -i 20 -r 11 -b 0 -c 64 -p &>> results/offline_mbi_12.5%_knapsack.txt
 
   # Clean up
-  sudo pkill memreserve
+  pkill memreserve
   sleep 5
 done

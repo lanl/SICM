@@ -10,14 +10,14 @@ export SH_DEFAULT_NODE="1"
 export OMP_NUM_THREADS=255
 rm results/firsttouch_12.5%.txt
 for iter in {1..5}; do
+  echo 3 | sudo tee /proc/sys/vm/drop_caches
   # Reserve all but 12.5%
   cat results/pebs_128.txt | $DIR/bin/memreserve 1 256 ratio .125 &
   sleep 5
-  echo 3 | sudo tee /proc/sys/vm/drop_caches
 
   ./lulesh2.0 -s 220 -i 20 -r 11 -b 0 -c 64 -p &>> results/firsttouch_12.5%.txt
 
   # Clean up
-  sudo pkill memreserve
+  pkill memreserve
   sleep 5
 done

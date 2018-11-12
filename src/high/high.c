@@ -131,8 +131,10 @@ tree(deviceptr, int) device_arenas; /* For per-device arena layouts only */
 /* For profiling */
 int should_profile_online;
 int should_profile_all; /* For sampling */
+float profile_all_rate;
 int should_profile_one; /* For bandwidth profiling */
 int should_profile_rss;
+float profile_rss_rate;
 struct sicm_device *profile_one_device;
 struct sicm_device *online_device;
 ssize_t online_device_cap, online_device_packed_size;
@@ -146,6 +148,7 @@ char **imcs; /* Array of strings of IMCs for the bandwidth profiling */
 /* Keep track of all extents */
 extent_arr *extents;
 extent_arr *rss_extents; /* The extents that we want to get the RSS of */
+pthread_rwlock_t extents_lock = PTHREAD_RWLOCK_INITIALIZER;
 
 /* Keeps track of arenas */
 arena_info **arenas;
@@ -258,7 +261,7 @@ void set_options() {
     tmp_val = strtoimax(env, NULL, 10);
     online_device = get_device_from_numa_node((int) tmp_val);
     online_device_cap = sicm_avail(online_device) * 1024; /* sicm_avail() returns kilobytes */
-    printf("Doing online profiling, packing onto NUMA node %lld with a capacity of %zu.\n", tmp_val, online_device_cap);
+    printf("Doing online profiling, packing onto NUMA node %lld with a capacity of %zd.\n", tmp_val, online_device_cap);
   }
 
   /* Get the arena layout */
@@ -311,6 +314,13 @@ void set_options() {
   }
   if(should_profile_online) {
     should_profile_all = 1;
+  }
+  profile_all_rate = 1.0;
+  if(should_profile_all) {
+    env = getenv("SH_PROFILE_ALL_RATE");
+    if(env) {
+      profile_all_rate = strtof(env, NULL);
+    }
   }
 
   /* Should we profile (by isolating) a single allocation site onto a NUMA node
@@ -396,6 +406,13 @@ void set_options() {
   }
   if(should_profile_online) {
     should_profile_rss = 1;
+  }
+  profile_rss_rate = 1.0;
+  if(should_profile_rss) {
+    env = getenv("SH_PROFILE_RSS_RATE");
+    if(env) {
+      profile_rss_rate = strtof(env, NULL);
+    }
   }
 
 
@@ -606,7 +623,16 @@ void sh_create_extent(void *start, void *end) {
     /* If we're profiling RSS and this is the site that we're isolating */
     extent_arr_insert(rss_extents, start, end, arenas[arena_index]);
   }
+
+  if(pthread_rwlock_wrlock(&extents_lock) != 0) {
+    fprintf(stderr, "Failed to acquire read/write lock. Aborting.\n");
+    exit(1);
+  }
   extent_arr_insert(extents, start, end, arenas[arena_index]);
+  if(pthread_rwlock_unlock(&extents_lock) != 0) {
+    fprintf(stderr, "Failed to unlock read/write lock. Aborting.\n");
+    exit(1);
+  }
 }
 
 /* Gets the device that this site should go onto from the site_nodes tree */
@@ -791,6 +817,7 @@ __attribute__((constructor))
 void sh_init() {
   int i;
 
+  //pthread_rwlock_init(&extents_lock, NULL);
   device_list = sicm_init();
   site_nodes = tree_make(unsigned, deviceptr);
   device_arenas = tree_make(deviceptr, int);
@@ -821,10 +848,9 @@ void sh_init() {
      */
     extents = extent_arr_init();
     if(should_profile_rss) {
+      rss_extents = extents;
       if(should_profile_one) {
         rss_extents = extent_arr_init();
-      } else if(should_profile_all) {
-        rss_extents = extents;
       }
     }
 
@@ -845,9 +871,7 @@ void sh_init() {
     /* Set the arena allocator's callback function */
     sicm_extent_alloc_callback = &sh_create_extent;
 
-    if(should_profile_all || should_profile_one || should_profile_rss) {
-      sh_start_profile_thread();
-    }
+    sh_start_profile_thread();
   }
   
   /* !!!rdspy */

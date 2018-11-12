@@ -82,7 +82,6 @@ int main(int argc, char **argv)
     numa_node_size64(i, &freemem);
     /* We want to allocate all pages *except* the ones that the application requires */
     num_pages = (freemem - (peak_rss * ratio)) / pagesize;
-    printf("There is %lld free memory on the MCDRAM.\n", freemem);
   }
 
   printf("Allocating %llu pages.\n", num_pages);
@@ -130,6 +129,13 @@ int main(int argc, char **argv)
   free(threads);
 
   printf("Finished reserving.\n"); fflush(stdout);
+  for(i = 0; i <= numa_max_node(); i++) {
+     if(numa_bitmask_isbitset(nodemask, i)) {
+       break;
+     }
+  }
+  numa_node_size64(i, &freemem);
+  printf("There is now %lld free memory on the MCDRAM.\n", freemem);
   
   pause();
 }

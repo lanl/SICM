@@ -72,9 +72,11 @@ use_tree(deviceptr, int);
  */
 extern extent_arr *extents;
 extern extent_arr *rss_extents;
+extern pthread_rwlock_t extents_lock;
 extern arena_info **arenas;
 extern tree(unsigned, deviceptr) site_nodes;
 extern int should_profile_all, should_profile_one, should_profile_rss, should_profile_online;
+extern float profile_all_rate, profile_rss_rate;
 extern char *profile_one_event, *profile_all_event;
 extern sicm_device *online_device;
 extern sicm_device *default_device;

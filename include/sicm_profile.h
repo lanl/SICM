@@ -35,8 +35,11 @@ union pfn_t {
 };
 
 typedef struct profile_thread {
-  pthread_t id;
+
   pthread_mutex_t mtx;
+  pthread_t profile_rss_id;
+  pthread_t profile_all_id;
+  pthread_t profile_one_id;
 
   /* For perf */
   size_t size, total;
@@ -45,6 +48,7 @@ typedef struct profile_thread {
   int *fds;
   uint64_t consumed;
   struct pollfd pfd;
+  char oops;
 
   /* For libpfm */
   pfm_perf_encode_arg_t *pfm;
@@ -55,12 +59,12 @@ typedef struct profile_thread {
   size_t pagesize, addrsize;
 
   /* For measuring bandwidth */
-  timer_t timerid;
-  struct sigevent sev;
   size_t num_intervals;
   float running_avg;
 } profile_thread;
 
 void sh_start_profile_thread();
 void sh_stop_profile_thread();
-void *sh_profile_thread(void *);
+void *profile_all(void *);
+void *profile_one(void *);
+void *profile_rss(void *);

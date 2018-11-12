@@ -51,15 +51,15 @@ sicm_arena sicm_arena_create(size_t sz, sicm_device *dev) {
         return NULL;
     }
 
-    pthread_mutexattr_init(&sa->attr);
+  pthread_mutexattr_init(&sa->attr);
 	pthread_mutex_init(sa->mutex, NULL);
 	sa->dev = dev;
 	sa->size = 0;
 	sa->maxsize = sz;
 	sa->pagesize = sicm_device_page_size(dev);
 	sa->numaid = sicm_numa_id(dev);
-    sa->fd = -1;
-    sa->user = 0;
+  sa->fd = -1;
+  sa->user = 0;
 
 	if (sa->numaid < 0) {
         pthread_mutex_destroy(sa->mutex);
@@ -68,9 +68,9 @@ sicm_arena sicm_arena_create(size_t sz, sicm_device *dev) {
 		return NULL;
 	}
 
-    sa->extents = extent_arr_init();
+  sa->extents = extent_arr_init();
 	sa->hooks = sa_hooks;
-    new_hooks = &sa->hooks;
+  new_hooks = &sa->hooks;
 	arena_ind_sz = sizeof(unsigned); // sa->arena_ind);
 	arena_ind = -1;
 	err = je_mallctl("arenas.create", (void *) &arena_ind, &arena_ind_sz, (void *)&new_hooks, sizeof(extent_hooks_t *));
@@ -259,6 +259,8 @@ int sicm_arena_set_device(sicm_arena a, sicm_device *dev) {
     sicm_arena_range_move(sa, sa->extents->arr[i].start, sa->extents->arr[i].end);
   }
 	if (sa->err) {
+    printf("ERROR!\n");
+    fflush(stdout);
 		// at least one extent wasn't moved, try to roll back them all
 		err = sa->err;
 		sa->numaid = oldnumaid;
