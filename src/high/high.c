@@ -47,9 +47,10 @@ void SiteReadsAgg_init(SiteReadsAgg * sra) {
 
 void SiteReadsAgg_finish(SiteReadsAgg * sra) {
     FILE * f = fopen("read_times.csv", "w");
+    int b;
 
     fprintf(f, "site");
-    for (int b = 0; b < READ_TIMES_MAX - READ_TIMES_BUCKET_SIZE; b += READ_TIMES_BUCKET_SIZE) {
+    for (b = 0; b < READ_TIMES_MAX - READ_TIMES_BUCKET_SIZE; b += READ_TIMES_BUCKET_SIZE) {
         int next_b = b + READ_TIMES_BUCKET_SIZE;
         fprintf(f, ", %d - %d", b, next_b);
     }
@@ -60,7 +61,7 @@ void SiteReadsAgg_finish(SiteReadsAgg * sra) {
         int sid = tree_it_key(it);
 
         fprintf(f, "%d", sid);
-        for (int b = 0; b < READ_TIMES_NBUCKETS; b += 1) {
+        for (b = 0; b < READ_TIMES_NBUCKETS; b += 1) {
             fprintf(f, ", %llu", sra->histograms[sid][b]);
         }
         fprintf(f, "\n");
@@ -75,10 +76,11 @@ void SiteReadsAgg_finish(SiteReadsAgg * sra) {
 }
 
 void SiteReadsAgg_give_histogram(SiteReadsAgg * sra, ThreadReadsInfo * tri) {
+    int b;
     tree_it(unsigned, empty_tree_val) it;
     tree_traverse(sra->used_sites, it) {
         unsigned site = tree_it_key(it);
-        for (int b = 0; b < READ_TIMES_NBUCKETS; b += 1)
+        for (b = 0; b < READ_TIMES_NBUCKETS; b += 1)
             sra->histograms[site][b] += tri->histograms[site][b];
     }
 }
@@ -89,7 +91,8 @@ void ThreadReadsInfo_init(ThreadReadsInfo * tri) {
 }
 
 void ThreadReadsInfo_finish(ThreadReadsInfo * tri) {
-    for (int i = 0; i < MAX_TRIS; i += 1) {
+    int i;
+    for (i = 0; i < MAX_TRIS; i += 1) {
         if (tris[i] == tri) {
             pthread_mutex_lock(&tri_lock);
             SiteReadsAgg_give_histogram(&agg_hist, tri);
@@ -740,7 +743,7 @@ void* sh_realloc(int id, void *ptr, size_t sz) {
 
 /* Accepts an allocation site ID and a size, does the allocation */
 void* sh_alloc(int id, size_t sz) {
-  int index;
+  int index, i;
   void *ret;
 
   if((layout == INVALID_LAYOUT) || !sz) {
@@ -766,7 +769,7 @@ void* sh_alloc(int id, size_t sz) {
           agg_hist.chunks_end = ret + sz;
       pthread_mutex_unlock(&sra_lock);
 
-      for (int i = 0; i < n_tris; i += 1) {
+      for (i = 0; i < n_tris; i += 1) {
           ThreadReadsInfo * tri = tris[i];
           if (id + 1 > tri->n_histograms) {
               tri->histograms = recalloc(tri->histograms, sizeof(hist_t) * (id + 1), sizeof(hist_t) * tri->n_histograms);
@@ -913,7 +916,7 @@ void sh_terminate() {
 
   /* !!!rdspy */
   if (should_run_rdspy) {
-      for (int i = 0; i < MAX_TRIS; i += 1) {
+      for (i = 0; i < MAX_TRIS; i += 1) {
           if (tris[i]) {
               ThreadReadsInfo_finish(tris[i]);
           }
