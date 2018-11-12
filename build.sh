@@ -6,6 +6,6 @@ DIR=`readlink -f ./deps`
 make uninstall || true
 make distclean || true
 ./autogen.sh
-./configure --prefix=$DIR --with-jemalloc=$DIR/jemalloc --with-libpfm=$DIR --with-llvm=$($DIR/bin/llvm-config --prefix)
+./configure --prefix=$DIR --with-jemalloc=$DIR/jemalloc --with-libpfm=$DIR --with-llvm=$DIR
 make -j5
 make install
