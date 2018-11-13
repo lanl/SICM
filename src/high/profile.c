@@ -263,7 +263,7 @@ get_accesses() {
   size_t i, packed_size, total_value;
   struct sample *sample;
   struct perf_event_header *header;
-  size_t acc_per_byte;
+  double acc_per_byte;
   tree(double, size_t) sorted_arenas;
   tree(size_t, deviceptr) new_knapsack;
   tree_it(double, size_t) it;
