@@ -128,7 +128,6 @@ else
 	LLVM_INC="-I$LLVM_INSTALL_DIR/include -I$LLVM_INSTALL_DIR/include/llvm"
 	LLVM_LIB="-L$LLVM_INSTALL_DIR/lib"
 fi
-AC_MSG_NOTICE("HERE===================$LLVM_INSTALL_DIR")
 
 CPPFLAGS_save="$CPPFLAGS"
 LIBS_save="$LIBS"
