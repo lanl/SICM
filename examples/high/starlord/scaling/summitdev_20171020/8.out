@@ -1,0 +1,1647 @@
+MPI initialized with 8 MPI processes
+CUDA initialized using 8 GPUs out of 8 available
+
+Starting run at 11:26:10 UTC on 2017-10-20.
+Successfully read inputs file ... 
+
+Castro git describe: 17.07-39-ga07bb0f
+AMReX git describe: 17.10-602-g48118035f
+
+reading extern runtime parameters ...
+FORTRAN:Warning:: small_dens has not been set, defaulting to 1.e-200_rt.!
+FORTRAN:Warning:: small_temp has not been set, defaulting to 1.e-200_rt.!
+ 
+ Initializing Helmholtz EOS and using Coulomb corrections.
+ 
+ BOXLIB WARN: 
+ EOS: small_temp cannot be less than the mintemp allowed by the EOS. Resetting small_temp to mintemp.
+ BOXLIB WARN: 
+ EOS: small_dens cannot be less than the mindens allowed by the EOS. Resetting small_dens to mindens.
+Successfully read inputs file ... 
+Starting to call amrex_probinit ... 
+Successfully run amrex_probinit
+Initializing the data at level 0
+Done initializing the level 0 data 
+Castro::estTimeStep (hydro-limited) at level 0:  estdt = 2.80669617e-06
+
+TIME= 0 MASS        = 1e+31
+TIME= 0 XMOM        = 0
+TIME= 0 YMOM        = 0
+TIME= 0 ZMOM        = 0
+TIME= 0 RHO*e       = 1.000257315e+52
+TIME= 0 RHO*E       = 1.000257315e+52
+INITIAL GRIDS 
+  Level 0   8 grids  16777216 cells  100 % of domain
+            smallest grid: 128 x 128 x 128  biggest grid: 128 x 128 x 128
+
+Castro::estTimeStep (hydro-limited) at level 0:  estdt = 2.80669617e-06
+[Level 0 step 1] ADVANCE with dt = 2.80669617e-06
+[Level 0 step 1] Advanced 16777216 cells
+
+TIME= 2.80669617e-06 MASS        = 1e+31
+TIME= 2.80669617e-06 XMOM        = -1.888946593e+22
+TIME= 2.80669617e-06 YMOM        = -1.888946593e+22
+TIME= 2.80669617e-06 ZMOM        = 9.444732966e+21
+TIME= 2.80669617e-06 RHO*e       = 1.000080679e+52
+TIME= 2.80669617e-06 RHO*E       = 1.000257315e+52
+
+[STEP 1] Coarse TimeStep time: 1.415234039
+[STEP 1] FAB kilobyte spread across MPI nodes: [7526128 ... 7526128]
+
+STEP = 1 TIME = 2.80669617e-06 DT = 2.80669617e-06
+
+Castro::estTimeStep (hydro-limited) at level 0:  estdt = 2.731834266e-06
+[Level 0 step 2] ADVANCE with dt = 2.731834266e-06
+[Level 0 step 2] Advanced 16777216 cells
+
+TIME= 5.538530435e-06 MASS        = 1e+31
+TIME= 5.538530435e-06 XMOM        = -1.888946593e+22
+TIME= 5.538530435e-06 YMOM        = -4.722366483e+22
+TIME= 5.538530435e-06 ZMOM        = -5.666839779e+22
+TIME= 5.538530435e-06 RHO*e       = 9.996705812e+51
+TIME= 5.538530435e-06 RHO*E       = 1.000257315e+52
+
+[STEP 2] Coarse TimeStep time: 0.886980896
+[STEP 2] FAB kilobyte spread across MPI nodes: [7526128 ... 7526128]
+
+STEP = 2 TIME = 5.538530435e-06 DT = 2.731834266e-06
+
+Castro::estTimeStep (hydro-limited) at level 0:  estdt = 2.660469983e-06
+[Level 0 step 3] ADVANCE with dt = 2.660469983e-06
+[Level 0 step 3] Advanced 16777216 cells
+
+TIME= 8.199000419e-06 MASS        = 1e+31
+TIME= 8.199000419e-06 XMOM        = 1.086144291e+23
+TIME= 8.199000419e-06 YMOM        = 3.777893186e+22
+TIME= 8.199000419e-06 ZMOM        = 4.344577164e+23
+TIME= 8.199000419e-06 RHO*e       = 9.991323378e+51
+TIME= 8.199000419e-06 RHO*E       = 1.000257315e+52
+
+[STEP 3] Coarse TimeStep time: 0.921706861
+[STEP 3] FAB kilobyte spread across MPI nodes: [7526128 ... 7526128]
+
+STEP = 3 TIME = 8.199000419e-06 DT = 2.660469983e-06
+
+Castro::estTimeStep (hydro-limited) at level 0:  estdt = 2.612530598e-06
+[Level 0 step 4] ADVANCE with dt = 2.612530598e-06
+[Level 0 step 4] Advanced 16777216 cells
+
+TIME= 1.081153102e-05 MASS        = 1e+31
+TIME= 1.081153102e-05 XMOM        = -9.444732966e+21
+TIME= 1.081153102e-05 YMOM        = 0
+TIME= 1.081153102e-05 ZMOM        = -3.777893186e+22
+TIME= 1.081153102e-05 RHO*e       = 9.985422665e+51
+TIME= 1.081153102e-05 RHO*E       = 1.000257315e+52
+
+[STEP 4] Coarse TimeStep time: 0.944540713
+[STEP 4] FAB kilobyte spread across MPI nodes: [7526128 ... 7526128]
+
+STEP = 4 TIME = 1.081153102e-05 DT = 2.612530598e-06
+
+Castro::estTimeStep (hydro-limited) at level 0:  estdt = 2.582908883e-06
+[Level 0 step 5] ADVANCE with dt = 2.582908883e-06
+[Level 0 step 5] Advanced 16777216 cells
+
+TIME= 1.33944399e-05 MASS        = 1e+31
+TIME= 1.33944399e-05 XMOM        = 2.64452523e+23
+TIME= 1.33944399e-05 YMOM        = -1.888946593e+22
+TIME= 1.33944399e-05 ZMOM        = 1.322262615e+24
+TIME= 1.33944399e-05 RHO*e       = 9.979264222e+51
+TIME= 1.33944399e-05 RHO*E       = 1.000257315e+52
+
+[STEP 5] Coarse TimeStep time: 0.945387614
+[STEP 5] FAB kilobyte spread across MPI nodes: [7526128 ... 7526128]
+
+STEP = 5 TIME = 1.33944399e-05 DT = 2.582908883e-06
+
+Castro::estTimeStep (hydro-limited) at level 0:  estdt = 2.569355142e-06
+[Level 0 step 6] ADVANCE with dt = 2.569355142e-06
+[Level 0 step 6] Advanced 16777216 cells
+
+TIME= 1.596379504e-05 MASS        = 1e+31
+TIME= 1.596379504e-05 XMOM        = -3.777893186e+22
+TIME= 1.596379504e-05 YMOM        = 1.700051934e+23
+TIME= 1.596379504e-05 ZMOM        = 6.800207735e+23
+TIME= 1.596379504e-05 RHO*e       = 9.972875266e+51
+TIME= 1.596379504e-05 RHO*E       = 1.000257315e+52
+
+[STEP 6] Coarse TimeStep time: 0.928164891
+[STEP 6] FAB kilobyte spread across MPI nodes: [7526128 ... 7526128]
+
+STEP = 6 TIME = 1.596379504e-05 DT = 2.569355142e-06
+
+Castro::estTimeStep (hydro-limited) at level 0:  estdt = 2.560853347e-06
+[Level 0 step 7] ADVANCE with dt = 2.560853347e-06
+[Level 0 step 7] Advanced 16777216 cells
+
+TIME= 1.852464839e-05 MASS        = 1e+31
+TIME= 1.852464839e-05 XMOM        = 1.322262615e+23
+TIME= 1.852464839e-05 YMOM        = -8.31136501e+23
+TIME= 1.852464839e-05 ZMOM        = 6.044629098e+23
+TIME= 1.852464839e-05 RHO*e       = 9.96620089e+51
+TIME= 1.852464839e-05 RHO*E       = 1.000257315e+52
+
+[STEP 7] Coarse TimeStep time: 0.902517202
+[STEP 7] FAB kilobyte spread across MPI nodes: [7526128 ... 7526128]
+
+STEP = 7 TIME = 1.852464839e-05 DT = 2.560853347e-06
+
+Castro::estTimeStep (hydro-limited) at level 0:  estdt = 2.548269566e-06
+[Level 0 step 8] ADVANCE with dt = 2.548269566e-06
+[Level 0 step 8] Advanced 16777216 cells
+
+TIME= 2.107291795e-05 MASS        = 1e+31
+TIME= 2.107291795e-05 XMOM        = 4.911261142e+23
+TIME= 2.107291795e-05 YMOM        = -3.777893186e+23
+TIME= 2.107291795e-05 ZMOM        = 4.533471824e+23
+TIME= 2.107291795e-05 RHO*e       = 9.959237357e+51
+TIME= 2.107291795e-05 RHO*E       = 1.000257315e+52
+
+[STEP 8] Coarse TimeStep time: 0.923366053
+[STEP 8] FAB kilobyte spread across MPI nodes: [7526128 ... 7526128]
+
+STEP = 8 TIME = 2.107291795e-05 DT = 2.548269566e-06
+
+Castro::estTimeStep (hydro-limited) at level 0:  estdt = 2.53890054e-06
+[Level 0 step 9] ADVANCE with dt = 2.53890054e-06
+[Level 0 step 9] Advanced 16777216 cells
+
+TIME= 2.361181849e-05 MASS        = 1e+31
+TIME= 2.361181849e-05 XMOM        = 4.155682505e+23
+TIME= 2.361181849e-05 YMOM        = 0
+TIME= 2.361181849e-05 ZMOM        = 2.040062321e+24
+TIME= 2.361181849e-05 RHO*e       = 9.951992341e+51
+TIME= 2.361181849e-05 RHO*E       = 1.000257315e+52
+
+[STEP 9] Coarse TimeStep time: 0.927635661
+[STEP 9] FAB kilobyte spread across MPI nodes: [7526128 ... 7526128]
+
+STEP = 9 TIME = 2.361181849e-05 DT = 2.53890054e-06
+
+Castro::estTimeStep (hydro-limited) at level 0:  estdt = 2.531568777e-06
+[Level 0 step 10] ADVANCE with dt = 2.531568777e-06
+[Level 0 step 10] Advanced 16777216 cells
+
+TIME= 2.614338727e-05 MASS        = 1e+31
+TIME= 2.614338727e-05 XMOM        = 2.64452523e+23
+TIME= 2.614338727e-05 YMOM        = -2.266735912e+23
+TIME= 2.614338727e-05 ZMOM        = 3.24898814e+24
+TIME= 2.614338727e-05 RHO*e       = 9.944490351e+51
+TIME= 2.614338727e-05 RHO*E       = 1.000257315e+52
+
+[STEP 10] Coarse TimeStep time: 0.930190584
+[STEP 10] FAB kilobyte spread across MPI nodes: [7526128 ... 7526128]
+
+STEP = 10 TIME = 2.614338727e-05 DT = 2.531568777e-06
+
+Castro::estTimeStep (hydro-limited) at level 0:  estdt = 2.525493175e-06
+[Level 0 step 11] ADVANCE with dt = 2.525493175e-06
+[Level 0 step 11] Advanced 16777216 cells
+
+TIME= 2.866888045e-05 MASS        = 1e+31
+TIME= 2.866888045e-05 XMOM        = 1.700051934e+23
+TIME= 2.866888045e-05 YMOM        = 4.533471824e+23
+TIME= 2.866888045e-05 ZMOM        = 6.044629098e+23
+TIME= 2.866888045e-05 RHO*e       = 9.936759012e+51
+TIME= 2.866888045e-05 RHO*E       = 1.000257315e+52
+
+[STEP 11] Coarse TimeStep time: 0.924360882
+[STEP 11] FAB kilobyte spread across MPI nodes: [7526128 ... 7526128]
+
+STEP = 11 TIME = 2.866888045e-05 DT = 2.525493175e-06
+
+Castro::estTimeStep (hydro-limited) at level 0:  estdt = 2.519831446e-06
+[Level 0 step 12] ADVANCE with dt = 2.519831446e-06
+[Level 0 step 12] Advanced 16777216 cells
+
+TIME= 3.118871189e-05 MASS        = 1e+31
+TIME= 3.118871189e-05 XMOM        = 1.888946593e+22
+TIME= 3.118871189e-05 YMOM        = -9.444732966e+23
+TIME= 3.118871189e-05 ZMOM        = 1.360041547e+24
+TIME= 3.118871189e-05 RHO*e       = 9.928828127e+51
+TIME= 3.118871189e-05 RHO*E       = 1.000257315e+52
+
+[STEP 12] Coarse TimeStep time: 0.936716431
+[STEP 12] FAB kilobyte spread across MPI nodes: [7526128 ... 7526128]
+
+STEP = 12 TIME = 3.118871189e-05 DT = 2.519831446e-06
+
+Castro::estTimeStep (hydro-limited) at level 0:  estdt = 2.51373733e-06
+[Level 0 step 13] ADVANCE with dt = 2.51373733e-06
+[Level 0 step 13] Advanced 16777216 cells
+
+TIME= 3.370244922e-05 MASS        = 1e+31
+TIME= 3.370244922e-05 XMOM        = -2.455630571e+23
+TIME= 3.370244922e-05 YMOM        = 2.64452523e+23
+TIME= 3.370244922e-05 ZMOM        = 2.493409503e+24
+TIME= 3.370244922e-05 RHO*e       = 9.920724768e+51
+TIME= 3.370244922e-05 RHO*E       = 1.000257315e+52
+
+[STEP 13] Coarse TimeStep time: 0.92276097
+[STEP 13] FAB kilobyte spread across MPI nodes: [7526128 ... 7526128]
+
+STEP = 13 TIME = 3.370244922e-05 DT = 2.51373733e-06
+
+Castro::estTimeStep (hydro-limited) at level 0:  estdt = 2.507089574e-06
+[Level 0 step 14] ADVANCE with dt = 2.507089574e-06
+[Level 0 step 14] Advanced 16777216 cells
+
+TIME= 3.62095388e-05 MASS        = 1e+31
+TIME= 3.62095388e-05 XMOM        = 0
+TIME= 3.62095388e-05 YMOM        = 6.044629098e+23
+TIME= 3.62095388e-05 ZMOM        = 4.986819006e+24
+TIME= 3.62095388e-05 RHO*e       = 9.912471726e+51
+TIME= 3.62095388e-05 RHO*E       = 1.000257315e+52
+
+[STEP 14] Coarse TimeStep time: 0.922838718
+[STEP 14] FAB kilobyte spread across MPI nodes: [7526128 ... 7526128]
+
+STEP = 14 TIME = 3.62095388e-05 DT = 2.507089574e-06
+
+Castro::estTimeStep (hydro-limited) at level 0:  estdt = 2.498547283e-06
+[Level 0 step 15] ADVANCE with dt = 2.498547283e-06
+[Level 0 step 15] Advanced 16777216 cells
+
+TIME= 3.870808608e-05 MASS        = 1e+31
+TIME= 3.870808608e-05 XMOM        = -8.31136501e+23
+TIME= 3.870808608e-05 YMOM        = 4.533471824e+23
+TIME= 3.870808608e-05 ZMOM        = 8.91582792e+24
+TIME= 3.870808608e-05 RHO*e       = 9.904092431e+51
+TIME= 3.870808608e-05 RHO*E       = 1.000257315e+52
+
+[STEP 15] Coarse TimeStep time: 0.937607601
+[STEP 15] FAB kilobyte spread across MPI nodes: [7526128 ... 7526128]
+
+STEP = 15 TIME = 3.870808608e-05 DT = 2.498547283e-06
+
+Castro::estTimeStep (hydro-limited) at level 0:  estdt = 2.488638527e-06
+[Level 0 step 16] ADVANCE with dt = 2.488638527e-06
+[Level 0 step 16] Advanced 16777216 cells
+
+TIME= 4.119672461e-05 MASS        = 1e+31
+TIME= 4.119672461e-05 XMOM        = 1.511157275e+23
+TIME= 4.119672461e-05 YMOM        = -8.31136501e+23
+TIME= 4.119672461e-05 ZMOM        = 1.964504457e+24
+TIME= 4.119672461e-05 RHO*e       = 9.895605196e+51
+TIME= 4.119672461e-05 RHO*E       = 1.000257315e+52
+
+[STEP 16] Coarse TimeStep time: 0.915931912
+[STEP 16] FAB kilobyte spread across MPI nodes: [7526128 ... 7526128]
+
+STEP = 16 TIME = 4.119672461e-05 DT = 2.488638527e-06
+
+Castro::estTimeStep (hydro-limited) at level 0:  estdt = 2.479800807e-06
+[Level 0 step 17] ADVANCE with dt = 2.479800807e-06
+[Level 0 step 17] Advanced 16777216 cells
+
+TIME= 4.367652541e-05 MASS        = 1e+31
+TIME= 4.367652541e-05 XMOM        = -1.888946593e+23
+TIME= 4.367652541e-05 YMOM        = 1.435599411e+24
+TIME= 4.367652541e-05 ZMOM        = 2.417851639e+24
+TIME= 4.367652541e-05 RHO*e       = 9.88701887e+51
+TIME= 4.367652541e-05 RHO*E       = 1.000257315e+52
+
+[STEP 17] Coarse TimeStep time: 0.960066221
+[STEP 17] FAB kilobyte spread across MPI nodes: [7526128 ... 7526128]
+
+STEP = 17 TIME = 4.367652541e-05 DT = 2.479800807e-06
+
+Castro::estTimeStep (hydro-limited) at level 0:  estdt = 2.472099855e-06
+[Level 0 step 18] ADVANCE with dt = 2.472099855e-06
+[Level 0 step 18] Advanced 16777216 cells
+
+TIME= 4.614862527e-05 MASS        = 1e+31
+TIME= 4.614862527e-05 XMOM        = -6.422418417e+23
+TIME= 4.614862527e-05 YMOM        = 2.266735912e+23
+TIME= 4.614862527e-05 ZMOM        = 7.555786373e+24
+TIME= 4.614862527e-05 RHO*e       = 9.878340612e+51
+TIME= 4.614862527e-05 RHO*E       = 1.000257315e+52
+
+[STEP 18] Coarse TimeStep time: 0.950653843
+[STEP 18] FAB kilobyte spread across MPI nodes: [7526128 ... 7526128]
+
+STEP = 18 TIME = 4.614862527e-05 DT = 2.472099855e-06
+
+Castro::estTimeStep (hydro-limited) at level 0:  estdt = 2.465256412e-06
+[Level 0 step 19] ADVANCE with dt = 2.465256412e-06
+[Level 0 step 19] Advanced 16777216 cells
+
+TIME= 4.861388168e-05 MASS        = 1e+31
+TIME= 4.861388168e-05 XMOM        = -4.911261142e+23
+TIME= 4.861388168e-05 YMOM        = 2.266735912e+23
+TIME= 4.861388168e-05 ZMOM        = -6.49797628e+24
+TIME= 4.861388168e-05 RHO*e       = 9.869577308e+51
+TIME= 4.861388168e-05 RHO*E       = 1.000257315e+52
+
+[STEP 19] Coarse TimeStep time: 0.96102276
+[STEP 19] FAB kilobyte spread across MPI nodes: [7526128 ... 7526128]
+
+STEP = 19 TIME = 4.861388168e-05 DT = 2.465256412e-06
+
+Castro::estTimeStep (hydro-limited) at level 0:  estdt = 2.45758562e-06
+[Level 0 step 20] ADVANCE with dt = 2.45758562e-06
+[Level 0 step 20] Advanced 16777216 cells
+
+TIME= 5.10714673e-05 MASS        = 1e+31
+TIME= 5.10714673e-05 XMOM        = 3.022314549e+23
+TIME= 5.10714673e-05 YMOM        = -4.533471824e+23
+TIME= 5.10714673e-05 ZMOM        = 1.193814247e+25
+TIME= 5.10714673e-05 RHO*e       = 9.860740809e+51
+TIME= 5.10714673e-05 RHO*E       = 1.000257315e+52
+
+[STEP 20] Coarse TimeStep time: 0.959245758
+[STEP 20] FAB kilobyte spread across MPI nodes: [7526128 ... 7526128]
+
+STEP = 20 TIME = 5.10714673e-05 DT = 2.45758562e-06
+
+Castro::estTimeStep (hydro-limited) at level 0:  estdt = 2.449991014e-06
+[Level 0 step 21] ADVANCE with dt = 2.449991014e-06
+[Level 0 step 21] Advanced 16777216 cells
+
+TIME= 5.352145831e-05 MASS        = 1e+31
+TIME= 5.352145831e-05 XMOM        = 8.689154328e+23
+TIME= 5.352145831e-05 YMOM        = 0
+TIME= 5.352145831e-05 ZMOM        = 2.992091404e+25
+TIME= 5.352145831e-05 RHO*e       = 9.85183896e+51
+TIME= 5.352145831e-05 RHO*E       = 1.000257315e+52
+
+[STEP 21] Coarse TimeStep time: 0.970690055
+[STEP 21] FAB kilobyte spread across MPI nodes: [7526128 ... 7526128]
+
+STEP = 21 TIME = 5.352145831e-05 DT = 2.449991014e-06
+
+Castro::estTimeStep (hydro-limited) at level 0:  estdt = 2.443097286e-06
+[Level 0 step 22] ADVANCE with dt = 2.443097286e-06
+[Level 0 step 22] Advanced 16777216 cells
+
+TIME= 5.59645556e-05 MASS        = 1e+31
+TIME= 5.59645556e-05 XMOM        = 1.511157275e+24
+TIME= 5.59645556e-05 YMOM        = -5.289050461e+23
+TIME= 5.59645556e-05 ZMOM        = -1.193814247e+25
+TIME= 5.59645556e-05 RHO*e       = 9.842877227e+51
+TIME= 5.59645556e-05 RHO*E       = 1.000257315e+52
+
+[STEP 22] Coarse TimeStep time: 0.960375253
+[STEP 22] FAB kilobyte spread across MPI nodes: [7526128 ... 7526128]
+
+STEP = 22 TIME = 5.59645556e-05 DT = 2.443097286e-06
+
+Castro::estTimeStep (hydro-limited) at level 0:  estdt = 2.436813701e-06
+[Level 0 step 23] ADVANCE with dt = 2.436813701e-06
+[Level 0 step 23] Advanced 16777216 cells
+
+TIME= 5.84013693e-05 MASS        = 1e+31
+TIME= 5.84013693e-05 XMOM        = -1.095589024e+24
+TIME= 5.84013693e-05 YMOM        = -7.555786373e+22
+TIME= 5.84013693e-05 ZMOM        = -1.722719293e+25
+TIME= 5.84013693e-05 RHO*e       = 9.833859713e+51
+TIME= 5.84013693e-05 RHO*E       = 1.000257315e+52
+
+[STEP 23] Coarse TimeStep time: 0.948467867
+[STEP 23] FAB kilobyte spread across MPI nodes: [7526128 ... 7526128]
+
+STEP = 23 TIME = 5.84013693e-05 DT = 2.436813701e-06
+
+Castro::estTimeStep (hydro-limited) at level 0:  estdt = 2.430979802e-06
+[Level 0 step 24] ADVANCE with dt = 2.430979802e-06
+[Level 0 step 24] Advanced 16777216 cells
+
+TIME= 6.08323491e-05 MASS        = 1e+31
+TIME= 6.08323491e-05 XMOM        = 3.400103868e+23
+TIME= 6.08323491e-05 YMOM        = -1.511157275e+23
+TIME= 6.08323491e-05 ZMOM        = 3.324546004e+24
+TIME= 6.08323491e-05 RHO*e       = 9.824791082e+51
+TIME= 6.08323491e-05 RHO*E       = 1.000257315e+52
+
+[STEP 24] Coarse TimeStep time: 0.936525824
+[STEP 24] FAB kilobyte spread across MPI nodes: [7526128 ... 7526128]
+
+STEP = 24 TIME = 6.08323491e-05 DT = 2.430979802e-06
+
+Castro::estTimeStep (hydro-limited) at level 0:  estdt = 2.425561421e-06
+[Level 0 step 25] ADVANCE with dt = 2.425561421e-06
+[Level 0 step 25] Advanced 16777216 cells
+
+TIME= 6.325791052e-05 MASS        = 1e+31
+TIME= 6.325791052e-05 XMOM        = 9.066943647e+23
+TIME= 6.325791052e-05 YMOM        = -1.511157275e+23
+TIME= 6.325791052e-05 ZMOM        = 2.417851639e+25
+TIME= 6.325791052e-05 RHO*e       = 9.815675444e+51
+TIME= 6.325791052e-05 RHO*E       = 1.000257315e+52
+
+[STEP 25] Coarse TimeStep time: 0.951159227
+[STEP 25] FAB kilobyte spread across MPI nodes: [7526128 ... 7526128]
+
+STEP = 25 TIME = 6.325791052e-05 DT = 2.425561421e-06
+
+Castro::estTimeStep (hydro-limited) at level 0:  estdt = 2.420487792e-06
+[Level 0 step 26] ADVANCE with dt = 2.420487792e-06
+[Level 0 step 26] Advanced 16777216 cells
+
+TIME= 6.567839832e-05 MASS        = 1e+31
+TIME= 6.567839832e-05 XMOM        = -1.284483683e+24
+TIME= 6.567839832e-05 YMOM        = 3.022314549e+23
+TIME= 6.567839832e-05 ZMOM        = 6.951323463e+24
+TIME= 6.567839832e-05 RHO*e       = 9.806516922e+51
+TIME= 6.567839832e-05 RHO*E       = 1.000257315e+52
+
+[STEP 26] Coarse TimeStep time: 0.956388812
+[STEP 26] FAB kilobyte spread across MPI nodes: [7526128 ... 7526128]
+
+STEP = 26 TIME = 6.567839832e-05 DT = 2.420487792e-06
+
+Castro::estTimeStep (hydro-limited) at level 0:  estdt = 2.415720955e-06
+[Level 0 step 27] ADVANCE with dt = 2.415720955e-06
+[Level 0 step 27] Advanced 16777216 cells
+
+TIME= 6.809411927e-05 MASS        = 1e+31
+TIME= 6.809411927e-05 XMOM        = -7.933575691e+23
+TIME= 6.809411927e-05 YMOM        = 7.555786373e+23
+TIME= 6.809411927e-05 ZMOM        = 0
+TIME= 6.809411927e-05 RHO*e       = 9.797319355e+51
+TIME= 6.809411927e-05 RHO*E       = 1.000257315e+52
+
+[STEP 27] Coarse TimeStep time: 0.950888605
+[STEP 27] FAB kilobyte spread across MPI nodes: [7526128 ... 7526128]
+
+STEP = 27 TIME = 6.809411927e-05 DT = 2.415720955e-06
+
+Castro::estTimeStep (hydro-limited) at level 0:  estdt = 2.411253418e-06
+[Level 0 step 28] ADVANCE with dt = 2.411253418e-06
+[Level 0 step 28] Advanced 16777216 cells
+
+TIME= 7.050537269e-05 MASS        = 1e+31
+TIME= 7.050537269e-05 XMOM        = 1.360041547e+24
+TIME= 7.050537269e-05 YMOM        = 6.044629098e+23
+TIME= 7.050537269e-05 ZMOM        = 2.417851639e+25
+TIME= 7.050537269e-05 RHO*e       = 9.788085843e+51
+TIME= 7.050537269e-05 RHO*E       = 1.000257315e+52
+
+[STEP 28] Coarse TimeStep time: 0.954870703
+[STEP 28] FAB kilobyte spread across MPI nodes: [7526128 ... 7526128]
+
+STEP = 28 TIME = 7.050537269e-05 DT = 2.411253418e-06
+
+Castro::estTimeStep (hydro-limited) at level 0:  estdt = 2.40706324e-06
+[Level 0 step 29] ADVANCE with dt = 2.40706324e-06
+[Level 0 step 29] Advanced 16777216 cells
+
+TIME= 7.291243593e-05 MASS        = 1e+31
+TIME= 7.291243593e-05 XMOM        = 1.133367956e+24
+TIME= 7.291243593e-05 YMOM        = 9.066943647e+23
+TIME= 7.291243593e-05 ZMOM        = 9.973638012e+24
+TIME= 7.291243593e-05 RHO*e       = 9.778819523e+51
+TIME= 7.291243593e-05 RHO*E       = 1.000257315e+52
+
+[STEP 29] Coarse TimeStep time: 0.963192694
+[STEP 29] FAB kilobyte spread across MPI nodes: [7526128 ... 7526128]
+
+STEP = 29 TIME = 7.291243593e-05 DT = 2.40706324e-06
+
+Castro::estTimeStep (hydro-limited) at level 0:  estdt = 2.403115588e-06
+[Level 0 step 30] ADVANCE with dt = 2.403115588e-06
+[Level 0 step 30] Advanced 16777216 cells
+
+TIME= 7.531555152e-05 MASS        = 1e+31
+TIME= 7.531555152e-05 XMOM        = 9.822522284e+23
+TIME= 7.531555152e-05 YMOM        = 1.813388729e+24
+TIME= 7.531555152e-05 ZMOM        = -1.692496147e+25
+TIME= 7.531555152e-05 RHO*e       = 9.769523895e+51
+TIME= 7.531555152e-05 RHO*E       = 1.000257315e+52
+
+[STEP 30] Coarse TimeStep time: 0.945116969
+[STEP 30] FAB kilobyte spread across MPI nodes: [7526128 ... 7526128]
+
+STEP = 30 TIME = 7.531555152e-05 DT = 2.403115588e-06
+
+Castro::estTimeStep (hydro-limited) at level 0:  estdt = 2.399389713e-06
+[Level 0 step 31] ADVANCE with dt = 2.399389713e-06
+[Level 0 step 31] Advanced 16777216 cells
+
+TIME= 7.771494123e-05 MASS        = 1e+31
+TIME= 7.771494123e-05 XMOM        = -3.022314549e+23
+TIME= 7.771494123e-05 YMOM        = 1.511157275e+24
+TIME= 7.771494123e-05 ZMOM        = -4.654364406e+25
+TIME= 7.771494123e-05 RHO*e       = 9.760201785e+51
+TIME= 7.771494123e-05 RHO*E       = 1.000257315e+52
+
+[STEP 31] Coarse TimeStep time: 0.937360158
+[STEP 31] FAB kilobyte spread across MPI nodes: [7526128 ... 7526128]
+
+STEP = 31 TIME = 7.771494123e-05 DT = 2.399389713e-06
+
+Castro::estTimeStep (hydro-limited) at level 0:  estdt = 2.395880446e-06
+[Level 0 step 32] ADVANCE with dt = 2.395880446e-06
+[Level 0 step 32] Advanced 16777216 cells
+
+TIME= 8.011082168e-05 MASS        = 1e+31
+TIME= 8.011082168e-05 XMOM        = -4.533471824e+23
+TIME= 8.011082168e-05 YMOM        = 1.057810092e+24
+TIME= 8.011082168e-05 ZMOM        = 6.346860553e+24
+TIME= 8.011082168e-05 RHO*e       = 9.750855876e+51
+TIME= 8.011082168e-05 RHO*E       = 1.000257315e+52
+
+[STEP 32] Coarse TimeStep time: 0.95941059
+[STEP 32] FAB kilobyte spread across MPI nodes: [7526128 ... 7526128]
+
+STEP = 32 TIME = 8.011082168e-05 DT = 2.395880446e-06
+
+Castro::estTimeStep (hydro-limited) at level 0:  estdt = 2.392587891e-06
+[Level 0 step 33] ADVANCE with dt = 2.392587891e-06
+[Level 0 step 33] Advanced 16777216 cells
+
+TIME= 8.250340957e-05 MASS        = 1e+31
+TIME= 8.250340957e-05 XMOM        = 1.284483683e+24
+TIME= 8.250340957e-05 YMOM        = 1.511157275e+24
+TIME= 8.250340957e-05 ZMOM        = 2.599190512e+25
+TIME= 8.250340957e-05 RHO*e       = 9.74148807e+51
+TIME= 8.250340957e-05 RHO*E       = 1.000257315e+52
+
+[STEP 33] Coarse TimeStep time: 0.956434909
+[STEP 33] FAB kilobyte spread across MPI nodes: [7526128 ... 7526128]
+
+STEP = 33 TIME = 8.250340957e-05 DT = 2.392587891e-06
+
+Castro::estTimeStep (hydro-limited) at level 0:  estdt = 2.389498311e-06
+[Level 0 step 34] ADVANCE with dt = 2.389498311e-06
+[Level 0 step 34] Advanced 16777216 cells
+
+TIME= 8.489290788e-05 MASS        = 1e+31
+TIME= 8.489290788e-05 XMOM        = -7.555786373e+23
+TIME= 8.489290788e-05 YMOM        = -6.044629098e+23
+TIME= 8.489290788e-05 ZMOM        = -4.62414126e+25
+TIME= 8.489290788e-05 RHO*e       = 9.73210041e+51
+TIME= 8.489290788e-05 RHO*E       = 1.000257315e+52
+
+[STEP 34] Coarse TimeStep time: 0.95046622
+[STEP 34] FAB kilobyte spread across MPI nodes: [7526128 ... 7526128]
+
+STEP = 34 TIME = 8.489290788e-05 DT = 2.389498311e-06
+
+Castro::estTimeStep (hydro-limited) at level 0:  estdt = 2.386595403e-06
+[Level 0 step 35] ADVANCE with dt = 2.386595403e-06
+[Level 0 step 35] Advanced 16777216 cells
+
+TIME= 8.727950328e-05 MASS        = 1e+31
+TIME= 8.727950328e-05 XMOM        = 1.511157275e+23
+TIME= 8.727950328e-05 YMOM        = 1.20892582e+24
+TIME= 8.727950328e-05 ZMOM        = 1.329818402e+25
+TIME= 8.727950328e-05 RHO*e       = 9.722695079e+51
+TIME= 8.727950328e-05 RHO*E       = 1.000257315e+52
+
+[STEP 35] Coarse TimeStep time: 0.958348036
+[STEP 35] FAB kilobyte spread across MPI nodes: [7526128 ... 7526128]
+
+STEP = 35 TIME = 8.727950328e-05 DT = 2.386595403e-06
+
+Castro::estTimeStep (hydro-limited) at level 0:  estdt = 2.383862261e-06
+[Level 0 step 36] ADVANCE with dt = 2.383862261e-06
+[Level 0 step 36] Advanced 16777216 cells
+
+TIME= 8.966336554e-05 MASS        = 1e+31
+TIME= 8.966336554e-05 XMOM        = -8.31136501e+23
+TIME= 8.966336554e-05 YMOM        = -3.022314549e+23
+TIME= 8.966336554e-05 ZMOM        = -9.369175102e+24
+TIME= 8.966336554e-05 RHO*e       = 9.713273869e+51
+TIME= 8.966336554e-05 RHO*E       = 1.000257315e+52
+
+[STEP 36] Coarse TimeStep time: 0.938476144
+[STEP 36] FAB kilobyte spread across MPI nodes: [7526128 ... 7526128]
+
+STEP = 36 TIME = 8.966336554e-05 DT = 2.383862261e-06
+
+Castro::estTimeStep (hydro-limited) at level 0:  estdt = 2.381152263e-06
+[Level 0 step 37] ADVANCE with dt = 2.381152263e-06
+[Level 0 step 37] Advanced 16777216 cells
+
+TIME= 9.204451781e-05 MASS        = 1e+31
+TIME= 9.204451781e-05 XMOM        = 4.835703278e+24
+TIME= 9.204451781e-05 YMOM        = 1.057810092e+24
+TIME= 9.204451781e-05 ZMOM        = -1.601826711e+25
+TIME= 9.204451781e-05 RHO*e       = 9.703839201e+51
+TIME= 9.204451781e-05 RHO*E       = 1.000257315e+52
+
+[STEP 37] Coarse TimeStep time: 0.971509731
+[STEP 37] FAB kilobyte spread across MPI nodes: [7526128 ... 7526128]
+
+STEP = 37 TIME = 9.204451781e-05 DT = 2.381152263e-06
+
+Castro::estTimeStep (hydro-limited) at level 0:  estdt = 2.378341843e-06
+[Level 0 step 38] ADVANCE with dt = 2.378341843e-06
+[Level 0 step 38] Advanced 16777216 cells
+
+TIME= 9.442285965e-05 MASS        = 1e+31
+TIME= 9.442285965e-05 XMOM        = -2.568967367e+24
+TIME= 9.442285965e-05 YMOM        = 0
+TIME= 9.442285965e-05 ZMOM        = -1.299595256e+25
+TIME= 9.442285965e-05 RHO*e       = 9.694393998e+51
+TIME= 9.442285965e-05 RHO*E       = 1.000257315e+52
+
+[STEP 38] Coarse TimeStep time: 0.953801089
+[STEP 38] FAB kilobyte spread across MPI nodes: [7526128 ... 7526128]
+
+STEP = 38 TIME = 9.442285965e-05 DT = 2.378341843e-06
+
+Castro::estTimeStep (hydro-limited) at level 0:  estdt = 2.375676278e-06
+[Level 0 step 39] ADVANCE with dt = 2.375676278e-06
+[Level 0 step 39] Advanced 16777216 cells
+
+TIME= 9.679853593e-05 MASS        = 1e+31
+TIME= 9.679853593e-05 XMOM        = 1.662273002e+24
+TIME= 9.679853593e-05 YMOM        = -7.555786373e+23
+TIME= 9.679853593e-05 ZMOM        = -3.929008914e+25
+TIME= 9.679853593e-05 RHO*e       = 9.684939734e+51
+TIME= 9.679853593e-05 RHO*E       = 1.000257315e+52
+
+[STEP 39] Coarse TimeStep time: 0.946305337
+[STEP 39] FAB kilobyte spread across MPI nodes: [7526128 ... 7526128]
+
+STEP = 39 TIME = 9.679853593e-05 DT = 2.375676278e-06
+
+Castro::estTimeStep (hydro-limited) at level 0:  estdt = 2.373137245e-06
+[Level 0 step 40] ADVANCE with dt = 2.373137245e-06
+[Level 0 step 40] Advanced 16777216 cells
+
+TIME= 9.917167317e-05 MASS        = 1e+31
+TIME= 9.917167317e-05 XMOM        = 2.266735912e+23
+TIME= 9.917167317e-05 YMOM        = 2.720083094e+24
+TIME= 9.917167317e-05 ZMOM        = -4.775256987e+25
+TIME= 9.917167317e-05 RHO*e       = 9.675477588e+51
+TIME= 9.917167317e-05 RHO*E       = 1.000257315e+52
+
+[STEP 40] Coarse TimeStep time: 0.961754068
+[STEP 40] FAB kilobyte spread across MPI nodes: [7526128 ... 7526128]
+
+STEP = 40 TIME = 9.917167317e-05 DT = 2.373137245e-06
+
+Castro::estTimeStep (hydro-limited) at level 0:  estdt = 2.370710294e-06
+[Level 0 step 41] ADVANCE with dt = 2.370710294e-06
+[Level 0 step 41] Advanced 16777216 cells
+
+TIME= 0.0001015423835 MASS        = 1e+31
+TIME= 0.0001015423835 XMOM        = 3.324546004e+24
+TIME= 0.0001015423835 YMOM        = -1.511157275e+24
+TIME= 0.0001015423835 ZMOM        = 2.14584333e+25
+TIME= 0.0001015423835 RHO*e       = 9.666009049e+51
+TIME= 0.0001015423835 RHO*E       = 1.000257315e+52
+
+[STEP 41] Coarse TimeStep time: 0.957470362
+[STEP 41] FAB kilobyte spread across MPI nodes: [7526128 ... 7526128]
+
+STEP = 41 TIME = 0.0001015423835 DT = 2.370710294e-06
+
+Castro::estTimeStep (hydro-limited) at level 0:  estdt = 2.368383684e-06
+[Level 0 step 42] ADVANCE with dt = 2.368383684e-06
+[Level 0 step 42] Advanced 16777216 cells
+
+TIME= 0.0001039107671 MASS        = 1e+31
+TIME= 0.0001039107671 XMOM        = -3.097872413e+24
+TIME= 0.0001039107671 YMOM        = -9.066943647e+23
+TIME= 0.0001039107671 ZMOM        = 2.055173893e+25
+TIME= 0.0001039107671 RHO*e       = 9.656535514e+51
+TIME= 0.0001039107671 RHO*E       = 1.000257315e+52
+
+[STEP 42] Coarse TimeStep time: 0.954469863
+[STEP 42] FAB kilobyte spread across MPI nodes: [7526128 ... 7526128]
+
+STEP = 42 TIME = 0.0001039107671 DT = 2.368383684e-06
+
+Castro::estTimeStep (hydro-limited) at level 0:  estdt = 2.36614754e-06
+[Level 0 step 43] ADVANCE with dt = 2.36614754e-06
+[Level 0 step 43] Advanced 16777216 cells
+
+TIME= 0.0001062769147 MASS        = 1e+31
+TIME= 0.0001062769147 XMOM        = -2.040062321e+24
+TIME= 0.0001062769147 YMOM        = -1.964504457e+24
+TIME= 0.0001062769147 ZMOM        = 9.066943647e+24
+TIME= 0.0001062769147 RHO*e       = 9.647058259e+51
+TIME= 0.0001062769147 RHO*E       = 1.000257315e+52
+
+[STEP 43] Coarse TimeStep time: 0.950254325
+[STEP 43] FAB kilobyte spread across MPI nodes: [7526128 ... 7526128]
+
+STEP = 43 TIME = 0.0001062769147 DT = 2.36614754e-06
+
+Castro::estTimeStep (hydro-limited) at level 0:  estdt = 2.3639935e-06
+[Level 0 step 44] ADVANCE with dt = 2.3639935e-06
+[Level 0 step 44] Advanced 16777216 cells
+
+TIME= 0.0001086409082 MASS        = 1e+31
+TIME= 0.0001086409082 XMOM        = -1.662273002e+24
+TIME= 0.0001086409082 YMOM        = -9.066943647e+23
+TIME= 0.0001086409082 ZMOM        = -4.865926424e+25
+TIME= 0.0001086409082 RHO*e       = 9.637578694e+51
+TIME= 0.0001086409082 RHO*E       = 1.000257315e+52
+
+[STEP 44] Coarse TimeStep time: 0.985816076
+[STEP 44] FAB kilobyte spread across MPI nodes: [7526128 ... 7526128]
+
+STEP = 44 TIME = 0.0001086409082 DT = 2.3639935e-06
+
+Castro::estTimeStep (hydro-limited) at level 0:  estdt = 2.361914512e-06
+[Level 0 step 45] ADVANCE with dt = 2.361914512e-06
+[Level 0 step 45] Advanced 16777216 cells
+
+TIME= 0.0001110028227 MASS        = 1e+31
+TIME= 0.0001110028227 XMOM        = -5.289050461e+23
+TIME= 0.0001110028227 YMOM        = 1.511157275e+23
+TIME= 0.0001110028227 ZMOM        = 1.511157275e+24
+TIME= 0.0001110028227 RHO*e       = 9.628097972e+51
+TIME= 0.0001110028227 RHO*E       = 1.000257315e+52
+
+[STEP 45] Coarse TimeStep time: 0.971505164
+[STEP 45] FAB kilobyte spread across MPI nodes: [7526128 ... 7526128]
+
+STEP = 45 TIME = 0.0001110028227 DT = 2.361914512e-06
+
+Castro::estTimeStep (hydro-limited) at level 0:  estdt = 2.35977371e-06
+[Level 0 step 46] ADVANCE with dt = 2.35977371e-06
+[Level 0 step 46] Advanced 16777216 cells
+
+TIME= 0.0001133625964 MASS        = 1e+31
+TIME= 0.0001133625964 XMOM        = -1.737830866e+24
+TIME= 0.0001133625964 YMOM        = -1.964504457e+24
+TIME= 0.0001133625964 ZMOM        = -2.176066475e+25
+TIME= 0.0001133625964 RHO*e       = 9.618617876e+51
+TIME= 0.0001133625964 RHO*E       = 1.000257315e+52
+
+[STEP 46] Coarse TimeStep time: 0.93575835
+[STEP 46] FAB kilobyte spread across MPI nodes: [7526128 ... 7526128]
+
+STEP = 46 TIME = 0.0001133625964 DT = 2.35977371e-06
+
+Castro::estTimeStep (hydro-limited) at level 0:  estdt = 2.357707557e-06
+[Level 0 step 47] ADVANCE with dt = 2.357707557e-06
+[Level 0 step 47] Advanced 16777216 cells
+
+TIME= 0.000115720304 MASS        = 1e+31
+TIME= 0.000115720304 XMOM        = 1.813388729e+24
+TIME= 0.000115720304 YMOM        = 4.533471824e+23
+TIME= 0.000115720304 ZMOM        = 3.808116332e+25
+TIME= 0.000115720304 RHO*e       = 9.609139667e+51
+TIME= 0.000115720304 RHO*E       = 1.000257315e+52
+
+[STEP 47] Coarse TimeStep time: 0.958645843
+[STEP 47] FAB kilobyte spread across MPI nodes: [7526128 ... 7526128]
+
+STEP = 47 TIME = 0.000115720304 DT = 2.357707557e-06
+
+Castro::estTimeStep (hydro-limited) at level 0:  estdt = 2.355752405e-06
+[Level 0 step 48] ADVANCE with dt = 2.355752405e-06
+[Level 0 step 48] Advanced 16777216 cells
+
+TIME= 0.0001180760564 MASS        = 1e+31
+TIME= 0.0001180760564 XMOM        = -6.800207735e+23
+TIME= 0.0001180760564 YMOM        = 1.511157275e+24
+TIME= 0.0001180760564 ZMOM        = 2.387628494e+25
+TIME= 0.0001180760564 RHO*e       = 9.599664269e+51
+TIME= 0.0001180760564 RHO*E       = 1.000257315e+52
+
+[STEP 48] Coarse TimeStep time: 0.940436047
+[STEP 48] FAB kilobyte spread across MPI nodes: [7526128 ... 7526128]
+
+STEP = 48 TIME = 0.0001180760564 DT = 2.355752405e-06
+
+Castro::estTimeStep (hydro-limited) at level 0:  estdt = 2.353894621e-06
+[Level 0 step 49] ADVANCE with dt = 2.353894621e-06
+[Level 0 step 49] Advanced 16777216 cells
+
+TIME= 0.000120429951 MASS        = 1e+31
+TIME= 0.000120429951 XMOM        = 3.097872413e+24
+TIME= 0.000120429951 YMOM        = -1.964504457e+24
+TIME= 0.000120429951 ZMOM        = 5.742397643e+24
+TIME= 0.000120429951 RHO*e       = 9.590192532e+51
+TIME= 0.000120429951 RHO*E       = 1.000257315e+52
+
+[STEP 49] Coarse TimeStep time: 0.924758177
+[STEP 49] FAB kilobyte spread across MPI nodes: [7526128 ... 7526128]
+
+STEP = 49 TIME = 0.000120429951 DT = 2.353894621e-06
+
+Castro::estTimeStep (hydro-limited) at level 0:  estdt = 2.352123986e-06
+[Level 0 step 50] ADVANCE with dt = 2.352123986e-06
+[Level 0 step 50] Advanced 16777216 cells
+
+TIME= 0.000122782075 MASS        = 1e+31
+TIME= 0.000122782075 XMOM        = 1.511157275e+24
+TIME= 0.000122782075 YMOM        = 1.813388729e+24
+TIME= 0.000122782075 ZMOM        = 3.324546004e+24
+TIME= 0.000122782075 RHO*e       = 9.580725287e+51
+TIME= 0.000122782075 RHO*E       = 1.000257315e+52
+
+[STEP 50] Coarse TimeStep time: 0.982686076
+[STEP 50] FAB kilobyte spread across MPI nodes: [7526128 ... 7526128]
+
+STEP = 50 TIME = 0.000122782075 DT = 2.352123986e-06
+
+Castro::estTimeStep (hydro-limited) at level 0:  estdt = 2.350432889e-06
+[Level 0 step 51] ADVANCE with dt = 2.350432889e-06
+[Level 0 step 51] Advanced 16777216 cells
+
+TIME= 0.0001251325079 MASS        = 1e+31
+TIME= 0.0001251325079 XMOM        = 2.342293776e+24
+TIME= 0.0001251325079 YMOM        = -2.720083094e+24
+TIME= 0.0001251325079 ZMOM        = 4.261463514e+25
+TIME= 0.0001251325079 RHO*e       = 9.571263441e+51
+TIME= 0.0001251325079 RHO*E       = 1.000257315e+52
+
+[STEP 51] Coarse TimeStep time: 0.974965503
+[STEP 51] FAB kilobyte spread across MPI nodes: [7526128 ... 7526128]
+
+STEP = 51 TIME = 0.0001251325079 DT = 2.350432889e-06
+
+Castro::estTimeStep (hydro-limited) at level 0:  estdt = 2.34881366e-06
+[Level 0 step 52] ADVANCE with dt = 2.34881366e-06
+[Level 0 step 52] Advanced 16777216 cells
+
+TIME= 0.0001274813215 MASS        = 1e+31
+TIME= 0.0001274813215 XMOM        = 2.266735912e+23
+TIME= 0.0001274813215 YMOM        = 2.720083094e+24
+TIME= 0.0001274813215 ZMOM        = 1.964504457e+25
+TIME= 0.0001274813215 RHO*e       = 9.561807936e+51
+TIME= 0.0001274813215 RHO*E       = 1.000257315e+52
+
+[STEP 52] Coarse TimeStep time: 0.966805368
+[STEP 52] FAB kilobyte spread across MPI nodes: [7526128 ... 7526128]
+
+STEP = 52 TIME = 0.0001274813215 DT = 2.34881366e-06
+
+Castro::estTimeStep (hydro-limited) at level 0:  estdt = 2.347259546e-06
+[Level 0 step 53] ADVANCE with dt = 2.347259546e-06
+[Level 0 step 53] Advanced 16777216 cells
+
+TIME= 0.0001298285811 MASS        = 1e+31
+TIME= 0.0001298285811 XMOM        = -1.511157275e+23
+TIME= 0.0001298285811 YMOM        = 7.555786373e+23
+TIME= 0.0001298285811 ZMOM        = 1.390264693e+25
+TIME= 0.0001298285811 RHO*e       = 9.552359849e+51
+TIME= 0.0001298285811 RHO*E       = 1.000257315e+52
+
+[STEP 53] Coarse TimeStep time: 0.960833011
+[STEP 53] FAB kilobyte spread across MPI nodes: [7526128 ... 7526128]
+
+STEP = 53 TIME = 0.0001298285811 DT = 2.347259546e-06
+
+Castro::estTimeStep (hydro-limited) at level 0:  estdt = 2.34576517e-06
+[Level 0 step 54] ADVANCE with dt = 2.34576517e-06
+[Level 0 step 54] Advanced 16777216 cells
+
+TIME= 0.0001321743462 MASS        = 1e+31
+TIME= 0.0001321743462 XMOM        = -1.284483683e+24
+TIME= 0.0001321743462 YMOM        = -3.777893186e+24
+TIME= 0.0001321743462 ZMOM        = -9.671406557e+24
+TIME= 0.0001321743462 RHO*e       = 9.542919927e+51
+TIME= 0.0001321743462 RHO*E       = 1.000257315e+52
+
+[STEP 54] Coarse TimeStep time: 0.955972596
+[STEP 54] FAB kilobyte spread across MPI nodes: [7526128 ... 7526128]
+
+STEP = 54 TIME = 0.0001321743462 DT = 2.34576517e-06
+
+Castro::estTimeStep (hydro-limited) at level 0:  estdt = 2.344326235e-06
+[Level 0 step 55] ADVANCE with dt = 2.344326235e-06
+[Level 0 step 55] Advanced 16777216 cells
+
+TIME= 0.0001345186725 MASS        = 1e+31
+TIME= 0.0001345186725 XMOM        = -1.813388729e+24
+TIME= 0.0001345186725 YMOM        = -3.173430276e+24
+TIME= 0.0001345186725 ZMOM        = 1.148479529e+25
+TIME= 0.0001345186725 RHO*e       = 9.53348895e+51
+TIME= 0.0001345186725 RHO*E       = 1.000257315e+52
+
+[STEP 55] Coarse TimeStep time: 0.982346365
+[STEP 55] FAB kilobyte spread across MPI nodes: [7526128 ... 7526128]
+
+STEP = 55 TIME = 0.0001345186725 DT = 2.344326235e-06
+
+Castro::estTimeStep (hydro-limited) at level 0:  estdt = 2.342939543e-06
+[Level 0 step 56] ADVANCE with dt = 2.342939543e-06
+[Level 0 step 56] Advanced 16777216 cells
+
+TIME= 0.000136861612 MASS        = 1e+31
+TIME= 0.000136861612 XMOM        = 8.31136501e+23
+TIME= 0.000136861612 YMOM        = 3.173430276e+24
+TIME= 0.000136861612 ZMOM        = 3.264099713e+25
+TIME= 0.000136861612 RHO*e       = 9.524067689e+51
+TIME= 0.000136861612 RHO*E       = 1.000257315e+52
+
+[STEP 56] Coarse TimeStep time: 0.950049824
+[STEP 56] FAB kilobyte spread across MPI nodes: [7526128 ... 7526128]
+
+STEP = 56 TIME = 0.000136861612 DT = 2.342939543e-06
+
+Castro::estTimeStep (hydro-limited) at level 0:  estdt = 2.341607999e-06
+[Level 0 step 57] ADVANCE with dt = 2.341607999e-06
+[Level 0 step 57] Advanced 16777216 cells
+
+TIME= 0.00013920322 MASS        = 1e+31
+TIME= 0.00013920322 XMOM        = 7.555786373e+22
+TIME= 0.00013920322 YMOM        = 3.022314549e+23
+TIME= 0.00013920322 ZMOM        = 2.327182203e+25
+TIME= 0.00013920322 RHO*e       = 9.514656984e+51
+TIME= 0.00013920322 RHO*E       = 1.000257315e+52
+
+[STEP 57] Coarse TimeStep time: 0.95280999
+[STEP 57] FAB kilobyte spread across MPI nodes: [7526128 ... 7526128]
+
+STEP = 57 TIME = 0.00013920322 DT = 2.341607999e-06
+
+Castro::estTimeStep (hydro-limited) at level 0:  estdt = 2.340330132e-06
+[Level 0 step 58] ADVANCE with dt = 2.340330132e-06
+[Level 0 step 58] Advanced 16777216 cells
+
+TIME= 0.0001415435502 MASS        = 1e+31
+TIME= 0.0001415435502 XMOM        = -2.493409503e+24
+TIME= 0.0001415435502 YMOM        = 9.066943647e+23
+TIME= 0.0001415435502 ZMOM        = 2.448074785e+25
+TIME= 0.0001415435502 RHO*e       = 9.505257675e+51
+TIME= 0.0001415435502 RHO*E       = 1.000257315e+52
+
+[STEP 58] Coarse TimeStep time: 0.974106919
+[STEP 58] FAB kilobyte spread across MPI nodes: [7526128 ... 7526128]
+
+STEP = 58 TIME = 0.0001415435502 DT = 2.340330132e-06
+
+Castro::estTimeStep (hydro-limited) at level 0:  estdt = 2.339124051e-06
+[Level 0 step 59] ADVANCE with dt = 2.339124051e-06
+[Level 0 step 59] Advanced 16777216 cells
+
+TIME= 0.0001438826742 MASS        = 1e+31
+TIME= 0.0001438826742 XMOM        = -1.813388729e+24
+TIME= 0.0001438826742 YMOM        = -3.324546004e+24
+TIME= 0.0001438826742 ZMOM        = 1.329818402e+25
+TIME= 0.0001438826742 RHO*e       = 9.49587039e+51
+TIME= 0.0001438826742 RHO*E       = 1.000257315e+52
+
+[STEP 59] Coarse TimeStep time: 0.968241478
+[STEP 59] FAB kilobyte spread across MPI nodes: [7526128 ... 7526128]
+
+STEP = 59 TIME = 0.0001438826742 DT = 2.339124051e-06
+
+Castro::estTimeStep (hydro-limited) at level 0:  estdt = 2.337984434e-06
+[Level 0 step 60] ADVANCE with dt = 2.337984434e-06
+[Level 0 step 60] Advanced 16777216 cells
+
+TIME= 0.0001462206586 MASS        = 1e+31
+TIME= 0.0001462206586 XMOM        = 3.173430276e+24
+TIME= 0.0001462206586 YMOM        = 1.813388729e+24
+TIME= 0.0001462206586 ZMOM        = 3.143207131e+25
+TIME= 0.0001462206586 RHO*e       = 9.486495741e+51
+TIME= 0.0001462206586 RHO*E       = 1.000257315e+52
+
+[STEP 60] Coarse TimeStep time: 0.960799058
+[STEP 60] FAB kilobyte spread across MPI nodes: [7526128 ... 7526128]
+
+STEP = 60 TIME = 0.0001462206586 DT = 2.337984434e-06
+
+Castro::estTimeStep (hydro-limited) at level 0:  estdt = 2.336901194e-06
+[Level 0 step 61] ADVANCE with dt = 2.336901194e-06
+[Level 0 step 61] Advanced 16777216 cells
+
+TIME= 0.0001485575598 MASS        = 1e+31
+TIME= 0.0001485575598 XMOM        = -4.533471824e+23
+TIME= 0.0001485575598 YMOM        = 4.231240369e+24
+TIME= 0.0001485575598 ZMOM        = -2.659636803e+25
+TIME= 0.0001485575598 RHO*e       = 9.477134366e+51
+TIME= 0.0001485575598 RHO*E       = 1.000257315e+52
+
+[STEP 61] Coarse TimeStep time: 0.963022438
+[STEP 61] FAB kilobyte spread across MPI nodes: [7526128 ... 7526128]
+
+STEP = 61 TIME = 0.0001485575598 DT = 2.336901194e-06
+
+Castro::estTimeStep (hydro-limited) at level 0:  estdt = 2.335861831e-06
+[Level 0 step 62] ADVANCE with dt = 2.335861831e-06
+[Level 0 step 62] Advanced 16777216 cells
+
+TIME= 0.0001508934217 MASS        = 1e+31
+TIME= 0.0001508934217 XMOM        = 2.871198822e+24
+TIME= 0.0001508934217 YMOM        = -2.720083094e+24
+TIME= 0.0001508934217 ZMOM        = -3.68722375e+25
+TIME= 0.0001508934217 RHO*e       = 9.467787024e+51
+TIME= 0.0001508934217 RHO*E       = 1.000257315e+52
+
+[STEP 62] Coarse TimeStep time: 0.94685471
+[STEP 62] FAB kilobyte spread across MPI nodes: [7526128 ... 7526128]
+
+STEP = 62 TIME = 0.0001508934217 DT = 2.335861831e-06
+
+Castro::estTimeStep (hydro-limited) at level 0:  estdt = 2.334853943e-06
+[Level 0 step 63] ADVANCE with dt = 2.334853943e-06
+[Level 0 step 63] Advanced 16777216 cells
+
+TIME= 0.0001532282756 MASS        = 1e+31
+TIME= 0.0001532282756 XMOM        = 6.044629098e+23
+TIME= 0.0001532282756 YMOM        = 3.626777459e+24
+TIME= 0.0001532282756 ZMOM        = 1.692496147e+25
+TIME= 0.0001532282756 RHO*e       = 9.458454388e+51
+TIME= 0.0001532282756 RHO*E       = 1.000257315e+52
+
+[STEP 63] Coarse TimeStep time: 0.957651737
+[STEP 63] FAB kilobyte spread across MPI nodes: [7526128 ... 7526128]
+
+STEP = 63 TIME = 0.0001532282756 DT = 2.334853943e-06
+
+Castro::estTimeStep (hydro-limited) at level 0:  estdt = 2.333807154e-06
+[Level 0 step 64] ADVANCE with dt = 2.333807154e-06
+[Level 0 step 64] Advanced 16777216 cells
+
+TIME= 0.0001555620828 MASS        = 1e+31
+TIME= 0.0001555620828 XMOM        = 3.777893186e+24
+TIME= 0.0001555620828 YMOM        = 1.813388729e+24
+TIME= 0.0001555620828 ZMOM        = -3.08276084e+25
+TIME= 0.0001555620828 RHO*e       = 9.449137429e+51
+TIME= 0.0001555620828 RHO*E       = 1.000257315e+52
+
+[STEP 64] Coarse TimeStep time: 0.958252298
+[STEP 64] FAB kilobyte spread across MPI nodes: [7526128 ... 7526128]
+
+STEP = 64 TIME = 0.0001555620828 DT = 2.333807154e-06
+
+Castro::estTimeStep (hydro-limited) at level 0:  estdt = 2.332801932e-06
+[Level 0 step 65] ADVANCE with dt = 2.332801932e-06
+[Level 0 step 65] Advanced 16777216 cells
+
+TIME= 0.0001578948847 MASS        = 1e+31
+TIME= 0.0001578948847 XMOM        = -3.929008914e+24
+TIME= 0.0001578948847 YMOM        = -4.835703278e+24
+TIME= 0.0001578948847 ZMOM        = -1.148479529e+25
+TIME= 0.0001578948847 RHO*e       = 9.439836595e+51
+TIME= 0.0001578948847 RHO*E       = 1.000257315e+52
+
+[STEP 65] Coarse TimeStep time: 0.946436286
+[STEP 65] FAB kilobyte spread across MPI nodes: [7526128 ... 7526128]
+
+STEP = 65 TIME = 0.0001578948847 DT = 2.332801932e-06
+
+Castro::estTimeStep (hydro-limited) at level 0:  estdt = 2.331835929e-06
+[Level 0 step 66] ADVANCE with dt = 2.331835929e-06
+[Level 0 step 66] Advanced 16777216 cells
+
+TIME= 0.0001602267206 MASS        = 1e+31
+TIME= 0.0001602267206 XMOM        = -1.813388729e+24
+TIME= 0.0001602267206 YMOM        = -3.929008914e+24
+TIME= 0.0001602267206 ZMOM        = 3.143207131e+25
+TIME= 0.0001602267206 RHO*e       = 9.430552588e+51
+TIME= 0.0001602267206 RHO*E       = 1.000257315e+52
+
+[STEP 66] Coarse TimeStep time: 0.973089615
+[STEP 66] FAB kilobyte spread across MPI nodes: [7526128 ... 7526128]
+
+STEP = 66 TIME = 0.0001602267206 DT = 2.331835929e-06
+
+Castro::estTimeStep (hydro-limited) at level 0:  estdt = 2.330906956e-06
+[Level 0 step 67] ADVANCE with dt = 2.330906956e-06
+[Level 0 step 67] Advanced 16777216 cells
+
+TIME= 0.0001625576276 MASS        = 1e+31
+TIME= 0.0001625576276 XMOM        = -4.986819006e+24
+TIME= 0.0001625576276 YMOM        = 2.115620184e+24
+TIME= 0.0001625576276 ZMOM        = -2.236512766e+25
+TIME= 0.0001625576276 RHO*e       = 9.421286056e+51
+TIME= 0.0001625576276 RHO*E       = 1.000257315e+52
+
+[STEP 67] Coarse TimeStep time: 0.982264665
+[STEP 67] FAB kilobyte spread across MPI nodes: [7526128 ... 7526128]
+
+STEP = 67 TIME = 0.0001625576276 DT = 2.330906956e-06
+
+Castro::estTimeStep (hydro-limited) at level 0:  estdt = 2.330013135e-06
+[Level 0 step 68] ADVANCE with dt = 2.330013135e-06
+[Level 0 step 68] Advanced 16777216 cells
+
+TIME= 0.0001648876407 MASS        = 1e+31
+TIME= 0.0001648876407 XMOM        = -4.231240369e+24
+TIME= 0.0001648876407 YMOM        = -3.022314549e+23
+TIME= 0.0001648876407 ZMOM        = -6.044629098e+23
+TIME= 0.0001648876407 RHO*e       = 9.412037416e+51
+TIME= 0.0001648876407 RHO*E       = 1.000257315e+52
+
+[STEP 68] Coarse TimeStep time: 0.998228351
+[STEP 68] FAB kilobyte spread across MPI nodes: [7526128 ... 7526128]
+
+STEP = 68 TIME = 0.0001648876407 DT = 2.330013135e-06
+
+Castro::estTimeStep (hydro-limited) at level 0:  estdt = 2.329152814e-06
+[Level 0 step 69] ADVANCE with dt = 2.329152814e-06
+[Level 0 step 69] Advanced 16777216 cells
+
+TIME= 0.0001672167935 MASS        = 1e+31
+TIME= 0.0001672167935 XMOM        = 1.284483683e+25
+TIME= 0.0001672167935 YMOM        = -5.742397643e+24
+TIME= 0.0001672167935 ZMOM        = 2.417851639e+24
+TIME= 0.0001672167935 RHO*e       = 9.402807303e+51
+TIME= 0.0001672167935 RHO*E       = 1.000257315e+52
+
+[STEP 69] Coarse TimeStep time: 0.990307661
+[STEP 69] FAB kilobyte spread across MPI nodes: [7526128 ... 7526128]
+
+STEP = 69 TIME = 0.0001672167935 DT = 2.329152814e-06
+
+Castro::estTimeStep (hydro-limited) at level 0:  estdt = 2.328324571e-06
+[Level 0 step 70] ADVANCE with dt = 2.328324571e-06
+[Level 0 step 70] Advanced 16777216 cells
+
+TIME= 0.0001695451181 MASS        = 1e+31
+TIME= 0.0001695451181 XMOM        = 2.115620184e+24
+TIME= 0.0001695451181 YMOM        = -2.417851639e+24
+TIME= 0.0001695451181 ZMOM        = -8.0393567e+25
+TIME= 0.0001695451181 RHO*e       = 9.393596272e+51
+TIME= 0.0001695451181 RHO*E       = 1.000257315e+52
+
+[STEP 70] Coarse TimeStep time: 0.988901898
+[STEP 70] FAB kilobyte spread across MPI nodes: [7526128 ... 7526128]
+
+STEP = 70 TIME = 0.0001695451181 DT = 2.328324571e-06
+
+Castro::estTimeStep (hydro-limited) at level 0:  estdt = 2.327527333e-06
+[Level 0 step 71] ADVANCE with dt = 2.327527333e-06
+[Level 0 step 71] Advanced 16777216 cells
+
+TIME= 0.0001718726454 MASS        = 1e+31
+TIME= 0.0001718726454 XMOM        = -5.289050461e+24
+TIME= 0.0001718726454 YMOM        = -1.813388729e+24
+TIME= 0.0001718726454 ZMOM        = 6.044629098e+23
+TIME= 0.0001718726454 RHO*e       = 9.384404951e+51
+TIME= 0.0001718726454 RHO*E       = 1.000257315e+52
+
+[STEP 71] Coarse TimeStep time: 0.974607095
+[STEP 71] FAB kilobyte spread across MPI nodes: [7526128 ... 7526128]
+
+STEP = 71 TIME = 0.0001718726454 DT = 2.327527333e-06
+
+Castro::estTimeStep (hydro-limited) at level 0:  estdt = 2.326764886e-06
+[Level 0 step 72] ADVANCE with dt = 2.326764886e-06
+[Level 0 step 72] Advanced 16777216 cells
+
+TIME= 0.0001741994103 MASS        = 1e+31
+TIME= 0.0001741994103 XMOM        = 1.511157275e+23
+TIME= 0.0001741994103 YMOM        = 3.022314549e+23
+TIME= 0.0001741994103 ZMOM        = 4.29168666e+25
+TIME= 0.0001741994103 RHO*e       = 9.375233842e+51
+TIME= 0.0001741994103 RHO*E       = 1.000257315e+52
+
+[STEP 72] Coarse TimeStep time: 0.988307171
+[STEP 72] FAB kilobyte spread across MPI nodes: [7526128 ... 7526128]
+
+STEP = 72 TIME = 0.0001741994103 DT = 2.326764886e-06
+
+Castro::estTimeStep (hydro-limited) at level 0:  estdt = 2.326040676e-06
+[Level 0 step 73] ADVANCE with dt = 2.326040676e-06
+[Level 0 step 73] Advanced 16777216 cells
+
+TIME= 0.000176525451 MASS        = 1e+31
+TIME= 0.000176525451 XMOM        = 6.649092008e+24
+TIME= 0.000176525451 YMOM        = -4.533471824e+24
+TIME= 0.000176525451 ZMOM        = 7.011769754e+25
+TIME= 0.000176525451 RHO*e       = 9.366083549e+51
+TIME= 0.000176525451 RHO*E       = 1.000257315e+52
+
+[STEP 73] Coarse TimeStep time: 0.985240999
+[STEP 73] FAB kilobyte spread across MPI nodes: [7526128 ... 7526128]
+
+STEP = 73 TIME = 0.000176525451 DT = 2.326040676e-06
+
+Castro::estTimeStep (hydro-limited) at level 0:  estdt = 2.325351291e-06
+[Level 0 step 74] ADVANCE with dt = 2.325351291e-06
+[Level 0 step 74] Advanced 16777216 cells
+
+TIME= 0.0001788508023 MASS        = 1e+31
+TIME= 0.0001788508023 XMOM        = -7.555786373e+23
+TIME= 0.0001788508023 YMOM        = -8.764712192e+24
+TIME= 0.0001788508023 ZMOM        = -2.840975676e+25
+TIME= 0.0001788508023 RHO*e       = 9.356954618e+51
+TIME= 0.0001788508023 RHO*E       = 1.000257315e+52
+
+[STEP 74] Coarse TimeStep time: 0.963937754
+[STEP 74] FAB kilobyte spread across MPI nodes: [7526128 ... 7526128]
+
+STEP = 74 TIME = 0.0001788508023 DT = 2.325351291e-06
+
+Castro::estTimeStep (hydro-limited) at level 0:  estdt = 2.324696436e-06
+[Level 0 step 75] ADVANCE with dt = 2.324696436e-06
+[Level 0 step 75] Advanced 16777216 cells
+
+TIME= 0.0001811754987 MASS        = 1e+31
+TIME= 0.0001811754987 XMOM        = 1.20892582e+24
+TIME= 0.0001811754987 YMOM        = -1.511157275e+24
+TIME= 0.0001811754987 ZMOM        = 2.236512766e+25
+TIME= 0.0001811754987 RHO*e       = 9.34784742e+51
+TIME= 0.0001811754987 RHO*E       = 1.000257315e+52
+
+[STEP 75] Coarse TimeStep time: 0.983591621
+[STEP 75] FAB kilobyte spread across MPI nodes: [7526128 ... 7526128]
+
+STEP = 75 TIME = 0.0001811754987 DT = 2.324696436e-06
+
+Castro::estTimeStep (hydro-limited) at level 0:  estdt = 2.324083628e-06
+[Level 0 step 76] ADVANCE with dt = 2.324083628e-06
+[Level 0 step 76] Advanced 16777216 cells
+
+TIME= 0.0001834995823 MASS        = 1e+31
+TIME= 0.0001834995823 XMOM        = 4.533471824e+24
+TIME= 0.0001834995823 YMOM        = 4.231240369e+24
+TIME= 0.0001834995823 ZMOM        = -2.236512766e+25
+TIME= 0.0001834995823 RHO*e       = 9.338762427e+51
+TIME= 0.0001834995823 RHO*E       = 1.000257315e+52
+
+[STEP 76] Coarse TimeStep time: 0.974695135
+[STEP 76] FAB kilobyte spread across MPI nodes: [7526128 ... 7526128]
+
+STEP = 76 TIME = 0.0001834995823 DT = 2.324083628e-06
+
+Castro::estTimeStep (hydro-limited) at level 0:  estdt = 2.32323897e-06
+[Level 0 step 77] ADVANCE with dt = 2.32323897e-06
+[Level 0 step 77] Advanced 16777216 cells
+
+TIME= 0.0001858228213 MASS        = 1e+31
+TIME= 0.0001858228213 XMOM        = -6.800207735e+24
+TIME= 0.0001858228213 YMOM        = -6.044629098e+24
+TIME= 0.0001858228213 ZMOM        = 3.808116332e+25
+TIME= 0.0001858228213 RHO*e       = 9.329701209e+51
+TIME= 0.0001858228213 RHO*E       = 1.000257315e+52
+
+[STEP 77] Coarse TimeStep time: 0.991053354
+[STEP 77] FAB kilobyte spread across MPI nodes: [7526128 ... 7526128]
+
+STEP = 77 TIME = 0.0001858228213 DT = 2.32323897e-06
+
+Castro::estTimeStep (hydro-limited) at level 0:  estdt = 2.32225936e-06
+[Level 0 step 78] ADVANCE with dt = 2.32225936e-06
+[Level 0 step 78] Advanced 16777216 cells
+
+TIME= 0.0001881450807 MASS        = 1e+31
+TIME= 0.0001881450807 XMOM        = -2.266735912e+24
+TIME= 0.0001881450807 YMOM        = 4.231240369e+24
+TIME= 0.0001881450807 ZMOM        = 2.055173893e+25
+TIME= 0.0001881450807 RHO*e       = 9.320664884e+51
+TIME= 0.0001881450807 RHO*E       = 1.000257315e+52
+
+[STEP 78] Coarse TimeStep time: 0.982963364
+[STEP 78] FAB kilobyte spread across MPI nodes: [7526128 ... 7526128]
+
+STEP = 78 TIME = 0.0001881450807 DT = 2.32225936e-06
+
+Castro::estTimeStep (hydro-limited) at level 0:  estdt = 2.32132811e-06
+[Level 0 step 79] ADVANCE with dt = 2.32132811e-06
+[Level 0 step 79] Advanced 16777216 cells
+
+TIME= 0.0001904664088 MASS        = 1e+31
+TIME= 0.0001904664088 XMOM        = -9.066943647e+23
+TIME= 0.0001904664088 YMOM        = -9.671406557e+24
+TIME= 0.0001904664088 ZMOM        = -1.027586947e+25
+TIME= 0.0001904664088 RHO*e       = 9.311653958e+51
+TIME= 0.0001904664088 RHO*E       = 1.000257315e+52
+
+[STEP 79] Coarse TimeStep time: 0.99096971
+[STEP 79] FAB kilobyte spread across MPI nodes: [7526128 ... 7526128]
+
+STEP = 79 TIME = 0.0001904664088 DT = 2.32132811e-06
+
+Castro::estTimeStep (hydro-limited) at level 0:  estdt = 2.320484224e-06
+[Level 0 step 80] ADVANCE with dt = 2.320484224e-06
+[Level 0 step 80] Advanced 16777216 cells
+
+TIME= 0.000192786893 MASS        = 1e+31
+TIME= 0.000192786893 XMOM        = 7.10243919e+24
+TIME= 0.000192786893 YMOM        = -6.044629098e+23
+TIME= 0.000192786893 ZMOM        = 2.417851639e+25
+TIME= 0.000192786893 RHO*e       = 9.302668596e+51
+TIME= 0.000192786893 RHO*E       = 1.000257315e+52
+
+[STEP 80] Coarse TimeStep time: 0.982328296
+[STEP 80] FAB kilobyte spread across MPI nodes: [7526128 ... 7526128]
+
+STEP = 80 TIME = 0.000192786893 DT = 2.320484224e-06
+
+Castro::estTimeStep (hydro-limited) at level 0:  estdt = 2.319719296e-06
+[Level 0 step 81] ADVANCE with dt = 2.319719296e-06
+[Level 0 step 81] Advanced 16777216 cells
+
+TIME= 0.0001951066123 MASS        = 1e+31
+TIME= 0.0001951066123 XMOM        = 4.231240369e+24
+TIME= 0.0001951066123 YMOM        = 5.742397643e+24
+TIME= 0.0001951066123 ZMOM        = -4.412579242e+25
+TIME= 0.0001951066123 RHO*e       = 9.293709051e+51
+TIME= 0.0001951066123 RHO*E       = 1.000257315e+52
+
+[STEP 81] Coarse TimeStep time: 0.98693332
+[STEP 81] FAB kilobyte spread across MPI nodes: [7526128 ... 7526128]
+
+STEP = 81 TIME = 0.0001951066123 DT = 2.319719296e-06
+
+Castro::estTimeStep (hydro-limited) at level 0:  estdt = 2.319028088e-06
+[Level 0 step 82] ADVANCE with dt = 2.319028088e-06
+[Level 0 step 82] Advanced 16777216 cells
+
+TIME= 0.0001974256404 MASS        = 1e+31
+TIME= 0.0001974256404 XMOM        = -1.360041547e+24
+TIME= 0.0001974256404 YMOM        = 1.027586947e+25
+TIME= 0.0001974256404 ZMOM        = -3.022314549e+25
+TIME= 0.0001974256404 RHO*e       = 9.284775573e+51
+TIME= 0.0001974256404 RHO*E       = 1.000257315e+52
+
+[STEP 82] Coarse TimeStep time: 1.009008901
+[STEP 82] FAB kilobyte spread across MPI nodes: [7526128 ... 7526128]
+
+STEP = 82 TIME = 0.0001974256404 DT = 2.319028088e-06
+
+Castro::estTimeStep (hydro-limited) at level 0:  estdt = 2.318404386e-06
+[Level 0 step 83] ADVANCE with dt = 2.318404386e-06
+[Level 0 step 83] Advanced 16777216 cells
+
+TIME= 0.0001997440448 MASS        = 1e+31
+TIME= 0.0001997440448 XMOM        = -2.115620184e+24
+TIME= 0.0001997440448 YMOM        = -3.022314549e+24
+TIME= 0.0001997440448 ZMOM        = 3.324546004e+25
+TIME= 0.0001997440448 RHO*e       = 9.275868524e+51
+TIME= 0.0001997440448 RHO*E       = 1.000257315e+52
+
+[STEP 83] Coarse TimeStep time: 0.995586837
+[STEP 83] FAB kilobyte spread across MPI nodes: [7526128 ... 7526128]
+
+STEP = 83 TIME = 0.0001997440448 DT = 2.318404386e-06
+
+Castro::estTimeStep (hydro-limited) at level 0:  estdt = 2.317842063e-06
+[Level 0 step 84] ADVANCE with dt = 2.317842063e-06
+[Level 0 step 84] Advanced 16777216 cells
+
+TIME= 0.0002020618868 MASS        = 1e+31
+TIME= 0.0002020618868 XMOM        = 1.662273002e+24
+TIME= 0.0002020618868 YMOM        = -1.20892582e+24
+TIME= 0.0002020618868 ZMOM        = -7.314001209e+25
+TIME= 0.0002020618868 RHO*e       = 9.266988216e+51
+TIME= 0.0002020618868 RHO*E       = 1.000257315e+52
+
+[STEP 84] Coarse TimeStep time: 0.996110058
+[STEP 84] FAB kilobyte spread across MPI nodes: [7526128 ... 7526128]
+
+STEP = 84 TIME = 0.0002020618868 DT = 2.317842063e-06
+
+Castro::estTimeStep (hydro-limited) at level 0:  estdt = 2.317332711e-06
+[Level 0 step 85] ADVANCE with dt = 2.317332711e-06
+[Level 0 step 85] Advanced 16777216 cells
+
+TIME= 0.0002043792196 MASS        = 1e+31
+TIME= 0.0002043792196 XMOM        = -4.533471824e+23
+TIME= 0.0002043792196 YMOM        = -2.115620184e+24
+TIME= 0.0002043792196 ZMOM        = -5.017042151e+25
+TIME= 0.0002043792196 RHO*e       = 9.258134902e+51
+TIME= 0.0002043792196 RHO*E       = 1.000257315e+52
+
+[STEP 85] Coarse TimeStep time: 1.00709773
+[STEP 85] FAB kilobyte spread across MPI nodes: [7526128 ... 7526128]
+
+STEP = 85 TIME = 0.0002043792196 DT = 2.317332711e-06
+
+Castro::estTimeStep (hydro-limited) at level 0:  estdt = 2.316865347e-06
+[Level 0 step 86] ADVANCE with dt = 2.316865347e-06
+[Level 0 step 86] Advanced 16777216 cells
+
+TIME= 0.0002066960849 MASS        = 1e+31
+TIME= 0.0002066960849 XMOM        = 3.022314549e+23
+TIME= 0.0002066960849 YMOM        = 6.044629098e+23
+TIME= 0.0002066960849 ZMOM        = -9.671406557e+24
+TIME= 0.0002066960849 RHO*e       = 9.249308987e+51
+TIME= 0.0002066960849 RHO*E       = 1.000257315e+52
+
+[STEP 86] Coarse TimeStep time: 0.976854451
+[STEP 86] FAB kilobyte spread across MPI nodes: [7526128 ... 7526128]
+
+STEP = 86 TIME = 0.0002066960849 DT = 2.316865347e-06
+
+Castro::estTimeStep (hydro-limited) at level 0:  estdt = 2.316437373e-06
+[Level 0 step 87] ADVANCE with dt = 2.316437373e-06
+[Level 0 step 87] Advanced 16777216 cells
+
+TIME= 0.0002090125223 MASS        = 1e+31
+TIME= 0.0002090125223 XMOM        = -3.929008914e+24
+TIME= 0.0002090125223 YMOM        = -1.20892582e+24
+TIME= 0.0002090125223 ZMOM        = -3.505884877e+25
+TIME= 0.0002090125223 RHO*e       = 9.240510828e+51
+TIME= 0.0002090125223 RHO*E       = 1.000257315e+52
+
+[STEP 87] Coarse TimeStep time: 0.977364701
+[STEP 87] FAB kilobyte spread across MPI nodes: [7526128 ... 7526128]
+
+STEP = 87 TIME = 0.0002090125223 DT = 2.316437373e-06
+
+Castro::estTimeStep (hydro-limited) at level 0:  estdt = 2.316027948e-06
+[Level 0 step 88] ADVANCE with dt = 2.316027948e-06
+[Level 0 step 88] Advanced 16777216 cells
+
+TIME= 0.0002113285502 MASS        = 1e+31
+TIME= 0.0002113285502 XMOM        = 2.568967367e+24
+TIME= 0.0002113285502 YMOM        = 5.440166188e+24
+TIME= 0.0002113285502 ZMOM        = 8.64381961e+25
+TIME= 0.0002113285502 RHO*e       = 9.231740884e+51
+TIME= 0.0002113285502 RHO*E       = 1.000257315e+52
+
+[STEP 88] Coarse TimeStep time: 0.983429983
+[STEP 88] FAB kilobyte spread across MPI nodes: [7526128 ... 7526128]
+
+STEP = 88 TIME = 0.0002113285502 DT = 2.316027948e-06
+
+Castro::estTimeStep (hydro-limited) at level 0:  estdt = 2.315630974e-06
+[Level 0 step 89] ADVANCE with dt = 2.315630974e-06
+[Level 0 step 89] Advanced 16777216 cells
+
+TIME= 0.0002136441812 MASS        = 1e+31
+TIME= 0.0002136441812 XMOM        = -6.800207735e+24
+TIME= 0.0002136441812 YMOM        = 6.346860553e+24
+TIME= 0.0002136441812 ZMOM        = -3.626777459e+25
+TIME= 0.0002136441812 RHO*e       = 9.222999643e+51
+TIME= 0.0002136441812 RHO*E       = 1.000257315e+52
+
+[STEP 89] Coarse TimeStep time: 0.994159642
+[STEP 89] FAB kilobyte spread across MPI nodes: [7526128 ... 7526128]
+
+STEP = 89 TIME = 0.0002136441812 DT = 2.315630974e-06
+
+Castro::estTimeStep (hydro-limited) at level 0:  estdt = 2.31524308e-06
+[Level 0 step 90] ADVANCE with dt = 2.31524308e-06
+[Level 0 step 90] Advanced 16777216 cells
+
+TIME= 0.0002159594243 MASS        = 1e+31
+TIME= 0.0002159594243 XMOM        = -3.022314549e+23
+TIME= 0.0002159594243 YMOM        = 4.231240369e+24
+TIME= 0.0002159594243 ZMOM        = -7.434893791e+25
+TIME= 0.0002159594243 RHO*e       = 9.214287575e+51
+TIME= 0.0002159594243 RHO*E       = 1.000257315e+52
+
+[STEP 90] Coarse TimeStep time: 1.010020793
+[STEP 90] FAB kilobyte spread across MPI nodes: [7526128 ... 7526128]
+
+STEP = 90 TIME = 0.0002159594243 DT = 2.31524308e-06
+
+Castro::estTimeStep (hydro-limited) at level 0:  estdt = 2.314862304e-06
+[Level 0 step 91] ADVANCE with dt = 2.314862304e-06
+[Level 0 step 91] Advanced 16777216 cells
+
+TIME= 0.0002182742866 MASS        = 1e+31
+TIME= 0.0002182742866 XMOM        = -2.568967367e+24
+TIME= 0.0002182742866 YMOM        = 6.044629098e+23
+TIME= 0.0002182742866 ZMOM        = -3.324546004e+25
+TIME= 0.0002182742866 RHO*e       = 9.205605162e+51
+TIME= 0.0002182742866 RHO*E       = 1.000257315e+52
+
+[STEP 91] Coarse TimeStep time: 0.99196665
+[STEP 91] FAB kilobyte spread across MPI nodes: [7526128 ... 7526128]
+
+STEP = 91 TIME = 0.0002182742866 DT = 2.314862304e-06
+
+Castro::estTimeStep (hydro-limited) at level 0:  estdt = 2.314487497e-06
+[Level 0 step 92] ADVANCE with dt = 2.314487497e-06
+[Level 0 step 92] Advanced 16777216 cells
+
+TIME= 0.0002205887741 MASS        = 1e+31
+TIME= 0.0002205887741 XMOM        = 8.160249282e+24
+TIME= 0.0002205887741 YMOM        = 9.066943647e+23
+TIME= 0.0002205887741 ZMOM        = 7.676678955e+25
+TIME= 0.0002205887741 RHO*e       = 9.196952939e+51
+TIME= 0.0002205887741 RHO*E       = 1.000257315e+52
+
+[STEP 92] Coarse TimeStep time: 0.991211809
+[STEP 92] FAB kilobyte spread across MPI nodes: [7526128 ... 7526128]
+
+STEP = 92 TIME = 0.0002205887741 DT = 2.314487497e-06
+
+Castro::estTimeStep (hydro-limited) at level 0:  estdt = 2.314117144e-06
+[Level 0 step 93] ADVANCE with dt = 2.314117144e-06
+[Level 0 step 93] Advanced 16777216 cells
+
+TIME= 0.0002229028912 MASS        = 1e+31
+TIME= 0.0002229028912 XMOM        = 3.929008914e+24
+TIME= 0.0002229028912 YMOM        = -2.720083094e+24
+TIME= 0.0002229028912 ZMOM        = 6.044629098e+24
+TIME= 0.0002229028912 RHO*e       = 9.188331338e+51
+TIME= 0.0002229028912 RHO*E       = 1.000257315e+52
+
+[STEP 93] Coarse TimeStep time: 0.993787972
+[STEP 93] FAB kilobyte spread across MPI nodes: [7526128 ... 7526128]
+
+STEP = 93 TIME = 0.0002229028912 DT = 2.314117144e-06
+
+Castro::estTimeStep (hydro-limited) at level 0:  estdt = 2.313761808e-06
+[Level 0 step 94] ADVANCE with dt = 2.313761808e-06
+[Level 0 step 94] Advanced 16777216 cells
+
+TIME= 0.000225216653 MASS        = 1e+31
+TIME= 0.000225216653 XMOM        = 7.555786373e+23
+TIME= 0.000225216653 YMOM        = 3.626777459e+24
+TIME= 0.000225216653 ZMOM        = 1.20892582e+25
+TIME= 0.000225216653 RHO*e       = 9.179740732e+51
+TIME= 0.000225216653 RHO*E       = 1.000257315e+52
+
+[STEP 94] Coarse TimeStep time: 0.988529249
+[STEP 94] FAB kilobyte spread across MPI nodes: [7526128 ... 7526128]
+
+STEP = 94 TIME = 0.000225216653 DT = 2.313761808e-06
+
+Castro::estTimeStep (hydro-limited) at level 0:  estdt = 2.313430599e-06
+[Level 0 step 95] ADVANCE with dt = 2.313430599e-06
+[Level 0 step 95] Advanced 16777216 cells
+
+TIME= 0.0002275300836 MASS        = 1e+31
+TIME= 0.0002275300836 XMOM        = -2.720083094e+24
+TIME= 0.0002275300836 YMOM        = -9.066943647e+23
+TIME= 0.0002275300836 ZMOM        = -4.654364406e+25
+TIME= 0.0002275300836 RHO*e       = 9.171181523e+51
+TIME= 0.0002275300836 RHO*E       = 1.000257315e+52
+
+[STEP 95] Coarse TimeStep time: 1.00866518
+[STEP 95] FAB kilobyte spread across MPI nodes: [7526128 ... 7526128]
+
+STEP = 95 TIME = 0.0002275300836 DT = 2.313430599e-06
+
+Castro::estTimeStep (hydro-limited) at level 0:  estdt = 2.313122605e-06
+[Level 0 step 96] ADVANCE with dt = 2.313122605e-06
+[Level 0 step 96] Advanced 16777216 cells
+
+TIME= 0.0002298432062 MASS        = 1e+31
+TIME= 0.0002298432062 XMOM        = 3.777893186e+24
+TIME= 0.0002298432062 YMOM        = 3.929008914e+24
+TIME= 0.0002298432062 ZMOM        = 4.835703278e+25
+TIME= 0.0002298432062 RHO*e       = 9.162654165e+51
+TIME= 0.0002298432062 RHO*E       = 1.000257315e+52
+
+[STEP 96] Coarse TimeStep time: 0.98775773
+[STEP 96] FAB kilobyte spread across MPI nodes: [7526128 ... 7526128]
+
+STEP = 96 TIME = 0.0002298432062 DT = 2.313122605e-06
+
+Castro::estTimeStep (hydro-limited) at level 0:  estdt = 2.312837026e-06
+[Level 0 step 97] ADVANCE with dt = 2.312837026e-06
+[Level 0 step 97] Advanced 16777216 cells
+
+TIME= 0.0002321560433 MASS        = 1e+31
+TIME= 0.0002321560433 XMOM        = -2.115620184e+24
+TIME= 0.0002321560433 YMOM        = -7.555786373e+24
+TIME= 0.0002321560433 ZMOM        = -5.077488442e+25
+TIME= 0.0002321560433 RHO*e       = 9.154159065e+51
+TIME= 0.0002321560433 RHO*E       = 1.000257315e+52
+
+[STEP 97] Coarse TimeStep time: 0.985084338
+[STEP 97] FAB kilobyte spread across MPI nodes: [7526128 ... 7526128]
+
+STEP = 97 TIME = 0.0002321560433 DT = 2.312837026e-06
+
+Castro::estTimeStep (hydro-limited) at level 0:  estdt = 2.312578354e-06
+[Level 0 step 98] ADVANCE with dt = 2.312578354e-06
+[Level 0 step 98] Advanced 16777216 cells
+
+TIME= 0.0002344686216 MASS        = 1e+31
+TIME= 0.0002344686216 XMOM        = 5.289050461e+24
+TIME= 0.0002344686216 YMOM        = 0
+TIME= 0.0002344686216 ZMOM        = 1.87383502e+25
+TIME= 0.0002344686216 RHO*e       = 9.145696599e+51
+TIME= 0.0002344686216 RHO*E       = 1.000257315e+52
+
+[STEP 98] Coarse TimeStep time: 0.985558474
+[STEP 98] FAB kilobyte spread across MPI nodes: [7526128 ... 7526128]
+
+STEP = 98 TIME = 0.0002344686216 DT = 2.312578354e-06
+
+Castro::estTimeStep (hydro-limited) at level 0:  estdt = 2.312349734e-06
+[Level 0 step 99] ADVANCE with dt = 2.312349734e-06
+[Level 0 step 99] Advanced 16777216 cells
+
+TIME= 0.0002367809713 MASS        = 1e+31
+TIME= 0.0002367809713 XMOM        = 9.822522284e+24
+TIME= 0.0002367809713 YMOM        = -1.20892582e+24
+TIME= 0.0002367809713 ZMOM        = 5.56105877e+25
+TIME= 0.0002367809713 RHO*e       = 9.137267122e+51
+TIME= 0.0002367809713 RHO*E       = 1.000257315e+52
+
+[STEP 99] Coarse TimeStep time: 1.006897775
+[STEP 99] FAB kilobyte spread across MPI nodes: [7526128 ... 7526128]
+
+STEP = 99 TIME = 0.0002367809713 DT = 2.312349734e-06
+
+Castro::estTimeStep (hydro-limited) at level 0:  estdt = 2.31215149e-06
+[Level 0 step 100] ADVANCE with dt = 2.31215149e-06
+[Level 0 step 100] Advanced 16777216 cells
+
+TIME= 0.0002390931228 MASS        = 1e+31
+TIME= 0.0002390931228 XMOM        = -6.800207735e+24
+TIME= 0.0002390931228 YMOM        = -1.813388729e+24
+TIME= 0.0002390931228 ZMOM        = -5.984182807e+25
+TIME= 0.0002390931228 RHO*e       = 9.128871006e+51
+TIME= 0.0002390931228 RHO*E       = 1.000257315e+52
+
+[STEP 100] Coarse TimeStep time: 0.998820819
+[STEP 100] FAB kilobyte spread across MPI nodes: [7526128 ... 7526128]
+
+STEP = 100 TIME = 0.0002390931228 DT = 2.31215149e-06
+
+
+Ending run at 11:27:47 UTC on 2017-10-20.
+Run time = 97.45346641
+Run time without initialization = 96.36291954
+
+  Figure of Merit (zones / usec): 17.410
+
+Unused ParmParse Variables:
+[TOP]::amr.ref_ratio(nvals = 4)  :: [2, 2, 2, 2]
+[TOP]::amr.regrid_int(nvals = 1)  :: [2]
+done.

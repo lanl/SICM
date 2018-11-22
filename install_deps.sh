@@ -68,36 +68,64 @@ mkdir -p $DIR
 cd $DIR
 
 if [[ "${LLVM}" = true ]]; then
-  # Download the tarball for LLVM
-  wget http://releases.llvm.org/4.0.1/llvm-4.0.1.src.tar.xz
-  tar xf llvm-4.0.1.src.tar.xz
-  rm llvm-4.0.1.src.tar.xz
-  mv llvm-4.0.1.src llvm
+  # Build LLVM
+  git clone https://github.com/flang-compiler/llvm.git
   cd llvm
-
-  # Clang
-  cd tools
-  wget http://releases.llvm.org/4.0.1/cfe-4.0.1.src.tar.xz
-  tar xf cfe-4.0.1.src.tar.xz
-  rm cfe-4.0.1.src.tar.xz
-  mv cfe-4.0.1.src clang
-  cd ..
-
-  # OpenMP
-  cd projects
-  wget http://releases.llvm.org/4.0.1/openmp-4.0.1.src.tar.xz
-  tar xf openmp-4.0.1.src.tar.xz
-  rm openmp-4.0.1.src.tar.xz
-  mv openmp-4.0.1.src openmp
-  cd ..
-
-  # Compile and install LLVM
-  rm -rf build
-  mkdir build
-  cd build
+  git checkout release_60
+  mkdir build && cd build
   cmake -DCMAKE_INSTALL_PREFIX=${INSTALLDIR} ..
   make -j $(nproc --all)
   make install
+  cd $DIR
+
+  # Build flang driver
+  git clone https://github.com/flang-compiler/flang-driver.git
+  cd flang-driver
+  git checkout release_60
+  mkdir build && cd build
+  cmake -DCMAKE_INSTALL_PREFIX=${INSTALLDIR} -DLLVM_CONFIG=${INSTALLDIR}/bin/llvm-config ..
+  make -j $(nproc --all)
+  make install
+  cd $DIR
+
+  # Build OpenMP
+  git clone https://github.com/llvm-mirror/openmp.git
+  cd openmp/runtime
+  git checkout release_60
+  mkdir build && cd build
+  cmake -DCMAKE_INSTALL_PREFIX=${INSTALLDIR} -DLLVM_CONFIG=${INSTALLDIR}/bin/llvm-config  ../..
+  make -j $(nproc --all)
+  make install
+  cd $DIR
+
+  # Get flang itself
+  git clone https://github.com/flang-compiler/flang.git
+
+  # Compile libpgmath
+  cd flang/runtime/libpgmath
+  mkdir build && cd build
+  cmake -DCMAKE_INSTALL_PREFIX=${INSTALLDIR} \
+        -DLLVM_CONFIG=${INSTALLDIR}/bin/llvm-config \
+        -DCMAKE_CXX_COMPILER=${INSTALLDIR}/bin/clang++ \
+        -DCMAKE_C_COMPILER=${INSTALLDIR}/bin/clang \
+        -DCMAKE_Fortran_COMPILER=${INSTALLDIR}/bin/flang ..
+  make -j $(nproc --all)
+  make install
+  cd $DIR
+
+  # Flang itself
+  cd flang
+  mkdir build && cd build
+  cmake -DCMAKE_INSTALL_PREFIX=${INSTALLDIR} \
+        -DLLVM_CONFIG=${INSTALLDIR}/bin/llvm-config \
+        -DCMAKE_CXX_COMPILER=${INSTALLDIR}/bin/clang++ \
+        -DCMAKE_C_COMPILER=${INSTALLDIR}/bin/clang \
+        -DCMAKE_Fortran_COMPILER=${INSTALLDIR}/bin/flang ..
+  make -j $(nproc --all) || true
+  make
+  make install
+  cd $DIR
+
 fi
 
 # Reset

@@ -10,12 +10,15 @@ ARGS=$@
 OUTPUT_ARGS=""
 EXTRA_ARGS=""
 FILE=""
+OUTPUTFILE=""
 ONLY_COMPILE=false
 LLVMPATH="${LLVMPATH:- }"
 C_COMPILER="${C_COMPILER:-clang}"
 CXX_COMPILER="${CXX_COMPILER:-clang++}"
+FORT_COMPILER="${FORT_COMPILER:-flang}"
 COMPILER="$C_COMPILER"
 PREV=""
+FORTRAN=false
 
 # Iterate over all arguments
 for word in $ARGS; do
@@ -29,11 +32,20 @@ for word in $ARGS; do
   elif [[ "$word" =~ (.*)\.cpp$ ]] || [[ "$word" =~ (.*)\.C$ ]] || [[ "$word" =~ (.*)\.cc ]]; then
     FILE=${BASH_REMATCH[1]}
     COMPILER="$CXX_COMPILER"
+  elif [[ "$word" =~ (.*)\.f90$ ]] || [[ "$word" =~ (.*)\.f95$ ]] || [[ "$word" =~ (.*)\.f03 ]] || [[ "$word" =~ (.*)\.F90 ]]; then
+    FILE=${BASH_REMATCH[1]}
+    COMPILER="$FORT_COMPILER"
+    FORTRAN=true
   # Remove "-o [outputfile]" from the arguments
   elif [[ "$word" =~ \-o$ ]]; then
     PREV="$word"
-  elif [[ "$word" =~ (.*)\.o$ ]] && [[ "$PREV" =~ \-o$ ]]; then
+  elif [[ "$PREV" =~ \-o$ ]]; then
     PREV=""
+    if [[ "$word" =~ (.*)\.o$ ]]; then
+      OUTPUTFILE=${BASH_REMATCH[1]}
+    else
+      echo "The previous argument was '-o', but the next wasn't a '.o' file."
+    fi
   # Everything else gets output to the ld_wrapper
   else
     OUTPUT_ARGS="$OUTPUT_ARGS $word"
@@ -46,20 +58,30 @@ for word in $ARGS; do
 
 done
 
-if [ "$ONLY_COMPILE" = false ]; then
-  echo "WARNING: This wrapper was intended to be used with '-c' to compile only, not to link."
-fi
-
 # EXTRA_ARGS are arguments used to compile to IR
-export EXTRA_ARGS="-emit-llvm -o $FILE.bc $EXTRA_ARGS"
+export EXTRA_ARGS="-emit-llvm -o $OUTPUTFILE.bc $EXTRA_ARGS"
 
 # Output the original arguments to a file, to be used by ld_wrapper
 echo $OUTPUT_ARGS > $FILE.args
 
-# Compile to both a '.bc' file as well as a '.o', in parallel
-echo IN COMPILER_WRAPPER
-echo ${LLVMPATH}${COMPILER} $ARGS $EXTRA_ARGS
-${LLVMPATH}${COMPILER} $ARGS $EXTRA_ARGS &
-echo ${LLVMPATH}${COMPILER} $ARGS
-${LLVMPATH}${COMPILER} $ARGS &
-wait
+# Compile to both a '.bc' file as well as a '.o', in parallel.
+# Because of the ever-present Fortran, don't return until both have succeeded.
+PROC=""
+PROC2=""
+RETVAL=1
+RETVAL2=1
+while [ $RETVAL -ne 0 ] && [ $RETVAL2 -ne 0 ]; do
+  ${LLVMPATH}${COMPILER} $ARGS $EXTRA_ARGS &
+  PROC=$!
+  ${LLVMPATH}${COMPILER} $ARGS &
+  PROC2=$!
+  wait $PROC
+  RETVAL=$?
+  wait $PROC2
+  RETVAL=$?
+done
+
+# Might want to add feature where if it's called without -c, we should call the ld_wrapper.sh automatically
+#if [ "$ONLY_COMPILE" = false ]; then
+#  echo "WARNING: This wrapper was intended to be used with '-c' to compile only, not to link."
+#fi
