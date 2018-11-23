@@ -1,9 +1,0 @@
-# Number of GPUs     Figure of Merit (zones/usec)     Zones per dimension
-1                    2.301                            128
-2                    5.026                            192
-4                    10.061                           256
-8                    17.410                           256
-16                   35.883                           384
-32                   67.421                           512
-64                   107.289                          512
-128                  232.019                          768

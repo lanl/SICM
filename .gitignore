@@ -25,6 +25,8 @@
 
 # Binaries
 /examples/low/basic
+/src/high/memreserve
+/src/high/hotset
 
 autom4te.cache
 *.m4
