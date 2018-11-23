@@ -1,3 +1,0 @@
-[submodule "examples/high"]
-	path = examples/high
-	url = https://gitlab.com/molson5/sicm-benchmarks.git
