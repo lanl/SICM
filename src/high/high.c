@@ -782,6 +782,15 @@ void* sh_alloc(int id, size_t sz) {
   return ret;
 }
 
+void* sh_calloc(int id, size_t num, size_t sz) {
+  void *ptr;
+  size_t i;
+
+  ptr = sh_alloc(id, sz);
+  memset(ptr, 0, num * sz);
+  return ptr;
+}
+
 void sh_free(void* ptr) {
   if(layout == INVALID_LAYOUT) {
     je_free(ptr);

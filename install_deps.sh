@@ -98,8 +98,8 @@ if [[ "${LLVM}" = true ]]; then
   make install
   cd $DIR
 
-  # Get flang itself
-  git clone https://github.com/flang-compiler/flang.git
+  # Get flang itself, with SICM mods
+  git clone https://github.com/benbenolson/flang.git
 
   # Compile libpgmath
   cd flang/runtime/libpgmath

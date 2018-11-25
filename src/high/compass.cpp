@@ -106,84 +106,85 @@ struct compass : public ModulePass {
         nsites_file(nullptr),
         nclones_file(nullptr) {
 
+	/* C */
         allocFnMap["malloc"] = "sh_alloc";
         allocFnMap["calloc"] = "ben_calloc";
         allocFnMap["realloc"] = "sh_realloc";
+        dallocFnMap["free"] = "sh_free";
+
+	/* C++ */
         allocFnMap["_Znam"] = "sh_alloc";
         allocFnMap["_Znwm"] = "sh_alloc";
-        allocFnMap["f90_alloc"] = "f90_ben_alloc";
-        allocFnMap["f90_alloc03"] = "f90_ben_alloc03";
-        allocFnMap["f90_alloc03_chk"] = "f90_ben_alloc03_chk";
-        allocFnMap["f90_alloc04"] = "f90_ben_alloc04";
-        allocFnMap["f90_alloc04_chk"] = "f90_ben_alloc04_chk";
-        allocFnMap["f90_kalloc"] = "f90_ben_kalloc";
-        allocFnMap["f90_calloc"] = "f90_ben_calloc";
-        allocFnMap["f90_calloc03"] = "f90_ben_calloc03";
-        allocFnMap["f90_calloc04"] = "f90_ben_calloc04";
-        allocFnMap["f90_kcalloc"] = "f90_ben_kcalloc";
-        allocFnMap["f90_ptr_alloc"] = "f90_ben_ptr_alloc";
-        allocFnMap["f90_ptr_alloc03"] = "f90_ben_ptr_alloc03";
-        allocFnMap["f90_ptr_alloc04"] = "f90_ben_ptr_alloc04";
-        allocFnMap["f90_ptr_src_alloc03"] = "f90_ben_ptr_src_alloc03";
-        allocFnMap["f90_ptr_src_alloc04"] = "f90_ben_ptr_src_alloc04";
-        allocFnMap["f90_ptr_src_calloc03"] = "f90_ben_ptr_src_calloc03";
-        allocFnMap["f90_ptr_src_calloc04"] = "f90_ben_ptr_src_calloc04";
-        allocFnMap["f90_ptr_kalloc"] = "f90_ben_ptr_kalloc";
-        allocFnMap["f90_ptr_calloc"] = "f90_ben_ptr_calloc";
-        allocFnMap["f90_ptr_calloc03"] = "f90_ben_ptr_calloc03";
-        allocFnMap["f90_ptr_calloc04"] = "f90_ben_ptr_calloc04";
-        allocFnMap["f90_ptr_kcalloc"] = "f90_ben_ptr_kcalloc";
-        allocFnMap["f90_auto_allocv"] = "f90_ben_auto_allocv";
-        allocFnMap["f90_auto_alloc"] = "f90_ben_auto_alloc";
-        allocFnMap["f90_auto_alloc04"] = "f90_ben_auto_alloc04";
-        allocFnMap["f90_auto_calloc"] = "f90_ben_auto_calloc";
-        allocFnMap["f90_auto_calloc04"] = "f90_ben_auto_calloc04";
-
-        allocFnMap["f90_alloc_i8"] = "f90_ben_alloc_i8";
-        allocFnMap["f90_alloc03_i8"] = "f90_ben_alloc03_i8";
-        allocFnMap["f90_alloc03_chk_i8"] = "f90_ben_alloc03_chk_i8";
-        allocFnMap["f90_alloc04_i8"] = "f90_ben_alloc04_i8";
-        allocFnMap["f90_alloc04_chk_i8"] = "f90_ben_alloc04_chk_i8";
-        allocFnMap["f90_kalloc_i8"] = "f90_ben_kalloc_i8";
-        allocFnMap["f90_calloc_i8"] = "f90_ben_calloc_i8";
-        allocFnMap["f90_calloc03_i8"] = "f90_ben_calloc03_i8";
-        allocFnMap["f90_calloc04_i8"] = "f90_ben_calloc04_i8";
-        allocFnMap["f90_kcalloc_i8"] = "f90_ben_kcalloc_i8";
-        allocFnMap["f90_ptr_alloc_i8"] = "f90_ben_ptr_alloc_i8";
-        allocFnMap["f90_ptr_alloc03_i8"] = "f90_ben_ptr_alloc03_i8";
-        allocFnMap["f90_ptr_alloc04_i8"] = "f90_ben_ptr_alloc04_i8";
-        allocFnMap["f90_ptr_src_alloc03_i8"] = "f90_ben_ptr_src_alloc03_i8";
-        allocFnMap["f90_ptr_src_alloc04_i8"] = "f90_ben_ptr_src_alloc04_i8";
-        allocFnMap["f90_ptr_src_calloc03_i8"] = "f90_ben_ptr_src_calloc03_i8";
-        allocFnMap["f90_ptr_src_calloc04_i8"] = "f90_ben_ptr_src_calloc04_i8";
-        allocFnMap["f90_ptr_kalloc_i8"] = "f90_ben_ptr_kalloc_i8";
-        allocFnMap["f90_ptr_calloc_i8"] = "f90_ben_ptr_calloc_i8";
-        allocFnMap["f90_ptr_calloc03_i8"] = "f90_ben_ptr_calloc03_i8";
-        allocFnMap["f90_ptr_calloc04_i8"] = "f90_ben_ptr_calloc04_i8";
-        allocFnMap["f90_ptr_kcalloc_i8"] = "f90_ben_ptr_kcalloc_i8";
-        allocFnMap["f90_auto_allocv_i8"] = "f90_ben_auto_allocv_i8";
-        allocFnMap["f90_auto_alloc_i8"] = "f90_ben_auto_alloc_i8";
-        allocFnMap["f90_auto_alloc04_i8"] = "f90_ben_auto_alloc04_i8";
-        allocFnMap["f90_auto_calloc_i8"] = "f90_ben_auto_calloc_i8";
-        allocFnMap["f90_auto_calloc04_i8"] = "f90_ben_auto_calloc04_i8";
-
-        dallocFnMap["free"] = "sh_free";
         dallocFnMap["_ZdaPv"] = "sh_free";
         dallocFnMap["_ZdlPv"] = "sh_free";
 
-        dallocFnMap["f90_dealloc"] = "f90_ben_dealloc";
-        dallocFnMap["f90_dealloc03"] = "f90_ben_dealloc03";
-        dallocFnMap["f90_dealloc_mbr"] = "f90_ben_dealloc_mbr";
-        dallocFnMap["f90_dealloc_mbr03"] = "f90_ben_dealloc_mbr03";
-        dallocFnMap["f90_deallocx"] = "f90_ben_deallocx";
-        dallocFnMap["f90_auto_dealloc"] = "f90_ben_auto_dealloc";
-
-        dallocFnMap["f90_dealloc_i8"] = "f90_ben_dealloc_i8";
-        dallocFnMap["f90_dealloc03_i8"] = "f90_ben_dealloc03_i8";
-        dallocFnMap["f90_dealloc_mbr_i8"] = "f90_ben_dealloc_mbr_i8";
-        dallocFnMap["f90_dealloc_mbr03_i8"] = "f90_ben_dealloc_mbr03_i8";
-        dallocFnMap["f90_deallocx_i8"] = "f90_ben_deallocx_i8";
-        dallocFnMap["f90_auto_dealloc_i8"] = "f90_ben_auto_dealloc_i8";
+	/* Fortran */
+        allocFnMap["f90_alloc"] = "f90_sh_alloc";
+        allocFnMap["f90_alloc03"] = "f90_sh_alloc03";
+        allocFnMap["f90_alloc03_chk"] = "f90_sh_alloc03_chk";
+        allocFnMap["f90_alloc04"] = "f90_sh_alloc04";
+        allocFnMap["f90_alloc04_chk"] = "f90_sh_alloc04_chk";
+        allocFnMap["f90_kalloc"] = "f90_sh_kalloc";
+        allocFnMap["f90_calloc"] = "f90_sh_calloc";
+        allocFnMap["f90_calloc03"] = "f90_sh_calloc03";
+        allocFnMap["f90_calloc04"] = "f90_sh_calloc04";
+        allocFnMap["f90_kcalloc"] = "f90_sh_kcalloc";
+        allocFnMap["f90_ptr_alloc"] = "f90_sh_ptr_alloc";
+        allocFnMap["f90_ptr_alloc03"] = "f90_sh_ptr_alloc03";
+        allocFnMap["f90_ptr_alloc04"] = "f90_sh_ptr_alloc04";
+        allocFnMap["f90_ptr_src_alloc03"] = "f90_sh_ptr_src_alloc03";
+        allocFnMap["f90_ptr_src_alloc04"] = "f90_sh_ptr_src_alloc04";
+        allocFnMap["f90_ptr_src_calloc03"] = "f90_sh_ptr_src_calloc03";
+        allocFnMap["f90_ptr_src_calloc04"] = "f90_sh_ptr_src_calloc04";
+        allocFnMap["f90_ptr_kalloc"] = "f90_sh_ptr_kalloc";
+        allocFnMap["f90_ptr_calloc"] = "f90_sh_ptr_calloc";
+        allocFnMap["f90_ptr_calloc03"] = "f90_sh_ptr_calloc03";
+        allocFnMap["f90_ptr_calloc04"] = "f90_sh_ptr_calloc04";
+        allocFnMap["f90_ptr_kcalloc"] = "f90_sh_ptr_kcalloc";
+        allocFnMap["f90_auto_allocv"] = "f90_sh_auto_allocv";
+        allocFnMap["f90_auto_alloc"] = "f90_sh_auto_alloc";
+        allocFnMap["f90_auto_alloc04"] = "f90_sh_auto_alloc04";
+        allocFnMap["f90_auto_calloc"] = "f90_sh_auto_calloc";
+        allocFnMap["f90_auto_calloc04"] = "f90_sh_auto_calloc04";
+        allocFnMap["f90_alloc_i8"] = "f90_sh_alloc_i8";
+        allocFnMap["f90_alloc03_i8"] = "f90_sh_alloc03_i8";
+        allocFnMap["f90_alloc03_chk_i8"] = "f90_sh_alloc03_chk_i8";
+        allocFnMap["f90_alloc04_i8"] = "f90_sh_alloc04_i8";
+        allocFnMap["f90_alloc04_chk_i8"] = "f90_sh_alloc04_chk_i8";
+        allocFnMap["f90_kalloc_i8"] = "f90_sh_kalloc_i8";
+        allocFnMap["f90_calloc_i8"] = "f90_sh_calloc_i8";
+        allocFnMap["f90_calloc03_i8"] = "f90_sh_calloc03_i8";
+        allocFnMap["f90_calloc04_i8"] = "f90_sh_calloc04_i8";
+        allocFnMap["f90_kcalloc_i8"] = "f90_sh_kcalloc_i8";
+        allocFnMap["f90_ptr_alloc_i8"] = "f90_sh_ptr_alloc_i8";
+        allocFnMap["f90_ptr_alloc03_i8"] = "f90_sh_ptr_alloc03_i8";
+        allocFnMap["f90_ptr_alloc04_i8"] = "f90_sh_ptr_alloc04_i8";
+        allocFnMap["f90_ptr_src_alloc03_i8"] = "f90_sh_ptr_src_alloc03_i8";
+        allocFnMap["f90_ptr_src_alloc04_i8"] = "f90_sh_ptr_src_alloc04_i8";
+        allocFnMap["f90_ptr_src_calloc03_i8"] = "f90_sh_ptr_src_calloc03_i8";
+        allocFnMap["f90_ptr_src_calloc04_i8"] = "f90_sh_ptr_src_calloc04_i8";
+        allocFnMap["f90_ptr_kalloc_i8"] = "f90_sh_ptr_kalloc_i8";
+        allocFnMap["f90_ptr_calloc_i8"] = "f90_sh_ptr_calloc_i8";
+        allocFnMap["f90_ptr_calloc03_i8"] = "f90_sh_ptr_calloc03_i8";
+        allocFnMap["f90_ptr_calloc04_i8"] = "f90_sh_ptr_calloc04_i8";
+        allocFnMap["f90_ptr_kcalloc_i8"] = "f90_sh_ptr_kcalloc_i8";
+        allocFnMap["f90_auto_allocv_i8"] = "f90_sh_auto_allocv_i8";
+        allocFnMap["f90_auto_alloc_i8"] = "f90_sh_auto_alloc_i8";
+        allocFnMap["f90_auto_alloc04_i8"] = "f90_sh_auto_alloc04_i8";
+        allocFnMap["f90_auto_calloc_i8"] = "f90_sh_auto_calloc_i8";
+        allocFnMap["f90_auto_calloc04_i8"] = "f90_sh_auto_calloc04_i8";
+        dallocFnMap["f90_dealloc"] = "f90_sh_dealloc";
+        dallocFnMap["f90_dealloc03"] = "f90_sh_dealloc03";
+        dallocFnMap["f90_dealloc_mbr"] = "f90_sh_dealloc_mbr";
+        dallocFnMap["f90_dealloc_mbr03"] = "f90_sh_dealloc_mbr03";
+        dallocFnMap["f90_deallocx"] = "f90_sh_deallocx";
+        dallocFnMap["f90_auto_dealloc"] = "f90_sh_auto_dealloc";
+        dallocFnMap["f90_dealloc_i8"] = "f90_sh_dealloc_i8";
+        dallocFnMap["f90_dealloc03_i8"] = "f90_sh_dealloc03_i8";
+        dallocFnMap["f90_dealloc_mbr_i8"] = "f90_sh_dealloc_mbr_i8";
+        dallocFnMap["f90_dealloc_mbr03_i8"] = "f90_sh_dealloc_mbr03_i8";
+        dallocFnMap["f90_deallocx_i8"] = "f90_sh_deallocx_i8";
+        dallocFnMap["f90_auto_dealloc_i8"] = "f90_sh_auto_dealloc_i8";
     }
 
     void getAnalysisUsage(AnalysisUsage & AU) const { }

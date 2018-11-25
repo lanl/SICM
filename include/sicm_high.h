@@ -97,6 +97,8 @@ void sh_terminate();
 
 void* sh_alloc_exact(int id, size_t sz);
 void* sh_alloc(int id, size_t sz);
+void* sh_calloc(int id, size_t num, size_t sz);
+void* sh_realloc(int id, void *ptr, size_t sz);
 
 void sh_create_extent(void *begin, void *end);
 
