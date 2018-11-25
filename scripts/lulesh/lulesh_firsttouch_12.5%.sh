@@ -10,7 +10,7 @@ export SH_DEFAULT_NODE="1"
 export OMP_NUM_THREADS=255
 rm results/firsttouch_12.5%.txt
 for iter in {1..5}; do
-  echo 3 | sudo tee /proc/sys/vm/drop_caches
+  sudo /opt/drop_caches
   # Reserve all but 12.5%
   cat results/pebs_128.txt | $DIR/bin/memreserve 1 256 ratio .125 &
   sleep 5

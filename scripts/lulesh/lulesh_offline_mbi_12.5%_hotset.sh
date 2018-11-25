@@ -15,7 +15,7 @@ mkdir -p results/guidance
 
 for iter in {1..5}; do
   # Generate a knapsack, 12.5%
-  echo 3 | sudo tee /proc/sys/vm/drop_caches
+  sudo /opt/drop_caches
   grep -Rh "" results/mbi results/pebs_128.txt | $DIR/bin/hotset mbi hotset ratio 0.125 1 > results/guidance/mbi_12.5%_hotset.txt
 
   # Reserve all but 12.5%
