@@ -65,13 +65,9 @@ wait
 # Also compile each file to its transformed '.o', overwriting the old one
 for file in "${FILES_ARR[@]}"; do
   FILEARGS=`cat $file.args`
-  echo IN LD_WRAPPER
-  echo ${LLVMPATH}${LD_COMPILER} $FILEARGS -c $file.bc -o $file.o
   ${LLVMPATH}${LD_COMPILER} $FILEARGS -c $file.bc -o $file.o &
 done
 wait
 
 # Now finally link the transformed '.o' files
-echo LINKING
-echo ${LLVMPATH}${LD_LINKER} -L${LIB_DIR} -lhigh -Wl,-rpath,${LIB_DIR} $ARGS
 ${LLVMPATH}${LD_LINKER} -L${LIB_DIR} -lhigh -Wl,-rpath,${LIB_DIR} $ARGS

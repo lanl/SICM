@@ -2,6 +2,6 @@
 
 export SICM_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null && cd ../.. && pwd )"
 source $SICM_DIR/scripts/all/pebs.sh
-cd $SICM_DIR/examples/high/lulesh
+cd $SICM_DIR/examples/high/fotonik3d/run
 
-pebs "128" "./lulesh2.0 -s 220 -i 20 -r 11 -b 0 -c 64 -p"
+pebs "128" "./fotonik3d"

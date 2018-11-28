@@ -11,6 +11,7 @@
 #include <numaif.h>
 #include <pthread.h>
 #include "sicm_high.h"
+#include "sicm_parsing.h"
 
 void *fill_pages(void *arg)
 {
@@ -53,9 +54,15 @@ int main(int argc, char **argv)
     captype = 0;
     /* The next argument is a float */
     ratio = strtof(argv[4], NULL);
+    if(ratio == 0.0) {
+      return 0;
+    }
   } else if(strcmp(argv[3], "constant") == 0) {
     captype = 1;
     constant = strtoumax(argv[4], NULL, 0);
+    if(constant == 0) {
+      return 0;
+    }
   } else {
     fprintf(stderr, "Third argument not 'ratio' or 'constant'. Aborting.\n");
     exit(1);
@@ -70,7 +77,6 @@ int main(int argc, char **argv)
     /* If it's a ratio we need to parse the profiling information on stdin
      * to get the total peak RSS of the application.
      */
-    printf("Reading from 'stdin', which should contain the profiling information.\n");
     info = sh_parse_site_info(stdin);
     peak_rss = sh_get_peak_rss(info);
     for(i = 0; i <= numa_max_node(); i++) {
@@ -78,19 +84,18 @@ int main(int argc, char **argv)
          break;
        }
     }
-    printf("Peak RSS: %zu\n", peak_rss);
     numa_node_size64(i, &freemem);
     /* We want to allocate all pages *except* the ones that the application requires */
     num_pages = (freemem - (peak_rss * ratio)) / pagesize;
   }
 
-  printf("Allocating %llu pages.\n", num_pages);
   size = num_pages * pagesize;
   
   /* Allocate the data and fill it with garbage */
   /* Uses numa to bind all of this process' memory to the node.
    * Also uses bind, not preferred.
    */
+  printf("Reserving %llu bytes.\n");
   numa_set_bind_policy(1);
   numa_bind(nodemask);
   data = valloc(size);
@@ -128,7 +133,6 @@ int main(int argc, char **argv)
   free(ranges);
   free(threads);
 
-  printf("Finished reserving.\n"); fflush(stdout);
   for(i = 0; i <= numa_max_node(); i++) {
      if(numa_bitmask_isbitset(nodemask, i)) {
        break;

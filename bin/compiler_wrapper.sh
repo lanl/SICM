@@ -65,21 +65,21 @@ export EXTRA_ARGS="-emit-llvm -o $OUTPUTFILE.bc $EXTRA_ARGS"
 echo $OUTPUT_ARGS > $FILE.args
 
 # Compile to both a '.bc' file as well as a '.o', in parallel.
-# Because of the ever-present Fortran, don't return until both have succeeded.
 PROC=""
 PROC2=""
 RETVAL=1
 RETVAL2=1
-while [ $RETVAL -ne 0 ] && [ $RETVAL2 -ne 0 ]; do
-  ${LLVMPATH}${COMPILER} $ARGS $EXTRA_ARGS &
-  PROC=$!
-  ${LLVMPATH}${COMPILER} $ARGS &
-  PROC2=$!
-  wait $PROC
-  RETVAL=$?
-  wait $PROC2
-  RETVAL=$?
-done
+#while [ $RETVAL -ne 0 ] && [ $RETVAL2 -ne 0 ]; do
+${LLVMPATH}${COMPILER} $ARGS $EXTRA_ARGS &
+#  PROC=$!
+${LLVMPATH}${COMPILER} $ARGS &
+#  PROC2=$!
+#  wait $PROC
+#  RETVAL=$?
+#  wait $PROC2
+#  RETVAL=$?
+#done
+wait
 
 # Might want to add feature where if it's called without -c, we should call the ld_wrapper.sh automatically
 #if [ "$ONLY_COMPILE" = false ]; then
