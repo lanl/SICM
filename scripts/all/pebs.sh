@@ -13,7 +13,6 @@ export OMP_NUM_THREADS=254
 # Takes a PEBS frequency as an argument
 # Second argument is the command to run
 function pebs {
-
   export SH_SAMPLE_FREQ="${1}"
 
   # User output

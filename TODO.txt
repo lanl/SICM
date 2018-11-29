@@ -1,0 +1,23 @@
+THINGS TO FIX
+=============
+1. Need a way to get the number of sites for MBI.
+2. ROMS needs more arenas, implement aggregation scheme.
+
+EXPERIMENTS TO RUN
+==================
+1. Firsttouch on DDR
+2. Firsttouch onto MCDRAM
+3. Firsttouch onto MCDRAM, 3.125%
+4. Firsttouch onto MCDRAM, 6.25%
+5. Firsttouch onto MCDRAM, 12.5%
+6. Firsttouch onto MCDRAM, 25%
+7. PEBS profiling, 128
+8. MBI profiling
+9. Offline PEBS, 3.125%
+10. Offline PEBS, 6.25%
+11. Offline PEBS, 12.5%
+12. Offline PEBS, 25%
+13. Offline MBI, 3.125%
+14. Offline MBI, 6.25%
+15. Offline MBI, 12.5%
+16. Offline MBI, 25%

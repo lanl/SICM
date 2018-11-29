@@ -143,7 +143,7 @@ if [[ ( "${JEMALLOC}" = true ) && ! -d "${INSTALLDIR}/jemalloc" ]]; then
   ./autogen.sh
   mkdir build
   cd build
-  ../configure --prefix=${INSTALLDIR}/jemalloc --with-jemalloc-prefix=je_
+  ../configure --prefix=${INSTALLDIR} --with-jemalloc-prefix=je_
   make -j $(nproc --all)
   make -j $(nproc --all) -i install
 fi
@@ -167,7 +167,7 @@ if [[ ( "${MPI}" = true ) && ! -d "${INSTALLDIR}/openmpi-3.1.1" ]]; then
   cd openmpi-3.1.1
   mkdir -p build
   cd build
-  ../configure --prefix=${INSTALLDIR}/openmpi-3.1.1 --without-verbs --without-fca --without-mxm --without-ucx --without-portals4 --without-psm --without-psm2 --without-libfabric --without-usnic --without-udreg --without-ugni --without-xpmem --without-alps --without-sge --without-tm --without-lsf --without-slurm --without-pvfs2 --without-plfs --without-cuda --disable-oshmem --enable-mpi-fortran --disable-oshmem-fortran --disable-libompitrace --disable-io-romio --disable-static &> /dev/null
+  ../configure --prefix=${INSTALLDIR} --without-verbs --without-fca --without-mxm --without-ucx --without-portals4 --without-psm --without-psm2 --without-libfabric --without-usnic --without-udreg --without-ugni --without-xpmem --without-alps --without-sge --without-tm --without-lsf --without-slurm --without-pvfs2 --without-plfs --without-cuda --disable-oshmem --enable-mpi-fortran --disable-oshmem-fortran --disable-libompitrace --disable-io-romio --disable-static &> /dev/null
   make -j $(nproc --all) &> /dev/null
   make -j $(nproc --all) install &> /dev/null
 fi

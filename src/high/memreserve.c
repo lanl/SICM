@@ -27,8 +27,8 @@ void *fill_pages(void *arg)
 
 int main(int argc, char **argv)
 {
-  uintmax_t i, num_pages, size, pagesize,
-            pages_per_thread, runoff, num_threads;
+  size_t i, num_pages, size, pagesize,
+         pages_per_thread, runoff, num_threads;
   pthread_t *threads;
   char *data, *ptr, ***ranges, captype;
   float ratio;
@@ -79,6 +79,7 @@ int main(int argc, char **argv)
      */
     info = sh_parse_site_info(stdin);
     peak_rss = sh_get_peak_rss(info);
+    printf("The peak RSS of the application is %zu.\n", peak_rss);
     for(i = 0; i <= numa_max_node(); i++) {
        if(numa_bitmask_isbitset(nodemask, i)) {
          break;
@@ -95,7 +96,7 @@ int main(int argc, char **argv)
   /* Uses numa to bind all of this process' memory to the node.
    * Also uses bind, not preferred.
    */
-  printf("Reserving %llu bytes.\n");
+  printf("Reserving %zu bytes.\n", size);
   numa_set_bind_policy(1);
   numa_bind(nodemask);
   data = valloc(size);

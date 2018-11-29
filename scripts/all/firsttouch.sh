@@ -8,7 +8,6 @@ export OMP_NUM_THREADS=256
 # Takes a ratio for how much to reserve as an argument
 # Second argument is the command to run
 function firsttouch {
-
   # Checks
   if [ ! -r results/pebs_128.txt ]; then
     echo "ERROR: The file 'results/pebs_128.txt doesn't exist yet. Aborting."
