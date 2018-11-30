@@ -26,7 +26,7 @@ function bench_build {
   # Make sure the Lulesh Makefile finds our wrappers
   export COMPILER_WRAPPER="$SICM_DIR/deps/bin/compiler_wrapper.sh -g"
   export LD_WRAPPER="$SICM_DIR/deps/bin/ld_wrapper.sh -g"
-  export PREPROCESS_WRAPPER="$DIR/bin/clang -E -x c -w -P"
+  export PREPROCESS_WRAPPER="$SICM_DIR/bin/clang -E -x c -w -P"
 }
 
 # First argument is "fort" or "c", which linker we should use.
@@ -45,5 +45,5 @@ function def_bench_build {
     exit
   fi
 
-  export PREPROCESS_WRAPPER="$DIR/bin/clang -E -x c -w -P"
+  export PREPROCESS_WRAPPER="$SICM_DIR/bin/clang -E -x c -w -P"
 }
