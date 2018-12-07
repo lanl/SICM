@@ -12,12 +12,7 @@
 #include <time.h>
 #include <unistd.h>
 #include <sys/mman.h>
-#include <hwloc.h>
 // https://www.mail-archive.com/devel@lists.open-mpi.org/msg20403.html
-#if HWLOC_API_VERSION < 0x00010b00
-#define HWLOC_OBJ_NUMANODE HWLOC_OBJ_NODE
-#define HWLOC_OBJ_PACKAGE HWLOC_OBJ_SOCKET
-#endif
 #ifndef MAP_HUGE_SHIFT
 #include <linux/mman.h>
 #endif

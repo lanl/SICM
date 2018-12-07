@@ -9,8 +9,11 @@
 # $HEADER$
 #
 
-bin_PROGRAMS = hotset memreserve
+bin_PROGRAMS = hotset memreserve dump_info
 lib_LTLIBRARIES = libhigh.la
+
+dump_info_SOURCES = dump_info.c
+dump_info_CFLAGS = @JEMALLOC_CPPFLAGS@ -I@abs_top_srcdir@/include
 
 hotset_SOURCES = hotset.c
 hotset_CFLAGS = @JEMALLOC_CPPFLAGS@ -I@abs_top_srcdir@/include
@@ -29,8 +32,8 @@ lib_LTLIBRARIES += libcompass.la librdspy.la
 
 libcompass_la_SOURCES = compass.cpp
 libcompass_la_LIBADD = @LLVM_LIBS@
-libcompass_la_LDFLAGS = -version-info 0:0:0
-libcompass_la_CPPFLAGS = @LLVM_CPPFLAGS@ -I@abs_top_srcdir@/include
+libcompass_la_LDFLAGS = -version-info 0:0:0 -disable-static
+libcompass_la_CPPFLAGS = @LLVM_CPPFLAGS@ -I@abs_top_srcdir@/include -disable-static
 
 librdspy_la_SOURCES = rdspy.cpp
 librdspy_la_LIBADD = @LLVM_LIBS@
