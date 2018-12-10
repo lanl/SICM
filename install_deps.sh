@@ -135,11 +135,12 @@ cd $DIR
 if [[ ( "${JEMALLOC}" = true ) && ! -d "${INSTALLDIR}/jemalloc" ]]; then
   # Download jemalloc
   if [[ ! -d jemalloc ]]; then
-    git clone https://github.com/jemalloc/jemalloc.git
+    git clone https://github.com/benbenolson/jemalloc.git
   fi
 
   # Compile and install jemalloc
   cd jemalloc
+  git checkout 5.1.0-mod
   ./autogen.sh
   mkdir build
   cd build
