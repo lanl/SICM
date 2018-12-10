@@ -16,7 +16,7 @@ typedef struct site {
 typedef site * siteptr;
 use_tree(unsigned, siteptr);
 typedef struct app_info {
-  size_t peak_rss;
+  size_t peak_rss, time;
   tree(unsigned, siteptr) sites;
 } app_info;
 
@@ -25,18 +25,19 @@ typedef struct app_info {
  * and number of accesses (if applicable).
  */
 static inline app_info *sh_parse_site_info(FILE *file) {
-  char *line, *tok;
+  char *line, *tok, *ptr;
   ssize_t len, read;
   long long num_sites, node;
   siteptr cur_site;
-  int mbi, pebs, pebs_site, i;
-  float bandwidth;
+  int mbi, pebs, pebs_site, i, hours, minutes;
+  float bandwidth, seconds;
   tree_it(unsigned, siteptr) it;
   app_info *info;
 
   info = malloc(sizeof(app_info));
   info->sites = tree_make(unsigned, siteptr);
   info->peak_rss = 0;
+  info->time = 0;
 
   if(!file) {
     fprintf(stderr, "Invalid file pointer. Aborting.\n");
@@ -181,7 +182,7 @@ static inline app_info *sh_parse_site_info(FILE *file) {
       }
     } else {
       /* Parse the output of /usr/bin/time to get peak RSS */
-      if(strcmp(tok, "Maximum") == 0) {
+      if(tok && strcmp(tok, "Maximum") == 0) {
         tok = strtok(NULL, " ");
         if(!tok || !(strcmp(tok, "resident") == 0)) {
           continue;
@@ -203,6 +204,43 @@ static inline app_info *sh_parse_site_info(FILE *file) {
           continue;
         }
         info->peak_rss = strtoimax(tok, NULL, 10) * 1024; /* it's in kilobytes */
+      } else if(tok && (strcmp(tok, "Elapsed") == 0)) {
+        /* Skip the next six tokens to get the elapsed wall clock time */
+        tok = strtok(NULL, " ");
+        if(!tok || !(strcmp(tok, "(wall") == 0)) {
+          continue;
+        }
+        tok = strtok(NULL, " ");
+        tok = strtok(NULL, " ");
+        tok = strtok(NULL, " ");
+        tok = strtok(NULL, " ");
+        tok = strtok(NULL, " ");
+        tok = strtok(NULL, " ");
+        if(!tok) {
+          continue;
+        }
+        /* Now this string is in hh:mm:ss or m:ss. We want seconds. */
+        /* Count the number of colons. */
+        i = 0;
+        ptr = tok;
+        while((ptr = strchr(ptr, ':')) != NULL) {
+          i++;
+          ptr++;
+        }
+        if(i == 2) {
+          /* Get hours, then minutes, then seconds. */
+          sscanf(tok, "%d:%d:%f", &hours, &minutes, &seconds);
+        } else if(i == 1) {
+          /* Minutes, then seconds. */
+          hours = 0;
+          sscanf(tok, "%d:%f", &minutes, &seconds);
+        } else {
+          fprintf(stderr, "Got a GNU time wall clock time that was unfamiliar. Aborting.\n");
+          exit(1);
+        }
+        if(info->time) {
+          info->time = (hours * 60 * 60) + (minutes * 60) + ((int) seconds);
+        }
       }
     }
   }
