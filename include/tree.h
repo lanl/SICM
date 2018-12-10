@@ -303,8 +303,8 @@
                 if (_TREE_EQU(t, key, q->_key)) {                              \
                     if (!made_new) {                                           \
                         q->_val = val;                                         \
-                        node = q;                                              \
                     }                                                          \
+                    node = q;                                                  \
                     break;                                                     \
                 }                                                              \
                                                                                \

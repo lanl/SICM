@@ -14,116 +14,7 @@
 #include "sicm_low.h"
 #include "sicm_impl.h"
 #include "sicm_profile.h"
-
-/* !!!rdspy */
-int get_thread_index();
-#define MAX_TRIS 1024
-ThreadReadsInfo * tris[MAX_TRIS];
-int n_tris;
-
-int should_run_rdspy;
-
-void * recalloc(void * ptr, size_t new_bytes, size_t used_bytes) {
-    void * new_region = calloc(new_bytes, 1);
-    if (ptr) {
-        memcpy(new_region, ptr, used_bytes);
-        free(ptr);
-    }
-    return new_region;
-}
-
-SiteReadsAgg    agg_hist;
-pthread_mutex_t sra_lock;
-pthread_mutex_t tri_lock;
-pthread_key_t   tri_key;
-
-void SiteReadsAgg_init(SiteReadsAgg * sra) {
-    sra->used_sites   = tree_make(unsigned, empty_tree_val);
-    sra->site_map     = tree_make(addr_t, unsigned);
-    sra->chunks_end   = 0;
-    sra->histograms   = NULL;
-    sra->n_histograms = 0;
-}
-
-void SiteReadsAgg_finish(SiteReadsAgg * sra) {
-    FILE * f = fopen("read_times.csv", "w");
-    int b;
-
-    fprintf(f, "site");
-    for (b = 0; b < READ_TIMES_MAX - READ_TIMES_BUCKET_SIZE; b += READ_TIMES_BUCKET_SIZE) {
-        int next_b = b + READ_TIMES_BUCKET_SIZE;
-        fprintf(f, ", %d - %d", b, next_b);
-    }
-    fprintf(f, ", %d+\n", READ_TIMES_MAX - READ_TIMES_BUCKET_SIZE);
-
-    tree_it(unsigned, empty_tree_val) it;
-    tree_traverse(sra->used_sites, it) {
-        int sid = tree_it_key(it);
-
-        fprintf(f, "%d", sid);
-        for (b = 0; b < READ_TIMES_NBUCKETS; b += 1) {
-            fprintf(f, ", %llu", sra->histograms[sid][b]);
-        }
-        fprintf(f, "\n");
-    }
-
-    fclose(f);
-
-    tree_free(sra->used_sites);
-    tree_free(sra->site_map);
-    if (sra->n_histograms)
-        free(sra->histograms);
-}
-
-void SiteReadsAgg_give_histogram(SiteReadsAgg * sra, ThreadReadsInfo * tri) {
-    int b;
-    tree_it(unsigned, empty_tree_val) it;
-    tree_traverse(sra->used_sites, it) {
-        unsigned site = tree_it_key(it);
-        for (b = 0; b < READ_TIMES_NBUCKETS; b += 1)
-            sra->histograms[site][b] += tri->histograms[site][b];
-    }
-}
-
-void ThreadReadsInfo_init(ThreadReadsInfo * tri) {
-    tri->histograms   = calloc(agg_hist.n_histograms, sizeof(hist_t));
-    tri->n_histograms = agg_hist.n_histograms;
-}
-
-void ThreadReadsInfo_finish(ThreadReadsInfo * tri) {
-    int i;
-    for (i = 0; i < MAX_TRIS; i += 1) {
-        if (tris[i] == tri) {
-            pthread_mutex_lock(&tri_lock);
-            SiteReadsAgg_give_histogram(&agg_hist, tri);
-            pthread_mutex_unlock(&tri_lock);
-
-            if (tri->n_histograms)
-                free(tri->histograms);
-            free(tri);
-            tris[i] = NULL;
-            return;
-        }
-    }
-}
-
-static ThreadReadsInfo * get_tri() {
-    ThreadReadsInfo * tri = pthread_getspecific(tri_key);
-    if (tri == NULL) {
-        pthread_mutex_lock(&tri_lock);
-        if (pthread_getspecific(tri_key) == NULL) {
-            int idx = get_thread_index();
-            tri = (ThreadReadsInfo*)malloc(sizeof(ThreadReadsInfo));
-            pthread_setspecific(tri_key, tri);
-            ThreadReadsInfo_init(tri);
-            tris[n_tris++] = tri;
-        }
-        pthread_mutex_unlock(&tri_lock);
-    }
-
-    return tri;
-}
-/* !!!end */
+#include "sicm_rdspy.h"
 
 static struct sicm_device_list device_list;
 struct sicm_device *default_device;
@@ -148,6 +39,8 @@ int sample_freq;
 int num_imcs, max_imc_len, max_event_len;
 char **imcs; /* Array of strings of IMCs for the bandwidth profiling */
 
+int should_run_rdspy;
+
 /* Keep track of all extents */
 extent_arr *extents;
 extent_arr *rss_extents; /* The extents that we want to get the RSS of */
@@ -162,6 +55,7 @@ int max_index;
 /* Associates a thread with an index (starting at 0) into the `arenas` array */
 static pthread_key_t thread_key;
 static int *thread_indices, *orig_thread_indices, *max_thread_indices, max_threads;
+static int num_static_sites;
 
 /* Passes an arena index to the extent hooks */
 static int *pending_indices;
@@ -547,14 +441,28 @@ void set_options() {
     }
   }
 
-  /* !!!rdspy */
+  env = getenv("SH_NUM_STATIC_SITES");
+  if (env) {
+    tmp_val = strtoimax(env, NULL, 10);
+    if((tmp_val == 0) || (tmp_val > INT_MAX)) {
+      printf("Invalid number of static sites given.\n");
+    } else {
+      num_static_sites = (int) tmp_val;
+    }
+  }
+  printf("Number of static sites: %d\n", num_static_sites);
+
   env = getenv("SH_RDSPY");
   should_run_rdspy = 0;
   if (env) {
-      should_run_rdspy = 1;
-      printf("Running with rdspy.\n");
+      if (!num_static_sites) {
+          printf("Invalid static sites -- not running rdspy.\n");
+      }
+      should_run_rdspy = 1 && num_static_sites;
+      if (should_run_rdspy) {
+          printf("Running with rdspy.\n");
+      }
   }
-  /* !!!end */
 }
 
 int get_thread_index() {
@@ -731,14 +639,21 @@ int get_arena_index(int id) {
 }
 
 void* sh_realloc(int id, void *ptr, size_t sz) {
-  int index;
+  int   index;
+  void *ret;
 
   if(layout == INVALID_LAYOUT) {
-    return realloc(ptr, sz);
+    ret = realloc(ptr, sz);
+  } else {
+    index = get_arena_index(id);
+    ret = sicm_arena_realloc(arenas[index]->arena, ptr, sz);
   }
 
-  index = get_arena_index(id);
-  return sicm_arena_realloc(arenas[index]->arena, ptr, sz);
+  if (should_run_rdspy) {
+      sh_rdspy_realloc(ptr, ret, sz, id);
+  }
+
+  return ret;
 }
 
 /* Accepts an allocation site ID and a size, does the allocation */
@@ -756,28 +671,9 @@ void* sh_alloc(int id, size_t sz) {
       ret = sicm_arena_alloc(arenas[index]->arena, sz);
   }
 
-  /* !!!rdspy */
   if (should_run_rdspy) {
-      pthread_mutex_lock(&sra_lock);
-      tree_insert(agg_hist.site_map, ret, id);
-      tree_insert(agg_hist.used_sites, id, (empty_tree_val){});
-      if (id + 1 > agg_hist.n_histograms) {
-          agg_hist.histograms = recalloc(agg_hist.histograms, sizeof(hist_t) * (id + 1), sizeof(hist_t) * agg_hist.n_histograms);
-          agg_hist.n_histograms = id + 1;
-      }
-      if (ret + sz > agg_hist.chunks_end)
-          agg_hist.chunks_end = ret + sz;
-      pthread_mutex_unlock(&sra_lock);
-
-      for (i = 0; i < n_tris; i += 1) {
-          ThreadReadsInfo * tri = tris[i];
-          if (id + 1 > tri->n_histograms) {
-              tri->histograms = recalloc(tri->histograms, sizeof(hist_t) * (id + 1), sizeof(hist_t) * tri->n_histograms);
-              tri->n_histograms = id + 1;
-          }
-      }
+      sh_rdspy_alloc(ret, sz, id);
   }
-  /* !!!end */
   
   return ret;
 }
@@ -792,38 +688,16 @@ void* sh_calloc(int id, size_t num, size_t sz) {
 }
 
 void sh_free(void* ptr) {
+  if (should_run_rdspy) {
+      sh_rdspy_free(ptr);
+  }
+
   if(layout == INVALID_LAYOUT) {
     je_free(ptr);
   } else {
     sicm_free(ptr);
   }
 }
-
-/* !!!rdspy */
-unsigned long long sh_read(void * ptr, uint64_t beg, uint64_t end) {
-    ThreadReadsInfo * tri;
-    tree_it(addr_t, unsigned) it = tree_gtr(agg_hist.site_map, ptr);
-
-    tree_it_prev(it);
-
-    if (!tree_it_good(it)
-    || ptr >= agg_hist.chunks_end)
-        return 0;
-
-    unsigned site  = tree_it_val(it);
-    uint64_t ticks = end - beg;
-
-    int bucket = ticks > READ_TIMES_MAX
-                 ? READ_TIMES_NBUCKETS - 1
-                 : ticks >> (READ_TIMES_BUCKET_SIZE / 2);
-
-    tri = get_tri();
-
-    tri->histograms[site][bucket] += 1;
-
-    return 1;
-}
-/* !!!end */
 
 __attribute__((constructor))
 void sh_init() {
@@ -886,14 +760,9 @@ void sh_init() {
     sh_start_profile_thread();
   }
   
-  /* !!!rdspy */
-    if (should_run_rdspy) {
-      SiteReadsAgg_init(&agg_hist);
-      pthread_mutex_init(&sra_lock, NULL);
-      pthread_mutex_init(&tri_lock, NULL);
-      pthread_key_create(&tri_key, (void(*)(void*))ThreadReadsInfo_finish);
+  if (should_run_rdspy) {
+    sh_rdspy_init(max_threads, num_static_sites);
   }
-  /* !!!end */
 }
 
 __attribute__((destructor))
@@ -923,14 +792,7 @@ void sh_terminate() {
     extent_arr_free(extents);
   }
 
-  /* !!!rdspy */
   if (should_run_rdspy) {
-      for (i = 0; i < MAX_TRIS; i += 1) {
-          if (tris[i]) {
-              ThreadReadsInfo_finish(tris[i]);
-          }
-      }
-      SiteReadsAgg_finish(&agg_hist);
+      sh_rdspy_terminate();
   }
-  /* !!!end */
 }
