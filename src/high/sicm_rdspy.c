@@ -11,6 +11,7 @@
 #include <assert.h>
 #include <pthread.h>
 #include <stdio.h>
+
 int get_thread_index();
 
 typedef void *addr_t;
@@ -35,17 +36,6 @@ static pthread_key_t          tri_key;
 
 static tree(addr_t, unsigned) site_map;
 static pthread_rwlock_t       site_map_lock;
-
-void * recalloc(void * ptr, size_t new_bytes, size_t used_bytes) {
-    void * new_region;
-    
-    new_region = calloc(new_bytes, 1);
-    if (ptr) {
-        memcpy(new_region, ptr, used_bytes);
-        free(ptr);
-    }
-    return new_region;
-}
 
 void SiteReadsAgg_init(SiteReadsAgg * sra) {
     sra->histograms = calloc(num_static_sites + 1, sizeof(hist_t));
