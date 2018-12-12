@@ -57,7 +57,7 @@ if [ -z ${SH_RDSPY+x} ]; then
 else
     echo "compiling with rdspy"
     for file in "${FILES_ARR[@]}"; do
-      ${LLVMPATH}${OPT} -load ${LIB_DIR}/libcompass.so -load ${LIB_DIR}/librdspy.so -compass-mode=transform -compass -compass-depth=3 -rdspy -rdspy-sampling-threshold=${RDSPY_SAMPLE} $file.bc -o $file.bc &
+      ${LLVMPATH}${OPT} -load ${LIB_DIR}/libcompass.so -load ${LIB_DIR}/librdspy.so -compass-mode=transform -compass -compass-depth=3 -rdspy -rdspy-sampling-threshold=${SH_RDSPY_SAMPLE} $file.bc -o $file.bc &
     done
 fi
 wait
