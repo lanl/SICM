@@ -350,7 +350,7 @@ int main(int argc, char **argv) {
 
   if(captype == 0) {
     /* Figure out cap_bytes from the ratio */
-    cap_bytes = sh_get_peak_rss(info) * cap_float;
+    cap_bytes = info->site_peak_rss * cap_float;
   }
 
   /* Now run the packing algorithm */
@@ -393,7 +393,7 @@ int main(int argc, char **argv) {
   if(captype == 0) {
     printf("Capacity Ratio: %f\n", cap_float);
   }
-  printf("Peak RSS: %zu bytes\n", sh_get_peak_rss(info));
+  printf("Peak RSS: %zu bytes\n", info->site_peak_rss);
 
   /* Clean up */
   tree_traverse(info->sites, it) {

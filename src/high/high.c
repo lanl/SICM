@@ -126,6 +126,7 @@ static ThreadReadsInfo * get_tri() {
 /* !!!end */
 
 static struct sicm_device_list device_list;
+int num_numa_nodes;
 struct sicm_device *default_device;
 
 tree(unsigned, deviceptr) site_nodes;
@@ -172,7 +173,7 @@ enum arena_layout parse_layout(char *env) {
 
 	max_chars = 32;
 
-  printf("Parsing layout: %s\n", env);
+  //printf("Parsing layout: %s\n", env);
 
 	if(strncmp(env, "SHARED_ONE_ARENA", max_chars) == 0) {
 		return SHARED_ONE_ARENA;
@@ -186,6 +187,10 @@ enum arena_layout parse_layout(char *env) {
 		return SHARED_SITE_ARENAS;
 	} else if(strncmp(env, "EXCLUSIVE_SITE_ARENAS", max_chars) == 0) {
 		return EXCLUSIVE_SITE_ARENAS;
+	} else if(strncmp(env, "EXCLUSIVE_TWO_DEVICE_ARENAS", max_chars) == 0) {
+		return EXCLUSIVE_TWO_DEVICE_ARENAS;
+	} else if(strncmp(env, "EXCLUSIVE_FOUR_DEVICE_ARENAS", max_chars) == 0) {
+		return EXCLUSIVE_FOUR_DEVICE_ARENAS;
 	}
 
   return INVALID_LAYOUT;
@@ -206,6 +211,10 @@ char *layout_str(enum arena_layout layout) {
       return "SHARED_SITE_ARENAS";
     case EXCLUSIVE_SITE_ARENAS:
       return "EXCLUSIVE_SITE_ARENAS";
+    case EXCLUSIVE_TWO_DEVICE_ARENAS:
+      return "EXCLUSIVE_TWO_DEVICE_ARENAS";
+    case EXCLUSIVE_FOUR_DEVICE_ARENAS:
+      return "EXCLUSIVE_FOUR_DEVICE_ARENAS";
     default:
       break;
   }
@@ -296,7 +305,7 @@ void set_options() {
    * Keep in mind that 4096 is the maximum number supported by jemalloc.
    * An error occurs if this limit is reached.
    */
-  max_arenas = 4096;
+  max_arenas = 262144;
   env = getenv("SH_MAX_ARENAS");
   if(env) {
     tmp_val = strtoimax(env, NULL, 10);
@@ -461,7 +470,8 @@ void set_options() {
     default_device = get_device_from_numa_node((int) tmp_val);
   }
   if(!default_device) {
-    default_device = device_list.devices;
+    /* This assumes that the normal page size is the first one that it'll find */
+    default_device = get_device_from_numa_node(0);
   }
   printf("Default device: %s\n", sicm_device_tag_str(default_device->tag));
 
@@ -474,11 +484,17 @@ void set_options() {
       break;
     case SHARED_DEVICE_ARENAS:
     case EXCLUSIVE_DEVICE_ARENAS:
-      arenas_per_thread = (int) device_list.count;
+      arenas_per_thread = num_numa_nodes; //(int) device_list.count;
       break;
     case SHARED_SITE_ARENAS:
     case EXCLUSIVE_SITE_ARENAS:
       arenas_per_thread = max_arenas;
+      break;
+    case EXCLUSIVE_TWO_DEVICE_ARENAS:
+      arenas_per_thread = 2 * num_numa_nodes; //((int) device_list.count);
+      break;
+    case EXCLUSIVE_FOUR_DEVICE_ARENAS:
+      arenas_per_thread = 4 * num_numa_nodes; //((int) device_list.count);
       break;
     default:
       arenas_per_thread = 1;
@@ -527,7 +543,7 @@ void set_options() {
         }
         sscanf(str, "%d", &node);
         tree_insert(site_nodes, site, get_device_from_numa_node(node));
-
+        printf("Adding site %u to NUMA node %d.\n", site, node);
       } else {
         if(!str) continue;
         /* Find the "===== GUIDANCE" tokens */
@@ -606,6 +622,9 @@ void sh_create_arena(int index, int id, sicm_device *device) {
   arenas[index]->rss = 0;
   arenas[index]->peak_rss = 0;
   arenas[index]->arena = sicm_arena_create(0, device);
+  if(id == 1) {
+    printf("Site %d is going to arena_ind %u\n", id, arenas[index]->arena->arena_ind);
+  }
 }
 
 /* Adds an extent to the `extents` array. */
@@ -717,12 +736,18 @@ int get_arena_index(int id) {
     case EXCLUSIVE_SITE_ARENAS:
       ret = (thread_index * arenas_per_thread) + id;
       break;
+    case EXCLUSIVE_TWO_DEVICE_ARENAS:
+      ret = get_device_arena(id, &device);
+      ret = (thread_index * arenas_per_thread) + ret;
+    case EXCLUSIVE_FOUR_DEVICE_ARENAS:
+      ret = get_device_arena(id, &device);
+      ret = (thread_index * arenas_per_thread) + ret;
+      break;
     default:
       fprintf(stderr, "Invalid arena layout. Aborting.\n");
       exit(1);
       break;
   };
-
 
   pending_indices[thread_index] = ret;
   sh_create_arena(ret, id, device);
@@ -828,9 +853,22 @@ unsigned long long sh_read(void * ptr, uint64_t beg, uint64_t end) {
 __attribute__((constructor))
 void sh_init() {
   int i;
+  long size;
 
   //pthread_rwlock_init(&extents_lock, NULL);
+
   device_list = sicm_init();
+
+  /* Get the number of NUMA nodes with memory, since we ignore huge pages with
+   * the DEVICE arena layouts */
+  num_numa_nodes = 0;
+  for(i = 0; i <= numa_max_node(); i++) {
+    size = -1;
+    if ((numa_node_size(i, &size) != -1) && size) {
+      num_numa_nodes++;
+    }
+  }
+
   site_nodes = tree_make(unsigned, deviceptr);
   device_arenas = tree_make(deviceptr, int);
   set_options();
@@ -850,6 +888,8 @@ void sh_init() {
       case EXCLUSIVE_SITE_ARENAS:
       case EXCLUSIVE_ONE_ARENA:
       case EXCLUSIVE_DEVICE_ARENAS:
+      case EXCLUSIVE_TWO_DEVICE_ARENAS:
+      case EXCLUSIVE_FOUR_DEVICE_ARENAS:
         arenas = (arena_info **) calloc(max_threads * arenas_per_thread, sizeof(arena_info *));
         break;
     }

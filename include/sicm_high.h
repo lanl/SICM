@@ -48,6 +48,8 @@ enum arena_layout {
   EXCLUSIVE_DEVICE_ARENAS, /* One arena per device per thread */
   SHARED_SITE_ARENAS, /* One arena per allocation site */
   EXCLUSIVE_SITE_ARENAS, /* One arena per allocation site per thread */
+  EXCLUSIVE_TWO_DEVICE_ARENAS, /* Two arenas per device per thread */
+  EXCLUSIVE_FOUR_DEVICE_ARENAS, /* Four arenas per device per thread */
   INVALID_LAYOUT
 };
 

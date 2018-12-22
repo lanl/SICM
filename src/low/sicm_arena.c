@@ -225,7 +225,7 @@ static void sicm_arena_range_move(void *aux, void *start, void *end) {
 	struct bitmask *nodemask = numa_allocate_nodemask();
 
 	numa_bitmask_setbit(nodemask, sa->numaid);
-	err = mbind((void *) start, (char*) end - (char*) start, MPOL_BIND, nodemask->maskp, nodemask->size, MPOL_MF_MOVE | MPOL_MF_STRICT);
+	err = mbind((void *) start, (char*) end - (char*) start, MPOL_PREFERRED, nodemask->maskp, nodemask->size, MPOL_MF_MOVE);
 	if (err < 0 && sa->err == 0)
 		sa->err = err;
 
@@ -504,7 +504,12 @@ static void *sa_alloc(extent_hooks_t *h, void *new_addr, size_t size, size_t ali
 	ret = (void *) m;
 
 success:
-	if (mbind(ret, size, MPOL_BIND, nodemask->maskp, nodemask->size, MPOL_MF_MOVE | MPOL_MF_STRICT) < 0) {
+  if(sa->numaid == 1) {
+    printf("Binding to NUMA node 1, arena ID %u\n", arena_ind);
+  }
+	if (mbind(ret, size, MPOL_PREFERRED, nodemask->maskp, nodemask->size, MPOL_MF_MOVE) < 0) {
+    fprintf(stderr, "FAILURE TO BIND. ABORTING.\n");
+    exit(1);
 		munmap(ret, size);
 		ret = NULL;
 		goto restore_mempolicy;
@@ -545,8 +550,6 @@ static void *sa_alloc_shared(extent_hooks_t *h, void *new_addr, size_t size, siz
 	*zero = 0;
 	ret = NULL;
 	sa = container_of(h, sarena, hooks);
-
-  printf("Allocating %zu bytes to arena %u\n", size, arena_ind);
 
 	// TODO: figure out a way to prevent taking the mutex twice (sa_range_add also takes it)...
 	pthread_mutex_lock(sa->mutex);
@@ -631,7 +634,7 @@ static void *sa_alloc_shared(extent_hooks_t *h, void *new_addr, size_t size, siz
 	ret = (void *) m;
 
 success:
-	if (mbind(ret, size, MPOL_BIND, nodemask->maskp, nodemask->size, MPOL_MF_MOVE | MPOL_MF_STRICT) < 0) {
+	if (mbind(ret, size, MPOL_PREFERRED, nodemask->maskp, nodemask->size, MPOL_MF_MOVE) < 0) {
 		munmap(ret, size);
         perror("mbind");
 		ret = NULL;

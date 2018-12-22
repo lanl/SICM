@@ -8,6 +8,7 @@ JEMALLOC=false
 LLVM=false
 MPI=false
 LIBPFM4=false
+TIME=false
 DIR=`readlink -f ./build_deps`
 INSTALLDIR=`readlink -f ./deps`
 
@@ -16,8 +17,9 @@ function usage() {
     echo "    Options:"
     echo "        --llvm         Download and build LLVM"
     echo "        --jemalloc     Download and build jemalloc"
-    echo "        --mpi          Download build MPI"
-    echo "        --libpfm4      Download build libpfm4"
+    echo "        --mpi          Download and build MPI"
+    echo "        --libpfm4      Download and build libpfm4"
+    echo "        --time         Download and build GNU time"
     echo "        --build_dir    Directory to download and build dependencies (default: ${DIR})"
     echo "        --install_dir  Directory to install dependencies into       (default: ${INSTALLDIR})"
 }
@@ -46,6 +48,9 @@ case $key in
     --libpfm4)
         LIBPFM4=true
         ;;
+    --time)
+        TIME=true
+        ;;
     --build_dir)
         shift
         DIR="$1"
@@ -72,7 +77,7 @@ if [[ "${LLVM}" = true ]]; then
   git clone https://github.com/flang-compiler/llvm.git
   cd llvm
   git checkout release_60
-  mkdir build && cd build
+  rm -rf build && mkdir build && cd build
   cmake -DCMAKE_INSTALL_PREFIX=${INSTALLDIR} ..
   make -j $(nproc --all)
   make install
@@ -83,7 +88,8 @@ if [[ "${LLVM}" = true ]]; then
   cd flang-driver
   git checkout release_60
   mkdir build && cd build
-  cmake -DCMAKE_INSTALL_PREFIX=${INSTALLDIR} -DLLVM_CONFIG=${INSTALLDIR}/bin/llvm-config ..
+  cmake -DCMAKE_INSTALL_PREFIX=${INSTALLDIR} \
+        -DLLVM_CONFIG=${INSTALLDIR}/bin/llvm-config ..
   make -j $(nproc --all)
   make install
   cd $DIR
@@ -93,7 +99,8 @@ if [[ "${LLVM}" = true ]]; then
   cd openmp/runtime
   git checkout release_60
   mkdir build && cd build
-  cmake -DCMAKE_INSTALL_PREFIX=${INSTALLDIR} -DLLVM_CONFIG=${INSTALLDIR}/bin/llvm-config  ../..
+  cmake -DCMAKE_INSTALL_PREFIX=${INSTALLDIR} \
+        -DLLVM_CONFIG=${INSTALLDIR}/bin/llvm-config  ../..
   make -j $(nproc --all)
   make install
   cd $DIR
@@ -135,15 +142,18 @@ cd $DIR
 if [[ ( "${JEMALLOC}" = true ) && ! -d "${INSTALLDIR}/jemalloc" ]]; then
   # Download jemalloc
   if [[ ! -d jemalloc ]]; then
-    git clone https://github.com/jemalloc/jemalloc.git
+    git clone https://github.com/benbenolson/jemalloc.git
   fi
 
   # Compile and install jemalloc
   cd jemalloc
+  git checkout 5.1.0-mod
   ./autogen.sh
   mkdir build
   cd build
-  ../configure --prefix=${INSTALLDIR} --with-jemalloc-prefix=je_
+  ../configure --prefix=${INSTALLDIR} \
+               --with-jemalloc-prefix=je_ \
+               --disable-tcache
   make -j $(nproc --all)
   make -j $(nproc --all) -i install
 fi
@@ -167,10 +177,12 @@ if [[ ( "${MPI}" = true ) && ! -d "${INSTALLDIR}/openmpi-3.1.1" ]]; then
   cd openmpi-3.1.1
   mkdir -p build
   cd build
-  ../configure --prefix=${INSTALLDIR} --without-verbs --without-fca --without-mxm --without-ucx --without-portals4 --without-psm --without-psm2 --without-libfabric --without-usnic --without-udreg --without-ugni --without-xpmem --without-alps --without-sge --without-tm --without-lsf --without-slurm --without-pvfs2 --without-plfs --without-cuda --disable-oshmem --enable-mpi-fortran --disable-oshmem-fortran --disable-libompitrace --disable-io-romio --disable-static &> /dev/null
-  make -j $(nproc --all) &> /dev/null
-  make -j $(nproc --all) install &> /dev/null
+  ../configure --prefix=${INSTALLDIR} --with-pmi=/opt/cray/pe/pmi/5.0.10-1.0000.11050.0.0.ari/ --disable-dlopen --without-verbs --without-fca --without-mxm --without-ucx --without-portals4 --without-psm --without-psm2 --without-libfabric --without-usnic --without-udreg --without-ugni --without-xpmem --with-alps --without-sge --without-tm --without-lsf --without-slurm --without-pvfs2 --without-plfs --without-cuda --disable-oshmem --enable-mpi-fortran --disable-oshmem-fortran --disable-libompitrace --disable-io-romio --disable-static --enable-shared
+  make -j $(nproc --all)
+  make -j $(nproc --all) install
 fi
+
+cd $DIR
 
 # if LIBPFM4
 if [[ ( "${LIBPFM4}" = true ) ]]; then
@@ -183,6 +195,23 @@ if [[ ( "${LIBPFM4}" = true ) ]]; then
   fi
 
   cd libpfm-4.10.1
-  make -j $(nproc --all) &> /dev/null
-  make PREFIX=${INSTALLDIR} -j $(nproc --all) install &> /dev/null
+  make -j $(nproc --all)
+  make PREFIX=${INSTALLDIR} -j $(nproc --all) install
+fi
+
+cd $DIR
+
+if [[ ( "${TIME}" = true ) ]]; then
+  if [[ ! -d time-1.9 ]]; then
+    if [[ ! -f time-1.9.tar.gz ]]; then
+      wget https://ftp.gnu.org/gnu/time/time-1.9.tar.gz
+      tar xf time-1.9.tar.gz
+    fi
+    tar xf time-1.9.tar.gz
+  fi
+
+  cd time-1.9
+  ./configure --prefix=${INSTALLDIR}
+  make -j $(nproc --all)
+  make -j $(nproc --all) install
 fi

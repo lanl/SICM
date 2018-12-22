@@ -6,7 +6,9 @@ int main() {
 
   info = sh_parse_site_info(stdin);
   printf("Peak RSS: %zu\n", info->peak_rss);
-  info->peak_rss = 0;
-  printf("Peak RSS of Sites: %zu\n", sh_get_peak_rss(info));
+  printf("Peak RSS of Sites: %zu\n", info->site_peak_rss);
   printf("Runtime: %zu\n", info->time);
+  printf("Number of iterations: %zu\n", info->num_times);
+  printf("Number of PEBS sites: %zu\n", info->num_pebs_sites);
+  printf("Number of MBI sites: %zu\n", info->num_mbi_sites);
 }

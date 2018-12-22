@@ -6,17 +6,19 @@
 
 #pragma once
 
+#include <inttypes.h>
 #include "tree.h"
 
 /* For parsing information about sites */
 typedef struct site {
   float bandwidth;
-  size_t peak_rss, accesses;
+  uintmax_t peak_rss, accesses;
 } site;
 typedef site * siteptr;
 use_tree(unsigned, siteptr);
 typedef struct app_info {
-  size_t peak_rss, time;
+  uintmax_t peak_rss, site_peak_rss, time, num_times,
+            num_pebs_sites, num_mbi_sites;
   tree(unsigned, siteptr) sites;
 } app_info;
 
@@ -27,6 +29,7 @@ typedef struct app_info {
 static inline app_info *sh_parse_site_info(FILE *file) {
   char *line, *tok, *ptr;
   ssize_t len, read;
+  size_t total_time;
   long long num_sites, node;
   siteptr cur_site;
   int mbi, pebs, pebs_site, i, hours, minutes;
@@ -38,6 +41,9 @@ static inline app_info *sh_parse_site_info(FILE *file) {
   info->sites = tree_make(unsigned, siteptr);
   info->peak_rss = 0;
   info->time = 0;
+  info->num_times = 0;
+  info->num_pebs_sites = 0;
+  info->num_mbi_sites = 0;
 
   if(!file) {
     fprintf(stderr, "Invalid file pointer. Aborting.\n");
@@ -51,8 +57,8 @@ static inline app_info *sh_parse_site_info(FILE *file) {
   pebs_site = 0;
   line = NULL;
   len = 0;
+  total_time = 0;
   while(read = getline(&line, &len, file) != -1) {
-
     tok = strtok(line, " \t");
     if(!tok) break;
 
@@ -90,6 +96,7 @@ static inline app_info *sh_parse_site_info(FILE *file) {
           cur_site->peak_rss = 0;
           cur_site->accesses = 0;
           tree_insert(info->sites, mbi, cur_site);
+          info->num_mbi_sites++;
         }
       } else if(strcmp(tok, "PEBS") == 0) {
         pebs = 1;
@@ -145,6 +152,7 @@ static inline app_info *sh_parse_site_info(FILE *file) {
             cur_site->peak_rss = 0;
             cur_site->accesses = 0;
             tree_insert(info->sites, pebs_site, cur_site);
+            info->num_pebs_sites++;
           }
         } else {
           fprintf(stderr, "Got 'Site' but no expected site number. Aborting.\n");
@@ -170,7 +178,7 @@ static inline app_info *sh_parse_site_info(FILE *file) {
               fprintf(stderr, "Got 'Peak RSS:' but no value. Aborting.\n");
               exit(1);
             }
-            cur_site->peak_rss = strtoimax(tok, NULL, 10);
+            cur_site->peak_rss = strtoumax(tok, NULL, 10);
           } else {
             fprintf(stderr, "Got 'Peak' but not 'RSS:'. Aborting.\n");
             exit(1);
@@ -229,40 +237,32 @@ static inline app_info *sh_parse_site_info(FILE *file) {
         }
         if(i == 2) {
           /* Get hours, then minutes, then seconds. */
+          hours = 0;
+          minutes = 0;
+          seconds = 0;
           sscanf(tok, "%d:%d:%f", &hours, &minutes, &seconds);
         } else if(i == 1) {
           /* Minutes, then seconds. */
           hours = 0;
+          minutes = 0;
+          seconds = 0;
           sscanf(tok, "%d:%f", &minutes, &seconds);
         } else {
           fprintf(stderr, "Got a GNU time wall clock time that was unfamiliar. Aborting.\n");
           exit(1);
         }
-        if(info->time) {
-          info->time = (hours * 60 * 60) + (minutes * 60) + ((int) seconds);
-        }
+        info->num_times++;
+        total_time += ((hours * 60 * 60) + (minutes * 60) + ((int) seconds));
+        info->time = total_time / info->num_times;
       }
     }
   }
   free(line);
 
-  return info;
-}
-
-/* Gets the peak RSS of the whole application by summing the peak_rss of each
- * site
- */
-static inline size_t sh_get_peak_rss(app_info *info) {
-  tree_it(unsigned, siteptr) it;
-  size_t total;
-
-  total = info->peak_rss;
-
-  if(!total) {
-    tree_traverse(info->sites, it) {
-      total += tree_it_val(it)->peak_rss;
-    }
+  info->site_peak_rss = 0;
+  tree_traverse(info->sites, it) {
+    info->site_peak_rss += tree_it_val(it)->peak_rss;
   }
 
-  return total;
+  return info;
 }

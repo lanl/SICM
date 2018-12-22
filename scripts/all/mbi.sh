@@ -1,6 +1,6 @@
 #!/bin/bash
 
-export SICM_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null && cd ../.. && pwd )"
+export SICM_DIR="/lustre/atlas/scratch/molson5/gen010/SICM"
 
 # Full MBI run
 export SH_DEFAULT_NODE="0"
@@ -17,6 +17,7 @@ function mbi {
 
   # Determine how many sites there are
 
+  # NEEDS GENERALIZATION
   for site in $(seq 1 87); do
     # Set the site that we want to isolate
     echo "$site"
