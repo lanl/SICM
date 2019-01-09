@@ -1,7 +1,7 @@
 # SICM
 Simplified Interface to Complex Memory
 
-[![Build Status](https://travis-ci.org/lanl/SICM.svg?branch=master)](https://travis-ci.org/lanl/SICM)
+[![Build Status](https://travis-ci.org/lanl/SICM.svg?branch=bad)](https://travis-ci.org/lanl/SICM)
 
 ## Introduction
 This project is split into two interfaces: `low` and `high`.
