@@ -185,19 +185,14 @@ void sh_start_profile_thread() {
     pthread_create(&prof.profile_one_id, NULL, &profile_one, NULL);
   }
   if(should_profile_rss) {
-    printf("Creating RSS thread\n");
     pthread_create(&prof.profile_rss_id, NULL, &profile_rss, NULL);
   }
-  printf("Finished starting profiling threads\n");
-  fflush(stdout);
 }
 
 void sh_stop_profile_thread() {
   size_t i, associated;
 
-  printf("Stopping threads\n");
-
-	/* Stop the actual sampling */
+  /* Stop the actual sampling */
   for(i = 0; i < num_events; i++) {
     ioctl(prof.fds[i], PERF_EVENT_IOC_DISABLE, 0);
   }
@@ -249,8 +244,6 @@ void sh_stop_profile_thread() {
     }
     printf("===== END RSS RESULTS =====\n");
   }
-
-  printf("Stopped threads\n");
 }
 
 /* Adds up accesses to the arenas */

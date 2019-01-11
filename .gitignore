@@ -27,6 +27,7 @@
 /examples/low/basic
 /src/high/memreserve
 /src/high/hotset
+/src/high/dump_info
 
 autom4te.cache
 *.m4

@@ -91,14 +91,18 @@ int main(int argc, char **argv)
   if(captype == 1) {
     num_pages = constant;
   } else {
-    /* If it's a ratio we need to parse the profiling information on stdin
+    /* If it's a ratio, we need to parse the profiling information on stdin
      * to get the total peak RSS of the application.
      */
     info = sh_parse_site_info(stdin);
     printf("The peak RSS of the application is %zu.\n", info->peak_rss);
     numa_node_size64(node, &freemem);
     /* We want to allocate all pages *except* the ones that the application requires */
-    num_pages = (freemem - (info->peak_rss * ratio)) / pagesize;
+    if(freemem > (info->peak_rss * ratio)) {
+      num_pages = (freemem - (info->peak_rss * ratio)) / pagesize;
+    } else {
+      num_pages = freemem / pagesize;
+    }
   }
 
   size = num_pages * pagesize;

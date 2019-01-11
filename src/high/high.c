@@ -67,8 +67,6 @@ enum arena_layout parse_layout(char *env) {
 
 	max_chars = 32;
 
-  //printf("Parsing layout: %s\n", env);
-
 	if(strncmp(env, "SHARED_ONE_ARENA", max_chars) == 0) {
 		return SHARED_ONE_ARENA;
 	} else if(strncmp(env, "EXCLUSIVE_ONE_ARENA", max_chars) == 0) {
@@ -369,7 +367,6 @@ void set_options() {
   }
   printf("Default device: %s\n", sicm_device_tag_str(default_device->tag));
 
-
   /* Get arenas_per_thread */
   switch(layout) {
     case SHARED_ONE_ARENA:
@@ -504,6 +501,7 @@ int get_thread_index() {
 /* Adds an arena to the `arenas` array. */
 void sh_create_arena(int index, int id, sicm_device *device) {
   if(index > (max_arenas - 1)) {
+    /* TODO: handle this more gracefully */
     fprintf(stderr, "Maximum number of arenas reached. Aborting.\n");
     exit(1);
   }
@@ -530,9 +528,6 @@ void sh_create_arena(int index, int id, sicm_device *device) {
   arenas[index]->rss = 0;
   arenas[index]->peak_rss = 0;
   arenas[index]->arena = sicm_arena_create(0, device);
-  if(id == 1) {
-    printf("Site %d is going to arena_ind %u\n", id, arenas[index]->arena->arena_ind);
-  }
 }
 
 /* Adds an extent to the `extents` array. */
@@ -658,7 +653,9 @@ int get_arena_index(int id) {
   };
 
   pending_indices[thread_index] = ret;
+  pthread_mutex_lock(&arena_lock);
   sh_create_arena(ret, id, device);
+  pthread_mutex_unlock(&arena_lock);
 
   return ret;
 }
@@ -675,7 +672,7 @@ void* sh_realloc(int id, void *ptr, size_t sz) {
   }
 
   if (should_run_rdspy) {
-      sh_rdspy_realloc(ptr, ret, sz, id);
+    sh_rdspy_realloc(ptr, ret, sz, id);
   }
 
   return ret;
@@ -683,21 +680,18 @@ void* sh_realloc(int id, void *ptr, size_t sz) {
 
 /* Accepts an allocation site ID and a size, does the allocation */
 void* sh_alloc(int id, size_t sz) {
-  int index, i;
+  int index;
   void *ret;
 
   if((layout == INVALID_LAYOUT) || !sz) {
     ret = je_malloc(sz);
   } else {
-      if(id == should_profile_one) {
-          printf("sh_alloc: %zu bytes to %d\n", sz, id);
-      }
-      index = get_arena_index(id);
-      ret = sicm_arena_alloc(arenas[index]->arena, sz);
+    index = get_arena_index(id);
+    ret = sicm_arena_alloc(arenas[index]->arena, sz);
   }
 
   if (should_run_rdspy) {
-      sh_rdspy_alloc(ret, sz, id);
+    sh_rdspy_alloc(ret, sz, id);
   }
   
   return ret;
