@@ -52,6 +52,7 @@ arena_info **arenas;
 static enum arena_layout layout;
 static int max_arenas, arenas_per_thread;
 int max_index;
+pthread_mutex_t arena_lock = PTHREAD_MUTEX_INITIALIZER;
 
 /* Associates a thread with an index (starting at 0) into the `arenas` array */
 static pthread_key_t thread_key;
