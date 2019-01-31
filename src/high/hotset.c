@@ -207,12 +207,11 @@ tree(unsigned, siteptr) get_hotset(tree(unsigned, siteptr) sites, size_t capacit
     sorted_sites = tree_make_c(siteptr, unsigned, &accesses_cmp);
   }
   tree_traverse(sites, it) {
-    /* Only insert if the site has a peak_rss and either a bandwidth or an accesses value */
-    if((tree_it_val(it)->peak_rss) &&
-       (tree_it_val(it)->bandwidth || tree_it_val(it)->accesses)) {
+    /* Only insert if the site has a peak_rss value */
+    if(tree_it_val(it)->peak_rss) {
       tree_insert(sorted_sites, tree_it_val(it), tree_it_key(it));
     } else {
-      fprintf(stderr, "WARNING: Site %d doesn't have sufficient information to insert.\n", tree_it_key(it));
+      fprintf(stderr, "WARNING: Site %d doesn't have a peak RSS.\n", tree_it_key(it));
     }
   }
 
@@ -222,13 +221,11 @@ tree(unsigned, siteptr) get_hotset(tree(unsigned, siteptr) sites, size_t capacit
   tree_traverse(sorted_sites, sit) {
 		packed_size += tree_it_key(sit)->peak_rss;
 		tree_insert(ret, tree_it_val(sit), tree_it_key(sit));
-		if(break_next_site) {
-			break;
-		}
+
+		/* If we're over capacity, break. We've already added the site,
+		 * so we overflow by exactly one site. */
 		if(packed_size > capacity) {
-      /* Break on next iteration of the loop,
-       * so we overflow by one site */
-			break_next_site = 1;
+			break;
 		}
 	}
 
@@ -241,8 +238,13 @@ tree(unsigned, siteptr) get_thermos(tree(unsigned, siteptr) sites, size_t capaci
   tree(unsigned, siteptr) ret;
   tree_it(unsigned, siteptr) it;
   tree_it(siteptr, unsigned) sit;
+  tree_it(siteptr, unsigned) tmp_sit;
   char break_next_site;
-  size_t packed_size;
+  size_t packed_size, site_size, over, tmp_size, tmp_accs, site_accs;
+	float site_band, tmp_band;
+	unsigned site;
+
+  ret = tree_make(unsigned, siteptr);
 
   /* Now sort the sites by accesses/byte or bandwidth/byte */
   if(proftype == 0) {
@@ -254,33 +256,79 @@ tree(unsigned, siteptr) get_thermos(tree(unsigned, siteptr) sites, size_t capaci
   }
   tree_traverse(sites, it) {
     /* Only insert if the site has a peak_rss and either a bandwidth or an accesses value */
-    if((tree_it_val(it)->peak_rss) &&
-       (tree_it_val(it)->bandwidth || tree_it_val(it)->accesses)) {
+    if(tree_it_val(it)->peak_rss) {
       tree_insert(sorted_sites, tree_it_val(it), tree_it_key(it));
     } else {
-      fprintf(stderr, "WARNING: Site %d doesn't have sufficient information to insert.\n", tree_it_key(it));
+      fprintf(stderr, "WARNING: Site %d doesn't have a peak RSS.\n", tree_it_key(it));
     }
   }
 
-  /* Now iterate over the sorted sites and add them until we overflow */
 	break_next_site = 0;
   packed_size = 0;
-	sit = tree_last(sorted_sites);
-	while(tree_it_good(sit)) {
-    /* Decide whether or not to put this last site in the hotset */
-		if(break_next_site) {
-      tree_traverse(ret, it) {
-        
+  tree_traverse(sorted_sites, sit) {
+		site = tree_it_val(sit);
+		site_size = tree_it_key(sit)->peak_rss;
+		if(proftype == 0) {
+			site_band = tree_it_key(sit)->bandwidth;
+		} else {
+			site_accs = tree_it_key(sit)->accesses;
+		}
+		/*
+		printf("Looking at site %zu, size %zu, accs %zu\n", site, site_size, site_accs);
+		printf("%lf\n", (double)site_accs / (double)site_size);
+		printf("Capacity is %zu, packed size with this site would be %zu\n", capacity, packed_size + site_size);
+		*/
+
+		if((packed_size + site_size) > capacity) {
+			/* Store how much over the capacity we are */
+			over = packed_size + site_size - capacity;
+			/* printf("We're over by %zu bytes.\n", over); */
+
+			/* Iterate over the current hotset, and add up the
+			 * value and size of the sites that would be offset
+			 * by `over` bytes being pushed out of the upper tier. */
+			tmp_size = 0;
+			tmp_accs = 0;
+			tmp_band = 0.0;
+      tree_traverse(sorted_sites, tmp_sit) {
+				tmp_size += tree_it_key(tmp_sit)->peak_rss;
+				if(proftype == 0) {
+					tmp_band += tree_it_key(tmp_sit)->bandwidth;
+				} else {
+					tmp_accs += tree_it_key(tmp_sit)->accesses;
+				}
+				if(tmp_size > over) {
+					break;
+				}
       }
+			/*
+			printf("The temporary accesses is %zu\n", tmp_accs);
+			printf("The site's accesses is %zu\n", site_accs);
+			*/
+
+			/* If the value of the current site is greater than the value
+			 * of the data that would be pushed out of the upper tier, add
+			 * that site to the hotset. */
+			if(proftype == 0) {
+				if(site_band > tmp_band) {
+					packed_size += tree_it_key(sit)->peak_rss;
+					tree_insert(ret, tree_it_val(sit), tree_it_key(sit));
+				}
+			} else { 
+				if(site_accs > tmp_accs) {
+					/*
+					printf("Adding it to the set.\n");
+					*/
+					packed_size += tree_it_key(sit)->peak_rss;
+					tree_insert(ret, tree_it_val(sit), tree_it_key(sit));
+				}
+			}
+		} else {
+			/* Add the site to the hotset */
+			/* printf("Not over yet. Adding site %u.\n", tree_it_val(sit)); */
+			packed_size += tree_it_key(sit)->peak_rss;
+			tree_insert(ret, tree_it_val(sit), tree_it_key(sit));
 		}
-		packed_size += tree_it_key(sit)->peak_rss;
-		tree_insert(ret, tree_it_val(sit), tree_it_key(sit));
-		if(packed_size > capacity) {
-      /* Break on next iteration of the loop,
-       * so we overflow by one site */
-			break_next_site = 1;
-		}
-		tree_it_prev(sit);
 	}
 
 	return ret;

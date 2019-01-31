@@ -18,6 +18,9 @@ LD_LINKER="${LD_LINKER:-clang}"
 
 # The original arguments and the ones we're going to add
 ARGS=$@
+# The new arguments that we're going to use to link. We're going
+# to remove any .a files, and replace them with the .o files that they should have contained.
+LINKARGS=""
 
 # An array and space-delimited string of object files that we want to link
 FILES_ARR=()
@@ -26,14 +29,27 @@ OBJECT_STR=""
 
 # Iterate over all arguments
 for word in $ARGS; do
-
   # Check if the argument is an object file that we need to link
-  if [[ "$word" =~ (.*)\.o ]]; then
+  if [[ "$word" =~ (.*)\.o$ ]]; then
     FILES_ARR+=("${BASH_REMATCH[1]}")
     BC_STR="$BC_STR ${BASH_REMATCH[1]}.bc"
     OBJECT_STR="$OBJECT_STR ${BASH_REMATCH[1]}.o"
-  fi
-
+		LINKARGS="$LINKARGS $word"
+	elif [[ "$word" =~ (.*)\.a$ ]]; then
+		# We've found a `.a` file. Assume it was created with the ar_wrapper.sh.
+		# Each line is just a filename without an extension. Use these paths to find
+		# each .o, .bc, and .args files that should be in the .a file.
+		# Notably, *don't* add this .a file to the list of link arguments.
+		echo "Reading in a .a file: $word"
+		while read line; do
+			FILES_ARR+=("${line}")
+			BC_STR="$BC_STR ${line}.bc"
+			OBJECT_STR="$OBJECT_STR ${line}.o"
+			LINKARGS="$LINKARGS ${line}.o"
+		done < "${word}"
+	else
+		LINKARGS="$LINKARGS $word"
+	fi
 done
 
 # Check if there are zero files
@@ -51,8 +67,14 @@ ${LLVMPATH}${OPT} -load ${LIB_DIR}/libcompass.so -compass-mode=analyze \
 
 # Run the compiler pass on each individual file
 if [ -z ${SH_RDSPY+x} ]; then
+	  COUNTER=1
     for file in "${FILES_ARR[@]}"; do
       ${LLVMPATH}${OPT} -load ${LIB_DIR}/libcompass.so -compass-mode=transform -compass -compass-depth=3 $file.bc -o $file.bc &
+			COUNTER=$((COUNTER+1))
+			if [[ "$COUNTER" -gt 8 ]]; then
+				COUNTER=1
+				wait
+			fi
     done
 else
     echo "compiling with rdspy"
@@ -64,10 +86,12 @@ wait
 
 # Also compile each file to its transformed '.o', overwriting the old one
 for file in "${FILES_ARR[@]}"; do
+	echo "Compiling with LD_COMPILER: $file"
   FILEARGS=`cat $file.args`
   ${LLVMPATH}${LD_COMPILER} $FILEARGS -c $file.bc -o $file.o &
 done
 wait
 
 # Now finally link the transformed '.o' files
-${LLVMPATH}${LD_LINKER} -L${LIB_DIR} -lhigh -Wl,-rpath,${LIB_DIR} $ARGS
+echo "Linking with args: $LINKARGS"
+${LLVMPATH}${LD_LINKER} -L${LIB_DIR} -lhigh -Wl,-rpath,${LIB_DIR} $LINKARGS

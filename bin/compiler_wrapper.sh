@@ -29,10 +29,10 @@ for word in $ARGS; do
     FILE=${BASH_REMATCH[1]}
     COMPILER="$C_COMPILER"
   # Or if it's a C++ file
-  elif [[ "$word" =~ (.*)\.cpp$ ]] || [[ "$word" =~ (.*)\.C$ ]] || [[ "$word" =~ (.*)\.cc ]]; then
+  elif [[ "$word" =~ (.*)\.cpp$ ]] || [[ "$word" =~ (.*)\.C$ ]] || [[ "$word" =~ (.*)\.cc$ ]]; then
     FILE=${BASH_REMATCH[1]}
     COMPILER="$CXX_COMPILER"
-  elif [[ "$word" =~ (.*)\.f90$ ]] || [[ "$word" =~ (.*)\.f95$ ]] || [[ "$word" =~ (.*)\.f03 ]] || [[ "$word" =~ (.*)\.F90 ]]; then
+  elif [[ "$word" =~ (.*)\.f90$ ]] || [[ "$word" =~ (.*)\.f95$ ]] || [[ "$word" =~ (.*)\.f03$ ]] || [[ "$word" =~ (.*)\.F90$ ]]; then
     FILE=${BASH_REMATCH[1]}
     COMPILER="$FORT_COMPILER"
     FORTRAN=true
@@ -62,7 +62,7 @@ done
 export EXTRA_ARGS="-emit-llvm -o $OUTPUTFILE.bc $EXTRA_ARGS"
 
 # Output the original arguments to a file, to be used by ld_wrapper
-echo $OUTPUT_ARGS > $FILE.args
+echo $OUTPUT_ARGS > $OUTPUTFILE.args
 
 # Compile to both a '.bc' file as well as a '.o', in parallel.
 PROC=""
@@ -70,16 +70,15 @@ PROC2=""
 RETVAL=1
 RETVAL2=1
 #while [ $RETVAL -ne 0 ] && [ $RETVAL2 -ne 0 ]; do
-${LLVMPATH}${COMPILER} $ARGS $EXTRA_ARGS &
+${LLVMPATH}${COMPILER} $ARGS $EXTRA_ARGS
 #  PROC=$!
-${LLVMPATH}${COMPILER} $ARGS &
+${LLVMPATH}${COMPILER} $ARGS
 #  PROC2=$!
 #  wait $PROC
 #  RETVAL=$?
 #  wait $PROC2
 #  RETVAL=$?
 #done
-wait
 
 # Might want to add feature where if it's called without -c, we should call the ld_wrapper.sh automatically
 #if [ "$ONLY_COMPILE" = false ]; then
