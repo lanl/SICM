@@ -1,0 +1,5 @@
+add_library(sicm_low SHARED sicm_low.c sicm_arena.c)
+target_include_directories(sicm_low PRIVATE ../../include/private)
+target_include_directories(sicm_low PUBLIC ../../include/public)
+find_library(jemalloc_lib jemalloc NO_DEFAULT_PATH)
+target_link_libraries(sicm_low ${jemalloc_lib})
