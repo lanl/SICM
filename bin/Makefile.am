@@ -7,4 +7,4 @@
 # Additional copyrights may follow
 # 
 
-dist_bin_SCRIPTS = ld_wrapper.sh  compiler_wrapper.sh
+dist_bin_SCRIPTS = ld_wrapper.sh  compiler_wrapper.sh ar_wrapper.sh ranlib_wrapper.sh
