@@ -12,5 +12,9 @@ find_package(NUMA REQUIRED)
 target_include_directories(sicm_high PRIVATE ${NUMA_INCLUDE_DIR})
 target_link_libraries(sicm_high ${NUMA_LIBRARY})
 
+find_package(LibPfm4 REQUIRED)
+target_include_directories(sicm_high PRIVATE ${LIBPFM_INCLUDE_DIR})
+target_link_libraries(sicm_high ${LIBPFM_LIBRARY})
+
 install(TARGETS sicm_high
         LIBRARY DESTINATION lib)
