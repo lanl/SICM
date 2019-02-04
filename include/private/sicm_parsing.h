@@ -8,7 +8,7 @@
 
 #include <inttypes.h>
 #include <limits.h>
-#include "tree.h"
+#include "sicm_tree.h"
 
 /* For parsing information about sites */
 typedef struct site {

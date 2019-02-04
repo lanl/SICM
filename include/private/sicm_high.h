@@ -3,7 +3,7 @@
 #include <inttypes.h>
 #include "sicm_low.h"
 #include "sicm_impl.h"
-#include "tree.h"
+#include "sicm_tree.h"
 
 enum arena_layout {
   SHARED_ONE_ARENA, /* One arena between all threads */
