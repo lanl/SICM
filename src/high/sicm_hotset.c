@@ -12,7 +12,7 @@
 #include <limits.h>
 #include "sicm_high.h"
 #include "sicm_parsing.h"
-#include "tree.h"
+#include "sicm_tree.h"
 
 union metric {
   float band;
