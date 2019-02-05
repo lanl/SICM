@@ -11,4 +11,5 @@ set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/Modules/")
 add_subdirectory(src)
 
 # Compile some tests
+enable_testing()
 add_subdirectory(test)

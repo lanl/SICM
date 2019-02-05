@@ -17,5 +17,4 @@ target_include_directories(test5 PUBLIC ../../include/public)
 target_link_libraries(test5 PUBLIC sicm)
 
 # Now actually run the tests
-enable_testing()
 add_test(test1 test1)
