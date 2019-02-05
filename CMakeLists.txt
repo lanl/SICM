@@ -7,4 +7,8 @@ set(SICM_BUILD_HIGH_LEVEL False CACHE BOOL "Should we build the high-level inter
 # Install custom CMake modules for jemalloc and libnuma.
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/Modules/")
 
+# Compile the low- and high-level interfaces
 add_subdirectory(src)
+
+# Compile some tests
+add_subdirectory(test)

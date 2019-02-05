@@ -62,7 +62,6 @@ target_link_libraries(sicm_rdspy ${LLVM_LIBRARIES})
 ####################
 target_link_libraries(sicm_memreserve pthread)
 
-
 install(TARGETS sicm_high sicm_compass sicm_rdspy sicm_dump_info sicm_memreserve sicm_hotset
         LIBRARY DESTINATION lib
         RUNTIME DESTINATION bin)
