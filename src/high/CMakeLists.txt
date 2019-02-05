@@ -1,4 +1,5 @@
 add_library(sicm_high SHARED sicm_high.c sicm_profile.c)
+add_library(sicm_compass SHARED sicm_compass.cpp)
 
 # Public and private headers for each library
 target_include_directories(sicm_high PRIVATE ../../include/private)
@@ -16,5 +17,9 @@ find_package(LibPfm4 REQUIRED)
 target_include_directories(sicm_high PRIVATE ${LIBPFM_INCLUDE_DIR})
 target_link_libraries(sicm_high ${LIBPFM_LIBRARY})
 
-install(TARGETS sicm_high
+find_package(LLVM REQUIRED CONFIG)
+target_include_directories(sicm_compass PRIVATE ${LLVM_INCLUDE_DIR})
+target_link_libraries(sicm_compass ${LLVM_LIBRARIES})
+
+install(TARGETS sicm_high sicm_compass
         LIBRARY DESTINATION lib)
