@@ -56,7 +56,7 @@ int main() {
 	printf("moving second huge alloc (s1) to device 2...\n");
 	if (sicm_arena_set_device(s1, d2) < 0) {
 		fprintf(stderr, "move failed gracefully\n");
-		return -1;
+		return 0;
 	}
 
 	return 0;
