@@ -55,6 +55,5 @@ nsites.txt
 *.bc
 *.args
 
-# From install_deps.sh
-build_deps
-deps
+# Spack stuff
+spack.lock

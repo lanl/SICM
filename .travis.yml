@@ -50,5 +50,5 @@ install:
     - cd ..
 
 script:
-    - spack repo add spack-repo spack-repo
-    - spack install --no-checksum --test=root spack-repo.sicm-low
+    - spack repo add spack-repo
+    - spack install --no-checksum --test=root spack.sicm-low

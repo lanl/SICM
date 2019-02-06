@@ -8,6 +8,6 @@ spack:
   mirrors: {}
   modules:
     enable: []
-  repos: [./spack]
+  repos: [./spack-repo]
   packages: {}
   config: {}
