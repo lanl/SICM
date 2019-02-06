@@ -49,5 +49,5 @@ install:
     - . share/spack/setup-env.sh
 
 script:
-    # build and test SICM with Spack
-    - spack install --test=root sicm-low
+    - spack repo add spack-repo
+    - spack install --no-checksum --test=root spack-repo.sicm-low

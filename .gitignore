@@ -4,6 +4,7 @@
 *.mod
 *.lo
 *.la
+*.pyc
 
 # Makefiles
 /Makefile.in
