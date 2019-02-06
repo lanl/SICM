@@ -4,6 +4,7 @@
 # SPDX-License-Identifier: (Apache-2.0 OR MIT)
 
 from spack import *
+import os
 
 
 class SicmLow(CMakePackage):
@@ -11,7 +12,7 @@ class SicmLow(CMakePackage):
     Includes only the low-level interface and arena allocator."""
 
     homepage = "https://github.com/lanl/SICM/"
-    git      = "file:///home/macslayer/projects/ornl/sicm_low"
+    git      = os.path.expandvars("file:///${SICM_DIR}")
 
     version('develop', commit='HEAD')
 

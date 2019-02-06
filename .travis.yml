@@ -7,7 +7,7 @@ sudo: required
 # cache dependencies build so they don't have to be built every time
 cache:
       directories:
-        - ${TRAVIS_BUILD_DIR}/.local
+        - ${TRAVIS_BUILD_DIR}/spack
 
 matrix:
       include:
@@ -50,5 +50,6 @@ install:
     - cd ..
 
 script:
+    - export SICM_DIR="${TRAVIS_BUILD_DIR}"
     - spack repo add spack-repo
     - spack install --no-checksum --test=root spack.sicm-low
