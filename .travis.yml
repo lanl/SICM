@@ -52,4 +52,4 @@ install:
 script:
     - export SICM_DIR="${TRAVIS_BUILD_DIR}"
     - spack repo add spack-repo
-    - spack install --no-checksum --test=root spack.sicm-low
+    - spack install --no-checksum spack.sicm-low
