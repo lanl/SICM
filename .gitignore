@@ -4,6 +4,7 @@
 *.mod
 *.lo
 *.la
+*.pyc
 
 # Makefiles
 /Makefile.in
@@ -27,6 +28,7 @@
 /examples/low/basic
 /src/high/memreserve
 /src/high/hotset
+/src/high/dump_info
 
 autom4te.cache
 *.m4
@@ -53,6 +55,5 @@ nsites.txt
 *.bc
 *.args
 
-# From install_deps.sh
-build_deps
-deps
+# Spack stuff
+spack.lock

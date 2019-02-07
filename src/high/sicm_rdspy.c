@@ -6,7 +6,7 @@
  */
 
 #include "sicm_rdspy.h"
-#include "tree.h"
+#include "sicm_tree.h"
 
 #include <assert.h>
 #include <pthread.h>
