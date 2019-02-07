@@ -1,6 +1,6 @@
-add_library(sicm SHARED sicm_low.c sicm_arena.c)
-add_library(sicm_f90 SHARED fbinding_c.c fbinding_f90.f90)
-add_library(sicm_cpp SHARED sicm_cpp.cpp)
+add_library(sicm SHARED sicm_low.c sicm_arena.c sicm_low.h sicm_impl.h)
+add_library(sicm_f90 SHARED fbinding_c.c fbinding_f90.f90 sicm_low.h sicm_impl.h)
+add_library(sicm_cpp SHARED sicm_cpp.cpp sicm_cpp.hpp)
 
 target_include_directories(sicm PRIVATE ../../include/private)
 target_include_directories(sicm PUBLIC ../../include/public)
@@ -18,4 +18,5 @@ target_link_libraries(sicm ${NUMA_LIBRARY})
 target_include_directories(sicm PRIVATE ${NUMA_INCLUDE_DIR})
 
 install(TARGETS sicm sicm_f90 sicm_cpp
-        LIBRARY DESTINATION lib)
+        LIBRARY DESTINATION lib
+        INCLUDES DESTINATION include)

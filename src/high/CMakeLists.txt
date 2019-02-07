@@ -1,9 +1,9 @@
-add_library(sicm_high SHARED sicm_high.c sicm_profile.c sicm_rdspy.c)
+add_library(sicm_high SHARED sicm_high.c sicm_profile.c sicm_rdspy.c sicm_high.h sicm_profile.h sicm_rdspy.h)
 add_library(sicm_compass SHARED sicm_compass.cpp)
 add_library(sicm_rdspy SHARED sicm_rdspy.cpp)
-add_executable(sicm_dump_info sicm_dump_info.c)
-add_executable(sicm_memreserve sicm_memreserve.c)
-add_executable(sicm_hotset sicm_hotset.c)
+add_executable(sicm_dump_info sicm_dump_info.c sicm_parsing.h sicm_high.h)
+add_executable(sicm_memreserve sicm_memreserve.c sicm_parsing.h sicm_high.h)
+add_executable(sicm_hotset sicm_hotset.c sicm_parsing.h sicm_tree.h sicm_high.h)
 
 # Public and private headers for each library
 target_include_directories(sicm_high PRIVATE ../../include/private)
@@ -64,4 +64,5 @@ target_link_libraries(sicm_memreserve pthread)
 
 install(TARGETS sicm_high sicm_compass sicm_rdspy sicm_dump_info sicm_memreserve sicm_hotset
         LIBRARY DESTINATION lib
-        RUNTIME DESTINATION bin)
+        RUNTIME DESTINATION bin
+        INCLUDES DESTINATION include)
