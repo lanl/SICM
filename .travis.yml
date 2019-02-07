@@ -5,9 +5,12 @@ dist: trusty
 sudo: required
 
 # cache dependencies build so they don't have to be built every time
-cache:
-      directories:
-        - ${TRAVIS_BUILD_DIR}/spack
+# Commenting out, since this (seemingly randomly) EITHER:
+# - Creates the cached directory, but leaves it blank, or
+# - Creates and fills in the cached directory.
+#cache:
+#      directories:
+#        - ${TRAVIS_BUILD_DIR}/spack
 
 matrix:
       include:
@@ -44,7 +47,7 @@ before_install:
 
 install:
     # Install Spack
-    - if [ ! -d "spack" ]; then git clone https://github.com/benbenolson/spack.git; fi
+    - git clone https://github.com/benbenolson/spack.git
     - cd spack
     - . share/spack/setup-env.sh
     - if spack find sicm-low | grep -q 'No package matches the query'; then spack uninstall -y sicm-low; fi
