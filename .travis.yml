@@ -50,7 +50,6 @@ install:
     - git clone https://github.com/benbenolson/spack.git
     - cd spack
     - . share/spack/setup-env.sh
-    - if spack find sicm-low | grep -q 'No package matches the query'; then spack uninstall -y sicm-low; fi
     - cd ..
 
 script:
