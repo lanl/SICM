@@ -4,6 +4,7 @@
 # SPDX-License-Identifier: (Apache-2.0 OR MIT)
 
 from spack import *
+import os
 
 
 class SicmHigh(CMakePackage):
@@ -11,7 +12,7 @@ class SicmHigh(CMakePackage):
     profile and manage memory usage on heterogeneous memory systems."""
 
     homepage = "https://github.com/lanl/SICM/"
-    git      = "https://github.com/lanl/SICM"
+    git      = os.path.expandvars("file:///${SICM_DIR}")
 
     version('develop', commit='HEAD')
 
