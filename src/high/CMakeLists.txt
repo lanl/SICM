@@ -8,6 +8,8 @@ add_executable(sicm_hotset sicm_hotset.c)
 # Public and private headers for each library
 target_include_directories(sicm_high PRIVATE ${CMAKE_SOURCE_DIR}/include/high/private)
 target_include_directories(sicm_high PUBLIC ${CMAKE_SOURCE_DIR}/include/high/public)
+target_include_directories(sicm_high PRIVATE ${CMAKE_SOURCE_DIR}/include/low/private)
+target_include_directories(sicm_high PUBLIC ${CMAKE_SOURCE_DIR}/include/low/public)
 target_include_directories(sicm_dump_info PRIVATE ${CMAKE_SOURCE_DIR}/include/high/private)
 target_include_directories(sicm_dump_info PUBLIC ${CMAKE_SOURCE_DIR}/include/high/public)
 target_include_directories(sicm_memreserve PRIVATE ${CMAKE_SOURCE_DIR}/include/high/private)
@@ -64,5 +66,4 @@ target_link_libraries(sicm_memreserve pthread)
 
 install(TARGETS sicm_high sicm_compass sicm_rdspy sicm_dump_info sicm_memreserve sicm_hotset
         LIBRARY DESTINATION lib
-        RUNTIME DESTINATION bin
-        INCLUDES DESTINATION include)
+        RUNTIME DESTINATION bin)
