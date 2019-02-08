@@ -14,8 +14,12 @@ target_include_directories(sicm_dump_info PRIVATE ${CMAKE_SOURCE_DIR}/include/hi
 target_include_directories(sicm_dump_info PUBLIC ${CMAKE_SOURCE_DIR}/include/high/public)
 target_include_directories(sicm_memreserve PRIVATE ${CMAKE_SOURCE_DIR}/include/high/private)
 target_include_directories(sicm_memreserve PUBLIC ${CMAKE_SOURCE_DIR}/include/high/public)
+target_include_directories(sicm_memreserve PRIVATE ${CMAKE_SOURCE_DIR}/include/low/private)
+target_include_directories(sicm_memreserve PUBLIC ${CMAKE_SOURCE_DIR}/include/low/public)
 target_include_directories(sicm_hotset PRIVATE ${CMAKE_SOURCE_DIR}/include/high/private)
 target_include_directories(sicm_hotset PUBLIC ${CMAKE_SOURCE_DIR}/include/high/public)
+target_include_directories(sicm_hotset PRIVATE ${CMAKE_SOURCE_DIR}/include/low/private)
+target_include_directories(sicm_hotset PUBLIC ${CMAKE_SOURCE_DIR}/include/low/public)
 
 ####################
 #     jemalloc     #
