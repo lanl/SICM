@@ -6,14 +6,20 @@ add_executable(sicm_memreserve sicm_memreserve.c)
 add_executable(sicm_hotset sicm_hotset.c)
 
 # Public and private headers for each library
-target_include_directories(sicm_high PRIVATE ../../include/private)
-target_include_directories(sicm_high PUBLIC ../../include/public)
-target_include_directories(sicm_dump_info PRIVATE ../../include/private)
-target_include_directories(sicm_dump_info PUBLIC ../../include/public)
-target_include_directories(sicm_memreserve PRIVATE ../../include/private)
-target_include_directories(sicm_memreserve PUBLIC ../../include/public)
-target_include_directories(sicm_hotset PRIVATE ../../include/private)
-target_include_directories(sicm_hotset PUBLIC ../../include/public)
+target_include_directories(sicm_high PRIVATE ${CMAKE_SOURCE_DIR}/include/high/private)
+target_include_directories(sicm_high PUBLIC ${CMAKE_SOURCE_DIR}/include/high/public)
+target_include_directories(sicm_high PRIVATE ${CMAKE_SOURCE_DIR}/include/low/private)
+target_include_directories(sicm_high PUBLIC ${CMAKE_SOURCE_DIR}/include/low/public)
+target_include_directories(sicm_dump_info PRIVATE ${CMAKE_SOURCE_DIR}/include/high/private)
+target_include_directories(sicm_dump_info PUBLIC ${CMAKE_SOURCE_DIR}/include/high/public)
+target_include_directories(sicm_memreserve PRIVATE ${CMAKE_SOURCE_DIR}/include/high/private)
+target_include_directories(sicm_memreserve PUBLIC ${CMAKE_SOURCE_DIR}/include/high/public)
+target_include_directories(sicm_memreserve PRIVATE ${CMAKE_SOURCE_DIR}/include/low/private)
+target_include_directories(sicm_memreserve PUBLIC ${CMAKE_SOURCE_DIR}/include/low/public)
+target_include_directories(sicm_hotset PRIVATE ${CMAKE_SOURCE_DIR}/include/high/private)
+target_include_directories(sicm_hotset PUBLIC ${CMAKE_SOURCE_DIR}/include/high/public)
+target_include_directories(sicm_hotset PRIVATE ${CMAKE_SOURCE_DIR}/include/low/private)
+target_include_directories(sicm_hotset PUBLIC ${CMAKE_SOURCE_DIR}/include/low/public)
 
 ####################
 #     jemalloc     #

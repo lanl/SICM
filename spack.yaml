@@ -4,7 +4,7 @@
 # configuration settings.
 spack:
   # add package specs to the `specs` list
-  specs: [sicm-low]
+  specs: []
   mirrors: {}
   modules:
     enable: []
