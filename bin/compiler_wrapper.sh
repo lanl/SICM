@@ -5,6 +5,8 @@
 # This wrapper also parses and outputs the arguments used to compile each
 # file, so that it can be read and used by the ld_wrapper.
 
+echo "CALLING COMPILER WRAPPER"
+
 # The original arguments and the ones we're going to add
 ARGS=$@
 OUTPUT_ARGS=""

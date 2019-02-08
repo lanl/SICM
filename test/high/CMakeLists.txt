@@ -1,8 +1,10 @@
-add_executable(stream mysecond.c stream.c)
+add_executable(stream stream.c)
 
-# Just include the public SICM high-level interface
-target_include_directories(stream PUBLIC ../../include/public)
-target_link_libraries(stream PUBLIC sicm_high)
+# Use the compiler wrappers to compile it
+SET(CMAKE_C_COMPILER "compiler_wrapper.sh")
+SET(CMAKE_AR "ar_wrapper.sh")
+SET(CMAKE_LINKER "ld_wrapper.sh")
+SET(CMAKE_RANLIB "ranlib_wrapper.sh")
 
 # Now actually run the tests
 add_test(stream stream)
