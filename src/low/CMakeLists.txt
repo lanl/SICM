@@ -21,5 +21,5 @@ target_include_directories(sicm PRIVATE ${NUMA_INCLUDE_DIR})
 
 install(TARGETS sicm sicm_f90 sicm_cpp
         LIBRARY DESTINATION lib)
-install(DIRECTORY ${CMAKE_SOURCE_DIR}/include/low/public
-        DESTINATION include)
+install(DIRECTORY ${CMAKE_SOURCE_DIR}/include/low/public/
+        DESTINATION include/)
