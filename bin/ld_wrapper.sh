@@ -61,7 +61,7 @@ fi
 ${LLVMPATH}${LLVMLINK} $BC_STR -o .sicm_ir.bc
 
 # Run the compiler pass to generate the call graph
-${LLVMPATH}${OPT} -load ${LIB_DIR}/libcompass.so -compass-mode=analyze \
+${LLVMPATH}${OPT} -load ${LIB_DIR}/libsicm_compass.so -compass-mode=analyze \
     -compass-quick-exit -compass -compass-depth=3 \
     .sicm_ir.bc -o .sicm_ir.bc
 
@@ -69,7 +69,7 @@ ${LLVMPATH}${OPT} -load ${LIB_DIR}/libcompass.so -compass-mode=analyze \
 if [ -z ${SH_RDSPY+x} ]; then
 	  COUNTER=1
     for file in "${FILES_ARR[@]}"; do
-      ${LLVMPATH}${OPT} -load ${LIB_DIR}/libcompass.so -compass-mode=transform -compass -compass-depth=3 $file.bc -o $file.bc &
+      ${LLVMPATH}${OPT} -load ${LIB_DIR}/libsicm_compass.so -compass-mode=transform -compass -compass-depth=3 $file.bc -o $file.bc &
 			COUNTER=$((COUNTER+1))
 			if [[ "$COUNTER" -gt 8 ]]; then
 				COUNTER=1
@@ -79,7 +79,7 @@ if [ -z ${SH_RDSPY+x} ]; then
 else
     echo "compiling with rdspy"
     for file in "${FILES_ARR[@]}"; do
-      ${LLVMPATH}${OPT} -load ${LIB_DIR}/libcompass.so -load ${LIB_DIR}/librdspy.so -compass-mode=transform -compass -compass-depth=3 -rdspy -rdspy-sampling-threshold=${SH_RDSPY_SAMPLE} $file.bc -o $file.bc &
+      ${LLVMPATH}${OPT} -load ${LIB_DIR}/libsicm_compass.so -load ${LIB_DIR}/libsicm_rdspy.so -compass-mode=transform -compass -compass-depth=3 -rdspy -rdspy-sampling-threshold=${SH_RDSPY_SAMPLE} $file.bc -o $file.bc &
     done
 fi
 wait
@@ -94,4 +94,4 @@ wait
 
 # Now finally link the transformed '.o' files
 echo "Linking with args: $LINKARGS"
-${LLVMPATH}${LD_LINKER} -L${LIB_DIR} -lhigh -Wl,-rpath,${LIB_DIR} $LINKARGS
+${LLVMPATH}${LD_LINKER} -L${LIB_DIR} -lsicm_high -Wl,-rpath,${LIB_DIR} $LINKARGS
