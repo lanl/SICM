@@ -40,7 +40,6 @@ for word in $ARGS; do
 		# Each line is just a filename without an extension. Use these paths to find
 		# each .o, .bc, and .args files that should be in the .a file.
 		# Notably, *don't* add this .a file to the list of link arguments.
-		echo "Reading in a .a file: $word"
 		while read line; do
 			FILES_ARR+=("${line}")
 			BC_STR="$BC_STR ${line}.bc"
@@ -77,7 +76,6 @@ if [ -z ${SH_RDSPY+x} ]; then
 			fi
     done
 else
-    echo "compiling with rdspy"
     for file in "${FILES_ARR[@]}"; do
       ${LLVMPATH}${OPT} -load ${LIB_DIR}/libsicm_compass.so -load ${LIB_DIR}/libsicm_rdspy.so -compass-mode=transform -compass -compass-depth=3 -rdspy -rdspy-sampling-threshold=${SH_RDSPY_SAMPLE} $file.bc -o $file.bc &
     done
@@ -86,12 +84,10 @@ wait
 
 # Also compile each file to its transformed '.o', overwriting the old one
 for file in "${FILES_ARR[@]}"; do
-	echo "Compiling with LD_COMPILER: $file"
   FILEARGS=`cat $file.args`
   ${LLVMPATH}${LD_COMPILER} $FILEARGS -c $file.bc -o $file.o &
 done
 wait
 
 # Now finally link the transformed '.o' files
-echo "Linking with args: $LINKARGS"
 ${LLVMPATH}${LD_LINKER} -L${LIB_DIR} -lsicm_high -Wl,-rpath,${LIB_DIR} $LINKARGS
