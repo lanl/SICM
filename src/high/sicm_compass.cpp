@@ -38,11 +38,6 @@
 #define NCLONES_FILE "nclones.txt"
 #define BOTTOM_UP_CALL_GRAPH_FILE "buCG.txt"
 
-// Defined if we are using an extended call graph.
-// i.e., Multiple if A calls B multiple times, there are multiple edges,
-// which is not the case in a classical call graph.
-#define EXTENDED_CG
-
 using namespace llvm;
 
 cl::opt<unsigned int>
@@ -61,6 +56,15 @@ static cl::opt<bool>
     CompassQuickExit("compass-quick-exit", cl::Hidden,
                      cl::desc("Skip opt finalizations and exit immediately "
                               "after compass completes."));
+
+static cl::opt<bool>
+    CompassClassicalCG("compass-classical-cg", cl::Hidden,
+                     cl::desc("Use a classical call graph rather than "
+                              "an extended call graph."));
+static cl::opt<bool>
+    CompassDetail("compass-detail", cl::Hidden,
+                     cl::desc("Emit more detail about the calling contexts "
+                              "to the contexts file."));
 
 static LLVMContext myContext;
 
@@ -567,17 +571,18 @@ struct compass : public ModulePass {
 
                 // There needs to be a copy of callee for each caller of callee.
                 for (auto & caller : callers) {
-#ifdef EXTENDED_CG
-                    // Loop through each call for extended call graph.
-                    for (int call_n = 0; call_n < times1Calls2[caller + callee]; call_n += 1) {
+                    if (!CompassClassicalCG) {
+                        // Loop through each call for extended call graph.
+                        for (int call_n = 0; call_n < times1Calls2[caller + callee]; call_n += 1) {
+                            // We already have one copy of the function, the original.
+                            if (call_n == 0 && &caller == &(*callers.begin()))
+                                continue;
+                    } else {
                         // We already have one copy of the function, the original.
-                        if (call_n == 0 && &caller == &(*callers.begin()))
+                        if (&caller == &(*callers.begin()))
                             continue;
-#else
-                    // We already have one copy of the function, the original.
-                    if (&caller == &(*callers.begin()))
-                        continue;
-#endif
+                    }
+
                     // We need to do some actual cloning.
                     if (!sym) {
                         Function * fclone = createClone(callee_fn);
@@ -592,19 +597,15 @@ struct compass : public ModulePass {
                             times1Calls2[new_name+e] = times1Calls2[callee+e];
                         }
 
-#ifdef EXTENDED_CG
                         // If there is only one edge, but we have made it this far,
                         // there is another caller taking the original edges, so we
                         // remove ours here.
-                        if (times1Calls2[caller+callee] == 1) {
-#endif
-                        // Remove edge from caller to/from callee.
+                        if (!CompassClassicalCG && times1Calls2[caller+callee] == 1) {
+                            // Remove edge from caller to/from callee.
 
-                        str_CG[caller].erase(callee);
-                        str_buCG[callee].erase(caller);
-#ifdef EXTENDED_CG
+                            str_CG[caller].erase(callee);
+                            str_buCG[callee].erase(caller);
                         }
-#endif
 
                         // Create edges for caller to/from clone.
                         str_CG[caller].insert(new_name);
@@ -636,11 +637,11 @@ struct compass : public ModulePass {
                                         ReplaceInstWithInst(
                                             BB.getInstList(), it,
                                             site_clone.getInstruction());
-#ifdef EXTENDED_CG
-                                        // Jump out early so that on the next iterations, clones
-                                        // for multiple calls will replace the next site.
-                                        goto out;
-#endif
+                                        if (!CompassClassicalCG) {
+                                            // Jump out early so that on the next iterations, clones
+                                            // for multiple calls will replace the next site.
+                                            goto out;
+                                        }
                                     }
                                 }
                             }
@@ -657,15 +658,12 @@ struct compass : public ModulePass {
                             times1Calls2[new_name+e] = times1Calls2[callee+e];
                         }
 
-#ifdef EXTENDED_CG
-                        if (times1Calls2[caller+callee] == 1) {
-#endif
-                        // Remove edge from caller to/from callee.
-                        str_CG[caller].erase(callee);
-                        str_buCG[callee].erase(caller);
-#ifdef EXTENDED_CG
+                        if (!CompassClassicalCG && times1Calls2[caller+callee] == 1) {
+                            // Remove edge from caller to/from callee.
+                            str_CG[caller].erase(callee);
+                            str_buCG[callee].erase(caller);
                         }
-#endif
+
                         // Create edges for caller to/from clone.
                         str_CG[caller].insert(new_name);
                         str_buCG[new_name].insert(caller);
@@ -675,12 +673,10 @@ struct compass : public ModulePass {
                         cloneLink[new_name] = callee;
                     }
 
-#ifdef EXTENDED_CG
                     // So sorry about this.
 out:
                         (void)1;
                     }
-#endif
                 }
             }
         }
@@ -720,8 +716,64 @@ out:
     // instruction after transformation.
     ////////////////////////////////////////////////////////////////////////////////
     void emitDebugLocation(Instruction * inst, const std::string & alloc_fn, unsigned int id) {
-        auto & loc = inst->getDebugLoc();
-        if (loc) {
+        if (CompassDetail) {
+            auto & loc = inst->getDebugLoc();
+            if (loc) {
+                std::stringstream buff;
+
+                auto BB = inst->getParent();
+                std::vector<std::string> bt;
+                std::string p = BB->getParent()->getName();
+                for (int i = 0; i <= CompassDepth; i += 1) {
+                    bt.push_back(p);
+                    if (str_buCG[p].empty())
+                        break;
+                    p = *str_buCG[p].begin();
+                }
+
+                buff
+                    << id
+                    << " "
+                    << alloc_fn
+                    << " "
+                    ;
+                if (loc.getInlinedAt())
+                    buff 
+                        << "(inlined) "
+                        ;
+                buff
+                    << cast<DIScope>(loc.getScope())->getFilename().str()
+                    << ":"
+                    << loc.getLine()
+                    << " in "
+                    << theModule->getName().str()
+                    << "\n"
+                    ;
+
+                std::string str_inst;
+                raw_string_ostream rso(str_inst);
+                inst->print(rso);
+
+                buff
+                    << rso.str()
+                    << "\n"
+                    ;
+
+                for (const std::string & f : bt) {
+                    buff
+                        << "    ("
+                        << f
+                        << ")"
+                        << "\n"
+                        ;
+                }
+
+                std::string _buff = buff.str();
+                fprintf(contexts_file, "%s\n", _buff.c_str());
+            } else {
+                fprintf(contexts_file, "no debug info.. did you compile with '-g'?\n");
+            }
+        } else {
             std::stringstream buff;
 
             auto BB = inst->getParent();
@@ -740,27 +792,6 @@ out:
                 << alloc_fn
                 << " "
                 ;
-            if (loc.getInlinedAt())
-                buff 
-                    << "(inlined) "
-                    ;
-            buff
-                << cast<DIScope>(loc.getScope())->getFilename().str()
-                << ":"
-                << loc.getLine()
-                << " in "
-                << theModule->getName().str()
-                << "\n"
-                ;
-
-            std::string str_inst;
-            raw_string_ostream rso(str_inst);
-            inst->print(rso);
-
-            buff
-                << rso.str()
-                << "\n"
-                ;
 
             for (const std::string & f : bt) {
                 buff
@@ -770,11 +801,9 @@ out:
                     << "\n"
                     ;
             }
-
+            
             std::string _buff = buff.str();
             fprintf(contexts_file, "%s\n", _buff.c_str());
-        } else {
-            fprintf(contexts_file, "no debug info.. did you compile with '-g'?\n");
         }
     }
     ////////////////////////////////////////////////////////////////////////////////
