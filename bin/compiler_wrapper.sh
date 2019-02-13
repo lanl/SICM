@@ -41,11 +41,7 @@ for word in $ARGS; do
     PREV="$word"
   elif [[ "$PREV" =~ \-o$ ]]; then
     PREV=""
-    if [[ "$word" =~ (.*)\.o$ ]]; then
-      OUTPUTFILE=${BASH_REMATCH[1]}
-    else
-      echo "The previous argument was '-o', but the next wasn't a '.o' file."
-    fi
+    OUTPUTFILE=${BASH_REMATCH[1]}
   # Everything else gets output to the ld_wrapper
   else
     OUTPUT_ARGS="$OUTPUT_ARGS $word"
