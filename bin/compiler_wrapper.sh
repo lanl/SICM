@@ -16,6 +16,7 @@ LLVMPATH="${LLVMPATH:- }"
 C_COMPILER="${C_COMPILER:-clang}"
 CXX_COMPILER="${CXX_COMPILER:-clang++}"
 FORT_COMPILER="${FORT_COMPILER:-flang}"
+LD_WRAPPER="${LD_WRAPPER:-ld_wrapper.sh}"
 COMPILER="$C_COMPILER"
 PREV=""
 FORTRAN=false
@@ -39,9 +40,10 @@ for word in $ARGS; do
   # Remove "-o [outputfile]" from the arguments
   elif [[ "$word" =~ \-o$ ]]; then
     PREV="$word"
+  # Put the output file in OUTPUTFILE, extension and all
   elif [[ "$PREV" =~ \-o$ ]]; then
     PREV=""
-    OUTPUTFILE=${BASH_REMATCH[1]}
+    OUTPUTFILE=${word}
   # Everything else gets output to the ld_wrapper
   else
     OUTPUT_ARGS="$OUTPUT_ARGS $word"
@@ -55,28 +57,16 @@ for word in $ARGS; do
 done
 
 # EXTRA_ARGS are arguments used to compile to IR
-export EXTRA_ARGS="-emit-llvm -o $OUTPUTFILE.bc $EXTRA_ARGS"
+export EXTRA_ARGS="-emit-llvm -o ${OUTPUTFILE}.bc $EXTRA_ARGS"
 
-# Output the original arguments to a file, to be used by ld_wrapper
-echo $OUTPUT_ARGS > $OUTPUTFILE.args
-
-# Compile to both a '.bc' file as well as a '.o', in parallel.
-PROC=""
-PROC2=""
-RETVAL=1
-RETVAL2=1
-#while [ $RETVAL -ne 0 ] && [ $RETVAL2 -ne 0 ]; do
-${LLVMPATH}${COMPILER} $ARGS $EXTRA_ARGS
-#  PROC=$!
-${LLVMPATH}${COMPILER} $ARGS
-#  PROC2=$!
-#  wait $PROC
-#  RETVAL=$?
-#  wait $PROC2
-#  RETVAL=$?
-#done
-
-# Might want to add feature where if it's called without -c, we should call the ld_wrapper.sh automatically
-#if [ "$ONLY_COMPILE" = false ]; then
-#  echo "WARNING: This wrapper was intended to be used with '-c' to compile only, not to link."
-#fi
+# If the user didn't specify -c, we need to call the ld_wrapper
+if [ "$ONLY_COMPILE" = false ]; then
+  ${LD_WRAPPER} $OUTPUT_ARGS -o $OUTPUTFILE
+# If the user *did* specify -c, just compile
+else
+  # Output the original arguments to a file, to be used by ld_wrapper
+  echo $OUTPUT_ARGS > $OUTPUTFILE.args
+  # Compile to both a '.bc' file as well as the standard object file
+  ${LLVMPATH}${COMPILER} $ARGS $EXTRA_ARGS
+  ${LLVMPATH}${COMPILER} $ARGS
+fi
