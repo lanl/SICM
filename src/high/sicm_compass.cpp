@@ -514,7 +514,7 @@ struct compass : public ModulePass {
     //      main->b->d'->e->malloc
     ////////////////////////////////////////////////////////////////////////////////
 
-    void doCloning() {
+    void doCloningClassical() {
         std::vector<std::set<std::string>> layers;
 
         // Roots are at context layer -1.
@@ -571,19 +571,156 @@ struct compass : public ModulePass {
 
                 // There needs to be a copy of callee for each caller of callee.
                 for (auto & caller : callers) {
-                    if (!CompassClassicalCG) {
-                        // Loop through each call for extended call graph.
-                        for (int call_n = 0; call_n < times1Calls2[caller + callee]; call_n += 1) {
-                            // We already have one copy of the function, the original.
-                            if (call_n == 0 && &caller == &(*callers.begin()))
-                                continue;
-                    } else {
-                        // We already have one copy of the function, the original.
-                        if (&caller == &(*callers.begin()))
-                            continue;
-                    }
+                    // We already have one copy of the function, the original.
+                    if (&caller == &(*callers.begin()))
+                        continue;
 
                     // We need to do some actual cloning.
+                    if (!sym) {
+                        Function * fclone = createClone(callee_fn);
+                        std::string new_name = fclone->getName().str();
+                        times1Calls2[caller+new_name] = 1;
+
+                        // Copy edges for clone from callee.
+                        str_buCG[new_name].clear();
+                        str_CG[new_name] = str_CG[callee];
+                        for (auto & e : str_CG[new_name]) {
+                            str_buCG[e].insert(new_name);
+                            times1Calls2[new_name+e] = times1Calls2[callee+e];
+                        }
+
+                        // Remove edge from caller to/from callee.
+                        str_CG[caller].erase(callee);
+                        str_buCG[callee].erase(caller);
+
+                        // Create edges for caller to/from clone.
+                        str_CG[caller].insert(new_name);
+                        str_buCG[new_name].insert(caller);
+
+                        layers[k].insert(new_name);
+
+                        cloneLink[new_name] = callee;
+
+                        ncloned += 1;
+
+                        // If the caller is not in this module, we don't need to
+                        // do anything else here.
+                        Function * caller_fn = theModule->getFunction(caller);
+                        if (!caller_fn)
+                            continue;
+
+                        // Find sites in the caller that call the callee.
+                        // Replace them with call sites to the newly created
+                        // clone.
+                        for (auto & BB : *caller_fn) {
+                            for (auto it = BB.begin(); it != BB.end(); it++) {
+                                if (isCallSite(&*it)) {
+                                    CallSite site(&*it);
+                                    Function * called = getCalledFunction(site);
+                                    if (called == callee_fn) {
+                                        CallSite site_clone(site->clone());
+                                        setCalledFunction(site_clone, fclone);
+                                        ReplaceInstWithInst(
+                                            BB.getInstList(), it,
+                                            site_clone.getInstruction());
+                                    }
+                                }
+                            }
+                        }
+                    } else {
+                        // We just need to symbolically clone the function.
+                        std::string new_name = newCloneName(callee);
+                        times1Calls2[caller+new_name] = 1;
+                        // Copy edges for clone from callee.
+                        str_buCG[new_name].clear();
+                        str_CG[new_name] = str_CG[callee];
+                        for (auto & e : str_CG[new_name]) {
+                            str_buCG[e].insert(new_name);
+                            times1Calls2[new_name+e] = times1Calls2[callee+e];
+                        }
+
+                        // Remove edge from caller to/from callee.
+                        str_CG[caller].erase(callee);
+                        str_buCG[callee].erase(caller);
+                        
+                        // Create edges for caller to/from clone.
+                        str_CG[caller].insert(new_name);
+                        str_buCG[new_name].insert(caller);
+
+                        layers[k].insert(new_name);
+
+                        cloneLink[new_name] = callee;
+                    }
+
+                }
+            }
+        }
+    }
+
+    void doCloningExtended() {
+        std::vector<std::set<std::string>> layers;
+
+        // Roots are at context layer -1.
+        int l = -1;
+
+        // All allocating functions are roots.
+        layers.emplace_back();
+        for (auto & fn : allocFnMap)
+            layers[l + 1].insert(fn.first);
+
+        // Start at roots and compute the layers.
+        while (true) {
+            layers.emplace_back();
+
+            // Add callers of this layer to the next layer.
+            for (auto & node : layers[l + 1])
+                layers[l + 2].insert(str_buCG[node].begin(),
+                                     str_buCG[node].end());
+
+            // All nodes in the layer were leaves of the bottom-up call graph.
+            if (layers[l + 2].empty())
+                break;
+
+            l += 1;
+
+            if (l == CompassDepth)
+                break;
+        }
+
+        // Go through the layers and do the cloning.
+        for (int k = l; k >= 1; k -= 1) {
+            auto callees = layers[k]; // By-val.. we modify layers[k].
+
+            for (auto & callee : callees) {
+                // If the function we need to clone is not in this file,
+                // we need to "symbolically" clone it. This just means that
+                // we put its name in our representations of the call graph
+                // that just deal with function names (str_CG, str_buCG), but
+                // don't try to clone an actual function.
+
+                bool sym = false; // do symbolic cloning
+
+                Function * callee_fn = theModule->getFunction(callee);
+                if (!callee_fn)
+                    sym = true;
+
+                // callers := layers[k + 1] ∩ { node | node is a caller of
+                // callee }
+                std::vector<std::string> callers;
+                std::set_intersection(
+                    layers[k + 1].begin(), layers[k + 1].end(),
+                    str_buCG[callee].begin(), str_buCG[callee].end(),
+                    std::back_inserter(callers));
+
+                // There needs to be a copy of callee for each caller of callee.
+                for (auto & caller : callers) {
+                    // Loop through each call for extended call graph.
+                    for (int call_n = 0; call_n < times1Calls2[caller + callee]; call_n += 1) {
+                        // We already have one copy of the function, the original.
+                        if (call_n == 0 && &caller == &(*callers.begin()))
+                            continue;
+                    
+                        // We need to do some actual cloning.
                     if (!sym) {
                         Function * fclone = createClone(callee_fn);
                         std::string new_name = fclone->getName().str();
@@ -600,7 +737,7 @@ struct compass : public ModulePass {
                         // If there is only one edge, but we have made it this far,
                         // there is another caller taking the original edges, so we
                         // remove ours here.
-                        if (!CompassClassicalCG && times1Calls2[caller+callee] == 1) {
+                        if (times1Calls2[caller+callee] == 1) {
                             // Remove edge from caller to/from callee.
 
                             str_CG[caller].erase(callee);
@@ -637,11 +774,9 @@ struct compass : public ModulePass {
                                         ReplaceInstWithInst(
                                             BB.getInstList(), it,
                                             site_clone.getInstruction());
-                                        if (!CompassClassicalCG) {
-                                            // Jump out early so that on the next iterations, clones
-                                            // for multiple calls will replace the next site.
-                                            goto out;
-                                        }
+                                        // Jump out early so that on the next iterations, clones
+                                        // for multiple calls will replace the next site.
+                                        goto out;
                                     }
                                 }
                             }
@@ -658,12 +793,12 @@ struct compass : public ModulePass {
                             times1Calls2[new_name+e] = times1Calls2[callee+e];
                         }
 
-                        if (!CompassClassicalCG && times1Calls2[caller+callee] == 1) {
+                        if (times1Calls2[caller+callee] == 1) {
                             // Remove edge from caller to/from callee.
                             str_CG[caller].erase(callee);
                             str_buCG[callee].erase(caller);
                         }
-
+                        
                         // Create edges for caller to/from clone.
                         str_CG[caller].insert(new_name);
                         str_buCG[new_name].insert(caller);
@@ -1023,7 +1158,11 @@ out:
 
             flipCG();
 
-            doCloning();
+            if (CompassClassicalCG) {
+                doCloningClassical();
+            } else {
+                doCloningExtended();
+            }
 
             transformCallSites();
 
