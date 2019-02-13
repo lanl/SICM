@@ -6,5 +6,9 @@ SET(CMAKE_AR "${CMAKE_SOURCE_DIR}/bin/ar_wrapper.sh")
 SET(CMAKE_LINKER "${CMAKE_SOURCE_DIR}/bin/ld_wrapper.sh")
 SET(CMAKE_RANLIB "${CMAKE_SOURCE_DIR}/bin/ranlib_wrapper.sh")
 
+# Make sure the compiler wrapper can find our linker wrapper,
+# since it's not in the PATH yet.
+SET( ENV{LD_WRAPPER} "${CMAKE_SOURCE_DIR}/bin/ld_wrapper.sh" )
+
 # Now actually run the tests
 add_test(stream stream)
