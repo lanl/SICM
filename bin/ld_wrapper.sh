@@ -29,26 +29,26 @@ OBJECT_STR=""
 
 # Iterate over all arguments
 for word in $ARGS; do
+  # If the argument is an option, just pass it along
+  if [[ "$word" =~ ^-.* ]]; then
+    LINKARGS="$LINKARGS $word"
   # Check if the argument is an object file that we need to link
-  if [[ "$word" =~ (.*)\.o$ ]]; then
-    FILES_ARR+=("${BASH_REMATCH[1]}")
-    BC_STR="$BC_STR ${BASH_REMATCH[1]}.bc"
-    OBJECT_STR="$OBJECT_STR ${BASH_REMATCH[1]}.o"
-		LINKARGS="$LINKARGS $word"
-	elif [[ "$word" =~ (.*)\.a$ ]]; then
-		# We've found a `.a` file. Assume it was created with the ar_wrapper.sh.
-		# Each line is just a filename without an extension. Use these paths to find
-		# each .o, .bc, and .args files that should be in the .a file.
-		# Notably, *don't* add this .a file to the list of link arguments.
-		while read line; do
-			FILES_ARR+=("${line}")
-			BC_STR="$BC_STR ${line}.bc"
-			OBJECT_STR="$OBJECT_STR ${line}.o"
-			LINKARGS="$LINKARGS ${line}.o"
-		done < "${word}"
-	else
-		LINKARGS="$LINKARGS $word"
-	fi
+  elif [[ $(file --mime-type -b "$word") == "application/x-object" ]]; then
+    FILES_ARR+=("${word}")
+    BC_STR="$BC_STR ${word}.bc"
+    OBJECT_STR="$OBJECT_STR ${word}"
+    LINKARGS="$LINKARGS $word"
+  elif [[ $(file --mime-type -b "$word") == "application/x-archive" ]]; then
+    # We've found a `.a` file. Assume it was created with the ar_wrapper.sh.
+    # Each line is just a filename.
+    # Notably, *don't* add this .a file to the list of link arguments.
+    while read line; do
+      FILES_ARR+=("${line}")
+      BC_STR="$BC_STR ${line}.bc"
+      OBJECT_STR="$OBJECT_STR ${line}"
+      LINKARGS="$LINKARGS ${line}"
+    done < "${word}"
+  fi
 done
 
 # Check if there are zero files
@@ -66,26 +66,26 @@ ${LLVMPATH}${OPT} -load ${LIB_DIR}/libsicm_compass.so -compass-mode=analyze \
 
 # Run the compiler pass on each individual file
 if [ -z ${SH_RDSPY+x} ]; then
-	  COUNTER=1
+    COUNTER=1
     for file in "${FILES_ARR[@]}"; do
-      ${LLVMPATH}${OPT} -load ${LIB_DIR}/libsicm_compass.so -compass-mode=transform -compass -compass-depth=3 $file.bc -o $file.bc &
-			COUNTER=$((COUNTER+1))
-			if [[ "$COUNTER" -gt 8 ]]; then
-				COUNTER=1
-				wait
-			fi
+      ${LLVMPATH}${OPT} -load ${LIB_DIR}/libsicm_compass.so -compass-mode=transform -compass -compass-depth=3 ${file}.bc -o ${file}.bc &
+      COUNTER=$((COUNTER+1))
+      if [[ "$COUNTER" -gt 8 ]]; then
+        COUNTER=1
+        wait
+      fi
     done
 else
     for file in "${FILES_ARR[@]}"; do
-      ${LLVMPATH}${OPT} -load ${LIB_DIR}/libsicm_compass.so -load ${LIB_DIR}/libsicm_rdspy.so -compass-mode=transform -compass -compass-depth=3 -rdspy -rdspy-sampling-threshold=${SH_RDSPY_SAMPLE} $file.bc -o $file.bc &
+      ${LLVMPATH}${OPT} -load ${LIB_DIR}/libsicm_compass.so -load ${LIB_DIR}/libsicm_rdspy.so -compass-mode=transform -compass -compass-depth=3 -rdspy -rdspy-sampling-threshold=${SH_RDSPY_SAMPLE} ${file}.bc -o ${file}.bc &
     done
 fi
 wait
 
-# Also compile each file to its transformed '.o', overwriting the old one
+# Also compile each file to its transformed object file, overwriting the old one
 for file in "${FILES_ARR[@]}"; do
   FILEARGS=`cat $file.args`
-  ${LLVMPATH}${LD_COMPILER} $FILEARGS -c $file.bc -o $file.o &
+  ${LLVMPATH}${LD_COMPILER} $FILEARGS -c ${file}.bc -o ${file} &
 done
 wait
 
