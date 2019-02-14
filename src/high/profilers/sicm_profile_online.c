@@ -142,7 +142,7 @@ void profile_online_interval(int s) {
           orig_free(tree_it_key(sit));
         }
       }
-      tree_tree(merged_sorted_sites);
+      tree_free(merged_sorted_sites);
     }
 
     /* Free the sorted_sites tree */
