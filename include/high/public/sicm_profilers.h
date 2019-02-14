@@ -2,6 +2,7 @@
 #define __USE_LARGEFILE64
 #include <stdint.h> /* For uint64_t, etc. */
 #include <stdlib.h> /* For size_t */
+#include "sicm_tree.h"
 
 /* Going to be defined by sicm_profile.h */
 typedef struct arena_profile arena_profile;
@@ -80,6 +81,10 @@ typedef struct profile_allocs_data {
 
 /* profile_online */
 typedef struct application_profile application_profile;
+typedef struct site_profile_info site_profile_info;
+typedef site_profile_info * site_info_ptr;
+use_tree(site_info_ptr, int);
+use_tree(int, site_info_ptr);
 typedef struct profile_online_data {
   size_t num_reconfigures;
   size_t profile_online_event_index;
@@ -87,10 +92,10 @@ typedef struct profile_online_data {
   struct sicm_device_list *upper_dl, *lower_dl;
 
   /* The hotset from the previous interval */
-  void *prev_hotset;
+  tree(int, site_info_ptr) prev_hotset;
 
   /* The previous *run's* sorted sites */
-  void *last_iter_sorted_sites;
+  tree(site_info_ptr, int) last_iter_sorted_sites;
 
   /* The full profiling information from the previous run */
   application_profile *last_iter_profile;
