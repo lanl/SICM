@@ -225,14 +225,15 @@ void profile_online_init() {
                     &sort,
                     profopts.profile_online_print_reconfigures);
     prof.profile_online.last_iter_sorted_sites = sh_convert_to_site_tree(prof.profile_online.last_iter_profile);
+  } else {
+    sh_packing_init(prof.profile,
+                    &value,
+                    &profopts.profile_all_events[prof.profile_online.profile_online_event_index],
+                    &weight,
+                    &algo,
+                    &sort,
+                    profopts.profile_online_print_reconfigures);
   }
-  sh_packing_init(prof.profile,
-                  &value,
-                  &profopts.profile_all_events[prof.profile_online.profile_online_event_index],
-                  &weight,
-                  &algo,
-                  &sort,
-                  profopts.profile_online_print_reconfigures);
 
   /* Figure out the amount of free memory that we're starting out with */
   prof.profile_online.upper_avail_initial = sicm_avail(tracker.upper_device) * 1024;
