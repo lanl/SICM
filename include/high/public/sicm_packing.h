@@ -150,17 +150,16 @@ static tree(site_info_ptr, int) sh_merge_site_trees(tree(site_info_ptr, int) fir
     if(tree_it_good(fit)) {
       site->value = (tree_it_val(fit)->value * value_ratio) + (tree_it_key(sit)->value * (1 - value_ratio));
       site->weight = (tree_it_val(fit)->weight * weight_ratio) + (tree_it_key(sit)->weight * (1 - weight_ratio));
-      tree_insert(merged, site, tree_it_val(sit));
       if(sh_verbose_flag) {
         printf("(%zu * %f) + (%zu * %f) = %zu\n", tree_it_val(fit)->value, value_ratio, tree_it_key(sit)->value, 1 - value_ratio, site->value);
       }
     } else {
       site->value = tree_it_key(sit)->value;
       site->weight = tree_it_key(sit)->weight;
-      tree_insert(merged, site, tree_it_val(sit));
       printf("WARNING: Didn't find site %d in the previous run's profiling.\n", tree_it_val(sit));
     }
     site->value_per_weight = ((double) site->value) / ((double) site->weight);
+    tree_insert(merged, site, tree_it_val(sit));
   }
 
   /* Since this just stores pointers that were also stored in `first`, we don't need
