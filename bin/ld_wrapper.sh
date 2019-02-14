@@ -29,10 +29,14 @@ OBJECT_STR=""
 
 # Iterate over all arguments
 PREV=""
+OUTPUTFILE=""
 for word in $ARGS; do
   # If the argument is an option, just pass it along.
   # Also just pass along the argument to `-o`.
-  if [[ ("$word" =~ ^-.*) || ($PREV == "-o") ]]; then
+  if [[ ("$word" =~ ^-.*) ]]; then
+    LINKARGS="$LINKARGS $word"
+  elif [[ $PREV == "-o" ]]; then
+    OUTPUTFILE="$word"
     LINKARGS="$LINKARGS $word"
   # Check if the argument is an object file that we need to link
   elif [[ $(file --mime-type -b "$word") == "application/x-object" ]]; then
@@ -53,6 +57,12 @@ for word in $ARGS; do
   fi
   PREV="${word}"
 done
+
+# Output file defaults to `a.out`.
+if [[ $OUTPUTFILE == "" ]]; then
+  OUTPUTFILE="a.out"
+  LINKARGS="$LINKARGS -o $OUTPUTFILE"
+fi
 
 # Check if there are zero files
 if [ ${#FILES_ARR[@]} -eq 0 ]; then
