@@ -36,7 +36,6 @@ void profile_online_interval(int s) {
   struct sicm_device_list *dl;
 
   /* Trees store site information, value is the site ID */
-  tree(site_info_ptr, int) last_iter_sorted_sites;
   tree(site_info_ptr, int) sorted_sites;
   tree(site_info_ptr, int) merged_sorted_sites;
   tree_it(site_info_ptr, int) sit;
@@ -70,8 +69,6 @@ void profile_online_interval(int s) {
     }
     prev_hotset = (tree(int, site_info_ptr)) prof.profile_online.prev_hotset;
 
-    last_iter_sorted_sites = prof.profile_online.last_iter_sorted_sites;
-
     /* Convert to a tree of sites and generate the new hotset */
     sorted_sites = sh_convert_to_site_tree(prof.profile);
 
@@ -82,7 +79,7 @@ void profile_online_interval(int s) {
         printf("(%d, %zu) ", tree_it_val(sit), tree_it_key(sit)->value);
       }
       printf("\n");
-      merged_sorted_sites = sh_merge_site_trees(last_iter_sorted_sites, sorted_sites, profopts.profile_online_last_iter_value, profopts.profile_online_last_iter_weight);
+      merged_sorted_sites = sh_merge_site_trees(prof.profile_online.last_iter_sorted_sites, sorted_sites, profopts.profile_online_last_iter_value, profopts.profile_online_last_iter_weight);
     } else {
       merged_sorted_sites = sorted_sites;
     }
@@ -227,7 +224,7 @@ void profile_online_init() {
                     &algo,
                     &sort,
                     profopts.profile_online_print_reconfigures);
-    prof.profile_online.last_iter_sorted_sites = (void *) sh_convert_to_site_tree(prof.profile_online.last_iter_profile);
+    prof.profile_online.last_iter_sorted_sites = sh_convert_to_site_tree(prof.profile_online.last_iter_profile);
   }
   sh_packing_init(prof.profile,
                   &value,
