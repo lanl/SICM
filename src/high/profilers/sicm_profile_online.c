@@ -84,7 +84,7 @@ void profile_online_interval(int s) {
     if(profopts.profile_online_print_reconfigures) {
       printf("Current hotset: ");
       tree_traverse(hotset, hit) {
-        printf("%d ", tree_it_key(hit));
+        printf("(%d, %lf) ", tree_it_key(hit), tree_it_val(hit)->value_per_weight);
       }
       printf("\n");
     }
