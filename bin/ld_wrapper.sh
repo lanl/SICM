@@ -6,7 +6,6 @@
 # each of the files and calls a compiler pass on them, then it
 # compiles them to *actual* object files, then it links them using
 # the arguments that it's given.
-set -x
 
 # Gets the location of the script to find Compass
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null && pwd )"
@@ -40,12 +39,13 @@ for word in $ARGS; do
     LINKARGS="$LINKARGS $word"
   # Check if the argument is an object file that we need to link
   elif [[ $(file --mime-type -b "$word") == "application/x-object" ]]; then
-    FILES_ARR+=("${word}")
     # If it ends in '.o', replace that with '.bc'. Otherwise, just append '.bc'
     # This is the same rule that the compiler wrapper uses to create the '.bc' file.
     if [[ "$word" =~ (.*)\.o ]]; then
+      FILES_ARR+=("${BASH_REMATCH[1]}")
       BC_STR="$BC_STR ${BASH_REMATCH[1]}.bc"
     else
+      FILES_ARR+=("${word}")
       BC_STR="$BC_STR ${word}.bc"
     fi
     LINKARGS="$LINKARGS $word"
@@ -74,15 +74,12 @@ if [ ${#FILES_ARR[@]} -eq 0 ]; then
 fi
 
 # Link all of the IR files into one
-echo "${LLVMPATH}${LLVMLINK} $BC_STR -o .sicm_ir.bc"
 ${LLVMPATH}${LLVMLINK} $BC_STR -o .sicm_ir.bc
 
 # Run the compiler pass to generate the call graph. Overwrite the global IR file.
 ${LLVMPATH}${OPT} -load ${LIB_DIR}/libsicm_compass.so -compass-mode=analyze \
     -compass-quick-exit -compass -compass-depth=3 \
-    .sicm_ir.bc -o .sicm_ir.bc
-
-exit 0
+    .sicm_ir.bc
 
 # Run the compiler pass on each individual file
 if [ -z ${SH_RDSPY+x} ]; then
