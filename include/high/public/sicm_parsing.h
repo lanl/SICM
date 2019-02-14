@@ -159,7 +159,7 @@ static application_profile *sh_parse_profiling(FILE *file) {
         depth = 0;
         break;
       } else if(sscanf(line, "Number of arenas: %zu", &num_arenas) == 1) {
-        printf("Found %zu arenas.\n");
+        printf("Found %zu arenas.\n", num_arenas);
         ret->num_arenas = num_arenas;
         ret->arenas = orig_calloc(num_arenas, sizeof(arena_profile *));
       } else if(sscanf(line, "Number of PROFILE_ALL events: %zu\n", &tmp_sizet) == 1) {
