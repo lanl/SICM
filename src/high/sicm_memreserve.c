@@ -83,6 +83,8 @@ int main(int argc, char **argv)
 	numa_set_bind_policy(strict);
 	data = numa_alloc_onnode(size, node);
 #endif
+  printf("Allocating %zu bytes.\n", size);
+  fflush(stdout);
   data = malloc(size);
 
 	/* Allocate the array of threads and arguments */
