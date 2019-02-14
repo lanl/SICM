@@ -4,7 +4,6 @@
 # into the .o file that would normally be the object file.
 # This wrapper also parses and outputs the arguments used to compile each
 # file, so that it can be read and used by the ld_wrapper.
-set -x
 
 # The path that this script is in
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
@@ -20,6 +19,7 @@ COMPILER="$C_COMPILER"
 # The original arguments to the compiler
 ARGS=$@
 INPUT_FILES=()
+EXTENSIONS=() # Store extensions separately
 
 # Whether or not arguments are specified
 ONLY_COMPILE=false # `-c`
@@ -29,20 +29,23 @@ OUTPUT_FILE="" # `-o`
 PREV=""
 for word in $ARGS; do
 
-  if [[ "$word" =~ (.*)\.c$ ]]; then
+  if [[ "$word" =~ (.*)\.(c)$ ]]; then
     # Check if the argument is a C file.
     # Use the C++ compiler if a C++ file has already been specified.
     INPUT_FILES+=("${BASH_REMATCH[1]}")
+    EXTENSIONS+=("${BASH_REMATCH[2]}")
     if [[ $COMPILER != "$CXX_COMPILER" ]]; then
       COMPILER="$C_COMPILER"
     fi
-  elif [[ "$word" =~ (.*)\.cpp$ ]] || [[ "$word" =~ (.*)\.C$ ]] || [[ "$word" =~ (.*)\.cc$ ]]; then
+  elif [[ "$word" =~ (.*)\.(cpp)$ ]] || [[ "$word" =~ (.*)\.(C)$ ]] || [[ "$word" =~ (.*)\.(cc)$ ]]; then
     # Or if it's a C++ file
     INPUT_FILES+=("${BASH_REMATCH[1]}")
+    EXTENSIONS+=("${BASH_REMATCH[2]}")
     COMPILER="$CXX_COMPILER"
-  elif [[ "$word" =~ (.*)\.f90$ ]] || [[ "$word" =~ (.*)\.f95$ ]] || [[ "$word" =~ (.*)\.f03$ ]] || [[ "$word" =~ (.*)\.F90$ ]]; then
+  elif [[ "$word" =~ (.*)\.(f90)$ ]] || [[ "$word" =~ (.*)\.(f95)$ ]] || [[ "$word" =~ (.*)\.(f03)$ ]] || [[ "$word" =~ (.*)\.(F90)$ ]]; then
     # Or a Fortran file
     INPUT_FILES+=("${BASH_REMATCH[1]}")
+    EXTENSIONS+=("${BASH_REMATCH[2]}")
     COMPILER="$FORT_COMPILER"
   elif [[ "$word" =~ \-o$ ]]; then
     # Remove "-o [outputfile]" from the arguments
@@ -68,28 +71,47 @@ if [[ ((${#INPUT_FILES[@]} -gt 1) && ($OUTPUT_FILE != "") && ($ONLY_COMPILE)) ||
 fi
 
 # Produce a normal object file as well as the bytecode file
-# This works for multiple input files, too.
-# Also specify '-c' if not already specified.
-if [[ $ONLY_COMPILE ]]; then
-  ${LLVMPATH}${COMPILER} $ARGS
-  ${LLVMPATH}${COMPILER} $ARGS -emit-llvm
+if [[ $OUTPUT_FILE  == "" ]]; then
+  ${LLVMPATH}${COMPILER} $EXTRA_ARGS -c
+  ${LLVMPATH}${COMPILER} $EXTRA_ARGS -emit-llvm -c
 else
-  ${LLVMPATH}${COMPILER} -c $ARGS
-  ${LLVMPATH}${COMPILER} -c $ARGS -emit-llvm
+  if [[ "$ONLY_COMPILE" = true ]]; then
+    # If we're only compiling and they specify an output file, adhere to that
+    ${LLVMPATH}${COMPILER} $EXTRA_ARGS -c -o $OUTPUT_FILE
+    if [[ "$OUTPUT_FILE" =~ (.*)\.o$ ]]; then
+      # If their output file choice ends in '.o', replace that with '.bc'
+      ${LLVMPATH}${COMPILER} $EXTRA_ARGS -emit-llvm -c -o ${BASH_REMATCH[1]}.bc
+    else
+      # Otherwise, just use append '.bc'. This way, the ld_wrapper doesn't have to guess
+      ${LLVMPATH}${COMPILER} $EXTRA_ARGS -emit-llvm -c -o ${OUTPUT_FILE}.bc
+    fi
+  else
+    # If we're going to link and they specify an executable name, ignore that until we link
+    INPUTFILE_STR=""
+    for ((i=0;i<${#INPUT_FILES[@]};++i)); do
+      INPUTFILE_STR="${INPUTFILE_STR} ${INPUT_FILES[i]}.${EXTENSIONS[i]}"
+    done
+    ${LLVMPATH}${COMPILER} ${EXTRA_ARGS} -c $INPUTFILE_STR
+    ${LLVMPATH}${COMPILER} ${EXTRA_ARGS} -emit-llvm -c $INPUTFILE_STR
+  fi
 fi
 
 # Link if necessary
-if [[ ! $ONLY_COMPILE ]]; then
+if [[ "$ONLY_COMPILE" = false ]]; then
   # Convert all e.g. "foo.c" -> "foo.o"
-  OUTPUT_FILES=""
+  OBJECT_FILES=""
   for file in ${INPUT_FILES[@]}; do
-    OUTPUT_FILES="$OUTPUT_FILES ${file}.o"
+    OBJECT_FILES="$OBJECT_FILES ${file}.o"
   done
+
+  echo "LD_WRAPPER TIME"
 
   # Call the ld_wrapper
   if [[ $OUTPUT_FILE == "" ]]; then
-    ${LD_WRAPPER} $EXTRA_ARGS $OUTPUT_FILES
+    echo "${LD_WRAPPER} $EXTRA_ARGS $OBJECT_FILES"
+    ${LD_WRAPPER} $EXTRA_ARGS $OBJECT_FILES
   else
-    ${LD_WRAPPER} $EXTRA_ARGS $OUTPUT_FILES -o $OUTPUT_FILE
+    echo "${LD_WRAPPER} $EXTRA_ARGS $OBJECT_FILES -o $OUTPUT_FILE"
+    ${LD_WRAPPER} $EXTRA_ARGS $OBJECT_FILES -o $OUTPUT_FILE
   fi
 fi
