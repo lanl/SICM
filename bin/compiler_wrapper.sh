@@ -104,14 +104,10 @@ if [[ "$ONLY_COMPILE" = false ]]; then
     OBJECT_FILES="$OBJECT_FILES ${file}.o"
   done
 
-  echo "LD_WRAPPER TIME"
-
   # Call the ld_wrapper
   if [[ $OUTPUT_FILE == "" ]]; then
-    echo "${LD_WRAPPER} $EXTRA_ARGS $OBJECT_FILES"
     ${LD_WRAPPER} $EXTRA_ARGS $OBJECT_FILES
   else
-    echo "${LD_WRAPPER} $EXTRA_ARGS $OBJECT_FILES -o $OUTPUT_FILE"
     ${LD_WRAPPER} $EXTRA_ARGS $OBJECT_FILES -o $OUTPUT_FILE
   fi
 fi
