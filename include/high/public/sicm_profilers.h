@@ -83,8 +83,13 @@ typedef struct profile_allocs_data {
 typedef struct application_profile application_profile;
 typedef struct site_profile_info site_profile_info;
 typedef site_profile_info * site_info_ptr;
+
+#ifndef SICM_PACKING
+#define SICM_PACKING
 use_tree(site_info_ptr, int);
 use_tree(int, site_info_ptr);
+#endif
+
 typedef struct profile_online_data {
   size_t num_reconfigures;
   size_t profile_online_event_index;

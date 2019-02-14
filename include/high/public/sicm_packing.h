@@ -38,8 +38,12 @@ typedef struct site_profile_info {
   int index;
 } site_profile_info;
 typedef site_profile_info * site_info_ptr; /* Required for tree.h */
+
+#ifndef SICM_PACKING /* Make sure we don't define the below trees twice */
+#define SICM_PACKING
 use_tree(site_info_ptr, int);
 use_tree(int, site_info_ptr);
+#endif
 
 /* Gets a value from the given arena_profile */
 static size_t get_value(arena_profile *aprof) {
