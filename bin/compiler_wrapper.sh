@@ -70,6 +70,18 @@ if [[ ((${#INPUT_FILES[@]} -gt 1) && ($OUTPUT_FILE != "") && ($ONLY_COMPILE)) ||
   exit $?
 fi
 
+# Output a .args file so the ld wrapper knows which arguments to compile with
+# Only if we're not calling the ld wrapper directly
+if [[ ("$ONLY_COMPILE" = true) ]];
+  for file in ${INPUT_FILES[@]}; do
+    echo $EXTRA_ARGS > ${file}.args
+  done
+else
+  for file in ${INPUT_FILES[@]}; do
+    echo "" > ${file}.args
+  done
+fi
+
 # Produce a normal object file as well as the bytecode file
 if [[ $OUTPUT_FILE  == "" ]]; then
   ${LLVMPATH}${COMPILER} $EXTRA_ARGS -c
@@ -82,7 +94,7 @@ else
       # If their output file choice ends in '.o', replace that with '.bc'
       ${LLVMPATH}${COMPILER} $EXTRA_ARGS -emit-llvm -c -o ${BASH_REMATCH[1]}.bc
     else
-      # Otherwise, just use append '.bc'. This way, the ld_wrapper doesn't have to guess
+      # Otherwise, just use append '.bc'. This way, the ld_wrapper doesn't have to guess.
       ${LLVMPATH}${COMPILER} $EXTRA_ARGS -emit-llvm -c -o ${OUTPUT_FILE}.bc
     fi
   else
