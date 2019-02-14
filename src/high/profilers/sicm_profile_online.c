@@ -55,6 +55,11 @@ void profile_online_interval(int s) {
       printf("Reconfigure %d\n", prof.profile_online.num_reconfigures);
     }
 
+    /* If we don't make everything default to the lower device from now on,
+       we'd have to continuously check and rebind every site when it pops
+       into existence. */
+    tracker.default_device = tracker.lower_device;
+
     /* If this is the first interval, the previous hotset was the empty set */
     if(!prof.profile_online.prev_hotset) {
       if(profopts.profile_online_print_reconfigures) {
