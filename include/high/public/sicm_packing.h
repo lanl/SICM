@@ -129,12 +129,6 @@ static tree(site_info_ptr, int) sh_merge_site_trees(tree(site_info_ptr, int) fir
   tree(site_info_ptr, int) merged;
   site_info_ptr site;
 
-  /* Print out the first tree */
-  tree_traverse(first, sit) {
-    printf("(%d, %zu) ", tree_it_val(sit), tree_it_key(sit)->value);
-  }
-  printf("\n");
-
   /* Flip the keys and values around for the first tree */
   new_first = tree_make(int, site_info_ptr);
   tree_traverse(first, sit) {
@@ -188,9 +182,7 @@ static tree(site_info_ptr, int) sh_convert_to_site_tree(application_profile *inf
 
   /* Iterate over the arenas, create a site_profile_info struct for each site,
      and simply insert them into the tree (which sorts them). */
-  printf("Looking at %zu arenas.\n", info->num_arenas);
   for(i = 0; i < info->num_arenas; i++) {
-    printf("Looking at an arena: %p\n", info->arenas[i]);
     aprof = info->arenas[i];
     if(!aprof) continue;
     if(get_weight(aprof) == 0) continue;
@@ -201,14 +193,11 @@ static tree(site_info_ptr, int) sh_convert_to_site_tree(application_profile *inf
     site->value_per_weight = ((double) site->value) / ((double) site->weight);
     site->index = aprof->index;
 
-    printf("Index %d\n", aprof->index);
-
     for(n = 0; n < aprof->num_alloc_sites; n++) {
       /* We make a copy of this struct for each site to aid freeing this up in the future */
       site_copy = orig_malloc(sizeof(site_profile_info));
       memcpy(site_copy, site, sizeof(site_profile_info));
       tree_insert(site_tree, site_copy, aprof->alloc_sites[n]);
-      printf("Site %d\n", aprof->alloc_sites[n]);
     }
   }
 

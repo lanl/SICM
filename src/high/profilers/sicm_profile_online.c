@@ -74,11 +74,6 @@ void profile_online_interval(int s) {
 
     /* If we have a previous run's profiling, take that into account */
     if(prof.profile_online.last_iter_sorted_sites) {
-      printf("Printing old sorted sites:\n");
-      tree_traverse(prof.profile_online.last_iter_sorted_sites, sit) {
-        printf("(%d, %zu) ", tree_it_val(sit), tree_it_key(sit)->value);
-      }
-      printf("\n");
       merged_sorted_sites = sh_merge_site_trees(prof.profile_online.last_iter_sorted_sites, sorted_sites, profopts.profile_online_last_iter_value, profopts.profile_online_last_iter_weight);
     } else {
       merged_sorted_sites = sorted_sites;
