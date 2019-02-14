@@ -82,12 +82,6 @@ void profile_online_interval(int s) {
     hotset = sh_get_hot_sites(merged_sorted_sites, prof.profile_online.upper_avail_initial);
 
     if(profopts.profile_online_print_reconfigures) {
-      printf("Previous hotset: ");
-      tree_traverse(prev_hotset, hit) {
-        printf("%d ", tree_it_key(hit));
-      }
-      printf("\n");
-
       printf("Current hotset: ");
       tree_traverse(hotset, hit) {
         printf("%d ", tree_it_key(hit));
@@ -218,7 +212,7 @@ void profile_online_init() {
                     &weight,
                     &algo,
                     &sort,
-                    profopts.profile_online_print_reconfigures);
+                    profopts.profile_online_debug);
     prof.profile_online.last_iter_sorted_sites = sh_convert_to_site_tree(prof.profile_online.last_iter_profile);
   } else {
     sh_packing_init(prof.profile,
@@ -227,7 +221,7 @@ void profile_online_init() {
                     &weight,
                     &algo,
                     &sort,
-                    profopts.profile_online_print_reconfigures);
+                    profopts.profile_online_debug);
   }
 
   /* Figure out the amount of free memory that we're starting out with */

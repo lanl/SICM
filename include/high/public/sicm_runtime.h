@@ -162,6 +162,7 @@ typedef struct profiling_options {
   int should_print_intervals;
   int profile_online_use_last_interval;
   int profile_online_print_reconfigures;
+  int profile_online_debug;
 
   /* Sample rates */
   size_t profile_rate_nseconds;

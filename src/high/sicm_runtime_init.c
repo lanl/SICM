@@ -202,6 +202,12 @@ void set_options() {
       profopts.profile_online_print_reconfigures = 1;
     }
 
+    env = getenv("SH_PROFILE_ONLINE_DEBUG");
+    profopts.profile_online_debug = 0;
+    if(env) {
+      profopts.profile_online_debug = 1;
+    }
+
     env = getenv("SH_PROFILE_ONLINE_LAST_ITER_VALUE");
     profopts.profile_online_last_iter_value = 0;
     if(env) {
