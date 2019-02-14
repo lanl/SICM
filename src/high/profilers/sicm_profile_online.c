@@ -55,11 +55,6 @@ void profile_online_interval(int s) {
       printf("Reconfigure %d\n", prof.profile_online.num_reconfigures);
     }
 
-    /* If we don't make everything default to the lower device from now on,
-       we'd have to continuously check and rebind every site when it pops
-       into existence. */
-    tracker.default_device = tracker.lower_device;
-
     /* If this is the first interval, the previous hotset was the empty set */
     if(!prof.profile_online.prev_hotset) {
       if(profopts.profile_online_print_reconfigures) {
@@ -93,7 +88,7 @@ void profile_online_interval(int s) {
       /* Iterate over all of the sites. Rebind if:
          1. A site wasn't in the previous hotset, but is in the current one.
          2. A site was in the previous hotset, but now isn't. */
-      tree_traverse(sorted_sites, sit) {
+      tree_traverse(merged_sorted_sites, sit) {
         /* Look to see if it's in the new or old hotsets. */
         old = tree_lookup(prev_hotset, tree_it_val(sit));
         new = tree_lookup(hotset, tree_it_val(sit));
@@ -112,13 +107,14 @@ void profile_online_interval(int s) {
 
         /* Do the actual rebinding. */
         if(dl) {
-          sicm_arena_set_devices(tracker.arenas[tree_it_key(sit)->index]->arena, dl);
+          if(sicm_arena_set_devices(tracker.arenas[tree_it_key(sit)->index]->arena, dl)) {
+            fprintf(stderr, "Rebinding arena %d failed.\n", tree_it_key(sit)->index);
+          }
         }
       }
     }
     if(profopts.profile_online_print_reconfigures) {
       printf("Reconfigure complete.\n");
-      fflush(stdout);
     }
 
     /* The previous tree can be freed, because we're going to
