@@ -125,6 +125,12 @@ static tree(site_info_ptr, int) sh_merge_site_trees(tree(site_info_ptr, int) fir
   tree(site_info_ptr, int) merged;
   site_info_ptr site;
 
+  /* Print out the first tree */
+  tree_traverse(first, sit) {
+    printf("(%d, %zu) ", tree_it_val(sit), tree_it_key(sit)->value);
+  }
+  printf("\n");
+
   /* Flip the keys and values around for the first tree */
   new_first = tree_make(int, site_info_ptr);
   tree_traverse(first, sit) {
