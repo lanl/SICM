@@ -5,6 +5,9 @@
 # This wrapper also parses and outputs the arguments used to compile each
 # file, so that it can be read and used by the ld_wrapper.
 
+# The path that this script is in
+DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
+
 # The original arguments and the ones we're going to add
 ARGS=$@
 OUTPUT_ARGS=""
@@ -16,7 +19,7 @@ LLVMPATH="${LLVMPATH:- }"
 C_COMPILER="${C_COMPILER:-clang}"
 CXX_COMPILER="${CXX_COMPILER:-clang++}"
 FORT_COMPILER="${FORT_COMPILER:-flang}"
-LD_WRAPPER="${LD_WRAPPER:-ld_wrapper.sh}"
+LD_WRAPPER="${LD_WRAPPER:-${DIR}/ld_wrapper.sh}"
 COMPILER="$C_COMPILER"
 PREV=""
 FORTRAN=false
