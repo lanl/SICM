@@ -62,14 +62,14 @@ done
 # EXTRA_ARGS are arguments used to compile to IR
 export EXTRA_ARGS="-emit-llvm -o ${OUTPUTFILE}.bc $EXTRA_ARGS"
 
+# If the user *did* specify -c, just compile
+# Output the original arguments to a file, to be used by ld_wrapper
+echo $OUTPUT_ARGS > $OUTPUTFILE.args
+# Compile to both a '.bc' file as well as the standard object file
+${LLVMPATH}${COMPILER} $ARGS $EXTRA_ARGS
+${LLVMPATH}${COMPILER} $ARGS
+
 if [ "$ONLY_COMPILE" = false ]; then
   # If the user didn't specify -c, we need to call the ld_wrapper
   ${LD_WRAPPER} $OUTPUT_ARGS -o $OUTPUTFILE
-else
-  # If the user *did* specify -c, just compile
-  # Output the original arguments to a file, to be used by ld_wrapper
-  echo $OUTPUT_ARGS > $OUTPUTFILE.args
-  # Compile to both a '.bc' file as well as the standard object file
-  ${LLVMPATH}${COMPILER} $ARGS $EXTRA_ARGS
-  ${LLVMPATH}${COMPILER} $ARGS
 fi
