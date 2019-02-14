@@ -4,72 +4,92 @@
 # into the .o file that would normally be the object file.
 # This wrapper also parses and outputs the arguments used to compile each
 # file, so that it can be read and used by the ld_wrapper.
+set -x
 
 # The path that this script is in
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 
-# The original arguments and the ones we're going to add
-ARGS=$@
-OUTPUT_ARGS=""
-EXTRA_ARGS=""
-FILE=""
-OUTPUTFILE=""
-ONLY_COMPILE=false
+# Might want to define these manually depending on environment
 LLVMPATH="${LLVMPATH:- }"
 C_COMPILER="${C_COMPILER:-clang}"
 CXX_COMPILER="${CXX_COMPILER:-clang++}"
 FORT_COMPILER="${FORT_COMPILER:-flang}"
 LD_WRAPPER="${LD_WRAPPER:-${DIR}/ld_wrapper.sh}"
 COMPILER="$C_COMPILER"
-PREV=""
-FORTRAN=false
+
+# The original arguments to the compiler
+ARGS=$@
+INPUT_FILES=()
+
+# Whether or not arguments are specified
+ONLY_COMPILE=false # `-c`
+OUTPUT_FILE="" # `-o`
 
 # Iterate over all arguments
+PREV=""
 for word in $ARGS; do
 
-  # Check if the argument is a C file
-  # Also don't put this in the output arguments
   if [[ "$word" =~ (.*)\.c$ ]]; then
-    FILE=${BASH_REMATCH[1]}
-    COMPILER="$C_COMPILER"
-  # Or if it's a C++ file
+    # Check if the argument is a C file.
+    # Use the C++ compiler if a C++ file has already been specified.
+    INPUT_FILES+=("${BASH_REMATCH[1]}")
+    if [[ $COMPILER != "$CXX_COMPILER" ]]; then
+      COMPILER="$C_COMPILER"
+    fi
   elif [[ "$word" =~ (.*)\.cpp$ ]] || [[ "$word" =~ (.*)\.C$ ]] || [[ "$word" =~ (.*)\.cc$ ]]; then
-    FILE=${BASH_REMATCH[1]}
+    # Or if it's a C++ file
+    INPUT_FILES+=("${BASH_REMATCH[1]}")
     COMPILER="$CXX_COMPILER"
   elif [[ "$word" =~ (.*)\.f90$ ]] || [[ "$word" =~ (.*)\.f95$ ]] || [[ "$word" =~ (.*)\.f03$ ]] || [[ "$word" =~ (.*)\.F90$ ]]; then
-    FILE=${BASH_REMATCH[1]}
+    # Or a Fortran file
+    INPUT_FILES+=("${BASH_REMATCH[1]}")
     COMPILER="$FORT_COMPILER"
-    FORTRAN=true
-  # Remove "-o [outputfile]" from the arguments
   elif [[ "$word" =~ \-o$ ]]; then
+    # Remove "-o [outputfile]" from the arguments
     PREV="$word"
-  # Put the output file in OUTPUTFILE, extension and all
   elif [[ "$PREV" =~ \-o$ ]]; then
+    # Put the output file in OUTPUTFILE, extension and all
     PREV=""
-    OUTPUTFILE=${word}
-  # Everything else gets output to the ld_wrapper
-  else
-    OUTPUT_ARGS="$OUTPUT_ARGS $word"
-  fi
-
-  # If the argument is -c
-  if [[ "$word" =~ "-c" ]]; then
+    OUTPUT_FILE=${word}
+  elif [[ "$word" =~ "-c" ]]; then
+    # If it's `-c`, then we don't link
     ONLY_COMPILE=true
+  else
+    # Everything except `-o`, `-c`, and the input source files
+    EXTRA_ARGS="$EXTRA_ARGS $word"
   fi
 
 done
 
-# EXTRA_ARGS are arguments used to compile to IR
-export EXTRA_ARGS="-emit-llvm -o ${OUTPUTFILE}.bc $EXTRA_ARGS"
+if [[ ((${#INPUT_FILES[@]} -gt 1) && ($OUTPUT_FILE != "") && ($ONLY_COMPILE)) || (${#INPUT_FILES[@]} -eq 0) ]]; then
+  # This is illegal, just call the compiler to error out
+  ${LLVMPATH}${COMPILER} $ARGS
+  exit $?
+fi
 
-# If the user *did* specify -c, just compile
-# Output the original arguments to a file, to be used by ld_wrapper
-echo $OUTPUT_ARGS > $OUTPUTFILE.args
-# Compile to both a '.bc' file as well as the standard object file
-${LLVMPATH}${COMPILER} $ARGS $EXTRA_ARGS
-${LLVMPATH}${COMPILER} $ARGS
+# Produce a normal object file as well as the bytecode file
+# This works for multiple input files, too.
+# Also specify '-c' if not already specified.
+if [[ $ONLY_COMPILE ]]; then
+  ${LLVMPATH}${COMPILER} $ARGS
+  ${LLVMPATH}${COMPILER} $ARGS -emit-llvm
+else
+  ${LLVMPATH}${COMPILER} -c $ARGS
+  ${LLVMPATH}${COMPILER} -c $ARGS -emit-llvm
+fi
 
-if [ "$ONLY_COMPILE" = false ]; then
-  # If the user didn't specify -c, we need to call the ld_wrapper
-  ${LD_WRAPPER} $OUTPUT_ARGS -o $OUTPUTFILE
+# Link if necessary
+if [[ ! $ONLY_COMPILE ]]; then
+  # Convert all e.g. "foo.c" -> "foo.o"
+  OUTPUT_FILES=""
+  for file in ${INPUT_FILES[@]}; do
+    OUTPUT_FILES="$OUTPUT_FILES ${file}.o"
+  done
+
+  # Call the ld_wrapper
+  if [[ $OUTPUT_FILE == "" ]]; then
+    ${LD_WRAPPER} $EXTRA_ARGS $OUTPUT_FILES
+  else
+    ${LD_WRAPPER} $EXTRA_ARGS $OUTPUT_FILES -o $OUTPUT_FILE
+  fi
 fi
