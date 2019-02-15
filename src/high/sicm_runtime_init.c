@@ -342,13 +342,9 @@ void set_options() {
       cpus = numa_allocate_cpumask();
       num_cpus = numa_num_configured_cpus();
       num_nodes = numa_num_configured_nodes();
-      printf("The user specified a list of nodes. There are %d possible nodes that I'll iterate over.\n", num_nodes);
-      fflush(stdout);
       /* Iterate over the nodes in the `nodes` bitmask */
       for(node = 0; node < num_nodes; node++) {
         if(numa_bitmask_isbitset(nodes, node)) {
-          printf("The user specified node %zu\n", node);
-          fflush(stdout);
           numa_bitmask_clearall(cpus);
           numa_node_to_cpus(node, cpus);
           /* Now iterate over the CPUs on those nodes */
@@ -358,13 +354,8 @@ void set_options() {
               profopts.num_profile_all_cpus++;
               profopts.profile_all_cpus = orig_realloc(profopts.profile_all_cpus, sizeof(int) * profopts.num_profile_all_cpus);
               profopts.profile_all_cpus[profopts.num_profile_all_cpus - 1] = cpu;
-              printf("Adding CPU: %d\n", profopts.profile_all_cpus[profopts.num_profile_all_cpus - 1]);
-            } else {
-              printf("The CPU %d was NOT set.\n", cpu);
             }
           }
-        } else {
-          printf("The user did NOT specify node %d\n", node);
         }
       }
     } else {
@@ -377,7 +368,6 @@ void set_options() {
           profopts.num_profile_all_cpus++;
           profopts.profile_all_cpus = orig_realloc(profopts.profile_all_cpus, sizeof(int) * profopts.num_profile_all_cpus);
           profopts.profile_all_cpus[profopts.num_profile_all_cpus - 1] = cpu;
-          printf("Adding CPU (default): %d\n", profopts.profile_all_cpus[profopts.num_profile_all_cpus - 1]);
         }
       }
     }
