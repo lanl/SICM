@@ -363,8 +363,8 @@ void set_options() {
         if(numa_bitmask_isbitset(cpus, i)) {
           profopts.num_profile_all_cpus = 1;
           profopts.profile_all_cpus = malloc(sizeof(int) * profopts.num_profile_all_cpus);
-          profopts.profile_all_cpus[0] = -1;
-          printf("Adding CPU: %d\n", profopts.profile_all_cpus[profopts.num_profile_all_cpus - 1]);
+          profopts.profile_all_cpus[profopts.profile_all_cpus[profopts.num_profile_all_cpus - 1] = i;
+          printf("Adding CPU (default): %d\n", profopts.profile_all_cpus[profopts.num_profile_all_cpus - 1]);
         }
       }
     }
