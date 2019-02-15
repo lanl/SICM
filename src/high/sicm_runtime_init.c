@@ -342,7 +342,7 @@ void set_options() {
       cpus = numa_allocate_cpumask();
       num_cpus = numa_num_configured_cpus();
       num_nodes = numa_num_configured_nodes();
-      printf("The user specified a list of nodes.\n");
+      printf("The user specified a list of nodes. There are %d possible nodes that I'll iterate over.\n", num_nodes);
       fflush(stdout);
       /* Iterate over the nodes in the `nodes` bitmask */
       for(node = 0; node < num_nodes; node++) {
