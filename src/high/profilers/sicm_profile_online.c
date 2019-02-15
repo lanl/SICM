@@ -13,6 +13,10 @@
 #include "sicm_profile.h"
 #include "sicm_packing.h"
 
+/* Include the various online implementations */
+#include "sicm_profile_online_orig.h"
+#include "sicm_profile_online_ski.h"
+
 void profile_online_arena_init(profile_online_info *);
 void profile_online_deinit();
 void profile_online_init();
@@ -24,9 +28,7 @@ void profile_online_post_interval(arena_profile *);
 /* At the beginning of an interval, keeps track of stats and figures out what
    should happen during rebind. */
 tree(site_info_ptr, int) prepare_stats() {
-  size_t upper_avail, lower_avail, num_hot_intervals;
-  char dev, hot, prev_hot;
-  int index;
+  size_t upper_avail, lower_avail;
 
   /* Trees and iterators to interface with the parsing/packing libraries */
   tree(site_info_ptr, int) sorted_sites;
@@ -48,8 +50,10 @@ tree(site_info_ptr, int) prepare_stats() {
     tracker.default_device = tracker.lower_device;
   }
 
-  /* Convert to a tree of sites and generate the new hotset */
+  /* Convert to a tree of sites */
   sorted_sites = sh_convert_to_site_tree(prof.profile, 0);
+
+  /* If we've got offline profiling, use it */
   if(prof.profile_online.offline_sorted_sites) {
     /* If we have a previous run's profiling, take that into account */
     merged_sorted_sites = sh_merge_site_trees(prof.profile_online.offline_sorted_sites,
@@ -60,7 +64,8 @@ tree(site_info_ptr, int) prepare_stats() {
     merged_sorted_sites = sorted_sites;
   }
 
-  /* Calculate the hotset, then mark each arena's hotness */
+  /* Calculate the hotset, then mark each arena's hotness
+     in the profiling so that it'll be recorded for this interval */
   hotset = sh_get_hot_sites(merged_sorted_sites,
                             prof.profile->upper_capacity);
   tree_traverse(merged_sorted_sites, sit) {
@@ -72,59 +77,7 @@ tree(site_info_ptr, int) prepare_stats() {
     }
   }
 
-  /* Calculate the stats */
-  prof.profile_online.total_site_weight     = 0;
-  prof.profile_online.total_site_value      = 0;
-  prof.profile_online.total_sites           = 0;
-  prof.profile_online.site_weight_diff      = 0;
-  prof.profile_online.site_value_diff       = 0;
-  prof.profile_online.num_sites_diff        = 0;
-  prof.profile_online.site_weight_to_rebind = 0;
-  prof.profile_online.site_value_to_rebind  = 0;
-  prof.profile_online.num_sites_to_rebind   = 0;
-  tree_traverse(merged_sorted_sites, sit) {
-    index = tree_it_key(sit)->index;
-    dev = get_arena_online_prof(index)->dev;
-    hot = get_arena_online_prof(index)->hot;
-    if(prof.profile->num_intervals) {
-      prev_hot = get_prev_arena_online_prof(index)->hot;
-    } else {
-      prev_hot = 0;
-    }
-
-    prof.profile_online.total_site_weight += tree_it_key(sit)->weight;
-    prof.profile_online.total_site_value += tree_it_key(sit)->value;
-    prof.profile_online.total_sites++;
-
-    if(hot) {
-      get_arena_online_prof(index)->num_hot_intervals++;
-    } else {
-      get_arena_online_prof(index)->num_hot_intervals = 0;
-    }
-
-    /* Differences between hotsets */
-    if((hot && !prev_hot) ||
-       (!hot && prev_hot)) {
-      /* The site will be rebound if a full rebind happens */
-      prof.profile_online.site_weight_diff += tree_it_key(sit)->weight;
-      prof.profile_online.site_value_diff += tree_it_key(sit)->value;
-      prof.profile_online.num_sites_diff++;
-    }
-
-    /* Calculate what would have to be rebound if the current hotset
-       were to trigger a full rebind */
-    if(((dev == -1) && hot) ||
-       ((dev == 0)  && hot) ||
-       ((dev == 1)  && !hot)) {
-        /* If the site is in the hotset, but not in the upper tier, OR
-           if the site is not in the hotset, but in the upper tier */
-        prof.profile_online.site_weight_to_rebind += tree_it_key(sit)->weight;
-        prof.profile_online.site_value_to_rebind += tree_it_key(sit)->value;
-        prof.profile_online.num_sites_to_rebind++;
-    }
-  }
-
-  /* Free everything up */
+  /* Free up the offline profile, but not the online one */
   if(prof.profile_online.offline_sorted_sites) {
     tree_traverse(sorted_sites, sit) {
       if(tree_it_key(sit)) {
@@ -151,88 +104,25 @@ void *profile_online(void *a) {
 }
 
 void profile_online_interval(int s) {
-  arena_info *arena;
-  arena_profile *aprof;
-  sicm_dev_ptr dl;
-  int retval, index;
-  char full_rebind, dev, hot, prev_hot;
-  size_t num_hot_intervals;
-
   tree(site_info_ptr, int) sorted_sites;
-  tree_it(site_info_ptr, int) sit;
 
+  /* Call the appropriate strategy */
   sorted_sites = prepare_stats();
-
-  full_rebind = 0;
-  if(!profopts.profile_online_nobind &&
-     prof.profile_online.upper_contention &&
-     (prof.profile_online.total_site_value > profopts.profile_online_grace_accesses) &&
-     ((((float) prof.profile_online.site_weight_to_rebind) / ((float) prof.profile_online.total_site_weight)) >= profopts.profile_online_reconf_weight_ratio)) {
-    /* Do a full rebind. Take the difference between what's currently on the devices (site_tiers),
-       and what the hotset says should be on there. */
-    tree_traverse(sorted_sites, sit) {
-      index = tree_it_key(sit)->index;
-      dev = get_arena_online_prof(index)->dev;
-      hot = get_arena_online_prof(index)->hot;
-      if(prof.profile->num_intervals) {
-        prev_hot = get_prev_arena_online_prof(index)->hot;
-      } else {
-        prev_hot = 0;
-      }
-
-      dl = NULL;
-      if(((dev == -1) && hot) ||
-         ((dev == 0) && hot)) {
-        /* The site is in AEP, and is in the hotset. */
-        dl = prof.profile_online.upper_dl;
-        get_arena_online_prof(index)->dev = 1;
-      } else if((dev == 1) && (hot == 0)) {
-        /* The site is in DRAM and isn't in the hotset */
-        dl = prof.profile_online.lower_dl;
-        get_arena_online_prof(index)->dev = 0;
-      }
-
-      if(dl) {
-        full_rebind = 1;
-        retval = sicm_arena_set_devices(tracker.arenas[index]->arena, dl);
-        if(retval == -EINVAL) {
-          fprintf(stderr, "Rebinding arena %d failed in SICM.\n", index);
-        } else if(retval != 0) {
-          fprintf(stderr, "Rebinding arena %d failed internally.\n", index);
-        }
-      }
-    }
+  if(profopts.profile_online_ski) {
+    prepare_stats_ski();
+    profile_online_interval_ski();
   } else {
-    /* No full rebind, but we can bind specific sites if the conditions are right */
-    if(profopts.profile_online_hot_intervals) {
-      /* If the user specified a number of intervals, rebind the sites that
-         have been hot for that amount of intervals */
-      tree_traverse(sorted_sites, sit) {
-        index = tree_it_key(sit)->index;
-        num_hot_intervals = get_arena_online_prof(index)->num_hot_intervals;
-        if(num_hot_intervals == profopts.profile_online_hot_intervals) {
-          get_arena_online_prof(index)->dev = 1;
-          retval = sicm_arena_set_devices(tracker.arenas[index]->arena,
-                                          prof.profile_online.upper_dl);
-          if(retval == -EINVAL) {
-            fprintf(stderr, "Rebinding arena %d failed in SICM.\n", index);
-          } else if(retval != 0) {
-            fprintf(stderr, "Rebinding arena %d failed internally.\n", index);
-          }
-        }
-      }
-    }
+    prepare_stats_orig(sorted_sites);
+    profile_online_interval_orig(sorted_sites);
   }
 
+  /* Free up what we allocated */
   tree_traverse(sorted_sites, sit) {
     if(tree_it_key(sit)) {
       orig_free(tree_it_key(sit));
     }
   }
   tree_free(sorted_sites);
-
-  /* Maintain the previous hotset */
-  prof.profile_online.num_reconfigures++;
 
   end_interval();
 }
@@ -333,6 +223,11 @@ void profile_online_init() {
 
   prof.profile_online.num_reconfigures = 0;
   prof.profile_online.upper_contention = 0;
+
+  /* Initialize the strategy-specific stuff */
+  if(profopts.profile_online_orig) {
+    profile_online_init_orig();
+  }
 }
 
 void profile_online_deinit() {
