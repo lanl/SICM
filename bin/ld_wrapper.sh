@@ -88,7 +88,7 @@ if [ -z ${SH_RDSPY+x} ]; then
     for file in "${FILES_ARR[@]}"; do
       ${LLVMPATH}${OPT} -load ${LIB_DIR}/libsicm_compass.so -compass-mode=transform -compass -compass-depth=3 ${file}.bc -o ${file}.bc &
       COUNTER=$((COUNTER+1))
-      if [[ "$COUNTER" -gt 8 ]]; then
+      if [[ "$COUNTER" -gt 16 ]]; then
         COUNTER=1
         wait
       fi
@@ -101,9 +101,15 @@ fi
 wait
 
 # Also compile each file to its transformed object file, overwriting the old one
+COUNTER=1
 for file in "${FILES_ARR[@]}"; do
   FILEARGS=`cat $file.args`
   ${LLVMPATH}${LD_COMPILER} $FILEARGS -c ${file}.bc -o ${file} &
+  COUNTER=$((COUNTER+1))
+  if [[ "$COUNTER" -gt 16 ]]; then
+    COUNTER=1
+    wait
+  fi
 done
 wait
 
