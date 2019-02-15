@@ -196,7 +196,7 @@ void profile_online_init() {
                     &algo,
                     &sort,
                     profopts.profile_online_weights,
-                    profopts.profile_online_debug);
+                    0);
     prof.profile_online.offline_sorted_sites = sh_convert_to_site_tree(offline_profile, offline_profile->num_intervals - 1);
   } else {
     sh_packing_init(prof.profile,
@@ -207,7 +207,7 @@ void profile_online_init() {
                     &algo,
                     &sort,
                     profopts.profile_online_weights,
-                    profopts.profile_online_debug);
+                    0);
   }
 
   /* Figure out the amount of free memory that we're starting out with */

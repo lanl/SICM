@@ -1,3 +1,6 @@
+#include <time.h>
+#include <sys/time.h>
+
 /* Rebinds an arena to the device list.
    Times it and prints debugging information if necessary. */
 void rebind_arena(int index, sicm_dev_ptr dl, tree_it(site_info_ptr, int) sit) {
@@ -12,7 +15,7 @@ void rebind_arena(int index, sicm_dev_ptr dl, tree_it(site_info_ptr, int) sit) {
 
   if(profopts.profile_online_debug_file) {
     clock_gettime(CLOCK_MONOTONIC, &end);
-    timespec_diff(&start, &end, &actual);
+    timespec_diff(&start, &end, &diff);
     fprintf(profopts.profile_online_debug_file,
       "Rebinding %zu bytes ", tree_it_key(sit)->weight);
     if(dl == prof.profile_online.upper_dl) {
@@ -23,7 +26,7 @@ void rebind_arena(int index, sicm_dev_ptr dl, tree_it(site_info_ptr, int) sit) {
         "DRAM->AEP ");
     }
     fprintf(profopts.profile_online_debug_file,
-      "took %ld.%09ld seconds.\n", actual.tv_sec, actual.tv_nsec);
+      "took %ld.%09ld seconds.\n", diff.tv_sec, diff.tv_nsec);
 
     if(retval == -EINVAL) {
       fprintf(profopts.profile_online_debug_file,
