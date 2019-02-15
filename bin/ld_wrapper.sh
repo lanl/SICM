@@ -49,7 +49,7 @@ for word in $ARGS; do
       BC_STR="$BC_STR ${word}.bc"
     fi
     LINKARGS="$LINKARGS $word"
-  elif [[  ]]; then
+  elif [[ $(file --mime-type -b "$word") == "application/x-archive" ]]; then
     # We've found a `.a` file. Assume it was created with the ar_wrapper.sh.
     # Each line is just a filename.
     # Notably, *don't* add this .a file to the list of link arguments.
