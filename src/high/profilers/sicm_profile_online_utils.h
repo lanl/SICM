@@ -1,7 +1,8 @@
 /* Rebinds an arena to the device list.
    Times it and prints debugging information if necessary. */
-void rebind_arena(int index, sicm_dev_ptr dl) {
+void rebind_arena(int index, sicm_dev_ptr dl, tree_it(site_info_ptr, int) sit) {
   int retval;
+  struct timespec start, end, diff;
 
   if(profopts.profile_online_debug_file) {
     clock_gettime(CLOCK_MONOTONIC, &start);

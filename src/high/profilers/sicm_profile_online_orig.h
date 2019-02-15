@@ -72,7 +72,6 @@ void profile_online_interval_orig(tree(site_info_ptr, int) sorted_sites) {
   int index;
   char full_rebind, dev, hot, prev_hot;
   size_t num_hot_intervals;
-  struct timespec start, end, diff;
 
   tree_it(site_info_ptr, int) sit;
 
@@ -108,7 +107,7 @@ void profile_online_interval_orig(tree(site_info_ptr, int) sorted_sites) {
       if(dl) {
         full_rebind = 1;
 
-        rebind_arena(index, dl);
+        rebind_arena(index, dl, sit);
       }
     }
   } else {
@@ -121,7 +120,7 @@ void profile_online_interval_orig(tree(site_info_ptr, int) sorted_sites) {
         num_hot_intervals = get_arena_online_prof(index)->num_hot_intervals;
         if(num_hot_intervals == profopts.profile_online_hot_intervals) {
           get_arena_online_prof(index)->dev = 1;
-          rebind_arena(index, prof.profile_online.upper_dl);
+          rebind_arena(index, prof.profile_online.upper_dl, sit);
         }
       }
     }
