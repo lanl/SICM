@@ -2,6 +2,7 @@
 #define _GNU_SOURCE
 #include <dlfcn.h>
 #include <stdbool.h>
+#include <numa.h>
 
 #define SICM_RUNTIME 1
 #include "sicm_runtime.h"
