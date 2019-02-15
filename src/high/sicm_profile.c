@@ -181,11 +181,11 @@ void profile_master_interval(int s) {
     target.tv_nsec = profopts.profile_rate_nseconds % 1000000000;
     timespec_diff(&start, &end, &actual);
     if(timespec_cmp(&target, &actual) && profopts.profile_output_file) {
-      fprintf(profopts.profile_output_file, "WARNING: Interval (%ld.%09ld) went over the time limit (%ld.%09ld).\n",
+      fprintf(profopts.profile_online_debug_file, "WARNING: Interval (%ld.%09ld) went over the time limit (%ld.%09ld).\n",
               actual.tv_sec, actual.tv_nsec,
               target.tv_sec, target.tv_nsec);
     } else if(profopts.profile_output_file) {
-      fprintf(profopts.profile_output_file, "Interval (%ld.%09ld) went under the time limit (%ld.%09ld).\n",
+      fprintf(profopts.profile_online_debug_file, "Interval (%ld.%09ld) went under the time limit (%ld.%09ld).\n",
               actual.tv_sec, actual.tv_nsec,
               target.tv_sec, target.tv_nsec);
     }
