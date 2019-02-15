@@ -69,9 +69,10 @@ void profile_online_interval_orig(tree(site_info_ptr, int) sorted_sites) {
   arena_info *arena;
   arena_profile *aprof;
   sicm_dev_ptr dl;
-  int retval, index;
+  int index;
   char full_rebind, dev, hot, prev_hot;
   size_t num_hot_intervals;
+  struct timespec start, end, diff;
 
   tree_it(site_info_ptr, int) sit;
 
@@ -106,12 +107,8 @@ void profile_online_interval_orig(tree(site_info_ptr, int) sorted_sites) {
 
       if(dl) {
         full_rebind = 1;
-        retval = sicm_arena_set_devices(tracker.arenas[index]->arena, dl);
-        if(retval == -EINVAL) {
-          fprintf(stderr, "Rebinding arena %d failed in SICM.\n", index);
-        } else if(retval != 0) {
-          fprintf(stderr, "Rebinding arena %d failed internally.\n", index);
-        }
+
+        rebind_arena(index, dl);
       }
     }
   } else {
@@ -124,13 +121,7 @@ void profile_online_interval_orig(tree(site_info_ptr, int) sorted_sites) {
         num_hot_intervals = get_arena_online_prof(index)->num_hot_intervals;
         if(num_hot_intervals == profopts.profile_online_hot_intervals) {
           get_arena_online_prof(index)->dev = 1;
-          retval = sicm_arena_set_devices(tracker.arenas[index]->arena,
-                                          prof.profile_online.upper_dl);
-          if(retval == -EINVAL) {
-            fprintf(stderr, "Rebinding arena %d failed in SICM.\n", index);
-          } else if(retval != 0) {
-            fprintf(stderr, "Rebinding arena %d failed internally.\n", index);
-          }
+          rebind_arena(index, prof.profile_online.upper_dl);
         }
       }
     }

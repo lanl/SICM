@@ -170,12 +170,12 @@ void set_options() {
   if(env) {
     profopts.should_profile_online = 1;
 
-    env = getenv("SH_PROFILE_ONLINE_OUTPUT_FILE");
-    profopts.profile_online_output_file = NULL;
+    env = getenv("SH_PROFILE_ONLINE_DEBUG_FILE");
+    profopts.profile_online_debug_file = NULL;
     if(env) {
-      profopts.profile_online_output_file = fopen(env, "w");
-      if(!profopts.profile_online_output_file) {
-        fprintf(stderr, "Failed to open profile_online output file. Aborting.\n");
+      profopts.profile_online_debug_file = fopen(env, "w");
+      if(!profopts.profile_online_debug_file) {
+        fprintf(stderr, "Failed to open profile_online debug file. Aborting.\n");
         exit(1);
       }
     }
@@ -236,12 +236,6 @@ void set_options() {
     profopts.profile_online_use_last_interval = 0;
     if(env) {
       profopts.profile_online_use_last_interval = 1;
-    }
-
-    env = getenv("SH_PROFILE_ONLINE_DEBUG");
-    profopts.profile_online_debug = 0;
-    if(env) {
-      profopts.profile_online_debug = 1;
     }
 
     env = getenv("SH_PROFILE_ONLINE_LAST_ITER_VALUE");

@@ -172,7 +172,7 @@ typedef struct profiling_options {
   /* Input and output for profiling information */
   FILE *profile_input_file;
   FILE *profile_output_file;
-  FILE *profile_online_output_file; /* For the verbose online approach */
+  FILE *profile_online_debug_file; /* For the verbose online approach */
 
   /* Online */
   size_t num_profile_online_events;
@@ -186,7 +186,6 @@ typedef struct profiling_options {
   unsigned long profile_online_grace_accesses;
   size_t profile_online_hot_intervals;
   int profile_online_use_last_interval;
-  int profile_online_debug;
   char profile_online_orig; /* Online strat */
   char profile_online_ski; /* Online strat */
 

@@ -14,6 +14,7 @@
 #include "sicm_packing.h"
 
 /* Include the various online implementations */
+#include "sicm_profile_online_utils.h"
 #include "sicm_profile_online_orig.h"
 #include "sicm_profile_online_ski.h"
 
