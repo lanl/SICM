@@ -110,6 +110,12 @@ void profile_online_interval(int s) {
           }
         }
 
+        /* If this is the first interval, and the site isn't already being bound, then
+           bind it to the lower tier. */
+        if((prof.profile_online.num_reconfigures == 0) && !dl) {
+          dl = prof.profile_online.lower_dl;
+        }
+
         /* Do the actual rebinding. */
         if(dl) {
           if(sicm_arena_set_devices(tracker.arenas[tree_it_key(sit)->index]->arena, dl)) {
