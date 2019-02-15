@@ -610,7 +610,7 @@ void profile_online_interval(int s) {
   tree_it(size_t, deviceptr) hit, tmp_hit;
   size_t hotset_value, hotset_weight,
          coldset_value, coldset_weight;
-  char hot;
+  char hot, cold_next_site;
 
   /* Look at how much the application has consumed on each tier */
   upper_avail = sicm_avail(tracker.upper_device);
@@ -691,7 +691,7 @@ void profile_online_interval(int s) {
 
     /* Rebind arenas that are newly in the coldset */
     tree_traverse(coldset, hit) {
-      tmp_hit = tree_lookup(prev_coldset, tree_it_key(hit));
+      tmp_hit = tree_lookup(prof.profile_online.prev_coldset, tree_it_key(hit));
       if(!tree_it_good(tmp_hit)) {
         /* The arena is in the current coldset, but not the previous one.
          * Bind its pages to the lower device.
@@ -702,7 +702,7 @@ void profile_online_interval(int s) {
 
     /* Rebind arenas that are newly in the hotset */
     tree_traverse(hotset, hit) {
-      tmp_hit = tree_lookup(prev_hotset, tree_it_key(hit));
+      tmp_hit = tree_lookup(prof.profile_online.prev_hotset, tree_it_key(hit));
       if(!tree_it_good(tmp_hit)) {
         /* The arena is in the current hotset, but not the previous one.
          * Bind its pages to the lower device.
