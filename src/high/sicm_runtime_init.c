@@ -341,10 +341,13 @@ void set_options() {
       nodes = numa_parse_nodestring(env);
       cpus = numa_allocate_cpumask();
       num_cpus = numa_num_configured_cpus();
+      printf("The user specified a list of nodes.\n");
+      fflush(stdout);
       /* Iterate over the nodes in the `nodes` bitmask */
       for(node = 0; node < num_nodes; node++) {
         if(numa_bitmask_isbitset(nodes, i)) {
           printf("The user specified node %zu\n", i);
+          fflush(stdout);
           numa_bitmask_clearall(cpus);
           numa_node_to_cpus(node, cpus);
           /* Now iterate over the CPUs on those nodes */
@@ -359,6 +362,8 @@ void set_options() {
               printf("The CPU %d was NOT set.\n", i);
             }
           }
+        } else {
+          printf("The user did NOT specify node %d\n", node);
         }
       }
     } else {
