@@ -346,14 +346,14 @@ void set_options() {
       fflush(stdout);
       /* Iterate over the nodes in the `nodes` bitmask */
       for(node = 0; node < num_nodes; node++) {
-        if(numa_bitmask_isbitset(nodes, i)) {
+        if(numa_bitmask_isbitset(nodes, node)) {
           printf("The user specified node %zu\n", i);
           fflush(stdout);
           numa_bitmask_clearall(cpus);
           numa_node_to_cpus(node, cpus);
           /* Now iterate over the CPUs on those nodes */
           for(cpu = 0; cpu < num_cpus; cpu++) {
-            if(numa_bitmask_isbitset(cpus, i)) {
+            if(numa_bitmask_isbitset(cpus, cpu)) {
               /* Here, we're just adding a CPU number to the array. */
               profopts.num_profile_all_cpus++;
               profopts.profile_all_cpus = orig_realloc(profopts.profile_all_cpus, sizeof(int) * profopts.num_profile_all_cpus);
