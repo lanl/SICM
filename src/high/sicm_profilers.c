@@ -236,7 +236,6 @@ void profile_all_post_interval(profile_info *info) {
     if(profinfo->tmp_accumulator > per_event_profinfo->peak) {
       per_event_profinfo->peak = profinfo->tmp_accumulator;
     }
-    printf("profile_all: %zu %zu\n", i, per_event_profinfo->total);
     /* One size_t per interval for this one event */
     per_event_profinfo->intervals = (size_t *)orig_realloc(per_event_profinfo->intervals, info->num_intervals * sizeof(size_t));
     per_event_profinfo->intervals[info->num_intervals - 1] = profinfo->tmp_accumulator;
@@ -568,7 +567,6 @@ size_t get_value(size_t index, size_t event_index) {
     return 0;
   }
 
-  printf("returning real value: %zu %zu %zu\n", index, event_index, per_event_profinfo->total);
   return per_event_profinfo->total;
 }
 
@@ -624,7 +622,6 @@ void profile_online_interval(int s) {
     for(i = 0; i <= tracker.max_index; i++) {
       value = get_value(i, event_index);
       weight = get_weight(i);
-      printf("%zu %zu\n", value, weight);
       if((!value) || (!weight)) continue;
 
       val_per_weight = ((double) value) / ((double) weight);
@@ -643,7 +640,7 @@ void profile_online_interval(int s) {
     }
 
     /* Print the sorted sites */
-    printf("Printing out sorted sites:\n");
+    printf("===== SORTED SITES =====\n");
     it = tree_last(sorted_arenas);
     while(tree_it_good(it)) {
       printf("%zu: %zu/%zu\n", tree_it_val(it), /* Index */
@@ -651,6 +648,7 @@ void profile_online_interval(int s) {
                                get_weight(tree_it_val(it))); /* Weight */
       tree_it_prev(it);
     }
+    printf("===== END SORTED SITES=====\n\n\n");
 
 #if 0
     /* Use a greedy algorithm to pack sites into the knapsack */
