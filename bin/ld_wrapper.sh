@@ -42,7 +42,7 @@ for word in $ARGS; do
   elif [[ $(file --mime-type -b "$word") == "application/x-object" ]]; then
     # If it ends in '.o', replace that with '.bc'. Otherwise, just append '.bc'
     # This is the same rule that the compiler wrapper uses to create the '.bc' file.
-    if [[ "$word" =~ (.*)\.o ]]; then
+    if [[ "$word" =~ (.*)\.o$ ]]; then
       FILES_ARR+=("${BASH_REMATCH[1]}")
       BC_STR="$BC_STR ${BASH_REMATCH[1]}.bc"
     else
@@ -50,7 +50,7 @@ for word in $ARGS; do
       BC_STR="$BC_STR ${word}.bc"
     fi
     LINKER_INPUT_FILES="$LINKER_INPUT_FILES $word"
-  elif [[ $(file --mime-type -b "$word") == "application/x-archive" ]]; then
+  elif [[ $word =~ (.*)\.a$ ]]; then
     # We've found a `.a` file. Assume it was created with the ar_wrapper.sh.
     # Each line is just a filename.
     # Notably, *don't* add this .a file to the list of link arguments.
