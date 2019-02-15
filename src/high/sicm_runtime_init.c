@@ -238,6 +238,15 @@ void set_options() {
     if(env) {
       profopts.profile_all_skip_intervals = strtoul(env, NULL, 0);
     }
+
+    if(tracker.log_file) {
+      fprintf(tracker.log_file, "SH_PROFILE_ALL: %d\n", profopts.should_profile_all);
+      fprintf(tracker.log_file, "SH_PROFILE_ALL_SKIP_INTERVALS: %lu\n", profopts.profile_all_skip_intervals);
+      fprintf(tracker.log_file, "NUM_PROFILE_ALL_EVENTS: %zu\n", profopts.num_profile_all_events);
+      for(i = 0; i < profopts.num_profile_all_events; i++) {
+        fprintf(tracker.log_file, "PROFILE_ALL_EVENTS: %s\n", profopts.profile_all_events[i]);
+      }
+    }
   }
 
   /* Should we keep track of when each allocation happened, in intervals? */
