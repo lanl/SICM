@@ -30,10 +30,11 @@ void *profile_online(void *a) {
 }
 
 void profile_online_interval(int s) {
-  size_t i, n, upper_avail, lower_avail;
+  size_t i, n, upper_avail, lower_avail, num_rebinds;
   arena_info *arena;
   arena_profile *aprof;
   struct sicm_device_list *dl;
+  char will_rebind;
 
   /* Trees store site information, value is the site ID */
   tree(site_info_ptr, int) sorted_sites;
@@ -49,12 +50,9 @@ void profile_online_interval(int s) {
   upper_avail = sicm_avail(tracker.upper_device) * 1024;
   lower_avail = sicm_avail(tracker.lower_device) * 1024;
 
+  /* If the lower tier is being used, we're going to assume that the upper tier
+     is at maximum capacity, and is spilling over. */
   if(lower_avail < prof.profile_online.lower_avail_initial) {
-    /* The lower tier is now being used, so we need to reconfigure. */
-    if(profopts.profile_online_print_reconfigures) {
-      printf("Reconfigure %d\n", prof.profile_online.num_reconfigures);
-    }
-
     /* If we don't make everything default to the lower device from now on,
        we'd have to continuously check and rebind every site when it pops
        into existence. */
@@ -62,9 +60,6 @@ void profile_online_interval(int s) {
 
     /* If this is the first interval, the previous hotset was the empty set */
     if(!prof.profile_online.prev_hotset) {
-      if(profopts.profile_online_print_reconfigures) {
-        printf("There was no previous hotset, so making a blank one.\n");
-      }
       prof.profile_online.prev_hotset = (void *) tree_make(int, site_info_ptr);
     }
     prev_hotset = (tree(int, site_info_ptr)) prof.profile_online.prev_hotset;
@@ -81,18 +76,32 @@ void profile_online_interval(int s) {
 
     hotset = sh_get_hot_sites(merged_sorted_sites, prof.profile_online.upper_avail_initial);
 
-    if(profopts.profile_online_print_reconfigures) {
-      printf("Current hotset: ");
-      tree_traverse(hotset, hit) {
-        printf("(%d, %lf) ", tree_it_key(hit), tree_it_val(hit)->value_per_weight);
+    if(profopts.profile_online_output_file) {
+      /* Figure out if we're going to rebind any sites */
+      will_rebind = 0;
+      tree_traverse(merged_sorted_sites, sit) {
+        old = tree_lookup(prev_hotset, tree_it_val(sit));
+        new = tree_lookup(hotset, tree_it_val(sit));
+        if((tree_it_good(new) && !tree_it_good(old)) ||
+           (!tree_it_good(new) && tree_it_good(old)) ||
+           (prof.profile_online.num_reconfigures == 0)) {
+          will_rebind = 1;
+          break;
+        }
       }
-      printf("\n");
+
+      if(will_rebind) {
+        fprintf(profopts.profile_online_output_file, "===== BEGIN RECONFIGURE %d =====\n", prof.profile_online.num_reconfigures);
+        fprintf(profopts.profile_online_output_file, "  Upper avail: %zu\n", upper_avail);
+        fprintf(profopts.profile_online_output_file, "  Lower avail: %zu\n", lower_avail);
+      }
     }
 
     if(!profopts.profile_online_nobind) {
       /* Iterate over all of the sites. Rebind if:
          1. A site wasn't in the previous hotset, but is in the current one.
          2. A site was in the previous hotset, but now isn't. */
+      num_rebinds = 0;
       tree_traverse(merged_sorted_sites, sit) {
         /* Look to see if it's in the new or old hotsets. */
         old = tree_lookup(prev_hotset, tree_it_val(sit));
@@ -100,14 +109,8 @@ void profile_online_interval(int s) {
         dl = NULL;
         if(tree_it_good(new) && !tree_it_good(old)) {
           dl = prof.profile_online.upper_dl;
-          if(profopts.profile_online_print_reconfigures) {
-            printf("Binding site %d to the upper tier.\n", tree_it_val(sit));
-          }
         } else if(!tree_it_good(new) && tree_it_good(old)) {
           dl = prof.profile_online.lower_dl;
-          if(profopts.profile_online_print_reconfigures) {
-            printf("Binding site %d to the lower tier.\n", tree_it_val(sit));
-          }
         }
 
         /* If this is the first interval, and the site isn't already being bound, then
@@ -118,14 +121,17 @@ void profile_online_interval(int s) {
 
         /* Do the actual rebinding. */
         if(dl) {
+          num_rebinds++;
           if(sicm_arena_set_devices(tracker.arenas[tree_it_key(sit)->index]->arena, dl)) {
             fprintf(stderr, "Rebinding arena %d failed.\n", tree_it_key(sit)->index);
           }
         }
       }
     }
-    if(profopts.profile_online_print_reconfigures) {
-      printf("Reconfigure complete.\n");
+
+    if(profopts.profile_online_output_file && will_rebind) {
+      fprintf(profopts.profile_online_output_file, "  Number of rebinds: %zu\n", num_rebinds);
+      fprintf(profopts.profile_online_output_file, "===== END RECONFIGURE %d =====\n", prof.profile_online.num_reconfigures);
     }
 
     /* The previous tree can be freed, because we're going to

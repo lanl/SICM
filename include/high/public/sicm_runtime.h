@@ -161,7 +161,6 @@ typedef struct profiling_options {
   int should_run_rdspy;
   int should_print_intervals;
   int profile_online_use_last_interval;
-  int profile_online_print_reconfigures;
   int profile_online_debug;
 
   /* Sample rates */
@@ -177,6 +176,7 @@ typedef struct profiling_options {
   /* Input and output for profiling information */
   FILE *profile_input_file;
   FILE *profile_output_file;
+  FILE *profile_online_output_file; /* For the verbose online approach */
 
   /* Online */
   char *profile_online_event;

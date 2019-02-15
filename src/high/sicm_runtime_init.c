@@ -169,6 +169,16 @@ void set_options() {
   if(env) {
     profopts.should_profile_online = 1;
 
+    env = getenv("SH_PROFILE_ONLINE_OUTPUT_FILE");
+    profopts.profile_online_output_file = NULL;
+    if(env) {
+      profopts.profile_online_output_file = fopen(env, "w");
+      if(!profopts.profile_online_output_file) {
+        fprintf(stderr, "Failed to open profile_online output file. Aborting.\n");
+        exit(1);
+      }
+    }
+
     /* Purely to measure the overhead of the online approach without doing any special binding */
     env = getenv("SH_PROFILE_ONLINE_NOBIND");
     profopts.profile_online_nobind = 0;
@@ -196,12 +206,6 @@ void set_options() {
     profopts.profile_online_use_last_interval = 0;
     if(env) {
       profopts.profile_online_use_last_interval = 1;
-    }
-
-    env = getenv("SH_PROFILE_ONLINE_PRINT_RECONFIGURES");
-    profopts.profile_online_print_reconfigures = 0;
-    if(env) {
-      profopts.profile_online_print_reconfigures = 1;
     }
 
     env = getenv("SH_PROFILE_ONLINE_DEBUG");
