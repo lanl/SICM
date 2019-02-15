@@ -596,14 +596,19 @@ size_t get_weight(size_t index) {
 
 use_tree(double, size_t);
 void profile_online_interval(int s) {
-  size_t i,
-         upper_avail, lower_avail,
+  size_t i, upper_avail, lower_avail,
          value, weight,
-         hotset_value, hotset_weight,
          event_index;
+
+  /* Sorted sites */
   tree(double, size_t) sorted_arenas;
   tree_it(double, size_t) it;
   double val_per_weight;
+
+  /* Hotset */
+  tree(size_t deviceptr) hotset;
+  size_t hotset_value, hotset_weight;
+  char break_next_site;
 
   /* Look at how much the application has consumed on each tier */
   upper_avail = sicm_avail(tracker.upper_device);
@@ -650,24 +655,24 @@ void profile_online_interval(int s) {
     }
     printf("===== END SORTED SITES=====\n\n\n");
 
-#if 0
-    /* Use a greedy algorithm to pack sites into the knapsack */
+    /* Iterate over the sites and greedily pack them into the hotset */
+    printf("===== HOTSET =====\n");
     hotset_value = 0;
     hotset_weight = 0;
     break_next_site = 0;
-    new_knapsack = tree_make(size_t, deviceptr); /* arena index -> online_device */
+    hotset = tree_make(size_t, deviceptr); /* arena index -> online_device */
     it = tree_last(sorted_arenas);
     while(tree_it_good(it)) {
-      hotset_weight += arenas[tree_it_val(it)]->peak_rss;
-      hotset_value += arenas[tree_it_val(it)]->accesses;
-      tree_insert(new_knapsack, tree_it_val(it), online_device);
-      for(id = 0; id < arenas[tree_it_val(it)]->num_alloc_sites; id++) {
-        printf("%d ", arenas[tree_it_val(it)]->alloc_sites[id]);
-      }
+      hotset_value += get_value(tree_it_val(it), event_index);
+      hotset_weight += get_weight(tree_it_val(it));
+      tree_insert(hotset, tree_it_val(it), upper_device);
+      printf("%zu: %zu/%zu\n", tree_it_val(it), /* Index */
+                               get_value(tree_it_val(it), event_index), /* Value */
+                               get_weight(tree_it_val(it))); /* Weight */
       if(break_next_site) {
         break;
       }
-      if(hotset_weight > online_device_cap) {
+      if(hotset_weight > prof.profile_online.upper_avail_initial) {
         break_next_site = 1;
       }
       tree_it_prev(it);
@@ -675,8 +680,8 @@ void profile_online_interval(int s) {
     printf("\n");
     printf("Total value: %zu\n", hotset_value);
     printf("Packed size: %zu\n", hotset_weight);
-    printf("Capacity:    %zd\n", online_device_cap);
-#endif
+    printf("Capacity:    %zd\n", prof.profile_online.upper_avail_initial);
+    printf("===== HOTSET =====\n");
   }
 
   end_interval();
