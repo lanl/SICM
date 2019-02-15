@@ -30,14 +30,14 @@ OUTPUT_FILE="" # `-o`
 PREV=""
 for word in $ARGS; do
 
-  if [[ "$word" =~ \-o$ ]]; then
+  if [[ "$word" =~ ^\-o$ ]]; then
     # Remove "-o [outputfile]" from the arguments
     PREV="$word"
-  elif [[ "$PREV" =~ \-o$ ]]; then
+  elif [[ "$PREV" =~ ^\-o$ ]]; then
     # Put the output file in OUTPUTFILE, extension and all
     PREV=""
     OUTPUT_FILE=${word}
-  elif [[ "$word" =~ "-c" ]]; then
+  elif [[ "$word" =~ ^\-c$ ]]; then
     # If it's `-c`, then we don't link
     ONLY_COMPILE=true
   elif [[ "$word" =~ ^\-.* ]]; then
@@ -69,6 +69,8 @@ for word in $ARGS; do
   fi
 
 done
+
+echo $EXTRA_ARGS
 
 if [[ ((${#INPUT_FILES[@]} -gt 1) && ($OUTPUT_FILE != "") && ($ONLY_COMPILE)) || (${#INPUT_FILES[@]} -eq 0) ]]; then
   # This is illegal, just call the compiler to error out
@@ -106,7 +108,7 @@ else
     ${LLVMPATH}${COMPILER} ${EXTRA_ARGS} -c $INPUTFILE_STR
     ${LLVMPATH}${COMPILER} ${EXTRA_ARGS} -emit-llvm -c $INPUTFILE_STR
     for file in ${INPUT_FILES[@]}; do
-      echo "" > ${file}.args
+      echo $EXTRA_ARGS > ${file}.args
     done
   fi
 fi

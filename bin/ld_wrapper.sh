@@ -21,6 +21,7 @@ ARGS=$@
 # The new arguments that we're going to use to link. We're going
 # to remove any .a files, and replace them with the .o files that they should have contained.
 LINKARGS=""
+LINKER_INPUT_FILES=""
 
 # An array and space-delimited string of object files that we want to link
 FILES_ARR=()
@@ -48,7 +49,7 @@ for word in $ARGS; do
       FILES_ARR+=("${word}")
       BC_STR="$BC_STR ${word}.bc"
     fi
-    LINKARGS="$LINKARGS $word"
+    LINKER_INPUT_FILES="$LINKER_INPUT_FILES $word"
   elif [[ $(file --mime-type -b "$word") == "application/x-archive" ]]; then
     # We've found a `.a` file. Assume it was created with the ar_wrapper.sh.
     # Each line is just a filename.
@@ -56,7 +57,7 @@ for word in $ARGS; do
     while read line; do
       FILES_ARR+=("${line}")
       BC_STR="$BC_STR ${line}.bc"
-      LINKARGS="$LINKARGS ${line}"
+      LINKER_INPUT_FILES="$LINKER_INPUT_FILES ${line}"
     done < "${word}"
   fi
   PREV="${word}"
@@ -107,4 +108,5 @@ done
 wait
 
 # Now finally link the transformed '.o' files
-${LLVMPATH}${LD_LINKER} -L${LIB_DIR} -lsicm_high -Wl,-rpath,${LIB_DIR} $LINKARGS
+LINKARGS="$LINKARGS -L${LIB_DIR} -lsicm_high -Wl,-rpath,${LIB_DIR}"
+${LLVMPATH}${LD_LINKER} $LINKER_INPUT_FILES $LINKARGS
