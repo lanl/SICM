@@ -372,11 +372,11 @@ void set_options() {
          process is allowed on */
       cpus = numa_all_cpus_ptr;
       num_cpus = numa_num_configured_cpus();
-      for(i = 0; i < num_cpus; i++) {
-        if(numa_bitmask_isbitset(cpus, i)) {
-          profopts.num_profile_all_cpus = 1;
+      for(cpu = 0; cpu < num_cpus; cpu++) {
+        if(numa_bitmask_isbitset(cpus, cpu)) {
+          profopts.num_profile_all_cpus++;
           profopts.profile_all_cpus = orig_realloc(profopts.profile_all_cpus, sizeof(int) * profopts.num_profile_all_cpus);
-          profopts.profile_all_cpus[profopts.num_profile_all_cpus - 1] = i;
+          profopts.profile_all_cpus[profopts.num_profile_all_cpus - 1] = cpu;
           printf("Adding CPU (default): %d\n", profopts.profile_all_cpus[profopts.num_profile_all_cpus - 1]);
         }
       }
