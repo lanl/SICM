@@ -607,7 +607,7 @@ void profile_online_interval(int s) {
   double val_per_weight;
 
   /* Hotset */
-  tree(size_t deviceptr) hotset;
+  tree(size_t, deviceptr) hotset;
   size_t hotset_value, hotset_weight;
   char break_next_site;
 
