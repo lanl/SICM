@@ -314,7 +314,6 @@ int get_arena_index(int id, size_t sz) {
       } else {
         /* Just use the per-thread arena */
         ret = thread_index;
-        device = tracker.upper_device;
       }
       break;
     default:
@@ -444,7 +443,7 @@ void sh_delete_extent(sarena *arena, void *start, void *end) {
  *              SH_ALLOC                         *
  *************************************************
  *  The primary interface. Allocation and deallocation
- *  functions that the compiler pass creates calls to.
+ *  functions to which the compiler pass creates calls.
  */
 
 void* sh_realloc(int id, void *ptr, size_t sz) {
@@ -470,7 +469,6 @@ void* sh_realloc(int id, void *ptr, size_t sz) {
   return ret;
 }
 
-/* Accepts an allocation site ID and a size, does the allocation */
 void* sh_alloc(int id, size_t sz) {
   int index;
   void *ret;
@@ -494,7 +492,6 @@ void* sh_alloc(int id, size_t sz) {
   return ret;
 }
 
-/* Accepts an allocation site ID and a size, does the allocation */
 void* sh_aligned_alloc(int id, size_t alignment, size_t sz) {
   int index;
   void *ret;

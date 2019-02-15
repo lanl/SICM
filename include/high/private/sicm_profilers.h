@@ -51,6 +51,9 @@ typedef struct profile_allocs_info {
   /* profile_allocs */
   size_t peak, *intervals, tmp_accumulator;
 } profile_allocs_info;
+typedef struct profile_online_info {
+  /* profile_online */
+} profile_online_info;
 
 
 /********************
@@ -75,6 +78,9 @@ typedef struct profile_extent_size_data {
 typedef struct profile_allocs_data {
   /* profile_allocs */
 } profile_allocs_data;
+typedef struct profile_online_data {
+  /* profile_online */
+} profile_online_data;
 
 
 /********************
@@ -120,6 +126,14 @@ void profile_allocs_interval(int);
 void profile_allocs_post_interval(profile_info *);
 void profile_allocs_skip_interval(int);
 void profile_allocs_arena_init(profile_allocs_info *);
+
+void profile_online_init();
+void profile_online_deinit();
+void *profile_online(void *);
+void profile_online_interval(int);
+void profile_online_post_interval(profile_info *);
+void profile_online_skip_interval(int);
+void profile_online_arena_init(profile_online_info *);
 
 #if 0
 /* ONE */

@@ -121,18 +121,11 @@ void set_options() {
   /* Do we want to use the online approach, moving arenas around devices automatically? */
   env = getenv("SH_ONLINE_PROFILING");
   profopts.should_profile_online = 0;
-  profopts.online_device_cap = 0;
   if(env) {
     profopts.should_profile_online = 1;
-    tmp_val = strtoimax(env, NULL, 10);
-    profopts.online_device = get_device_from_numa_node((int) tmp_val);
-    profopts.online_device_cap = sicm_avail(profopts.online_device) * 1024; /* sicm_avail() returns kilobytes */
   }
   if(tracker.log_file) {
     fprintf(tracker.log_file, "SH_ONLINE_PROFILING: %d\n", profopts.should_profile_online);
-    if(profopts.should_profile_online) {
-      fprintf(tracker.log_file, "ONLINE_DEVICE_CAP: %zu\n", profopts.online_device_cap);
-    }
   }
 
   /* Get the arena layout */

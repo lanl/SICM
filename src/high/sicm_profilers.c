@@ -539,6 +539,40 @@ void profile_allocs_skip_interval(int s) {
   /* TODO */
 }
 
+/*************************************************
+ *             PROFILE_ONLINE                    *
+ ************************************************/
+void profile_online_arena_init(profile_online_info *info) {
+}
+
+void *profile_online(void *a) {
+  pthread_setcanceltype(PTHREAD_CANCEL_ASYNCHRONOUS, NULL);
+
+  while(1) { }
+}
+
+void profile_online_interval(int s) {
+  size_t upper_avail;
+
+  /* Detect if the upper tier is consumed */
+  upper_avail = sicm_avail(tracker.upper_device);
+  printf("The upper tier has %zu available.\n", upper_avail);
+
+  end_interval();
+}
+
+void profile_online_init() {
+}
+
+void profile_online_deinit() {
+}
+
+void profile_online_post_interval(profile_info *info) {
+}
+
+void profile_online_skip_interval(int s) {
+}
+
 #if 0
 /*************************************************
  *                PROFILE_ONE                    *
@@ -635,10 +669,6 @@ void sh_get_event() {
     }
   }
 }
-
-/*************************************************
- *                PROFILE_ONE                    *
- ************************************************/
 
 #if 0
 void online_reconfigure() {

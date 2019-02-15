@@ -67,6 +67,9 @@ void *create_profile_arena(int index) {
   if(profopts.should_profile_allocs) {
     profile_allocs_arena_init(&(profinfo->profile_allocs));
   }
+  if(profopts.should_profile_online) {
+    profile_online_arena_init(&(profinfo->profile_online));
+  }
 
   profinfo->num_intervals = 0;
   profinfo->first_interval = 0;
@@ -191,6 +194,9 @@ void profile_master_interval(int s) {
     if(profopts.should_profile_allocs) {
       profile_allocs_post_interval(profinfo);
     }
+    if(profopts.should_profile_online) {
+      profile_online_post_interval(profinfo);
+    }
   }
 
   /* Finished handling this interval. Wait for another. */
@@ -297,6 +303,12 @@ void *profile_master(void *a) {
                          &profile_allocs_skip_interval, 
                          profopts.profile_allocs_skip_intervals);
   }
+  if(profopts.should_profile_online) {
+    setup_profile_thread(&profile_online, 
+                         &profile_online_interval, 
+                         &profile_online_skip_interval, 
+                         profopts.profile_online_skip_intervals);
+  }
   
   /* Initialize synchronization primitives */
   pthread_mutex_init(&prof.mtx, NULL);
@@ -388,6 +400,9 @@ void initialize_profiling() {
   }
   if(profopts.should_profile_allocs) {
     profile_allocs_init();
+  }
+  if(profopts.should_profile_online) {
+    profile_online_init();
   }
 }
 
