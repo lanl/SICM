@@ -73,32 +73,33 @@ if [[ ((${#INPUT_FILES[@]} -gt 1) && ($OUTPUT_FILE != "") && ($ONLY_COMPILE)) ||
   exit $?
 fi
 
+INPUTFILE_STR=""
+for ((i=0;i<${#INPUT_FILES[@]};++i)); do
+  INPUTFILE_STR="${INPUTFILE_STR} ${INPUT_FILES[i]}.${EXTENSIONS[i]}"
+done
+
 # Produce a normal object file as well as the bytecode file
 if [[ $OUTPUT_FILE  == "" ]]; then
-  ${LLVMPATH}${COMPILER} $EXTRA_ARGS -c
-  ${LLVMPATH}${COMPILER} $EXTRA_ARGS -emit-llvm -c
+  ${LLVMPATH}${COMPILER} $EXTRA_ARGS $INPUTFILE_STR -c
+  ${LLVMPATH}${COMPILER} $EXTRA_ARGS -emit-llvm $INPUTFILE_STR -c
   for file in ${INPUT_FILES[@]}; do
     echo $EXTRA_ARGS > ${file}.args
   done
 else
   if [[ "$ONLY_COMPILE" = true ]]; then
     # If we're only compiling and they specify an output file, adhere to that
-    ${LLVMPATH}${COMPILER} $EXTRA_ARGS -c -o $OUTPUT_FILE
+    ${LLVMPATH}${COMPILER} $EXTRA_ARGS $INPUTFILE_STR -c -o $OUTPUT_FILE
     if [[ "$OUTPUT_FILE" =~ (.*)\.o$ ]]; then
       # If their output file choice ends in '.o', replace that with '.bc'
-      ${LLVMPATH}${COMPILER} $EXTRA_ARGS -emit-llvm -c -o ${BASH_REMATCH[1]}.bc
+      ${LLVMPATH}${COMPILER} $EXTRA_ARGS -emit-llvm -c $INPUTFILE_STR -o ${BASH_REMATCH[1]}.bc
       echo $EXTRA_ARGS > ${BASH_REMATCH[1]}.args
     else
       # Otherwise, just use append '.bc'. This way, the ld_wrapper doesn't have to guess.
-      ${LLVMPATH}${COMPILER} $EXTRA_ARGS -emit-llvm -c -o ${OUTPUT_FILE}.bc
+      ${LLVMPATH}${COMPILER} $EXTRA_ARGS -emit-llvm $INPUTFILE_STR -c -o ${OUTPUT_FILE}.bc
       echo $EXTRA_ARGS > ${OUTPUT_FILE}.args
     fi
   else
     # If we're going to link and they specify an executable name, ignore that until we link
-    INPUTFILE_STR=""
-    for ((i=0;i<${#INPUT_FILES[@]};++i)); do
-      INPUTFILE_STR="${INPUTFILE_STR} ${INPUT_FILES[i]}.${EXTENSIONS[i]}"
-    done
     ${LLVMPATH}${COMPILER} ${EXTRA_ARGS} -c $INPUTFILE_STR
     ${LLVMPATH}${COMPILER} ${EXTRA_ARGS} -emit-llvm -c $INPUTFILE_STR
     for file in ${INPUT_FILES[@]}; do
