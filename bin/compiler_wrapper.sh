@@ -15,6 +15,7 @@ CXX_COMPILER="${CXX_COMPILER:-clang++}"
 FORT_COMPILER="${FORT_COMPILER:-flang}"
 LD_WRAPPER="${LD_WRAPPER:-${DIR}/ld_wrapper.sh}"
 COMPILER="$C_COMPILER"
+OBJECT_FILES=""
 
 # The original arguments to the compiler
 ARGS=$@
@@ -29,7 +30,9 @@ OUTPUT_FILE="" # `-o`
 PREV=""
 for word in $ARGS; do
 
-  if [[ "$word" =~ (.*)\.(c)$ ]]; then
+  if [[ $(file --mime-type -b "$word") == "application/x-object" ]]; then
+    OBJECT_FILES="${OBJECT_FILES} $word"
+  elif [[ "$word" =~ (.*)\.(c)$ ]]; then
     # Check if the argument is a C file.
     # Use the C++ compiler if a C++ file has already been specified.
     INPUT_FILES+=("${BASH_REMATCH[1]}")
@@ -70,22 +73,13 @@ if [[ ((${#INPUT_FILES[@]} -gt 1) && ($OUTPUT_FILE != "") && ($ONLY_COMPILE)) ||
   exit $?
 fi
 
-# Output a .args file so the ld wrapper knows which arguments to compile with
-# Only if we're not calling the ld wrapper directly
-if [[ ("$ONLY_COMPILE" = true) ]];
-  for file in ${INPUT_FILES[@]}; do
-    echo $EXTRA_ARGS > ${file}.args
-  done
-else
-  for file in ${INPUT_FILES[@]}; do
-    echo "" > ${file}.args
-  done
-fi
-
 # Produce a normal object file as well as the bytecode file
 if [[ $OUTPUT_FILE  == "" ]]; then
   ${LLVMPATH}${COMPILER} $EXTRA_ARGS -c
   ${LLVMPATH}${COMPILER} $EXTRA_ARGS -emit-llvm -c
+  for file in ${INPUT_FILES[@]}; do
+    echo $EXTRA_ARGS > ${file}.args
+  done
 else
   if [[ "$ONLY_COMPILE" = true ]]; then
     # If we're only compiling and they specify an output file, adhere to that
@@ -93,9 +87,11 @@ else
     if [[ "$OUTPUT_FILE" =~ (.*)\.o$ ]]; then
       # If their output file choice ends in '.o', replace that with '.bc'
       ${LLVMPATH}${COMPILER} $EXTRA_ARGS -emit-llvm -c -o ${BASH_REMATCH[1]}.bc
+      echo $EXTRA_ARGS > ${BASH_REMATCH[1]}.args
     else
       # Otherwise, just use append '.bc'. This way, the ld_wrapper doesn't have to guess.
       ${LLVMPATH}${COMPILER} $EXTRA_ARGS -emit-llvm -c -o ${OUTPUT_FILE}.bc
+      echo $EXTRA_ARGS > ${OUTPUT_FILE}.args
     fi
   else
     # If we're going to link and they specify an executable name, ignore that until we link
@@ -105,13 +101,15 @@ else
     done
     ${LLVMPATH}${COMPILER} ${EXTRA_ARGS} -c $INPUTFILE_STR
     ${LLVMPATH}${COMPILER} ${EXTRA_ARGS} -emit-llvm -c $INPUTFILE_STR
+    for file in ${INPUT_FILES[@]}; do
+      echo "" > ${file}.args
+    done
   fi
 fi
 
 # Link if necessary
 if [[ "$ONLY_COMPILE" = false ]]; then
   # Convert all e.g. "foo.c" -> "foo.o"
-  OBJECT_FILES=""
   for file in ${INPUT_FILES[@]}; do
     OBJECT_FILES="$OBJECT_FILES ${file}.o"
   done
