@@ -30,7 +30,20 @@ OUTPUT_FILE="" # `-o`
 PREV=""
 for word in $ARGS; do
 
-  if [[ $(file --mime-type -b "$word") == "application/x-object" ]]; then
+  if [[ "$word" =~ \-o$ ]]; then
+    # Remove "-o [outputfile]" from the arguments
+    PREV="$word"
+  elif [[ "$PREV" =~ \-o$ ]]; then
+    # Put the output file in OUTPUTFILE, extension and all
+    PREV=""
+    OUTPUT_FILE=${word}
+  elif [[ "$word" =~ "-c" ]]; then
+    # If it's `-c`, then we don't link
+    ONLY_COMPILE=true
+  elif [[ "$word" =~ ^\-.* ]]; then
+    # So that all arguments that begin with '-' aren't input files or input files
+    EXTRA_ARGS="$EXTRA_ARGS $word"
+  elif [[ $(file --mime-type -b "$word") == "application/x-object" ]]; then
     OBJECT_FILES="${OBJECT_FILES} $word"
   elif [[ "$word" =~ (.*)\.(c)$ ]]; then
     # Check if the argument is a C file.
@@ -50,16 +63,6 @@ for word in $ARGS; do
     INPUT_FILES+=("${BASH_REMATCH[1]}")
     EXTENSIONS+=("${BASH_REMATCH[2]}")
     COMPILER="$FORT_COMPILER"
-  elif [[ "$word" =~ \-o$ ]]; then
-    # Remove "-o [outputfile]" from the arguments
-    PREV="$word"
-  elif [[ "$PREV" =~ \-o$ ]]; then
-    # Put the output file in OUTPUTFILE, extension and all
-    PREV=""
-    OUTPUT_FILE=${word}
-  elif [[ "$word" =~ "-c" ]]; then
-    # If it's `-c`, then we don't link
-    ONLY_COMPILE=true
   else
     # Everything except `-o`, `-c`, and the input source files
     EXTRA_ARGS="$EXTRA_ARGS $word"
