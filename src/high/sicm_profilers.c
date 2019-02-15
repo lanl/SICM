@@ -595,6 +595,7 @@ size_t get_weight(size_t index) {
 }
 
 use_tree(double, size_t);
+use_tree(size_t, deviceptr);
 void profile_online_interval(int s) {
   size_t i, upper_avail, lower_avail,
          value, weight,
@@ -665,7 +666,7 @@ void profile_online_interval(int s) {
     while(tree_it_good(it)) {
       hotset_value += get_value(tree_it_val(it), event_index);
       hotset_weight += get_weight(tree_it_val(it));
-      tree_insert(hotset, tree_it_val(it), upper_device);
+      tree_insert(hotset, tree_it_val(it), tracker.upper_device);
       printf("%zu: %zu/%zu\n", tree_it_val(it), /* Index */
                                get_value(tree_it_val(it), event_index), /* Value */
                                get_weight(tree_it_val(it))); /* Weight */
