@@ -712,9 +712,13 @@ void profile_online_interval(int s) {
     }
 
     /* Free the previous trees and set these as the current ones */
-    tree_free(prof.profile_online.prev_hotset);
+    if(prof.profile_online.prev_hotset) {
+      tree_free(prof.profile_online.prev_hotset);
+    }
     prof.profile_online.prev_hotset = hotset;
-    tree_free(prof.profile_online.prev_coldset);
+    if(prof.profile_online.prev_coldset) {
+      tree_free(prof.profile_online.prev_coldset);
+    }
     prof.profile_online.prev_coldset = coldset;
   }
 
@@ -758,6 +762,9 @@ void profile_online_init() {
   prof.profile_online.lower_avail_initial = sicm_avail(tracker.lower_device);
   printf("upper_avail_initial: %zu\n", prof.profile_online.upper_avail_initial);
   printf("lower_avail_initial: %zu\n", prof.profile_online.lower_avail_initial);
+
+  prof.profile_online.prev_hotset = NULL;
+  prof.profile_online.prev_coldset = NULL;
 }
 
 void profile_online_deinit() {
