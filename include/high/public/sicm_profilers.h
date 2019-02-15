@@ -98,6 +98,11 @@ typedef struct profile_allocs_data {
  * PROFILE_ONLINE
  ********************/
 
+typedef struct application_profile application_profile;
+typedef struct site_profile_info site_profile_info;
+typedef site_profile_info * site_info_ptr;
+typedef struct sicm_device_list * sicm_dev_ptr;
+
 #ifndef SICM_PACKING
 #define SICM_PACKING
 use_tree(site_info_ptr, int);
@@ -105,11 +110,6 @@ use_tree(int, site_info_ptr);
 use_tree(int, sicm_dev_ptr);
 use_tree(int, size_t);
 #endif
-
-typedef struct application_profile application_profile;
-typedef struct site_profile_info site_profile_info;
-typedef site_profile_info * site_info_ptr;
-typedef struct sicm_device_list * sicm_dev_ptr;
 
 typedef struct profile_online_info {
   /* profile_online */
@@ -126,7 +126,7 @@ typedef struct profile_online_data_orig {
          site_weight_to_rebind, site_value_to_rebind, num_sites_to_rebind;
 } profile_online_data_orig;
 
-typedef struct profile_online_data_orig {
+typedef struct profile_online_data_ski {
   /* Metrics that only the ski strat needs */
 } profile_online_data_ski;
 
