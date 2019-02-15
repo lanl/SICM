@@ -113,6 +113,7 @@ void profile_online_interval(int s) {
     prepare_stats_ski();
     profile_online_interval_ski();
   } else {
+    /* Default to the original strategy */
     prepare_stats_orig(sorted_sites);
     profile_online_interval_orig(sorted_sites);
   }

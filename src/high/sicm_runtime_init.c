@@ -170,18 +170,6 @@ void set_options() {
   if(env) {
     profopts.should_profile_online = 1;
 
-    env = getenv("SH_PROFILE_ONLINE_HOT_INTERVALS");
-    profopts.profile_online_hot_intervals = 0;
-    if(env) {
-      profopts.profile_online_hot_intervals = strtoul(env, NULL, 0);
-    }
-
-    env = getenv("SH_PROFILE_ONLINE_RECONF_WEIGHT_RATIO");
-    profopts.profile_online_reconf_weight_ratio = 0.0;
-    if(env) {
-      profopts.profile_online_reconf_weight_ratio = strtof(env, NULL);
-    }
-
     env = getenv("SH_PROFILE_ONLINE_OUTPUT_FILE");
     profopts.profile_online_output_file = NULL;
     if(env) {
@@ -266,6 +254,34 @@ void set_options() {
     profopts.profile_online_last_iter_weight = 0.0;
     if(env) {
       profopts.profile_online_last_iter_weight = strtof(env, NULL);
+    }
+
+    env = getenv("SH_PROFILE_ONLINE_STRAT_ORIG");
+    profopts.profile_online_orig = 0;
+    if(env) {
+      profopts.profile_online_orig = 1;
+    }
+
+    if(profopts.profile_online_orig) {
+      /* Orig-specific configuration */
+
+      env = getenv("SH_PROFILE_ONLINE_RECONF_WEIGHT_RATIO");
+      profopts.profile_online_reconf_weight_ratio = 0.0;
+      if(env) {
+        profopts.profile_online_reconf_weight_ratio = strtof(env, NULL);
+      }
+
+      env = getenv("SH_PROFILE_ONLINE_HOT_INTERVALS");
+      profopts.profile_online_hot_intervals = 0;
+      if(env) {
+        profopts.profile_online_hot_intervals = strtoul(env, NULL, 0);
+      }
+    }
+
+    env = getenv("SH_PROFILE_ONLINE_STRAT_SKI");
+    profopts.profile_online_ski = 0;
+    if(env) {
+      profopts.profile_online_ski = 1;
     }
   }
   if(tracker.log_file) {
