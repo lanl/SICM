@@ -117,8 +117,9 @@ void profile_master_interval(int s) {
 
   pthread_rwlock_wrlock(&prof.profile_lock);
 
-  /* Start time */
-  clock_gettime(CLOCK_MONOTONIC, &start);
+  if(profopts.profile_online_debug_file) {
+    clock_gettime(CLOCK_MONOTONIC, &start);
+  }
 
   if(profopts.should_profile_separate_threads) {
     /* If we're separating the profiling threads, notify them that an interval has started. */
@@ -173,21 +174,21 @@ void profile_master_interval(int s) {
     }
   }
 
-  /* End time */
-  clock_gettime(CLOCK_MONOTONIC, &end);
-
   /* Throw a warning if this interval took too long */
-  target.tv_sec = profopts.profile_rate_nseconds / 1000000000;
-  target.tv_nsec = profopts.profile_rate_nseconds % 1000000000;
-  timespec_diff(&start, &end, &actual);
-  if(timespec_cmp(&target, &actual) && profopts.profile_output_file) {
-    fprintf(profopts.profile_output_file, "WARNING: Interval (%ld.%09ld) went over the time limit (%ld.%09ld).\n",
-            actual.tv_sec, actual.tv_nsec,
-            target.tv_sec, target.tv_nsec);
-  } else if(profopts.profile_output_file) {
-    fprintf(profopts.profile_output_file, "Interval (%ld.%09ld) went under the time limit (%ld.%09ld).\n",
-            actual.tv_sec, actual.tv_nsec,
-            target.tv_sec, target.tv_nsec);
+  if(profopts.profile_online_debug_file) {
+    clock_gettime(CLOCK_MONOTONIC, &end);
+    target.tv_sec = profopts.profile_rate_nseconds / 1000000000;
+    target.tv_nsec = profopts.profile_rate_nseconds % 1000000000;
+    timespec_diff(&start, &end, &actual);
+    if(timespec_cmp(&target, &actual) && profopts.profile_output_file) {
+      fprintf(profopts.profile_output_file, "WARNING: Interval (%ld.%09ld) went over the time limit (%ld.%09ld).\n",
+              actual.tv_sec, actual.tv_nsec,
+              target.tv_sec, target.tv_nsec);
+    } else if(profopts.profile_output_file) {
+      fprintf(profopts.profile_output_file, "Interval (%ld.%09ld) went under the time limit (%ld.%09ld).\n",
+              actual.tv_sec, actual.tv_nsec,
+              target.tv_sec, target.tv_nsec);
+    }
   }
 
   arena_arr_for(i) {
