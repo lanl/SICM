@@ -2,7 +2,7 @@
   The `orig` online strategy.
 *******************/
 
-profile_online_init_orig() {
+void profile_online_init_orig() {
   prof.profile_online.orig = malloc(sizeof(profile_online_data_orig));
 }
 

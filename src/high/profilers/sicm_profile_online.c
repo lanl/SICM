@@ -105,6 +105,7 @@ void *profile_online(void *a) {
 
 void profile_online_interval(int s) {
   tree(site_info_ptr, int) sorted_sites;
+  tree_it(site_info_ptr, int) sit;
 
   /* Call the appropriate strategy */
   sorted_sites = prepare_stats();

@@ -158,8 +158,6 @@ typedef struct profiling_options {
   int profile_one_site;
   int should_run_rdspy;
   int profile_intervals;
-  int profile_online_use_last_interval;
-  int profile_online_debug;
 
   /* Sample rates */
   size_t profile_rate_nseconds;
@@ -187,6 +185,10 @@ typedef struct profiling_options {
   float profile_online_last_iter_weight;
   unsigned long profile_online_grace_accesses;
   size_t profile_online_hot_intervals;
+  int profile_online_use_last_interval;
+  int profile_online_debug;
+  char profile_online_orig; /* Online strat */
+  char profile_online_ski; /* Online strat */
 
   /* The device to profile bandwidth on */
   deviceptr profile_one_device;

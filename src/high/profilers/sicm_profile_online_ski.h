@@ -2,7 +2,7 @@
   The `ski` online strategy.
 *******************/
 
-profile_online_init_orig() {
+profile_online_init_ski() {
   prof.profile_online.ski = malloc(sizeof(profile_online_data_ski));
 }
 
