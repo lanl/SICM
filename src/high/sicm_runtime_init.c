@@ -103,9 +103,10 @@ void set_options() {
   long long tmp_val;
   deviceptr device;
   size_t i, n;
-  int node, site;
+  int node, site, num_cpus;
   FILE *guidance_file;
   ssize_t len;
+  struct bitmask *cpus;
 
   /* See if there's profiling information that we can use later */
   env = getenv("SH_PROFILE_INPUT_FILE");
@@ -331,22 +332,40 @@ void set_options() {
   }
   if(profopts.should_profile_all) {
 
-    env = getenv("SH_PROFILE_ALL_CPUS");
+    env = getenv("SH_PROFILE_ALL_NODES");
     profopts.num_profile_all_cpus = 0;
     profopts.profile_all_cpus = NULL;
     if(env) {
+      /* Here, we'll find a comma-delimited list of NUMA nodes. On each of these,
+         get a list of the CPUs on them and add them to the list to be profiled. */
+      cpus = numa_allocate_cpumask();
+      num_cpus = numa_num_configured_cpus();
       while((str = strtok(env, ",")) != NULL) {
-        profopts.num_profile_all_cpus++;
-        profopts.profile_all_cpus = orig_realloc(profopts.profile_all_cpus, sizeof(int) * profopts.num_profile_all_cpus);
-        profopts.profile_all_cpus[profopts.num_profile_all_cpus - 1] = (int) strtol(str, NULL, 10);
+        numa_bitmask_clearall(cpus);
+        numa_node_to_cpus(node, cpus);
+        for(i = 0; i < num_cpus; i++) {
+          if(numa_bitmask_isbitset(cpus, i)) {
+            profopts.num_profile_all_cpus++;
+            profopts.profile_all_cpus = orig_realloc(profopts.profile_all_cpus, sizeof(int) * profopts.num_profile_all_cpus);
+            profopts.profile_all_cpus[profopts.num_profile_all_cpus - 1] = (int) strtol(str, NULL, 10);
+            printf("Adding CPU: %d\n", profopts.profile_all_cpus[profopts.num_profile_all_cpus - 1]);
+          }
+        }
         env = NULL;
       }
-    }
-
-    if(profopts.num_profile_all_cpus == 0) {
-      profopts.num_profile_all_cpus = 1;
-      profopts.profile_all_cpus = malloc(sizeof(int) * profopts.num_profile_all_cpus);
-      profopts.profile_all_cpus[0] = -1;
+    } else {
+      /* If the user doesn't set this, default to using the CPUs on the NUMA nodes that this
+         process is allowed on */
+      cpus = numa_all_cpus_ptr;
+      num_cpus = numa_num_configured_cpus();
+      for(i = 0; i < num_cpus; i++) {
+        if(numa_bitmask_isbitset(cpus, i)) {
+          profopts.num_profile_all_cpus = 1;
+          profopts.profile_all_cpus = malloc(sizeof(int) * profopts.num_profile_all_cpus);
+          profopts.profile_all_cpus[0] = -1;
+          printf("Adding CPU: %d\n", profopts.profile_all_cpus[profopts.num_profile_all_cpus - 1]);
+        }
+      }
     }
 
     env = getenv("SH_PROFILE_ALL_EVENTS");
