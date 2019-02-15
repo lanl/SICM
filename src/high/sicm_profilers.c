@@ -570,6 +570,7 @@ size_t get_value(size_t index, size_t event_index) {
   return per_event_profinfo->total;
 }
 
+/* Gets weight in kilobytes, to match sicm_avail and sicm_capacity. */
 size_t get_weight(size_t index) {
   arena_info *arena;
   profile_info *profinfo;
@@ -586,11 +587,11 @@ size_t get_weight(size_t index) {
    * in `profile_online_init`.
    */
   if(profopts.should_profile_allocs) {
-    return profinfo->profile_allocs.peak;
+    return profinfo->profile_allocs.peak / 1024;
   } else if(profopts.should_profile_extent_size) {
-    return profinfo->profile_extent_size.peak;
+    return profinfo->profile_extent_size.peak/ 1024;
   } else if(profopts.should_profile_rss) {
-    return profinfo->profile_rss.peak;
+    return profinfo->profile_rss.peak / 1024;
   }
 }
 
