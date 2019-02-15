@@ -136,13 +136,11 @@ static application_profile *sh_parse_profiling(FILE *file) {
   cur_event = NULL;
   cur_arena_index = 0;
   cur_event_index = 0;
-  printf("Parsing.\n");
   while(read = getline(&line, &len, file) != -1) {
 
     /* Here, we want to look for profiling information output */
     if(depth == 0) {
       if(strcmp(line, "===== BEGIN SICM PROFILING INFORMATION =====\n") == 0) {
-        printf("Found some profiling information.\n");
         depth = 1;
         num_arenas = 0;
       }
@@ -159,7 +157,6 @@ static application_profile *sh_parse_profiling(FILE *file) {
         depth = 0;
         break;
       } else if(sscanf(line, "Number of arenas: %zu", &num_arenas) == 1) {
-        printf("Found %zu arenas.\n", num_arenas);
         ret->num_arenas = num_arenas;
         ret->arenas = orig_calloc(num_arenas, sizeof(arena_profile *));
       } else if(sscanf(line, "Number of PROFILE_ALL events: %zu\n", &tmp_sizet) == 1) {
