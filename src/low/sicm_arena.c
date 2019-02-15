@@ -215,6 +215,7 @@ static void sicm_arena_range_move(void *aux, void *start, void *end) {
 	int err;
 	int mpol;
 	unsigned long *nodemaskp, maxnode;
+  unsigned flags;
 	sarena *sa = (sarena *) aux;
 
 	switch (sa->flags & SICM_ALLOC_MASK) {
@@ -238,7 +239,15 @@ static void sicm_arena_range_move(void *aux, void *start, void *end) {
 		break;
 	}
 
-	err = mbind((void *) start, (char*) end - (char*) start, mpol, nodemaskp, maxnode, MPOL_MF_MOVE);
+  flags = 0;
+  if (!(sa->flags & SICM_MOVE_RELAXED)) {
+    printf("Blocking until pages are moved\n");
+    flags = MPOL_MF_MOVE;
+  } else {
+    printf("Moving pages in a relaxed manner\n");
+  }
+
+	err = mbind((void *) start, (char*) end - (char*) start, mpol, nodemaskp, maxnode, flags);
 	if (err < 0 && sa->err == 0)
 		sa->err = err;
 }

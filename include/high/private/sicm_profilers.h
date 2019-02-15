@@ -78,10 +78,14 @@ typedef struct profile_extent_size_data {
 typedef struct profile_allocs_data {
   /* profile_allocs */
 } profile_allocs_data;
+use_tree(double, size_t);
+use_tree(size_t, deviceptr);
 typedef struct profile_online_data {
   /* profile_online */
   size_t profile_online_event_index;
   size_t lower_avail_initial, upper_avail_initial;
+
+  tree(size_t, deviceptr) prev_hotset, prev_coldset;
 } profile_online_data;
 
 

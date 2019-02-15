@@ -595,8 +595,6 @@ size_t get_weight(size_t index) {
   }
 }
 
-use_tree(double, size_t);
-use_tree(size_t, deviceptr);
 void profile_online_interval(int s) {
   size_t i, upper_avail, lower_avail,
          value, weight,
@@ -608,9 +606,11 @@ void profile_online_interval(int s) {
   double val_per_weight;
 
   /* Hotset */
-  tree(size_t, deviceptr) hotset;
-  size_t hotset_value, hotset_weight;
-  char break_next_site;
+  tree(size_t, deviceptr) hotset, coldset;
+  tree_it(size_t, deviceptr) hit, tmp_hit;
+  size_t hotset_value, hotset_weight,
+         coldset_value, coldset_weight;
+  char hot;
 
   /* Look at how much the application has consumed on each tier */
   upper_avail = sicm_avail(tracker.upper_device);
@@ -618,11 +618,8 @@ void profile_online_interval(int s) {
 
   event_index = prof.profile_online.profile_online_event_index;
 
-  printf("Upper_avail: %zu\n", upper_avail);
-
   if(lower_avail < prof.profile_online.lower_avail_initial) {
     /* The lower tier is now being used, so we need to reconfigure. */
-    printf("Lower_avail: %zu\n", lower_avail);
 
     /* Sort arenas by value/weight in the `sorted_arenas` tree */
     sorted_arenas = tree_make(double, size_t); /* val_per_weight -> arena index */
@@ -646,44 +643,79 @@ void profile_online_interval(int s) {
       tree_insert(sorted_arenas, val_per_weight, i);
     }
 
-    /* Print the sorted sites */
-    printf("===== SORTED SITES =====\n");
-    it = tree_last(sorted_arenas);
-    while(tree_it_good(it)) {
-      printf("%zu: %zu/%zu\n", tree_it_val(it), /* Index */
-                               get_value(tree_it_val(it), event_index), /* Value */
-                               get_weight(tree_it_val(it))); /* Weight */
-      tree_it_prev(it);
-    }
-    printf("===== END SORTED SITES=====\n\n\n");
-
-    /* Iterate over the sites and greedily pack them into the hotset */
+    /* Iterate over the sites and greedily pack them into the hotset.
+     * Also construct a tree of the sites that didn't make it.
+     */
     printf("===== HOTSET =====\n");
     hotset_value = 0;
     hotset_weight = 0;
-    break_next_site = 0;
-    hotset = tree_make(size_t, deviceptr); /* arena index -> online_device */
+    hot = 1;
+    cold_next_site = 0;
+    hotset = tree_make(size_t, deviceptr);
+    coldset = tree_make(size_t, deviceptr);
     it = tree_last(sorted_arenas);
     while(tree_it_good(it)) {
-      hotset_value += get_value(tree_it_val(it), event_index);
-      hotset_weight += get_weight(tree_it_val(it));
-      tree_insert(hotset, tree_it_val(it), tracker.upper_device);
-      printf("%zu: %zu/%zu\n", tree_it_val(it), /* Index */
-                               get_value(tree_it_val(it), event_index), /* Value */
-                               get_weight(tree_it_val(it))); /* Weight */
-      if(break_next_site) {
-        break;
+      if(hot) {
+        hotset_value += get_value(tree_it_val(it), event_index);
+        hotset_weight += get_weight(tree_it_val(it));
+        tree_insert(hotset, tree_it_val(it), tracker.upper_device);
+        printf("HOT %zu: %zu/%zu\n", tree_it_val(it), /* Index */
+                                 get_value(tree_it_val(it), event_index), /* Value */
+                                 get_weight(tree_it_val(it))); /* Weight */
+      } else {
+        coldset_value += get_value(tree_it_val(it), event_index);
+        coldset_weight += get_weight(tree_it_val(it));
+        tree_insert(coldset, tree_it_val(it), tracker.upper_device);
+        printf("COLD %zu: %zu/%zu\n", tree_it_val(it), /* Index */
+                                 get_value(tree_it_val(it), event_index), /* Value */
+                                 get_weight(tree_it_val(it))); /* Weight */
+      }
+      if(cold_next_site) {
+        hot = 0;
+        cold_next_site = 0;
       }
       if(hotset_weight > prof.profile_online.upper_avail_initial) {
-        break_next_site = 1;
+        cold_next_site = 1;
       }
       tree_it_prev(it);
     }
     printf("\n");
-    printf("Total value: %zu\n", hotset_value);
-    printf("Packed size: %zu\n", hotset_weight);
+    printf("Hot value: %zu\n", hotset_value);
+    printf("Hot weight: %zu\n", hotset_weight);
+    printf("Cold value: %zu\n", coldset_value);
+    printf("Cold weight: %zu\n", coldset_weight);
     printf("Capacity:    %zd\n", prof.profile_online.upper_avail_initial);
+    printf("Lower_avail: %zu\n", lower_avail);
+    printf("Upper_avail: %zu\n", upper_avail);
     printf("===== HOTSET =====\n");
+
+    /* Rebind arenas that are newly in the coldset */
+    tree_traverse(coldset, hit) {
+      tmp_hit = tree_lookup(prev_coldset, tree_it_key(hit));
+      if(!tree_it_good(tmp_hit)) {
+        /* The arena is in the current coldset, but not the previous one.
+         * Bind its pages to the lower device.
+         */
+        sicm_arena_set_device(tracker.arenas[tree_it_key(hit)]->arena, tracker.lower_device);
+      }
+    }
+
+    /* Rebind arenas that are newly in the hotset */
+    tree_traverse(hotset, hit) {
+      tmp_hit = tree_lookup(prev_hotset, tree_it_key(hit));
+      if(!tree_it_good(tmp_hit)) {
+        /* The arena is in the current hotset, but not the previous one.
+         * Bind its pages to the lower device.
+         */
+        sicm_arena_set_device(tracker.arenas[tree_it_key(hit)]->arena, tracker.upper_device);
+      }
+    }
+
+    /* Free the previous trees and set these as the current ones */
+    tree_free(prof.profile_online.prev_hotset);
+    prof.profile_online.prev_hotset = hotset;
+    tree_free(prof.profile_online.prev_coldset);
+    prof.profile_online.prev_coldset = coldset;
   }
 
   end_interval();

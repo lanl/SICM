@@ -47,6 +47,7 @@ typedef enum sicm_arena_flags {
   SICM_ALLOC_MASK    = 7,	// lowest 3 bits
   SICM_ALLOC_STRICT  = 0,	// don't use any devices outside of the assigned
   SICM_ALLOC_RELAXED = 1,	// prefer the assigned devices, but use other memory too
+  SICM_MOVE_RELAXED  = 2, // don't block when pages are moved, let them fault on access
 } sicm_arena_flags;
 
 /// Data specific to a DRAM device.
