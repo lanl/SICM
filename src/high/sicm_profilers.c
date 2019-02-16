@@ -234,6 +234,7 @@ void profile_all_post_interval(profile_info *info) {
     if(profinfo->tmp_accumulator > per_event_profinfo->peak) {
       per_event_profinfo->peak = profinfo->tmp_accumulator;
     }
+    printf("profile_all: %zu %zu\n", i, per_event_profinfo->total);
     /* One size_t per interval for this one event */
     per_event_profinfo->intervals = (size_t *)orig_realloc(per_event_profinfo->intervals, info->num_intervals * sizeof(size_t));
     per_event_profinfo->intervals[info->num_intervals - 1] = profinfo->tmp_accumulator;
