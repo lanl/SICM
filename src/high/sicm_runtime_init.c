@@ -209,13 +209,13 @@ void set_options() {
     }
 
     env = getenv("SH_PROFILE_ONLINE_LAST_ITER_VALUE");
-    profopts.profile_online_last_iter_value = 0;
+    profopts.profile_online_last_iter_value = 0.0;
     if(env) {
       profopts.profile_online_last_iter_value = strtof(env, NULL);
     }
 
     env = getenv("SH_PROFILE_ONLINE_LAST_ITER_WEIGHT");
-    profopts.profile_online_last_iter_weight = 0;
+    profopts.profile_online_last_iter_weight = 0.0;
     if(env) {
       profopts.profile_online_last_iter_weight = strtof(env, NULL);
     }
@@ -657,7 +657,7 @@ void set_options() {
         /* Construct a site_info struct to store in the tree */
         site_info *site_struct = orig_malloc(sizeof(site_info));
         pthread_rwlock_init(&site_struct->lock, NULL);
-        site_struct->device = get_device_from_numa_node;
+        site_struct->device = get_device_from_numa_node(node);
         site_struct->arena = -1;
         site_struct->size = 0;
         site_struct->big = 0;
