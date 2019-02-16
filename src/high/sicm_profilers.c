@@ -556,6 +556,7 @@ void profile_online_interval(int s) {
   size_t i;
   arena_info *arena;
   profile_info *profinfo;
+  per_event_profile_all_info *per_event_profinfo;
 
   /* Detect if the upper tier is consumed */
   upper_avail = sicm_avail(tracker.upper_device);
