@@ -568,7 +568,7 @@ size_t get_value(size_t index, size_t event_index) {
   return per_event_profinfo->total;
 }
 
-size_t get_weight(size_t index, size_t event_index) {
+size_t get_weight(size_t index) {
   arena_info *arena;
   profile_info *profinfo;
   size_t weight;
