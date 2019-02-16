@@ -70,8 +70,6 @@ for word in $ARGS; do
 
 done
 
-echo $EXTRA_ARGS
-
 if [[ ((${#INPUT_FILES[@]} -gt 1) && ($OUTPUT_FILE != "") && ($ONLY_COMPILE)) || (${#INPUT_FILES[@]} -eq 0) ]]; then
   # This is illegal, just call the compiler to error out
   ${LLVMPATH}${COMPILER} $ARGS
