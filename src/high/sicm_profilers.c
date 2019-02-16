@@ -584,14 +584,15 @@ size_t get_weight(size_t index, size_t event_index) {
    * in `profile_online_init`.
    */
   if(profopts.should_profile_allocs) {
-    return profinfo.profile_allocs.peak;
+    return profinfo->profile_allocs.peak;
   } else if(profopts.should_profile_extent_size) {
-    return profinfo.profile_extent_size.peak;
+    return profinfo->profile_extent_size.peak;
   } else if(profopts.should_profile_rss) {
-    return profinfo.profile_rss.peak;
+    return profinfo->profile_rss.peak;
   }
 }
 
+use_tree(double, size_t);
 void profile_online_interval(int s) {
   size_t i,
          upper_avail, lower_avail,
