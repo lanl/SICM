@@ -81,6 +81,7 @@ typedef struct profile_allocs_data {
 typedef struct profile_online_data {
   /* profile_online */
   size_t profile_online_event_index;
+  size_t lower_avail_initial, upper_avail_initial;
 } profile_online_data;
 
 
