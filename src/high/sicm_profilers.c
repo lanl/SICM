@@ -552,25 +552,26 @@ void *profile_online(void *a) {
 }
 
 void profile_online_interval(int s) {
-  size_t upper_avail;
-  size_t i;
+  size_t i, upper_avail, lower_avail;
   arena_info *arena;
   profile_info *profinfo;
   per_event_profile_all_info *per_event_profinfo;
 
-  /* Detect if the upper tier is consumed */
+  /* Look at how much the application has consumed on each tier */
   upper_avail = sicm_avail(tracker.upper_device);
+  lower_avail = sicm_avail(tracker.lower_device);
+
   printf("The upper tier has %zu available.\n", upper_avail);
-  if(upper_avail == 0) {
-    /* If the upper tier is constrained, we need to generate a hotset and
-     * reconfigure.
-     */
+  if(lower_avail < prof.profile_online.lower_avail_initial) {
+    printf("LOWER TIER: %zu\n", lower_avail);
+#if 0
     for(i = 0; i <= tracker.max_index; i++) {
       arena = tracker.arenas[i];
       profinfo = prof.info[i];
       per_event_profinfo = &(profinfo->profile_all.events[prof.profile_online.profile_online_event_index]);
       if((!arena) || (!profinfo) || (!profinfo->num_intervals)) continue;
     }
+#endif
   }
 
   end_interval();
@@ -593,6 +594,12 @@ void profile_online_init() {
     fprintf(stderr, "Event specified in SH_PROFILE_ONLINE_EVENT is not listed in SH_PROFILE_ALL_EVENTS. Aborting.\n");
     exit(1);
   }
+
+  /* Figure out the amount of free memory that we're starting out with */
+  prof.profile_online.upper_avail_initial = sicm_avail(tracker.upper_device);
+  prof.profile_online.lower_avail_initial = sicm_avail(tracker.lower_device);
+  printf("upper_avail_initial: %zu\n", prof.profile_online.upper_avail_initial);
+  printf("lower_avail_initial: %zu\n", prof.profile_online.lower_avail_initial);
 }
 
 void profile_online_deinit() {
