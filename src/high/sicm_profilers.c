@@ -551,26 +551,123 @@ void *profile_online(void *a) {
   while(1) { }
 }
 
-void profile_online_interval(int s) {
-  size_t i, upper_avail, lower_avail;
+size_t get_value(size_t index, size_t event_index) {
   arena_info *arena;
   profile_info *profinfo;
   per_event_profile_all_info *per_event_profinfo;
+  size_t value;
+
+  /* Get the profiling information */
+  arena = tracker.arenas[index];
+  profinfo = prof.info[index];
+  per_event_profinfo = &(profinfo->profile_all.events[event_index]);
+  if((!arena) || (!profinfo) || (!profinfo->num_intervals)) {
+    return 0;
+  }
+
+  return per_event_profinfo->total;
+}
+
+size_t get_weight(size_t index, size_t event_index) {
+  arena_info *arena;
+  profile_info *profinfo;
+  size_t weight;
+
+  /* Get the profiling information */
+  arena = tracker.arenas[index];
+  profinfo = prof.info[index];
+  if((!arena) || (!profinfo) || (!profinfo->num_intervals)) {
+    return 0;
+  }
+  
+  /* TODO: Speed this up by setting something up (perhaps an offset into profinfo)
+   * in `profile_online_init`.
+   */
+  if(profopts.should_profile_allocs) {
+    return profinfo.profile_allocs.peak;
+  } else if(profopts.should_profile_extent_size) {
+    return profinfo.profile_extent_size.peak;
+  } else if(profopts.should_profile_rss) {
+    return profinfo.profile_rss.peak;
+  }
+}
+
+void profile_online_interval(int s) {
+  size_t i,
+         upper_avail, lower_avail,
+         value, weight,
+         hotset_value, hotset_weight,
+         event_index;
+  tree(double, size_t) sorted_arenas;
+  tree_it(double, size_t) it;
+  double val_per_weight;
 
   /* Look at how much the application has consumed on each tier */
   upper_avail = sicm_avail(tracker.upper_device);
   lower_avail = sicm_avail(tracker.lower_device);
 
-  printf("The upper tier has %zu available.\n", upper_avail);
+  event_index = prof.profile_online.profile_online_event_index;
+
   if(lower_avail < prof.profile_online.lower_avail_initial) {
-    printf("LOWER TIER: %zu\n", lower_avail);
-#if 0
+    /* The lower tier is now being used, so we need to reconfigure. */
+
+    /* Sort arenas by value/weight in the `sorted_arenas` tree */
+    sorted_arenas = tree_make(double, size_t); /* val_per_weight -> arena index */
     for(i = 0; i <= tracker.max_index; i++) {
-      arena = tracker.arenas[i];
-      profinfo = prof.info[i];
-      per_event_profinfo = &(profinfo->profile_all.events[prof.profile_online.profile_online_event_index]);
-      if((!arena) || (!profinfo) || (!profinfo->num_intervals)) continue;
+      value = get_value(i, event_index);
+      weight = get_weight(i);
+      if((!value) || (!weight)) continue;
+
+      val_per_weight = ((double) value) / ((double) weight);
+
+      /* First see if this value is already in the tree. If so, inch it up just slightly
+       * to avoid collisions.
+       */
+      it = tree_lookup(sorted_arenas, val_per_weight);
+      while(tree_it_good(it)) {
+        val_per_weight += 0.000000000000000001;
+        it = tree_lookup(sorted_arenas, val_per_weight);
+      }
+
+      /* Finally insert into the tree */
+      tree_insert(sorted_arenas, val_per_weight, i);
     }
+
+    /* Print the sorted sites */
+    it = tree_last(sorted_arenas);
+    while(tree_it_good(it)) {
+      printf("%zu: %zu/%zu\n", tree_it_val(it), /* Index */
+                               get_value(tree_it_val(it), event_index), /* Value */
+                               get_weight(tree_it_val(it))); /* Weight */
+      tree_it_prev(it);
+    }
+
+#if 0
+    /* Use a greedy algorithm to pack sites into the knapsack */
+    hotset_value = 0;
+    hotset_weight = 0;
+    break_next_site = 0;
+    new_knapsack = tree_make(size_t, deviceptr); /* arena index -> online_device */
+    it = tree_last(sorted_arenas);
+    while(tree_it_good(it)) {
+      hotset_weight += arenas[tree_it_val(it)]->peak_rss;
+      hotset_value += arenas[tree_it_val(it)]->accesses;
+      tree_insert(new_knapsack, tree_it_val(it), online_device);
+      for(id = 0; id < arenas[tree_it_val(it)]->num_alloc_sites; id++) {
+        printf("%d ", arenas[tree_it_val(it)]->alloc_sites[id]);
+      }
+      if(break_next_site) {
+        break;
+      }
+      if(hotset_weight > online_device_cap) {
+        break_next_site = 1;
+      }
+      tree_it_prev(it);
+    }
+    printf("\n");
+    printf("Total value: %zu\n", hotset_value);
+    printf("Packed size: %zu\n", hotset_weight);
+    printf("Capacity:    %zd\n", online_device_cap);
 #endif
   }
 
@@ -581,7 +678,21 @@ void profile_online_init() {
   size_t i;
   char found;
 
-  /* Look for the event that we're supposed to use. Error out if it's not found. */
+  /* Determine which type of profiling to use to determine weight. Error if none found. */
+  /* TODO: Set something up so that we don't have to check this every time `get_weight` is called. */
+  if(profopts.should_profile_allocs) {
+  } else if(profopts.should_profile_extent_size) {
+  } else if(profopts.should_profile_rss) {
+  } else {
+    fprintf(stderr, "SH_PROFILE_ONLINE requires at least one type of weight profiling. Aborting.\n");
+    exit(1);
+  }
+
+  /* Look for the event that we're supposed to use for value. Error out if it's not found. */
+  if(!profopts.should_profile_all) { 
+    fprintf(stderr, "SH_PROFILE_ONLINE requires SH_PROFILE_ALL. Aborting.\n");
+    exit(1);
+  }
   found = 0;
   for(i = 0; i < profopts.num_profile_all_events; i++) {
     if(strcmp(profopts.profile_all_events[i], profopts.profile_online_event) == 0) {
