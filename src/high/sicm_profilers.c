@@ -620,6 +620,7 @@ void profile_online_interval(int s) {
     for(i = 0; i <= tracker.max_index; i++) {
       value = get_value(i, event_index);
       weight = get_weight(i);
+      printf("%zu %zu\n", value, weight);
       if((!value) || (!weight)) continue;
 
       val_per_weight = ((double) value) / ((double) weight);
