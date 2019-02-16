@@ -151,12 +151,11 @@ typedef struct profiling_options {
   int sample_freq;
   int max_sample_pages;
 
+  /* Online */
+  char *profile_online_event;
+
   /* The device to profile bandwidth on */
   deviceptr profile_one_device;
-
-  /* Online profiling device and parameters */
-  deviceptr online_device;
-  ssize_t online_device_cap;
 
   /* Array of strings for profile_all events */
   size_t num_profile_all_events;
