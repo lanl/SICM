@@ -57,7 +57,7 @@ for word in $ARGS; do
     while read line; do
       FILES_ARR+=("${line}")
       BC_STR="$BC_STR ${line}.bc"
-      LINKER_INPUT_FILES="$LINKER_INPUT_FILES ${line}"
+      LINKER_INPUT_FILES="$LINKER_INPUT_FILES ${line}.o"
     done < "${word}"
   fi
   PREV="${word}"
@@ -104,7 +104,7 @@ wait
 COUNTER=1
 for file in "${FILES_ARR[@]}"; do
   FILEARGS=`cat $file.args`
-  ${LLVMPATH}${LD_COMPILER} $FILEARGS -c ${file}.bc -o ${file} &
+  ${LLVMPATH}${LD_COMPILER} $FILEARGS -c ${file}.bc -o ${file}.o &
   COUNTER=$((COUNTER+1))
   if [[ "$COUNTER" -gt 16 ]]; then
     COUNTER=1
