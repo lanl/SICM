@@ -553,15 +553,45 @@ void *profile_online(void *a) {
 
 void profile_online_interval(int s) {
   size_t upper_avail;
+  size_t i;
+  arena_info *arena;
+  profile_info *profinfo;
 
   /* Detect if the upper tier is consumed */
   upper_avail = sicm_avail(tracker.upper_device);
   printf("The upper tier has %zu available.\n", upper_avail);
+  if(upper_avail == 0) {
+    /* If the upper tier is constrained, we need to generate a hotset and
+     * reconfigure.
+     */
+    for(i = 0; i <= tracker.max_index; i++) {
+      arena = tracker.arenas[i];
+      profinfo = prof.info[i];
+      per_event_profinfo = &(profinfo->profile_all.events[prof.profile_online.profile_online_event_index]);
+      if((!arena) || (!profinfo) || (!profinfo->num_intervals)) continue;
+    }
+  }
 
   end_interval();
 }
 
 void profile_online_init() {
+  size_t i;
+  char found;
+
+  /* Look for the event that we're supposed to use. Error out if it's not found. */
+  found = 0;
+  for(i = 0; i < profopts.num_profile_all_events; i++) {
+    if(strcmp(profopts.profile_all_events[i], profopts.profile_online_event) == 0) {
+      found = 1;
+      prof.profile_online.profile_online_event_index = i;
+      break;
+    }
+  }
+  if(!found) {
+    fprintf(stderr, "Event specified in SH_PROFILE_ONLINE_EVENT is not listed in SH_PROFILE_ALL_EVENTS. Aborting.\n");
+    exit(1);
+  }
 }
 
 void profile_online_deinit() {

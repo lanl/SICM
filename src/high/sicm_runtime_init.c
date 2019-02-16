@@ -121,11 +121,30 @@ void set_options() {
   /* Do we want to use the online approach, moving arenas around devices automatically? */
   env = getenv("SH_PROFILE_ONLINE");
   profopts.should_profile_online = 0;
+  profopts.profile_online_skip_intervals = 0;
+  profopts.profile_online_event = NULL;
   if(env) {
     profopts.should_profile_online = 1;
+
+    env = getenv("SH_PROFILE_ONLINE_SKIP_INTERVALS");
+    profopts.profile_online_skip_intervals = 1;
+    if(env) {
+      profopts.profile_online_skip_intervals = strtoul(env, NULL, 0);
+    }
+
+    env = getenv("SH_PROFILE_ONLINE_EVENT");
+    profopts.profile_online_event = NULL;
+    if(env) {
+      profopts.profile_online_event = orig_malloc(sizeof(char) * (strlen(env) + 1));
+      strcpy(profopts.profile_online_event, env);
+    }
   }
   if(tracker.log_file) {
     fprintf(tracker.log_file, "SH_PROFILE_ONLINE: %d\n", profopts.should_profile_online);
+    fprintf(tracker.log_file, "SH_PROFILE_ONLINE_SKIP_INTERVALS: %d\n", profopts.profile_online_skip_intervals);
+    if(profopts.profile_online_event) {
+      fprintf(tracker.log_file, "SH_PROFILE_ONLINE_EVENT: %s\n", profopts.profile_online_event);
+    }
   }
 
   /* Get the arena layout */
@@ -371,6 +390,7 @@ void set_options() {
   /* Should we get the RSS of each arena? */
   env = getenv("SH_PROFILE_RSS");
   profopts.should_profile_rss = 0;
+  profopts.profile_rss_skip_intervals = 0;
   if(env) {
     profopts.should_profile_rss = 1;
 

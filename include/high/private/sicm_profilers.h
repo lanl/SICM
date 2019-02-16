@@ -80,6 +80,7 @@ typedef struct profile_allocs_data {
 } profile_allocs_data;
 typedef struct profile_online_data {
   /* profile_online */
+  size_t profile_online_event_index;
 } profile_online_data;
 
 
