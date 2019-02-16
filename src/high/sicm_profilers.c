@@ -565,6 +565,7 @@ size_t get_value(size_t index, size_t event_index) {
     return 0;
   }
 
+  printf("returning real value: %zu %zu %zu\n", index, event_index, per_event_profinfo->total);
   return per_event_profinfo->total;
 }
 
