@@ -609,8 +609,11 @@ void profile_online_interval(int s) {
 
   event_index = prof.profile_online.profile_online_event_index;
 
+  printf("Upper_avail: %zu\n", upper_avail);
+
   if(lower_avail < prof.profile_online.lower_avail_initial) {
     /* The lower tier is now being used, so we need to reconfigure. */
+    printf("Lower_avail: %zu\n", lower_avail);
 
     /* Sort arenas by value/weight in the `sorted_arenas` tree */
     sorted_arenas = tree_make(double, size_t); /* val_per_weight -> arena index */
@@ -635,6 +638,7 @@ void profile_online_interval(int s) {
     }
 
     /* Print the sorted sites */
+    printf("Printing out sorted sites:\n");
     it = tree_last(sorted_arenas);
     while(tree_it_good(it)) {
       printf("%zu: %zu/%zu\n", tree_it_val(it), /* Index */
