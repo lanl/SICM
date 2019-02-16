@@ -17,7 +17,7 @@
 
 /* Default strings */
 #define DEFAULT_VALUE "profile_all"
-#define DEFAULT_WEIGHT "profile_allocs"
+#define DEFAULT_WEIGHT "profile_extent_size"
 #define DEFAULT_ALGO "hotset"
 #define DEFAULT_SORT "value_per_weight"
 
