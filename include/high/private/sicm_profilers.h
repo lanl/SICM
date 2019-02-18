@@ -84,7 +84,7 @@ typedef struct profile_online_data {
   /* profile_online */
   size_t profile_online_event_index;
   size_t lower_avail_initial, upper_avail_initial;
-
+  struct sicm_device_list *upper_dl, *lower_dl;
   tree(size_t, deviceptr) prev_hotset, prev_coldset;
 } profile_online_data;
 

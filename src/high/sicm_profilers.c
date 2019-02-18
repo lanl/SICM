@@ -696,7 +696,8 @@ void profile_online_interval(int s) {
         /* The arena is in the current coldset, but not the previous one.
          * Bind its pages to the lower device.
          */
-        sicm_arena_set_device(tracker.arenas[tree_it_key(hit)]->arena, tracker.lower_device);
+        sicm_arena_set_devices(tracker.arenas[tree_it_key(hit)]->arena, /* The arena */
+                               prof.profile_online.lower_dl);           /* The device list */
       }
     }
 
@@ -707,7 +708,8 @@ void profile_online_interval(int s) {
         /* The arena is in the current hotset, but not the previous one.
          * Bind its pages to the upper device.
          */
-        sicm_arena_set_device(tracker.arenas[tree_it_key(hit)]->arena, tracker.upper_device);
+        sicm_arena_set_devices(tracker.arenas[tree_it_key(hit)]->arena, /* The arena */
+                               prof.profile_online.upper_dl);           /* The device list */
       }
     }
 
@@ -762,6 +764,16 @@ void profile_online_init() {
   prof.profile_online.lower_avail_initial = sicm_avail(tracker.lower_device);
   printf("upper_avail_initial: %zu\n", prof.profile_online.upper_avail_initial);
   printf("lower_avail_initial: %zu\n", prof.profile_online.lower_avail_initial);
+
+  /* Since sicm_arena_set_devices accepts a device_list, construct these */
+  prof.profile_online.upper_dl = malloc(sizeof(struct sicm_device_list));
+  prof.profile_online.upper_dl->count = 1;
+  prof.profile_online.upper_dl->devices = malloc(sizeof(deviceptr));
+  prof.profile_online.upper_dl->devices[0] = tracker.upper_device;
+  prof.profile_online.lower_dl = malloc(sizeof(struct sicm_device_list));
+  prof.profile_online.lower_dl->count = 1;
+  prof.profile_online.lower_dl->devices = malloc(sizeof(deviceptr));
+  prof.profile_online.lower_dl->devices[0] = tracker.lower_device;
 
   prof.profile_online.prev_hotset = NULL;
   prof.profile_online.prev_coldset = NULL;
