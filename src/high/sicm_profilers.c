@@ -705,7 +705,7 @@ void profile_online_interval(int s) {
       tmp_hit = tree_lookup(prof.profile_online.prev_hotset, tree_it_key(hit));
       if(!tree_it_good(tmp_hit)) {
         /* The arena is in the current hotset, but not the previous one.
-         * Bind its pages to the lower device.
+         * Bind its pages to the upper device.
          */
         sicm_arena_set_device(tracker.arenas[tree_it_key(hit)]->arena, tracker.upper_device);
       }
