@@ -675,6 +675,15 @@ void profile_online_interval(int s) {
       tree_it_prev(it);
     }
 
+    /* If this is the first interval, just make the previous sets
+     * empty */
+    if(!prof.profile_online.prev_coldset) {
+      prof.profile_online.prev_coldset = tree_make(size_t, deviceptr);
+    }
+    if(!prof.profile_online.prev_hotset) {
+      prof.profile_online.prev_hotset = tree_make(size_t, deviceptr);
+    }
+
     if(!profopts.profile_online_nobind) {
       /* Rebind arenas that are newly in the coldset */
       tree_traverse(coldset, hit) {
