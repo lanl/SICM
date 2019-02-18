@@ -626,7 +626,9 @@ void profile_online_interval(int s) {
     for(i = 0; i <= tracker.max_index; i++) {
       value = get_value(i, event_index);
       weight = get_weight(i);
-      if((!value) || (!weight)) continue;
+      if(!weight) continue;
+      /* 0-value sites have a value inversely proportional to their capacity */
+      if(!value) value = 1;
 
       val_per_weight = ((double) value) / ((double) weight);
 
