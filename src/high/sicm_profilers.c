@@ -646,7 +646,6 @@ void profile_online_interval(int s) {
     /* Iterate over the sites and greedily pack them into the hotset.
      * Also construct a tree of the sites that didn't make it.
      */
-    printf("===== HOTSET =====\n");
     hotset_value = 0;
     hotset_weight = 0;
     hot = 1;
@@ -659,16 +658,10 @@ void profile_online_interval(int s) {
         hotset_value += get_value(tree_it_val(it), event_index);
         hotset_weight += get_weight(tree_it_val(it));
         tree_insert(hotset, tree_it_val(it), tracker.upper_device);
-        printf("HOT %zu: %zu/%zu\n", tree_it_val(it), /* Index */
-                                 get_value(tree_it_val(it), event_index), /* Value */
-                                 get_weight(tree_it_val(it))); /* Weight */
       } else {
         coldset_value += get_value(tree_it_val(it), event_index);
         coldset_weight += get_weight(tree_it_val(it));
         tree_insert(coldset, tree_it_val(it), tracker.upper_device);
-        printf("COLD %zu: %zu/%zu\n", tree_it_val(it), /* Index */
-                                 get_value(tree_it_val(it), event_index), /* Value */
-                                 get_weight(tree_it_val(it))); /* Weight */
       }
       if(cold_next_site) {
         hot = 0;
@@ -679,37 +672,32 @@ void profile_online_interval(int s) {
       }
       tree_it_prev(it);
     }
-    printf("\n");
-    printf("Hot value: %zu\n", hotset_value);
-    printf("Hot weight: %zu\n", hotset_weight);
-    printf("Cold value: %zu\n", coldset_value);
-    printf("Cold weight: %zu\n", coldset_weight);
-    printf("Capacity:    %zd\n", prof.profile_online.upper_avail_initial);
-    printf("Lower_avail: %zu\n", lower_avail);
-    printf("Upper_avail: %zu\n", upper_avail);
-    printf("===== HOTSET =====\n");
 
-    /* Rebind arenas that are newly in the coldset */
-    tree_traverse(coldset, hit) {
-      tmp_hit = tree_lookup(prof.profile_online.prev_coldset, tree_it_key(hit));
-      if(!tree_it_good(tmp_hit)) {
-        /* The arena is in the current coldset, but not the previous one.
-         * Bind its pages to the lower device.
-         */
-        sicm_arena_set_devices(tracker.arenas[tree_it_key(hit)]->arena, /* The arena */
-                               prof.profile_online.lower_dl);           /* The device list */
+    if(!profopts.profile_online_nobind) {
+      /* Rebind arenas that are newly in the coldset */
+      tree_traverse(coldset, hit) {
+        tmp_hit = tree_lookup(prof.profile_online.prev_coldset, tree_it_key(hit));
+        if(!tree_it_good(tmp_hit)) {
+          /* The arena is in the current coldset, but not the previous one.
+           * Bind its pages to the lower device.
+           */
+          printf("Arena %d -> AEP\n", tree_it_key(hit));
+          sicm_arena_set_devices(tracker.arenas[tree_it_key(hit)]->arena, /* The arena */
+                                 prof.profile_online.lower_dl);           /* The device list */
+        }
       }
-    }
 
-    /* Rebind arenas that are newly in the hotset */
-    tree_traverse(hotset, hit) {
-      tmp_hit = tree_lookup(prof.profile_online.prev_hotset, tree_it_key(hit));
-      if(!tree_it_good(tmp_hit)) {
-        /* The arena is in the current hotset, but not the previous one.
-         * Bind its pages to the upper device.
-         */
-        sicm_arena_set_devices(tracker.arenas[tree_it_key(hit)]->arena, /* The arena */
-                               prof.profile_online.upper_dl);           /* The device list */
+      /* Rebind arenas that are newly in the hotset */
+      tree_traverse(hotset, hit) {
+        tmp_hit = tree_lookup(prof.profile_online.prev_hotset, tree_it_key(hit));
+        if(!tree_it_good(tmp_hit)) {
+          /* The arena is in the current hotset, but not the previous one.
+           * Bind its pages to the upper device.
+           */
+          printf("Arena %d -> DDR\n", tree_it_key(hit));
+          sicm_arena_set_devices(tracker.arenas[tree_it_key(hit)]->arena, /* The arena */
+                                 prof.profile_online.upper_dl);           /* The device list */
+        }
       }
     }
 
@@ -762,8 +750,6 @@ void profile_online_init() {
   /* Figure out the amount of free memory that we're starting out with */
   prof.profile_online.upper_avail_initial = sicm_avail(tracker.upper_device);
   prof.profile_online.lower_avail_initial = sicm_avail(tracker.lower_device);
-  printf("upper_avail_initial: %zu\n", prof.profile_online.upper_avail_initial);
-  printf("lower_avail_initial: %zu\n", prof.profile_online.lower_avail_initial);
 
   /* Since sicm_arena_set_devices accepts a device_list, construct these */
   prof.profile_online.upper_dl = malloc(sizeof(struct sicm_device_list));

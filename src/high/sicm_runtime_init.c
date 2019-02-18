@@ -126,6 +126,13 @@ void set_options() {
   if(env) {
     profopts.should_profile_online = 1;
 
+    /* Purely to measure the overhead of the online approach without doing any special binding */
+    env = getenv("SH_PROFILE_ONLINE_NOBIND");
+    profopts.profile_online_nobind = 0;
+    if(env) {
+      profopts.profile_online_nobind = 1;
+    }
+
     env = getenv("SH_PROFILE_ONLINE_SKIP_INTERVALS");
     profopts.profile_online_skip_intervals = 1;
     if(env) {
