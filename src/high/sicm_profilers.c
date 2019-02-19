@@ -637,7 +637,7 @@ void profile_online_interval(int s) {
        */
       it = tree_lookup(sorted_arenas, val_per_weight);
       while(tree_it_good(it)) {
-        val_per_weight += 0.000000000000000001;
+        val_per_weight += 0.0000000000000001;
         it = tree_lookup(sorted_arenas, val_per_weight);
       }
 
