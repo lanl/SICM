@@ -395,7 +395,7 @@ void sh_create_arena(int index, int id, sicm_device *device) {
   dl.count = 1;
   dl.devices = orig_malloc(sizeof(sicm_device *) * 1);
   dl.devices[0] = device;
-  arena->arena = sicm_arena_create(0, SICM_ALLOC_RELAXED | SICM_MOVE_RELAXED, &dl);
+  arena->arena = sicm_arena_create(0, SICM_ALLOC_RELAXED, &dl);
   orig_free(dl.devices);
 
   /* Now add the arena to the array of arenas */
