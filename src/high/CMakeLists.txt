@@ -4,7 +4,6 @@ add_library(sicm_runtime SHARED
             sicm_cstd.c
             sicm_rdspy.c
             sicm_profile.c
-            sicm_profilers.c
             profilers/sicm_profile_all.c
             profilers/sicm_profile_allocs.c
             profilers/sicm_profile_rss.c
