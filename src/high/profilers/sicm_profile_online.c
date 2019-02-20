@@ -124,7 +124,7 @@ void profile_online_interval(int s) {
     /* The lower tier is now being used, so we need to reconfigure. */
 
     /* Sort arenas by value/weight in the `sorted_arenas` tree */
-    sorted_arenas = tree_make_c(valweightptr, int, &value_per_weight_cmp);
+    sorted_arenas = tree_make_c(valweightptr, size_t, &value_per_weight_cmp);
     for(i = 0; i <= tracker.max_index; i++) {
       value = get_value(i, event_index);
       weight = get_weight(i);
