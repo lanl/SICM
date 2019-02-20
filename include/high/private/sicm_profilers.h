@@ -83,7 +83,7 @@ typedef struct profile_allocs_data {
 /* profile_online */
 typedef struct valweight {
   size_t value, weight;
-}
+} valweight;
 typedef valweight * valweightptr;
 use_tree(valweightptr, size_t);
 use_tree(size_t, deviceptr);
