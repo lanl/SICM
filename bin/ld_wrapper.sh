@@ -83,35 +83,29 @@ ${LLVMPATH}${OPT} -load ${LIB_DIR}/libsicm_compass.so -compass-mode=analyze \
     .sicm_ir.bc -o .sicm_ir_transformed.bc
 
 # Run the compiler pass on each individual file
+# Construct a newline-separated list of commands.
+COMMANDS=""
 if [ -z ${SH_RDSPY+x} ]; then
-    COUNTER=1
     for file in "${FILES_ARR[@]}"; do
-      ${LLVMPATH}${OPT} -load ${LIB_DIR}/libsicm_compass.so -compass-mode=transform -compass -compass-depth=3 ${file}.bc -o ${file}.bc &
-      COUNTER=$((COUNTER+1))
-      if [[ "$COUNTER" -gt 16 ]]; then
-        COUNTER=1
-        wait
-      fi
+      COMMANDS+="${LLVMPATH}${OPT} -load ${LIB_DIR}/libsicm_compass.so -compass-mode=transform -compass -compass-depth=3 ${file}.bc -o ${file}.bc"
+      COMMANDS+=$'\n'
     done
 else
     for file in "${FILES_ARR[@]}"; do
-      ${LLVMPATH}${OPT} -load ${LIB_DIR}/libsicm_compass.so -load ${LIB_DIR}/libsicm_rdspy.so -compass-mode=transform -compass -compass-depth=3 -rdspy -rdspy-sampling-threshold=${SH_RDSPY_SAMPLE} ${file}.bc -o ${file}.bc &
+      COMMANDS+="${LLVMPATH}${OPT} -load ${LIB_DIR}/libsicm_compass.so -load ${LIB_DIR}/libsicm_rdspy.so -compass-mode=transform -compass -compass-depth=3 -rdspy -rdspy-sampling-threshold=${SH_RDSPY_SAMPLE} ${file}.bc -o ${file}.bc"
+      COMMANDS+=$'\n'
     done
 fi
-wait
+echo "$COMMANDS" | xargs -I CMD --max-procs=32 bash -c CMD
 
 # Also compile each file to its transformed object file, overwriting the old one
-COUNTER=1
+COMMANDS=""
 for file in "${FILES_ARR[@]}"; do
   FILEARGS=`cat $file.args`
-  ${LLVMPATH}${LD_COMPILER} $FILEARGS -c ${file}.bc -o ${file}.o &
-  COUNTER=$((COUNTER+1))
-  if [[ "$COUNTER" -gt 16 ]]; then
-    COUNTER=1
-    wait
-  fi
+  COMMANDS+="${LLVMPATH}${LD_COMPILER} $FILEARGS -c ${file}.bc -o ${file}.o"
+  COMMANDS+=$'\n'
 done
-wait
+echo "$COMMANDS" | xargs -I CMD --max-procs=32 bash -c CMD
 
 # Now finally link the transformed '.o' files
 LINKARGS="$LINKARGS -L${LIB_DIR} -lsicm_high -Wl,-rpath,${LIB_DIR}"
