@@ -103,8 +103,8 @@ void profile_online_interval(int s) {
          event_index;
 
   /* Sorted sites */
-  tree(double, size_t) sorted_arenas;
-  tree_it(double, size_t) it;
+  tree(valweightptr, size_t) sorted_arenas;
+  tree_it(valweightptr, size_t) it;
   valweightptr arena_val;
 
   /* Hotset */
