@@ -17,13 +17,39 @@ void profile_online_interval(int);
 void profile_online_skip_interval(int);
 void profile_online_post_interval(profile_info *);
 
-void profile_online_arena_init(profile_online_info *info) {
+/***
+ * Utility functions
+ ***/
+
+/* Used to construct the sorted_arenas tree */
+typedef struct valweight {
+  size_t value, weight;
+} valweight;
+typedef valweight *valweightptr;
+
+static inline int double_cmp(double a, double b) {
+  int retval;
+  if(a < b) {
+    retval = 1;
+  } else if(a > b) {
+    retval = -1;
+  } else {
+    retval = 1;
+  }
+  return retval;
 }
 
-void *profile_online(void *a) {
-  pthread_setcanceltype(PTHREAD_CANCEL_ASYNCHRONOUS, NULL);
+/* Used to compare two arenas to sort the tree */
+int value_per_weight_cmp(valweightptr a, valweightptr b) {
+  double a_bpb, b_bpb;
+  int retval;
 
-  while(1) { }
+  if(a == b) return 0;
+
+  a_bpb = ((double)a->value) / ((double)a->weight);
+  b_bpb = ((double)b->value) / ((double)b->weight);
+
+  return double_cmp(a_bpb, b_bpb);
 }
 
 size_t get_value(size_t index, size_t event_index) {
@@ -68,6 +94,15 @@ size_t get_weight(size_t index) {
   }
 }
 
+void profile_online_arena_init(profile_online_info *info) {
+}
+
+void *profile_online(void *a) {
+  pthread_setcanceltype(PTHREAD_CANCEL_ASYNCHRONOUS, NULL);
+
+  while(1) { }
+}
+
 void profile_online_interval(int s) {
   size_t i, upper_avail, lower_avail,
          value, weight,
@@ -76,7 +111,7 @@ void profile_online_interval(int s) {
   /* Sorted sites */
   tree(double, size_t) sorted_arenas;
   tree_it(double, size_t) it;
-  double val_per_weight;
+  valweightptr arena_val;
 
   /* Hotset */
   tree(size_t, deviceptr) hotset, coldset;
@@ -95,27 +130,19 @@ void profile_online_interval(int s) {
     /* The lower tier is now being used, so we need to reconfigure. */
 
     /* Sort arenas by value/weight in the `sorted_arenas` tree */
-    sorted_arenas = tree_make(double, size_t); /* val_per_weight -> arena index */
+    sorted_arenas = tree_make_c(valweightptr, int, &value_per_weight_cmp);
     for(i = 0; i <= tracker.max_index; i++) {
       value = get_value(i, event_index);
       weight = get_weight(i);
       if(!weight) continue;
-      /* 0-value sites have a value inversely proportional to their capacity */
       if(!value) value = 1;
 
-      val_per_weight = ((double) value) / ((double) weight);
-
-      /* First see if this value is already in the tree. If so, inch it up just slightly
-       * to avoid collisions.
-       */
-      it = tree_lookup(sorted_arenas, val_per_weight);
-      while(tree_it_good(it)) {
-        val_per_weight += 0.0000000000000001;
-        it = tree_lookup(sorted_arenas, val_per_weight);
-      }
+      arena_val = (valweightptr) orig_malloc(sizeof(valweight));
+      arena_val->value = value;
+      arena_val->weight = weight;
 
       /* Finally insert into the tree */
-      tree_insert(sorted_arenas, val_per_weight, i);
+      tree_insert(sorted_arenas, arena_val, i);
     }
 
     /* Iterate over the sites and greedily pack them into the hotset.
@@ -194,6 +221,14 @@ void profile_online_interval(int s) {
       tree_free(prof.profile_online.prev_coldset);
     }
     prof.profile_online.prev_coldset = coldset;
+
+    /* Free the sorted_arenas tree */
+    tree_traverse(sorted_arenas, it) {
+      if(tree_it_key(it)) {
+        orig_free(tree_it_key(it));
+      }
+    }
+    tree_free(sorted_arenas);
   }
 
   end_interval();
@@ -236,13 +271,13 @@ void profile_online_init() {
   prof.profile_online.lower_avail_initial = sicm_avail(tracker.lower_device);
 
   /* Since sicm_arena_set_devices accepts a device_list, construct these */
-  prof.profile_online.upper_dl = malloc(sizeof(struct sicm_device_list));
+  prof.profile_online.upper_dl = orig_malloc(sizeof(struct sicm_device_list));
   prof.profile_online.upper_dl->count = 1;
-  prof.profile_online.upper_dl->devices = malloc(sizeof(deviceptr));
+  prof.profile_online.upper_dl->devices = orig_malloc(sizeof(deviceptr));
   prof.profile_online.upper_dl->devices[0] = tracker.upper_device;
-  prof.profile_online.lower_dl = malloc(sizeof(struct sicm_device_list));
+  prof.profile_online.lower_dl = orig_malloc(sizeof(struct sicm_device_list));
   prof.profile_online.lower_dl->count = 1;
-  prof.profile_online.lower_dl->devices = malloc(sizeof(deviceptr));
+  prof.profile_online.lower_dl->devices = orig_malloc(sizeof(deviceptr));
   prof.profile_online.lower_dl->devices[0] = tracker.lower_device;
 
   prof.profile_online.prev_hotset = NULL;
