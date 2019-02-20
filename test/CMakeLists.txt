@@ -1,2 +1,4 @@
 add_subdirectory(low)
-add_subdirectory(high)
+if(SICM_BUILD_HIGH_LEVEL)
+  add_subdirectory(high)
+endif()
