@@ -21,12 +21,6 @@ void profile_online_post_interval(profile_info *);
  * Utility functions
  ***/
 
-/* Used to construct the sorted_arenas tree */
-typedef struct valweight {
-  size_t value, weight;
-} valweight;
-typedef valweight *valweightptr;
-
 static inline int double_cmp(double a, double b) {
   int retval;
   if(a < b) {
