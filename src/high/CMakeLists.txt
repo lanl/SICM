@@ -21,6 +21,14 @@ target_include_directories(sicm_hotset PUBLIC ${CMAKE_SOURCE_DIR}/include/high/p
 target_include_directories(sicm_hotset PRIVATE ${CMAKE_SOURCE_DIR}/include/low/private)
 target_include_directories(sicm_hotset PUBLIC ${CMAKE_SOURCE_DIR}/include/low/public)
 
+# link SICM low to the targets
+target_link_libraries(sicm_high       sicm)
+target_link_libraries(sicm_compass    sicm)
+target_link_libraries(sicm_rdspy      sicm)
+target_link_libraries(sicm_dump_info  sicm)
+target_link_libraries(sicm_memreserve sicm)
+target_link_libraries(sicm_hotset     sicm)
+
 ####################
 #     jemalloc     #
 ####################
