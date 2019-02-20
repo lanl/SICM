@@ -544,10 +544,15 @@ static void *sa_alloc(extent_hooks_t *h, void *new_addr, size_t size, size_t ali
 
 success:
 	if (mbind(ret, size, mpol, nodemaskp, maxnode, MPOL_MF_MOVE) < 0) {
+    perror("mbind");
+    fprintf(stderr, "Address: %p %zu\n", ret, size);
+    exit(1);
+    /*
 		munmap(ret, size);
 		perror("mbind");
 		ret = NULL;
 		goto restore_mempolicy;
+    */
 	}
 
   /* Add the extent to the array of extents */
