@@ -17,6 +17,43 @@ void profile_all_interval(int);
 void profile_all_skip_interval(int);
 void profile_all_post_interval(profile_info *);
 
+/* Uses libpfm to figure out the event we're going to use */
+void sh_get_event() {
+  int err;
+  size_t i;
+  pfm_perf_encode_arg_t pfm;
+
+  pfm_initialize();
+
+  /* Make sure all of the events work. Initialize the pes. */
+  for(i = 0; i < profopts.num_profile_all_events; i++) {
+    memset(prof.profile_all.pes[i], 0, sizeof(struct perf_event_attr));
+    prof.profile_all.pes[i]->size = sizeof(struct perf_event_attr);
+    memset(&pfm, 0, sizeof(pfm_perf_encode_arg_t));
+    pfm.size = sizeof(pfm_perf_encode_arg_t);
+    pfm.attr = prof.profile_all.pes[i];
+
+    err = pfm_get_os_event_encoding(profopts.profile_all_events[i], PFM_PLM2 | PFM_PLM3, PFM_OS_PERF_EVENT, &pfm);
+    if(err != PFM_SUCCESS) {
+      fprintf(stderr, "Failed to initialize event '%s'. Aborting.\n", profopts.profile_all_events[i]);
+      exit(1);
+    }
+
+    /* If we're profiling all, set some additional options. */
+    if(profopts.should_profile_all) {
+      prof.profile_all.pes[i]->sample_type = PERF_SAMPLE_ADDR;
+      prof.profile_all.pes[i]->sample_period = profopts.sample_freq;
+      prof.profile_all.pes[i]->mmap = 1;
+      prof.profile_all.pes[i]->disabled = 1;
+      prof.profile_all.pes[i]->exclude_kernel = 1;
+      prof.profile_all.pes[i]->exclude_hv = 1;
+      prof.profile_all.pes[i]->precise_ip = 2;
+      prof.profile_all.pes[i]->task = 1;
+      prof.profile_all.pes[i]->sample_period = profopts.sample_freq;
+    }
+  }
+}
+
 void profile_all_arena_init(profile_all_info *info) {
   size_t i;
 
