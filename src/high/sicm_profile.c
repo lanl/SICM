@@ -443,12 +443,12 @@ void print_profiling() {
   for(i = 0; i <= tracker.max_index; i++) {
     profinfo = prof.info[i];
     arena = tracker.arenas[i];
-    if(!profinfo) continue;
+    if(!profinfo || !arena) continue;
 
     /* Print the sites that are in this arena */
-    printf("%d sites: ", tracker.arenas[i]->num_alloc_sites);
-    for(n = 0; n < tracker.arenas[i]->num_alloc_sites; n++) {
-      printf("%d ", tracker.arenas[i]->alloc_sites[n]);
+    printf("%d sites: ", arena->num_alloc_sites);
+    for(n = 0; n < arena->num_alloc_sites; n++) {
+      printf("%d ", arena->alloc_sites[n]);
     }
     printf("\n");
 
