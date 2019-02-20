@@ -1,4 +1,16 @@
-add_library(sicm_runtime SHARED sicm_runtime.c sicm_runtime_init.c sicm_profile.c sicm_profilers.c sicm_rdspy.c sicm_cstd.c)
+add_library(sicm_runtime SHARED 
+            sicm_runtime.c
+            sicm_runtime_init.c
+            sicm_cstd.c
+            sicm_rdspy.c
+            sicm_profile.c
+            sicm_profilers.c
+            profilers/sicm_profile_all.c
+            profilers/sicm_profile_allocs.c
+            profilers/sicm_profile_rss.c
+            profilers/sicm_profile_extent_size.c
+            profilers/sicm_profile_online.c
+            profilers/sicm_profile_one.c)
 add_library(sicm_compass SHARED sicm_compass.cpp)
 add_library(sicm_rdspy SHARED sicm_rdspy.cpp)
 add_executable(sicm_memreserve sicm_memreserve.c)
