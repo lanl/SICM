@@ -50,7 +50,7 @@ for word in $ARGS; do
       BC_STR="$BC_STR ${word}.bc"
     fi
     LINKER_INPUT_FILES="$LINKER_INPUT_FILES $word"
-  elif [[ $word =~ (.*)\.a$ ]]; then
+  elif [[ ($word =~ (.*)\.a$) && ($(file --mime-type -b "$word") =~ ^text) ]]; then
     # We've found a `.a` file. Assume it was created with the ar_wrapper.sh.
     # Each line is just a filename.
     # Notably, *don't* add this .a file to the list of link arguments.
@@ -59,6 +59,8 @@ for word in $ARGS; do
       BC_STR="$BC_STR ${line}.bc"
       LINKER_INPUT_FILES="$LINKER_INPUT_FILES ${line}.o"
     done < "${word}"
+  elif [[ $(file --mime-type -b $(readlink -f "$word")) == "application/x-sharedlib" ]]; then
+    LINKARGS="$LINKARGS $word"
   fi
   PREV="${word}"
 done
@@ -109,5 +111,4 @@ echo "$COMMANDS" | xargs -I CMD --max-procs=16 bash -c CMD
 
 # Now finally link the transformed '.o' files
 LINKARGS="$LINKARGS -L${LIB_DIR} -lsicm_high -Wl,-rpath,${LIB_DIR}"
-echo "LINKER ARGUMENTS: ${LLVMPATH}${LD_LINKER} $LINKER_INPUT_FILES $LINKARGS"
 ${LLVMPATH}${LD_LINKER} $LINKER_INPUT_FILES $LINKARGS
