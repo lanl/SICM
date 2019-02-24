@@ -5,6 +5,8 @@
 # This wrapper also parses and outputs the arguments used to compile each
 # file, so that it can be read and used by the ld_wrapper.
 
+echo "CALLING COMPILER WRAPPER"
+
 # The path that this script is in
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 
@@ -113,6 +115,7 @@ fi
 
 # Link if necessary
 if [[ "$ONLY_COMPILE" = false ]]; then
+  echo "CALLING LINKER WRAPPER"
   # Convert all e.g. "foo.c" -> "foo.o"
   for file in ${INPUT_FILES[@]}; do
     OBJECT_FILES="$OBJECT_FILES ${file}.o"
