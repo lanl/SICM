@@ -32,10 +32,6 @@ OUTPUT_FILE="" # `-o`
 PREV=""
 for word in $ARGS; do
 
-  if [[ "$word" =~ \.o$ ]]; then
-    file --mime-type -b "$word"
-  fi
-
   if [[ "$word" =~ ^\-o$ ]]; then
     # Remove "-o [outputfile]" from the arguments
     PREV="$word"
