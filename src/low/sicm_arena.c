@@ -546,13 +546,10 @@ success:
 	if (mbind(ret, size, mpol, nodemaskp, maxnode, MPOL_MF_MOVE) < 0) {
     perror("mbind");
     fprintf(stderr, "Address: %p %zu %zu\n", ret, size, alignment);
-    exit(1);
-    /*
 		munmap(ret, size);
 		perror("mbind");
 		ret = NULL;
 		goto restore_mempolicy;
-    */
 	}
 
   /* Add the extent to the array of extents */
