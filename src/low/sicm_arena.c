@@ -550,7 +550,9 @@ success:
 		perror("mbind");
 		ret = NULL;
 		goto restore_mempolicy;
-	}
+	} else {
+    fprintf(stderr, "Aligned mbind succeeded: %zu\n", alignment);
+  }
 
   /* Add the extent to the array of extents */
   extent_arr_insert(sa->extents, ret, (char *)ret + size, NULL);
