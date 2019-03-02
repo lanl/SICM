@@ -111,8 +111,8 @@ void profile_online_interval(int s) {
   /* Call the appropriate strategy */
   sorted_sites = prepare_stats();
   if(profopts.profile_online_ski) {
-    prepare_stats_ski();
-    profile_online_interval_ski();
+    prepare_stats_ski(sorted_sites);
+    profile_online_interval_ski(sorted_sites);
   } else {
     /* Default to the original strategy */
     prepare_stats_orig(sorted_sites);

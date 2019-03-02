@@ -128,6 +128,7 @@ typedef struct profile_online_data_orig {
 
 typedef struct profile_online_data_ski {
   /* Metrics that only the ski strat needs */
+  size_t penalty_move, penalty_stay, penalty_displace;
 } profile_online_data_ski;
 
 typedef struct profile_online_data {

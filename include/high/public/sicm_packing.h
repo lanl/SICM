@@ -37,7 +37,8 @@ static size_t sh_num_value_event_indices = 0;
 static float *sh_weights = NULL; /* Array of floats to multiply each event's value by */
 
 typedef struct site_profile_info {
-  size_t value, weight, num_hot_intervals;
+  size_t value, weight, num_hot_intervals,
+         *value_arr, num_values;
   double value_per_weight;
   int index;
   char dev, hot;
@@ -51,24 +52,28 @@ use_tree(int, site_info_ptr);
 #endif
 
 /* Gets a value from the given arena_profile */
-static size_t get_value(arena_profile *aprof) {
-  size_t value, i;
+static void set_value(arena_profile *aprof, site_info_ptr site) {
+  size_t i, tmp;
 
-  value = 0;
+  site->value = 0;
+  site->num_values = sh_num_value_event_indices;
+  site->value_arr = malloc(sizeof(size_t) * site->num_values);
   if(sh_value_flag == 0) {
-    for(i = 0; i < sh_num_value_event_indices; i++) {
-      value += (aprof->profile_all.events[sh_value_event_indices[i]].total * sh_weights[i]);
+    for(i = 0; i < site->num_values; i++) {
+      tmp = (aprof->profile_all.events[sh_value_event_indices[i]].total * sh_weights[i]);
+      site->value += tmp;
+      site->value_arr[i] = tmp;
     }
   } else if(sh_value_flag == 1) {
     for(i = 0; i < sh_num_value_event_indices; i++) {
-      value += (aprof->profile_all.events[sh_value_event_indices[i]].current * sh_weights[i]);
+      tmp = (aprof->profile_all.events[sh_value_event_indices[i]].current * sh_weights[i]);
+      site->value += tmp;
+      site->value_arr[i] = tmp;
     }
   } else {
     fprintf(stderr, "Invalid value type detected. Aborting.\n");
     exit(1);
   }
-
-  return value;
 }
 
 /* Gets a weight from the given arena_profile */
@@ -210,7 +215,7 @@ static tree(site_info_ptr, int) sh_convert_to_site_tree(application_profile *inf
     if(get_weight(aprof) == 0) continue;
 
     site = orig_malloc(sizeof(site_profile_info));
-    site->value = get_value(aprof);
+    set_value(aprof, site);
     site->weight = get_weight(aprof);
     site->value_per_weight = ((double) site->value) / ((double) site->weight);
     site->index = aprof->index;
