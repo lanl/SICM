@@ -703,6 +703,8 @@ void* sh_aligned_alloc(int id, size_t alignment, size_t sz) {
   int index;
   void *ret;
 
+  printf("Allocating to id %d\n", id);
+
   if((layout == INVALID_LAYOUT) || !sz) {
     ret = je_aligned_alloc(alignment, sz);
   } else {
