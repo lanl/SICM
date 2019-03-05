@@ -712,7 +712,9 @@ void sh_free(void* ptr) {
       sh_rdspy_free(ptr);
   }
 
+  printf("Calling sh_free\n");
   if(layout == INVALID_LAYOUT) {
+    printf("WARNING: calling je_free\n");
     je_free(ptr);
   } else {
     sicm_free(ptr);
