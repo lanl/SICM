@@ -684,13 +684,30 @@ void* sh_alloc(int id, size_t sz) {
   int index;
   void *ret;
 
-  printf("ALLOCATING WITH SH_ALLOC\n");
-
   if((layout == INVALID_LAYOUT) || !sz) {
     ret = je_malloc(sz);
   } else {
     index = get_arena_index(id);
     ret = sicm_arena_alloc(arenas[index]->arena, sz);
+  }
+
+  if (should_run_rdspy) {
+    sh_rdspy_alloc(ret, sz, id);
+  }
+  
+  return ret;
+}
+
+/* Accepts an allocation site ID and a size, does the allocation */
+void* sh_aligned_alloc(int id, size_t alignment, size_t sz) {
+  int index;
+  void *ret;
+
+  if((layout == INVALID_LAYOUT) || !sz) {
+    ret = je_aligned_alloc(sz);
+  } else {
+    index = get_arena_index(id);
+    ret = sicm_arena_aligned_alloc(arenas[index]->arena, sz, alignment);
   }
 
   if (should_run_rdspy) {

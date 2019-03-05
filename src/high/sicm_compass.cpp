@@ -114,6 +114,7 @@ struct compass : public ModulePass {
         allocFnMap["malloc"] = "sh_alloc";
         allocFnMap["calloc"] = "sh_calloc";
         allocFnMap["realloc"] = "sh_realloc";
+        allocFnMap["aligned_alloc"] = "sh_aligned_alloc";
         dallocFnMap["free"] = "sh_free";
 
 	/* C++ */
