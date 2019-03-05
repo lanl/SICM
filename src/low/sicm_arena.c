@@ -357,7 +357,7 @@ void *sicm_alloc_aligned(size_t sz, size_t align) {
 
 void sicm_free(void *ptr) {
 	//je_free(ptr);
-  dallocx(ptr, MALLOCX_TCACHE_NONE);
+  je_dallocx(ptr, MALLOCX_TCACHE_NONE);
 }
 
 void *sicm_realloc(void *ptr, size_t sz) {
