@@ -684,6 +684,8 @@ void* sh_alloc(int id, size_t sz) {
   int index;
   void *ret;
 
+  printf("ALLOCATING WITH SH_ALLOC\n");
+
   if((layout == INVALID_LAYOUT) || !sz) {
     ret = je_malloc(sz);
   } else {
