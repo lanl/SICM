@@ -704,7 +704,7 @@ void* sh_aligned_alloc(int id, size_t alignment, size_t sz) {
   void *ret;
 
   if((layout == INVALID_LAYOUT) || !sz) {
-    ret = je_aligned_alloc(sz);
+    ret = je_aligned_alloc(alignment, sz);
   } else {
     index = get_arena_index(id);
     ret = sicm_arena_aligned_alloc(arenas[index]->arena, sz, alignment);
