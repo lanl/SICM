@@ -714,7 +714,7 @@ void sh_free(void* ptr) {
       sh_rdspy_free(ptr);
   }
 
-  printf("Calling sh_free\n");
+  printf("Calling sh_free: %p\n", ptr);
   if(layout == INVALID_LAYOUT) {
     printf("WARNING: calling je_free\n");
     je_free(ptr);
