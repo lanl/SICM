@@ -707,7 +707,7 @@ void* sh_aligned_alloc(int id, size_t alignment, size_t sz) {
     ret = je_aligned_alloc(alignment, sz);
   } else {
     index = get_arena_index(id);
-    ret = sicm_arena_aligned_alloc(arenas[index]->arena, sz, alignment);
+    ret = sicm_arena_alloc_aligned(arenas[index]->arena, sz, alignment);
   }
 
   if (should_run_rdspy) {
