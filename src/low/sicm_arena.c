@@ -308,9 +308,12 @@ void *sicm_arena_alloc_aligned(sicm_arena a, size_t sz, size_t align) {
 
 	sa = a;
 	flags = 0;
-	if (sa != NULL)
+	if (sa != NULL) {
+    printf("Setting flags.\n");
 		flags = MALLOCX_ARENA(sa->arena_ind) | MALLOCX_TCACHE_NONE | MALLOCX_ALIGN(align);
+  }
 
+  printf("Calling je_mallocx with flags: %d\n", flags);
 	ret = je_mallocx(sz, flags);
 	return ret;
 }
