@@ -310,7 +310,10 @@ void *sicm_arena_alloc_aligned(sicm_arena a, size_t sz, size_t align) {
 	flags = 0;
 	if (sa != NULL) {
     printf("Setting flags.\n");
-		flags = MALLOCX_ARENA(sa->arena_ind) | MALLOCX_TCACHE_NONE | MALLOCX_ALIGN(align);
+    printf("%d\n", MALLOCX_ARENA(sa->arena_ind));
+    printf("%d\n", MALLOCX_ALIGN(align));
+    printf("%d\n", MALLOCX_TCACHE_NONE);
+		flags = MALLOCX_ALIGN(align) | MALLOCX_ARENA(sa->arena_ind) | MALLOCX_TCACHE_NONE;
   }
 
   printf("Calling je_mallocx with flags: %d\n", flags);
