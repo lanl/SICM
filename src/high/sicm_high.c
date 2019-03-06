@@ -529,7 +529,8 @@ void sh_create_arena(int index, int id, sicm_device *device) {
   arenas[index]->rss = 0;
   arenas[index]->peak_rss = 0;
   arenas[index]->arena = sicm_arena_create(0, device);
-  printf("Creating arena at index %d, %u\n", index, arenas[index]->arena->arena_ind);
+  sarena *tmparena = arenas[index]->arena;
+  printf("Creating arena at index %d, %u\n", index, tmparena->arena_ind);
 }
 
 /* Adds an extent to the `extents` array. */
