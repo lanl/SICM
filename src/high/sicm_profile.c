@@ -346,6 +346,7 @@ get_accesses() {
   struct sample *sample;
   struct perf_event_header *header;
   int err;
+  size_t i;
 
   /* Wait for the perf buffer to be ready */
   prof.pfd.fd = prof.fds[0];

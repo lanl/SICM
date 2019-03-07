@@ -93,8 +93,8 @@ enum arena_layout parse_layout(char *env) {
  * -1 if it's not there */
 int get_alloc_site(arena_info *arena, int id) {
   int i;
-  for(i = 0; i < arenas[index]->num_alloc_sites; i++) {
-    if(arenas[index]->alloc_sites[i] == id) {
+  for(i = 0; i < arena->num_alloc_sites; i++) {
+    if(arena->alloc_sites[i] == id) {
       return i;
     }
   }
@@ -168,7 +168,7 @@ void set_options() {
   int i, node, site;
   FILE *guidance_file;
   ssize_t len;
-  tree_it(unsigned, deviceptr) it;
+  tree_it(int, deviceptr) it;
 
   /* Do we want to use the online approach, moving arenas around devices automatically? */
   env = getenv("SH_ONLINE_PROFILING");
@@ -540,7 +540,7 @@ void sh_create_arena(int index, int id, sicm_device *device) {
       fprintf(stderr, "Tried to allocate %d sites into an arena. Increase SH_MAX_SITES_PER_ARENA.\n", max_sites_per_arena + 1);
       exit(1);
     }
-    arenas[index]->alloc_sites[num_alloc_sites] = id;
+    arenas[index]->alloc_sites[arenas[index]->num_alloc_sites] = id;
     arenas[index]->num_alloc_sites++;
   }
 
@@ -600,7 +600,7 @@ void sh_create_extent(void *start, void *end) {
 /* Gets the device that this site should go onto from the site_nodes tree */
 sicm_device *get_site_device(int id) {
   sicm_device *device;
-  tree_it(unsigned, deviceptr) it;
+  tree_it(int, deviceptr) it;
 
   it = tree_lookup(site_nodes, id);
   if(tree_it_good(it)) {
