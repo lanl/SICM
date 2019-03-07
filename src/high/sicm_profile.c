@@ -30,7 +30,7 @@ void online_reconfigure() {
   tree(size_t, deviceptr) new_knapsack;
   tree_it(double, size_t) it;
   tree_it(size_t, deviceptr) kit;
-  tree_it(unsigned, deviceptr) sit;
+  tree_it(int, deviceptr) sit;
   int id;
 
   printf("===== STARTING RECONFIGURING =====\n");

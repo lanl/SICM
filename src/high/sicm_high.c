@@ -804,7 +804,7 @@ void sh_init() {
     }
   }
 
-  site_nodes = tree_make(unsigned, deviceptr);
+  site_nodes = tree_make(int, deviceptr);
   device_arenas = tree_make(deviceptr, int);
   set_options();
   
