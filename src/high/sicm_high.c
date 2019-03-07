@@ -20,7 +20,7 @@ static struct sicm_device_list device_list;
 int num_numa_nodes;
 struct sicm_device *default_device;
 
-tree(unsigned, deviceptr) site_nodes;
+tree(int, deviceptr) site_nodes; /* Allocation site ID -> device */
 tree(deviceptr, int) device_arenas; /* For per-device arena layouts only */
 
 /* For profiling */
@@ -89,6 +89,19 @@ enum arena_layout parse_layout(char *env) {
   return INVALID_LAYOUT;
 }
 
+/* Returns the index of an allocation site in an arena,
+ * -1 if it's not there */
+int get_alloc_site(arena_info *arena, int id) {
+  int i;
+  for(i = 0; i < arenas[index]->num_alloc_sites; i++) {
+    if(arenas[index]->alloc_sites[i] == id) {
+      return i;
+    }
+  }
+
+  return -1;
+}
+
 /* Converts an arena_layout to a string */
 char *layout_str(enum arena_layout layout) {
   switch(layout) {
@@ -152,10 +165,9 @@ void set_options() {
   char *env, *str, *line, guidance, found_guidance;
   long long tmp_val;
   struct sicm_device *device;
-  int i, node;
+  int i, node, site;
   FILE *guidance_file;
   ssize_t len;
-  unsigned site;
   tree_it(unsigned, deviceptr) it;
 
   /* Do we want to use the online approach, moving arenas around devices automatically? */
@@ -442,7 +454,7 @@ void set_options() {
         }
 
         /* Read in the actual guidance now that we're in a guidance section */
-        sscanf(str, "%u", &site);
+        sscanf(str, "%d", &site);
         str = strtok(NULL, " ");
         if(!str) {
           fprintf(stderr, "Read in a site number from the guidance file, but no node number. Aborting.\n");
@@ -450,7 +462,7 @@ void set_options() {
         }
         sscanf(str, "%d", &node);
         tree_insert(site_nodes, site, get_device_from_numa_node(node));
-        printf("Adding site %u to NUMA node %d.\n", site, node);
+        printf("Adding site %d to NUMA node %d.\n", site, node);
       } else {
         if(!str) continue;
         /* Find the "===== GUIDANCE" tokens */
@@ -518,12 +530,9 @@ int get_thread_index() {
 void sh_create_arena(int index, int id, sicm_device *device) {
   /* If we've already created this arena */
   if(arenas[index] != NULL) {
-    /* Check if this site is in this arena already. Return if so. */
-    int i;
-    for(i = 0; i < arenas[index]->num_alloc_sites; i++) {
-      if(arenas[index]->alloc_sites[i] == id) {
-        return;
-      }
+
+    if(get_alloc_site(arenas[index], id) != -1) {
+      return;
     }
     
     /* Add the site to the arena */
@@ -572,7 +581,7 @@ void sh_create_extent(void *start, void *end) {
     exit(1);
   }
 
-  if(should_profile_rss && (arenas[arena_index]->id == should_profile_one)) {
+  if(should_profile_rss && (get_alloc_site(arenas[arena_index], should_profile_one) != -1)) {
     /* If we're profiling RSS and this is the site that we're isolating */
     extent_arr_insert(rss_extents, start, end, arenas[arena_index]);
   }
