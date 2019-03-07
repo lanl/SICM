@@ -17,11 +17,12 @@ enum arena_layout {
   INVALID_LAYOUT
 };
 
-/* Keeps track of additional information about arenas for profiling */
+/* Keeps track of additional information about arenas */
 typedef struct arena_info {
-  unsigned index, id;
-  sicm_arena arena;
-  size_t accesses, rss, peak_rss;
+  int *alloc_sites, num_alloc_sites; /* Stores the allocation sites that are in this arena */
+  unsigned index; /* Index into the arenas array */
+  sicm_arena arena; /* SICM's low-level interface pointer */
+  size_t accesses, rss, peak_rss; /* Profiling info */
 } arena_info;
 
 /* A tree associating site IDs with device pointers.

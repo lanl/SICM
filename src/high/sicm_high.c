@@ -50,7 +50,7 @@ pthread_rwlock_t extents_lock = PTHREAD_RWLOCK_INITIALIZER;
 /* Keeps track of arenas */
 arena_info **arenas;
 static enum arena_layout layout;
-static int max_arenas, arenas_per_thread;
+static int max_arenas, arenas_per_thread, max_sites_per_arena;
 int max_index;
 pthread_mutex_t arena_lock = PTHREAD_MUTEX_INITIALIZER;
 
@@ -198,7 +198,7 @@ void set_options() {
    * Keep in mind that 4096 is the maximum number supported by jemalloc.
    * An error occurs if this limit is reached.
    */
-  max_arenas = 262144;
+  max_arenas = 4096;
   env = getenv("SH_MAX_ARENAS");
   if(env) {
     tmp_val = strtoimax(env, NULL, 10);
@@ -209,6 +209,21 @@ void set_options() {
     }
   }
   printf("Maximum arenas: %d\n", max_arenas);
+
+  /* Get max_sites_per_arena.
+   * This is the maximum amount of allocation sites that a single arena can hold.
+   */
+  max_sites_per_arena = 1;
+  env = getenv("SH_MAX_SITES_PER_ARENA");
+  if(env) {
+    tmp_val = strtoimax(env, NULL, 10);
+    if((tmp_val == 0) || (tmp_val > INT_MAX)) {
+      printf("Invalid arena number given. Defaulting to %d.\n", max_arenas);
+    } else {
+      max_sites_per_arena = (int) tmp_val;
+    }
+  }
+  printf("Maximum allocation sites per arena: %d\n", max_sites_per_arena);
 
   /* Should we profile all allocation sites using sampling-based profiling? */
   env = getenv("SH_PROFILE_ALL");
@@ -501,15 +516,23 @@ int get_thread_index() {
 
 /* Adds an arena to the `arenas` array. */
 void sh_create_arena(int index, int id, sicm_device *device) {
-  if(index > (max_arenas - 1)) {
-    /* TODO: handle this more gracefully */
-    fprintf(stderr, "Maximum number of arenas reached. Aborting.\n");
-    exit(1);
-  }
-
   /* If we've already created this arena */
   if(arenas[index] != NULL) {
-    return;
+    /* Check if this site is in this arena already. Return if so. */
+    int i;
+    for(i = 0; i < arenas[index]->num_alloc_sites; i++) {
+      if(arenas[index]->alloc_sites[i] == id) {
+        return;
+      }
+    }
+    
+    /* Add the site to the arena */
+    if(arenas[index]->num_alloc_sites == max_sites_per_arena) {
+      fprintf(stderr, "Tried to allocate %d sites into an arena. Increase SH_MAX_SITES_PER_ARENA.\n", max_sites_per_arena + 1);
+      exit(1);
+    }
+    arenas[index]->alloc_sites[num_alloc_sites] = id;
+    arenas[index]->num_alloc_sites++;
   }
 
   /* Put an upper bound on the indices that need to be searched */
@@ -525,7 +548,9 @@ void sh_create_arena(int index, int id, sicm_device *device) {
   arenas[index] = calloc(1, sizeof(arena_info));
   arenas[index]->index = index;
   arenas[index]->accesses = 0;
-  arenas[index]->id = id;
+  arenas[index]->alloc_sites = malloc(sizeof(int) * max_sites_per_arena);
+  arenas[index]->alloc_sites[0] = id;
+  arenas[index]->num_alloc_sites = 1;
   arenas[index]->rss = 0;
   arenas[index]->peak_rss = 0;
   arenas[index]->arena = sicm_arena_create(0, device);
@@ -606,7 +631,7 @@ int get_device_arena(int id, sicm_device **device) {
   return ret;
 }
 
-/* Gets the index that the ID should go into */
+/* Gets the index that the allocation site should go into */
 int get_arena_index(int id) {
   int ret, thread_index;
   sicm_device *device;
@@ -654,6 +679,11 @@ int get_arena_index(int id) {
       exit(1);
       break;
   };
+
+  if(ret > max_arenas) {
+    /* Fit the index to the maximum number of arenas */
+    ret = ret % max_arenas;
+  }
 
   pending_indices[thread_index] = ret;
   pthread_mutex_lock(&arena_lock);
@@ -709,14 +739,10 @@ void* sh_aligned_alloc(int id, size_t alignment, size_t sz) {
     return NULL;
   }
 
-  printf("Allocating to id %d\n", id);
-
   if((layout == INVALID_LAYOUT) || !sz) {
     ret = je_aligned_alloc(alignment, sz);
   } else {
     index = get_arena_index(id);
-    printf("Index: %d\n", index);
-    printf("Arena: %p\n", arenas[index]->arena);
     ret = sicm_arena_alloc_aligned(arenas[index]->arena, sz, alignment);
   }
 
