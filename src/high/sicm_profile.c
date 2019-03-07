@@ -31,6 +31,7 @@ void online_reconfigure() {
   tree_it(double, size_t) it;
   tree_it(size_t, deviceptr) kit;
   tree_it(int, deviceptr) sit;
+  char break_next_site;
   int id;
 
   printf("===== STARTING RECONFIGURING =====\n");

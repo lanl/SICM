@@ -26,12 +26,12 @@ typedef struct arena_info {
 } arena_info;
 
 /* A tree associating site IDs with device pointers.
- * Sites should be bound the device that they're associated with.
+ * Sites should be bound to the device that they're associated with.
  * Filled with guidance from an offline profiling run or with
  * online profiling.
  */
 typedef sicm_device * deviceptr;
-use_tree(unsigned, deviceptr);
+use_tree(int, deviceptr);
 use_tree(deviceptr, int);
 
 /* So we can access these things from profile.c.
@@ -41,7 +41,7 @@ extern extent_arr *extents;
 extern extent_arr *rss_extents;
 extern pthread_rwlock_t extents_lock;
 extern arena_info **arenas;
-extern tree(unsigned, deviceptr) site_nodes;
+extern tree(int, deviceptr) site_nodes;
 extern int should_profile_all, should_profile_one, should_profile_rss, should_profile_online;
 extern float profile_all_rate, profile_rss_rate;
 extern char *profile_one_event, *profile_all_event;
