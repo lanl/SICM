@@ -5,7 +5,6 @@
 # This wrapper also parses and outputs the arguments used to compile each
 # file, so that it can be read and used by the ld_wrapper.
 
-
 # The path that this script is in
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 
@@ -27,6 +26,7 @@ EXTENSIONS=() # Store extensions separately
 ONLY_COMPILE=false # `-c`
 ONLY_LINK=false # No input files, but at least one object file
 OUTPUT_FILE="" # `-o`
+GEN_DEPS=false
 
 # Iterate over all arguments
 PREV=""
@@ -42,6 +42,9 @@ for word in $ARGS; do
   elif [[ "$word" =~ ^\-c$ ]]; then
     # If it's `-c`, then we don't link
     ONLY_COMPILE=true
+  elif [[ "$word" =~ ^\-M ]]; then
+    # The user is trying to preprocess or generate deps
+    GEN_DEPS=true
   elif [[ "$word" =~ ^\-.* ]]; then
     # So that all arguments that begin with '-' aren't input files or input files
     EXTRA_ARGS="$EXTRA_ARGS $word"
@@ -73,6 +76,13 @@ for word in $ARGS; do
   fi
 
 done
+
+if [[ "$GEN_DEPS" = true ]]; then
+  # The user is generating deps or preprocessing, just let
+  # the compiler do this.
+  ${LLVMPATH}${COMPILER} $ARGS
+  exit $?
+fi
 
 if [[ ((${#INPUT_FILES[@]} -gt 1) && ($OUTPUT_FILE != "") && ("$ONLY_COMPILE" = true)) || \
       ((${#INPUT_FILES[@]} -eq 0) && (${#OBJECT_FILES[@]} -eq 0)) ]]; then
