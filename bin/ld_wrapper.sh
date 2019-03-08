@@ -79,7 +79,7 @@ fi
 # Link all of the IR files into one
 ${LLVMPATH}${LLVMLINK} $BC_STR -o .sicm_ir.bc
 
-# Run the compiler pass to generate the call graph. Overwrite the global IR file.
+# Run the compiler pass to generate the call graph.
 ${LLVMPATH}${OPT} -load ${LIB_DIR}/libsicm_compass.so -compass-mode=analyze \
     -compass-quick-exit -compass -compass-depth=3 \
     .sicm_ir.bc -o .sicm_ir_transformed.bc

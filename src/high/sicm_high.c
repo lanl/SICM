@@ -766,6 +766,15 @@ void* sh_aligned_alloc(int id, size_t alignment, size_t sz) {
   return ret;
 }
 
+int sh_posix_memalign(int id, void **ptr, size_t alignment, size_t sz) {
+  *ptr = sh_aligned_alloc(id, alignment, sz);
+  return 0;
+}
+
+void *sh_memalign(int id, size_t alignment, size_t sz) {
+  return sh_aligned_alloc(id, alignment, sz);
+}
+
 void* sh_calloc(int id, size_t num, size_t sz) {
   void *ptr;
   size_t i;
