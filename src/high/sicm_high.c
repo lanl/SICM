@@ -751,8 +751,10 @@ void* sh_aligned_alloc(int id, size_t alignment, size_t sz) {
   if((layout == INVALID_LAYOUT) || !sz) {
     ret = je_aligned_alloc(alignment, sz);
   } else {
+    printf("Doing an aligned alloc for %zu bytes.\n", sz);
     index = get_arena_index(id);
     ret = sicm_arena_alloc_aligned(arenas[index]->arena, sz, alignment);
+    printf("Aligned alloc got back %p\n", ret);
   }
 
   if (should_run_rdspy) {
