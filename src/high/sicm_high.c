@@ -725,11 +725,13 @@ void* sh_alloc(int id, size_t sz) {
   int index;
   void *ret;
 
+  printf("Allocating with sh_alloc: %zu bytes\n", sz);
   if((layout == INVALID_LAYOUT) || !sz) {
     ret = je_malloc(sz);
   } else {
     index = get_arena_index(id);
     ret = sicm_arena_alloc(arenas[index]->arena, sz);
+    printf("got a pointer back: %p\n", ret);
   }
 
   if (should_run_rdspy) {
@@ -768,7 +770,9 @@ void* sh_calloc(int id, size_t num, size_t sz) {
   void *ptr;
   size_t i;
 
+  printf("allocating with calloc\n");
   ptr = sh_alloc(id, sz);
+  printf("Got pointer back from calloc: %p\n", ptr);
   memset(ptr, 0, num * sz);
   return ptr;
 }
