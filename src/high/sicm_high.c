@@ -564,7 +564,6 @@ void sh_create_arena(int index, int id, sicm_device *device) {
   arenas[index]->peak_rss = 0;
   arenas[index]->arena = sicm_arena_create(0, device);
   sarena *tmparena = arenas[index]->arena;
-  printf("Creating arena at index %d, %u\n", index, tmparena->arena_ind);
 }
 
 /* Adds an extent to the `extents` array. */
@@ -725,13 +724,11 @@ void* sh_alloc(int id, size_t sz) {
   int index;
   void *ret;
 
-  printf("Allocating with sh_alloc: %zu bytes\n", sz);
   if((layout == INVALID_LAYOUT) || !sz) {
     ret = je_malloc(sz);
   } else {
     index = get_arena_index(id);
     ret = sicm_arena_alloc(arenas[index]->arena, sz);
-    printf("got a pointer back: %p\n", ret);
   }
 
   if (should_run_rdspy) {
@@ -753,10 +750,8 @@ void* sh_aligned_alloc(int id, size_t alignment, size_t sz) {
   if((layout == INVALID_LAYOUT) || !sz) {
     ret = je_aligned_alloc(alignment, sz);
   } else {
-    printf("Doing an aligned alloc for %zu bytes.\n", sz);
     index = get_arena_index(id);
     ret = sicm_arena_alloc_aligned(arenas[index]->arena, sz, alignment);
-    printf("Aligned alloc got back %p\n", ret);
   }
 
   if (should_run_rdspy) {
@@ -779,9 +774,7 @@ void* sh_calloc(int id, size_t num, size_t sz) {
   void *ptr;
   size_t i;
 
-  printf("allocating with calloc\n");
   ptr = sh_alloc(id, sz);
-  printf("Got pointer back from calloc: %p\n", ptr);
   memset(ptr, 0, num * sz);
   return ptr;
 }
@@ -791,9 +784,7 @@ void sh_free(void* ptr) {
       sh_rdspy_free(ptr);
   }
 
-  printf("Calling sh_free: %p\n", ptr);
   if(layout == INVALID_LAYOUT) {
-    printf("WARNING: calling je_free\n");
     je_free(ptr);
   } else {
     sicm_free(ptr);
