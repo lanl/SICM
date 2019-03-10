@@ -784,6 +784,10 @@ void sh_free(void* ptr) {
       sh_rdspy_free(ptr);
   }
 
+  if(!ptr) {
+    return;
+  }
+
   if(layout == INVALID_LAYOUT) {
     je_free(ptr);
   } else {
