@@ -785,7 +785,8 @@ void sh_free(void* ptr) {
   }
 
   if(layout == INVALID_LAYOUT) {
-    je_free(ptr);
+    //je_free(ptr);
+    free(ptr);
   } else {
     sicm_free(ptr);
   }
