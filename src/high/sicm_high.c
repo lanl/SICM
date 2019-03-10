@@ -725,7 +725,8 @@ void* sh_alloc(int id, size_t sz) {
   void *ret;
 
   if((layout == INVALID_LAYOUT) || !sz) {
-    ret = je_malloc(sz);
+    //ret = je_malloc(sz);
+    ret = malloc(sz);
   } else {
     index = get_arena_index(id);
     ret = sicm_arena_alloc(arenas[index]->arena, sz);
