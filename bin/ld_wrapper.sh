@@ -110,5 +110,5 @@ done
 echo "$COMMANDS" | xargs -I CMD --max-procs=16 bash -c CMD
 
 # Now finally link the transformed '.o' files
-LINKARGS="$LINKARGS -L${LIB_DIR} -lsicm_high -Wl,-rpath,${LIB_DIR}"
+LINKARGS="$LINKARGS -L${LIB_DIR} -lsicm_high -lsicm_cpp -Wl,-rpath,${LIB_DIR}"
 ${LLVMPATH}${LD_LINKER} $LINKER_INPUT_FILES $LINKARGS
