@@ -75,7 +75,7 @@ static inline void extent_arr_insert(extent_arr *a, void *start, void *end, void
       /* We need to reallocate */
       old_max_extents = a->max_extents;
       a->max_extents *= 2;
-      a->arr = realloc(a->arr, a->max_extents * sizeof(extent_info));
+      a->arr = (extent_info *) realloc(a->arr, a->max_extents * sizeof(extent_info));
       for(i = old_max_extents; i < a->max_extents; i++) {
         a->arr[i].start = NULL;
         a->arr[i].end = NULL;
