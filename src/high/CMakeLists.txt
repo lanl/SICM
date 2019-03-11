@@ -27,6 +27,7 @@ target_include_directories(sicm_new_delete PRIVATE ${CMAKE_SOURCE_DIR}/include/l
 target_include_directories(sicm_new_delete PUBLIC ${CMAKE_SOURCE_DIR}/include/low/public)
 
 target_link_libraries(sicm_high sicm)
+target_link_libraries(sicm_new_delete sicm_high)
 
 ####################
 #     jemalloc     #
