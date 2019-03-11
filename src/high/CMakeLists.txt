@@ -1,7 +1,7 @@
 add_library(sicm_high SHARED sicm_high.c sicm_profile.c sicm_rdspy.c)
 add_library(sicm_compass SHARED sicm_compass.cpp)
 add_library(sicm_rdspy SHARED sicm_rdspy.cpp)
-add_library(sicm_cpp SHARED sicm_cpp.cpp)
+add_library(sicm_new_delete SHARED sicm_new_delete.cpp)
 add_executable(sicm_dump_info sicm_dump_info.c)
 add_executable(sicm_memreserve sicm_memreserve.c)
 add_executable(sicm_hotset sicm_hotset.c)
@@ -21,8 +21,8 @@ target_include_directories(sicm_hotset PRIVATE ${CMAKE_SOURCE_DIR}/include/high/
 target_include_directories(sicm_hotset PUBLIC ${CMAKE_SOURCE_DIR}/include/high/public)
 target_include_directories(sicm_hotset PRIVATE ${CMAKE_SOURCE_DIR}/include/low/private)
 target_include_directories(sicm_hotset PUBLIC ${CMAKE_SOURCE_DIR}/include/low/public)
-target_include_directories(sicm_cpp PRIVATE ${CMAKE_SOURCE_DIR}/include/high/private)
-target_include_directories(sicm_cpp PUBLIC ${CMAKE_SOURCE_DIR}/include/high/public)
+target_include_directories(sicm_new_delete PRIVATE ${CMAKE_SOURCE_DIR}/include/high/private)
+target_include_directories(sicm_new_delete PUBLIC ${CMAKE_SOURCE_DIR}/include/high/public)
 
 target_link_libraries(sicm_high sicm)
 
@@ -73,6 +73,6 @@ target_link_libraries(sicm_rdspy ${LLVM_LIBRARIES})
 ####################
 target_link_libraries(sicm_memreserve pthread)
 
-install(TARGETS sicm_high sicm_compass sicm_rdspy sicm_dump_info sicm_memreserve sicm_hotset sicm_cpp
+install(TARGETS sicm_high sicm_compass sicm_rdspy sicm_dump_info sicm_memreserve sicm_hotset sicm_new_delete
         LIBRARY DESTINATION lib
         RUNTIME DESTINATION bin)
