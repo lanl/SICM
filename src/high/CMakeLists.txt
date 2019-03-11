@@ -23,6 +23,8 @@ target_include_directories(sicm_hotset PRIVATE ${CMAKE_SOURCE_DIR}/include/low/p
 target_include_directories(sicm_hotset PUBLIC ${CMAKE_SOURCE_DIR}/include/low/public)
 target_include_directories(sicm_new_delete PRIVATE ${CMAKE_SOURCE_DIR}/include/high/private)
 target_include_directories(sicm_new_delete PUBLIC ${CMAKE_SOURCE_DIR}/include/high/public)
+target_include_directories(sicm_new_delete PRIVATE ${CMAKE_SOURCE_DIR}/include/low/private)
+target_include_directories(sicm_new_delete PUBLIC ${CMAKE_SOURCE_DIR}/include/low/public)
 
 target_link_libraries(sicm_high sicm)
 
