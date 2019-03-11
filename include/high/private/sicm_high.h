@@ -65,7 +65,9 @@ void sh_terminate();
 void sh_create_extent(void *begin, void *end);
 int get_arena_index(int id);
 
+#ifdef __cplusplus
 extern "C" {
+#endif
   void* sh_alloc_exact(int id, size_t sz);
   void* sh_alloc(int id, size_t sz);
   void* sh_aligned_alloc(int id, size_t alignment, size_t sz);
@@ -74,4 +76,6 @@ extern "C" {
   void* sh_calloc(int id, size_t num, size_t sz);
   void* sh_realloc(int id, void *ptr, size_t sz);
   void sh_free(void* ptr);
+#ifdef __cplusplus
 }
+#endif
