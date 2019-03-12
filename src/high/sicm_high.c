@@ -542,6 +542,7 @@ void sh_create_arena(int index, int id, sicm_device *device) {
     }
     arenas[index]->alloc_sites[arenas[index]->num_alloc_sites] = id;
     arenas[index]->num_alloc_sites++;
+    return;
   }
 
   /* Put an upper bound on the indices that need to be searched */
