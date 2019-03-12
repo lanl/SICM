@@ -554,6 +554,7 @@ void sh_create_arena(int index, int id, sicm_device *device) {
   }
 
   /* Create the arena if it doesn't exist */
+  printf("Creating an arena at index %d.\n", index);
   arenas[index] = calloc(1, sizeof(arena_info));
   arenas[index]->index = index;
   arenas[index]->accesses = 0;
