@@ -528,6 +528,8 @@ int get_thread_index() {
 
 /* Adds an arena to the `arenas` array. */
 void sh_create_arena(int index, int id, sicm_device *device) {
+  int i;
+
   /* If we've already created this arena */
   if(arenas[index] != NULL) {
 
@@ -537,6 +539,11 @@ void sh_create_arena(int index, int id, sicm_device *device) {
     
     /* Add the site to the arena */
     if(arenas[index]->num_alloc_sites == max_sites_per_arena) {
+      fprintf(stderr, "Sites: ");
+      for(i = 0; i < arenas[index]->num_alloc_sites; i++) {
+        fprintf(stderr, "%d ", arenas[index]->alloc_sites[i]);
+      }
+      fprintf(stderr, "\n");
       fprintf(stderr, "Tried to allocate %d sites into an arena. Increase SH_MAX_SITES_PER_ARENA.\n", max_sites_per_arena + 1);
       exit(1);
     }
