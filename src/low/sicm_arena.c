@@ -76,7 +76,7 @@ sicm_arena sicm_arena_create(size_t sz, sicm_device *dev) {
 	arena_ind = -1;
 	err = je_mallctl("arenas.create", (void *) &arena_ind, &arena_ind_sz, (void *)&new_hooks, sizeof(extent_hooks_t *));
 	if (err != 0) {
-		fprintf(stderr, "can't create an arena: %d\n", err);
+		fprintf(stderr, "can't create an arena: %s\n", strerror(err));
 		pthread_mutex_destroy(sa->mutex);
 		munmap(sa->mutex, sizeof(pthread_mutex_t));
 		free(sa);
