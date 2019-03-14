@@ -98,7 +98,7 @@ else
       COMMANDS+=$'\n'
     done
 fi
-echo "$COMMANDS" | xargs -I CMD --max-procs=16 bash -c CMD
+echo "$COMMANDS" | xargs -I CMD --max-procs=64 bash -c CMD
 
 # Also compile each file to its transformed object file, overwriting the old one
 COMMANDS=""
@@ -107,7 +107,7 @@ for file in "${FILES_ARR[@]}"; do
   COMMANDS+="${LLVMPATH}${LD_COMPILER} $FILEARGS -c ${file}.bc -o ${file}.o"
   COMMANDS+=$'\n'
 done
-echo "$COMMANDS" | xargs -I CMD --max-procs=16 bash -c CMD
+echo "$COMMANDS" | xargs -I CMD --max-procs=64 bash -c CMD
 
 # Now finally link the transformed '.o' files
 LINKARGS="$LINKARGS -L${LIB_DIR} -lsicm_high -lsicm_new_delete -Wl,-rpath,${LIB_DIR}"
