@@ -109,9 +109,7 @@ static inline app_info *sh_parse_site_info(FILE *file) {
 				pebs = 0;
 				continue;
 			} else {
-				fprintf(stderr, "Found '=====', but no descriptor. Aborting.\n");
-				fprintf(stderr, "%s\n", line);
-				exit(1);
+				fprintf(stderr, "WARNING: Found '=====', but no descriptor.\n");
 			}
 			len = 0;
 			free(line);
