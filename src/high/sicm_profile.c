@@ -306,6 +306,7 @@ void sh_stop_profile_thread() {
       for(n = 0; n < arenas[i]->num_alloc_sites; n++) {
         printf("%d ", arenas[i]->alloc_sites[n]);
       }
+      printf("\n");
       printf("  Accesses: %zu\n", arenas[i]->accesses);
       if(should_profile_rss) {
         printf("  Peak RSS: %zu\n", arenas[i]->peak_rss);
@@ -328,6 +329,7 @@ void sh_stop_profile_thread() {
       for(n = 0; n < arenas[i]->num_alloc_sites; n++) {
         printf("%d ", arenas[i]->alloc_sites[n]);
       }
+      printf("\n");
       if(should_profile_rss) {
         printf("  Peak RSS: %zu\n", arenas[i]->peak_rss);
       }
