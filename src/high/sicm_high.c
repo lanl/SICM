@@ -583,11 +583,12 @@ void sh_create_extent(void *start, void *end) {
   thread_index = get_thread_index();
   arena_index = pending_indices[thread_index];
 
-  /* A extent allocation is happening without an sh_alloc... */
+  /* A extent allocation is happening without an sh_alloc...
   if(arena_index == 0) {
     fprintf(stderr, "Unknown extent allocation. Aborting.\n");
     exit(1);
   }
+  */
 
   if(should_profile_rss && (get_alloc_site(arenas[arena_index], should_profile_one) != -1)) {
     /* If we're profiling RSS and this is the site that we're isolating */
