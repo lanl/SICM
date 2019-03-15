@@ -19,7 +19,7 @@ union metric {
   size_t acc;
 };
 
-use_tree(siteptr, unsigned);
+use_tree(siteptr, int);
 
 static inline int both_cmp(float a, float b) {
   int retval;
@@ -71,8 +71,8 @@ int accesses_cmp(siteptr a, siteptr b) {
  * by just iterating over them and finding the GCD of the current
  * GCD and the current value
  */
-size_t get_gcd(tree(unsigned, siteptr) sites) {
-  tree_it(unsigned, siteptr) it;
+size_t get_gcd(tree(int, siteptr) sites) {
+  tree_it(int, siteptr) it;
   size_t gcd, a, b, tmp;
 
   it = tree_begin(sites);
@@ -101,11 +101,11 @@ size_t get_gcd(tree(unsigned, siteptr) sites) {
  * an approximation optimization to limit the amount of memory and runtime it
  * uses.
  */
-tree(unsigned, siteptr) get_knapsack(tree(unsigned, siteptr) sites, size_t capacity, char proftype) {
+tree(int, siteptr) get_knapsack(tree(int, siteptr) sites, size_t capacity, char proftype) {
   size_t gcd, num_sites, num_weights, i, j, weight;
   union metric **table, a, b;
-  tree(unsigned, siteptr) knapsack;
-  tree_it(unsigned, siteptr) it;
+  tree(int, siteptr) knapsack;
+  tree_it(int, siteptr) it;
 
   /* Create a matrix with 'i' rows and 'j' columns, where 'i' is the number of
    * sites and 'j' is the number of weights (multiples of the gcd, though). We
@@ -161,7 +161,7 @@ tree(unsigned, siteptr) get_knapsack(tree(unsigned, siteptr) sites, size_t capac
   /* Now figure out which sites that included by walking
    * the table backwards and accumulating the sites in the
    * output structure */
-  knapsack = tree_make(unsigned, siteptr);
+  knapsack = tree_make(int, siteptr);
   it = tree_last(sites);
   i = num_sites;
   j = num_weights - 1;
@@ -188,23 +188,23 @@ tree(unsigned, siteptr) get_knapsack(tree(unsigned, siteptr) sites, size_t capac
 /* Input is a tree of sites and the capacity (in bytes) that you want to fill
  * up to. Outputs a greedy hotset.
  */
-tree(unsigned, siteptr) get_hotset(tree(unsigned, siteptr) sites, size_t capacity, char proftype) {
-  tree(siteptr, unsigned) sorted_sites;
-  tree(unsigned, siteptr) ret;
-  tree_it(unsigned, siteptr) it;
-  tree_it(siteptr, unsigned) sit;
+tree(int, siteptr) get_hotset(tree(int, siteptr) sites, size_t capacity, char proftype) {
+  tree(siteptr, int) sorted_sites;
+  tree(int, siteptr) ret;
+  tree_it(int, siteptr) it;
+  tree_it(siteptr, int) sit;
   char break_next_site;
   size_t packed_size;
 
-  ret = tree_make(unsigned, siteptr);
+  ret = tree_make(int, siteptr);
 
   /* Now sort the sites by accesses/byte or bandwidth/byte */
   if(proftype == 0) {
     /* bandwidth/byte */
-    sorted_sites = tree_make_c(siteptr, unsigned, &bandwidth_cmp);
+    sorted_sites = tree_make_c(siteptr, int, &bandwidth_cmp);
   } else {
     /* accesses/byte */
-    sorted_sites = tree_make_c(siteptr, unsigned, &accesses_cmp);
+    sorted_sites = tree_make_c(siteptr, int, &accesses_cmp);
   }
   tree_traverse(sites, it) {
     /* Only insert if the site has a peak_rss value */
@@ -233,26 +233,26 @@ tree(unsigned, siteptr) get_hotset(tree(unsigned, siteptr) sites, size_t capacit
 }
 
 /* Returns a filled Thermos hotset given a tree of sites */
-tree(unsigned, siteptr) get_thermos(tree(unsigned, siteptr) sites, size_t capacity, char proftype) {
-  tree(siteptr, unsigned) sorted_sites;
-  tree(unsigned, siteptr) ret;
-  tree_it(unsigned, siteptr) it;
-  tree_it(siteptr, unsigned) sit;
-  tree_it(siteptr, unsigned) tmp_sit;
+tree(int, siteptr) get_thermos(tree(int, siteptr) sites, size_t capacity, char proftype) {
+  tree(siteptr, int) sorted_sites;
+  tree(int, siteptr) ret;
+  tree_it(int, siteptr) it;
+  tree_it(siteptr, int) sit;
+  tree_it(siteptr, int) tmp_sit;
   char break_next_site;
   size_t packed_size, site_size, over, tmp_size, tmp_accs, site_accs;
 	float site_band, tmp_band;
-	unsigned site;
+	int site;
 
-  ret = tree_make(unsigned, siteptr);
+  ret = tree_make(int, siteptr);
 
   /* Now sort the sites by accesses/byte or bandwidth/byte */
   if(proftype == 0) {
     /* bandwidth/byte */
-    sorted_sites = tree_make_c(siteptr, unsigned, &bandwidth_cmp);
+    sorted_sites = tree_make_c(siteptr, int, &bandwidth_cmp);
   } else {
     /* accesses/byte */
-    sorted_sites = tree_make_c(siteptr, unsigned, &accesses_cmp);
+    sorted_sites = tree_make_c(siteptr, int, &accesses_cmp);
   }
   tree_traverse(sites, it) {
     /* Only insert if the site has a peak_rss and either a bandwidth or an accesses value */
@@ -343,8 +343,8 @@ int main(int argc, char **argv) {
   union metric total_value;
   long long node;
   float cap_float;
-  tree(unsigned, siteptr) sites, chosen_sites;
-  tree_it(unsigned, siteptr) it;
+  tree(int, siteptr) sites, chosen_sites;
+  tree_it(int, siteptr) it;
   app_info *info;
 
   /* Read in the arguments */

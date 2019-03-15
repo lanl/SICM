@@ -302,7 +302,7 @@ void sh_stop_profile_thread() {
     for(i = 0; i <= max_index; i++) {
       if(!arenas[i]) continue;
       associated += arenas[i]->accesses;
-      printf("Sites:");
+      printf("%d sites: ", arenas[i]->num_alloc_sites);
       for(n = 0; n < arenas[i]->num_alloc_sites; n++) {
         printf("%d ", arenas[i]->alloc_sites[n]);
       }
@@ -325,7 +325,7 @@ void sh_stop_profile_thread() {
     printf("===== RSS RESULTS =====\n");
     for(i = 0; i <= max_index; i++) {
       if(!arenas[i]) continue;
-      printf("Sites:");
+      printf("Sites: ");
       for(n = 0; n < arenas[i]->num_alloc_sites; n++) {
         printf("%d ", arenas[i]->alloc_sites[n]);
       }
