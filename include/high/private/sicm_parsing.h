@@ -18,7 +18,7 @@ typedef site * siteptr;
 /* Tree of sites */
 use_tree(int, siteptr);
 typedef struct app_info {
-	size_t num_pebs_sites, num_mbi_sites;
+	size_t num_pebs_sites, num_mbi_sites, site_peak_rss;
 	tree(int, siteptr) sites;
 } app_info;
 
@@ -164,6 +164,11 @@ static inline app_info *sh_parse_site_info(FILE *file) {
     }
 	}
 	free(line);
+
+  info->site_peak_rss = 0;
+  tree_traverse(info->sites, it) {
+    info->site_peak_rss += tree_it_val(it)->peak_rss;
+  }
 
 	return info;
 }
