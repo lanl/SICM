@@ -59,6 +59,7 @@ sicm_arena sicm_arena_create(size_t sz, sicm_device *dev) {
 	sa->maxsize = sz;
 	sa->pagesize = sicm_device_page_size(dev);
 	sa->numaid = sicm_numa_id(dev);
+  printf("Setting numaid to %d\n", sa->numaid);
 	sa->fd = -1;
 	sa->user = 0;
 
