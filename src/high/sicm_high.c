@@ -562,7 +562,6 @@ void sh_create_arena(int index, int id, sicm_device *device) {
   }
 
   /* Create the arena if it doesn't exist */
-  printf("Creating an arena at index %d.\n", index);
   arenas[index] = calloc(1, sizeof(arena_info));
   arenas[index]->index = index;
   arenas[index]->accesses = 0;
@@ -616,6 +615,7 @@ sicm_device *get_site_device(int id) {
     /* This site was found in the guidance file.  Use its device pointer to
      * find if this device has already got an arena.
      */
+    printf("ID %d\n", id);
     device = tree_it_val(it);
   } else {
     /* Site's not in the guidance file. Use the default device. */
