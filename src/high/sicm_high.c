@@ -1,5 +1,6 @@
 #include <fcntl.h>
 #include <numa.h>
+#include <numaif.h>
 #include <stdlib.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
