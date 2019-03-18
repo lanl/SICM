@@ -510,6 +510,7 @@ success:
     printf("Binding to NUMA node 1!\n");
   }
 	if (mbind(ret, size, MPOL_BIND, nodemask->maskp, nodemask->size, MPOL_MF_MOVE | MPOL_MF_STRICT) < 0) {
+    fprintf(stderr, "FAILED TO BIND EXTENT\n");
 		munmap(ret, size);
 		ret = NULL;
 		goto restore_mempolicy;
