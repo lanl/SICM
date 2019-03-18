@@ -578,16 +578,17 @@ void sh_create_arena(int index, int id, sicm_device *device) {
 void sh_create_extent(void *start, void *end) {
   int thread_index, arena_index;
 
+  printf("Got an extent: %p to %p\n", start, end);
+
   /* Get this thread's current arena index from `pending_indices` */
   thread_index = get_thread_index();
   arena_index = pending_indices[thread_index];
 
-  /* A extent allocation is happening without an sh_alloc...
-  if(arena_index == 0) {
+  /* A extent allocation is happening without an sh_alloc... */
+  if(arena_index == -1) {
     fprintf(stderr, "Unknown extent allocation. Aborting.\n");
     exit(1);
   }
-  */
 
   if(should_profile_rss && (get_alloc_site(arenas[arena_index], should_profile_one) != -1)) {
     /* If we're profiling RSS and this is the site that we're isolating */
@@ -873,7 +874,10 @@ void sh_init() {
     thread_indices++;
 
     /* Stores an index into `arenas` for the extent hooks */
-    pending_indices = (int *) calloc(max_threads, sizeof(int));
+    pending_indices = (int *) malloc(max_threads * sizeof(int));
+    for(i = 0; i < max_threads; i++) {
+      pending_indices[i] = -1;
+    }
 
     /* Set the arena allocator's callback function */
     sicm_extent_alloc_callback = &sh_create_extent;
