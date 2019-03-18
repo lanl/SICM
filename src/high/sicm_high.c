@@ -586,6 +586,10 @@ void sh_create_extent(void *start, void *end) {
     ptr++;
   }
 
+  int numa_node = -1;
+  get_mempolicy(&numa_node, NULL, 0, (void*)start, MPOL_F_NODE | MPOL_F_ADDR);
+  printf("NUMA NODE %d\n", numa_node);
+
   /* Get this thread's current arena index from `pending_indices` */
   thread_index = get_thread_index();
   arena_index = pending_indices[thread_index];
