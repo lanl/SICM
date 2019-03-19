@@ -578,18 +578,6 @@ void sh_create_arena(int index, int id, sicm_device *device) {
 /* Adds an extent to the `extents` array. */
 void sh_create_extent(void *start, void *end) {
   int thread_index, arena_index;
-  char *ptr;
-
-  printf("Got an extent: %p to %p\n", start, end);
-  ptr = (char *) start;
-  while(ptr != end) {
-    *ptr = 0;
-    ptr++;
-  }
-
-  int numa_node = -1;
-  get_mempolicy(&numa_node, NULL, 0, (void*)start, MPOL_F_NODE | MPOL_F_ADDR);
-  printf("NUMA NODE %d\n", numa_node);
 
   /* Get this thread's current arena index from `pending_indices` */
   thread_index = get_thread_index();
@@ -627,7 +615,6 @@ sicm_device *get_site_device(int id) {
     /* This site was found in the guidance file.  Use its device pointer to
      * find if this device has already got an arena.
      */
-    printf("ID %d\n", id);
     device = tree_it_val(it);
   } else {
     /* Site's not in the guidance file. Use the default device. */

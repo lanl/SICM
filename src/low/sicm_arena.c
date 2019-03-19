@@ -506,11 +506,7 @@ static void *sa_alloc(extent_hooks_t *h, void *new_addr, size_t size, size_t ali
 	ret = (void *) m;
 
 success:
-  if(sa->numaid == 1) {
-    printf("Binding to NUMA node 1!\n");
-  }
-	if (mbind(ret, size, MPOL_BIND, nodemask->maskp, nodemask->size, MPOL_MF_MOVE | MPOL_MF_STRICT) < 0) {
-    fprintf(stderr, "FAILED TO BIND EXTENT\n");
+	if (mbind(ret, size, MPOL_PREFERRED, nodemask->maskp, nodemask->size, MPOL_MF_MOVE) < 0) {
 		munmap(ret, size);
 		ret = NULL;
 		goto restore_mempolicy;
