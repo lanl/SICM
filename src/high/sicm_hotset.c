@@ -440,8 +440,8 @@ int main(int argc, char **argv) {
   printf("Capacity: %zu bytes\n", cap_bytes);
   if(captype == 0) {
     printf("Capacity Ratio: %f\n", cap_float);
+    printf("Peak RSS: %zu bytes\n", info->site_peak_rss);
   }
-  printf("Peak RSS: %zu bytes\n", info->site_peak_rss);
 
   /* Clean up */
   tree_traverse(info->sites, it) {

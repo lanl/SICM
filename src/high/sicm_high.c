@@ -783,7 +783,7 @@ void* sh_calloc(int id, size_t num, size_t sz) {
   void *ptr;
   size_t i;
 
-  ptr = sh_alloc(id, sz);
+  ptr = sh_alloc(id, num * sz);
   memset(ptr, 0, num * sz);
   return ptr;
 }
