@@ -1,5 +1,6 @@
 #include <fcntl.h>
 #include <numa.h>
+#include <numaif.h>
 #include <stdlib.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
@@ -562,7 +563,6 @@ void sh_create_arena(int index, int id, sicm_device *device) {
   }
 
   /* Create the arena if it doesn't exist */
-  printf("Creating an arena at index %d.\n", index);
   arenas[index] = calloc(1, sizeof(arena_info));
   arenas[index]->index = index;
   arenas[index]->accesses = 0;
@@ -584,7 +584,7 @@ void sh_create_extent(void *start, void *end) {
   arena_index = pending_indices[thread_index];
 
   /* A extent allocation is happening without an sh_alloc... */
-  if(arena_index == 0) {
+  if(arena_index == -1) {
     fprintf(stderr, "Unknown extent allocation. Aborting.\n");
     exit(1);
   }
@@ -872,7 +872,10 @@ void sh_init() {
     thread_indices++;
 
     /* Stores an index into `arenas` for the extent hooks */
-    pending_indices = (int *) calloc(max_threads, sizeof(int));
+    pending_indices = (int *) malloc(max_threads * sizeof(int));
+    for(i = 0; i < max_threads; i++) {
+      pending_indices[i] = -1;
+    }
 
     /* Set the arena allocator's callback function */
     sicm_extent_alloc_callback = &sh_create_extent;

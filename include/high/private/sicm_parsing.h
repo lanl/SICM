@@ -1,26 +1,25 @@
 /*
  * Contains code for parsing output of the high-level interface.
- * Reads information about each allocation site into a structure,
- * as well as information that tools like /usr/bin/time output.
+ * Reads information about each allocation site into a structure.
  */
-
-#pragma once
 
 #include <inttypes.h>
 #include <limits.h>
+#include <stdio.h>
 #include "sicm_tree.h"
 
-/* For parsing information about sites */
+/* Holds information on a single site */
 typedef struct site {
 	float bandwidth;
-	uintmax_t peak_rss, accesses;
+	size_t peak_rss, accesses;
 } site;
 typedef site * siteptr;
-use_tree(unsigned, siteptr);
+
+/* Tree of sites */
+use_tree(int, siteptr);
 typedef struct app_info {
-	uintmax_t peak_rss, site_peak_rss, time, max_time, min_time, num_times,
-						num_pebs_sites, num_mbi_sites;
-	tree(unsigned, siteptr) sites;
+	size_t num_pebs_sites, num_mbi_sites, site_peak_rss;
+	tree(int, siteptr) sites;
 } app_info;
 
 /* Reads in profiling information from the file pointer, returns
@@ -28,23 +27,17 @@ typedef struct app_info {
  * and number of accesses (if applicable).
  */
 static inline app_info *sh_parse_site_info(FILE *file) {
-	char *line, *tok, *ptr;
-	ssize_t len, read;
-	size_t total_time, tmp_time;
-	long long num_sites, node;
-	siteptr cur_site;
-	int mbi, pebs, pebs_site, i, hours, minutes;
+	char *line, in_block, *tok;
+	size_t len, val;
+  ssize_t read;
+	siteptr *cur_sites; /* An array of site pointers */
+	int site_id, num_tok, num_sites, i;
 	float bandwidth, seconds;
-	tree_it(unsigned, siteptr) it;
+	tree_it(int, siteptr) it;
 	app_info *info;
 
 	info = malloc(sizeof(app_info));
-	info->sites = tree_make(unsigned, siteptr);
-	info->peak_rss = 0;
-	info->time = 0;
-	info->num_times = 0;
-	info->max_time = 0;
-	info->min_time = ULONG_MAX;
+	info->sites = tree_make(int, siteptr);
 	info->num_pebs_sites = 0;
 	info->num_mbi_sites = 0;
 
@@ -54,225 +47,128 @@ static inline app_info *sh_parse_site_info(FILE *file) {
 	}
 
 	/* Read in from stdin and fill in the tree with the sites */
-	num_sites = 0;
-	mbi = 0;
-	pebs = 0;
-	pebs_site = 0;
+  cur_sites = NULL;
+  site_id = 0;
 	line = NULL;
 	len = 0;
-	total_time = 0;
+  in_block = 0; /* 0 if not in results block,
+                   1 if in MBI results block,
+                   2 if in PEBS results block */
+
 	while(read = getline(&line, &len, file) != -1) {
-		tok = strtok(line, " \t");
-		if(!tok) break;
 
-		/* Find the beginning or end of some results */
-		if(strcmp(tok, "=====") == 0) {
-			/* Get whether it's the end of results, or MBI, or PEBS */
-			tok = strtok(NULL, " ");
-			if(!tok) break;
-			if(strcmp(tok, "MBI") == 0) {
-				/* Need to keep parsing to get the site number */
-				tok = strtok(NULL, " ");
-				if(!tok || strcmp(tok, "RESULTS") != 0) {
-					fprintf(stderr, "Error parsing.\n");
-					exit(1);
-				}
-				tok = strtok(NULL, " ");
-				if(!tok || strcmp(tok, "FOR") != 0) {
-					fprintf(stderr, "Error parsing.\n");
-					exit(1);
-				}
-				tok = strtok(NULL, " ");
-				if(!tok || strcmp(tok, "SITE") != 0) {
-					fprintf(stderr, "Error parsing.\n");
-					exit(1);
-				}
-				tok = strtok(NULL, " ");
-				if(!tok) break;
-				mbi = strtoimax(tok, NULL, 10);
-				it = tree_lookup(info->sites, mbi);
-				if(tree_it_good(it)) {
-					cur_site = tree_it_val(it);
-				} else {
-					cur_site = malloc(sizeof(site));
-					cur_site->bandwidth = 0;
-					cur_site->peak_rss = 0;
-					cur_site->accesses = 0;
-					tree_insert(info->sites, mbi, cur_site);
-					info->num_mbi_sites++;
-				}
-			} else if(strcmp(tok, "PEBS") == 0) {
-				pebs = 1;
-				continue; /* Don't need the rest of this line */
-			} else if(strcmp(tok, "END") == 0) {
-				mbi = 0;
-				pebs = 0;
-				continue;
-			} else {
-				fprintf(stderr, "Found '=====', but no descriptor. Aborting.\n");
-				fprintf(stderr, "%s\n", line);
-				exit(1);
-			}
-			len = 0;
-			free(line);
-			line = NULL;
-			continue;
-		}
+    if(in_block == 0) {
+      /* Try to find the beginning of some results */
+      num_tok = sscanf(line,
+                      "===== MBI RESULTS FOR SITE %d =====\n",
+                      &site_id);
+      if(num_tok == 1) {
+        /* Found some MBI results */
+        in_block = 1;
+        it = tree_lookup(info->sites, site_id);
+        cur_sites = malloc(sizeof(siteptr));
+        if(tree_it_good(it)) {
+          cur_sites[0] = tree_it_val(it);
+        } else {
+          cur_sites[0] = malloc(sizeof(site));
+          cur_sites[0]->bandwidth = 0;
+          cur_sites[0]->peak_rss = 0;
+          cur_sites[0]->accesses = 0;
+          tree_insert(info->sites, site_id, cur_sites[0]);
+          info->num_mbi_sites++;
+        }
+        continue;
+      }
+      if(strncmp(line, "===== PEBS RESULTS =====\n", 25) == 0) {
+        /* Found some PEBS results */
+        in_block = 2;
+      }
+    } else if(in_block == 1) {
+      /* If we're in a block of MBI results */
+      num_tok = sscanf(line, 
+                      "Average bandwidth: %f MB/s\n",
+                      &(cur_sites[0]->bandwidth));
+      if(num_tok == 1) {
+        continue;
+      }
+      num_tok = sscanf(line,
+                      "Peak RSS: %zu\n",
+                      &(cur_sites[0]->peak_rss));
+      if(num_tok == 1) {
+        continue;
+      }
+      if(strncmp(line, "===== END MBI RESULTS =====\n", 30) == 0) {
+        in_block = 0;
+        /* Deallocate the array, but not each element (those are in the tree). */
+        free(cur_sites);
+        continue;
+      }
+    } else if(in_block == 2) {
+      /* We're in a block of PEBS results */
+      num_tok = sscanf(line,
+                      "%d sites:",
+                      &num_sites);
+      if(num_tok == 1) {
+        cur_sites = malloc(sizeof(siteptr) * num_sites);
+        /* Iterate over the site IDs and read them in */
+        tok = strtok(line, " ");
+        tok = strtok(NULL, " ");
+        tok = strtok(NULL, " ");
+        i = 0;
+        while(tok != NULL) {
+          num_tok = sscanf(tok, "%d", &site_id);
+          if(num_tok == 1) {
+            it = tree_lookup(info->sites, site_id);
+            if(tree_it_good(it)) {
+              cur_sites[i] = tree_it_val(it);
+            } else {
+              cur_sites[i] = malloc(sizeof(site));
+              cur_sites[i]->bandwidth = 0;
+              cur_sites[i]->peak_rss = 0;
+              cur_sites[i]->accesses = 0;
+              tree_insert(info->sites, site_id, cur_sites[i]);
+              info->num_pebs_sites++;
+            }
+          } else {
+            break;
+          }
+          tok = strtok(NULL, " ");
+          i++;
+        }
+      }
 
-		/* If we're already in a block of results */
-		if(mbi) {
-			/* We've already gotten the first token, use it */
-			if(tok && strcmp(tok, "Average") == 0) {
-				tok = strtok(NULL, " ");
-				if(tok && strcmp(tok, "bandwidth:") == 0) {
-					/* Get the average bandwidth value for this site */
-					tok = strtok(NULL, " ");
-					bandwidth = strtof(tok, NULL);
-					cur_site->bandwidth = bandwidth;
-				} else {
-					fprintf(stderr, "Got 'Average', but no expected tokens. Aborting.\n");
-					exit(1);
-				}
-			} else {
-				fprintf(stderr, "In a block of MBI results, but no expected tokens.\n");
-				exit(1);
-			}
-			continue;
-		} else if(pebs) {
-			/* We're in a block of PEBS results */
-			if(tok && (strcmp(tok, "Site") == 0)) {
-				/* Get the site number */
-				tok = strtok(NULL, " ");
-				if(tok) {
-					/* Get the site number, then wait for the next line */
-					pebs_site = strtoimax(tok, NULL, 10);
-					it = tree_lookup(info->sites, pebs_site);
-					if(tree_it_good(it)) {
-						cur_site = tree_it_val(it);
-					} else {
-						cur_site = malloc(sizeof(site));
-						cur_site->bandwidth = 0;
-						cur_site->peak_rss = 0;
-						cur_site->accesses = 0;
-						tree_insert(info->sites, pebs_site, cur_site);
-						info->num_pebs_sites++;
-					}
-				} else {
-					fprintf(stderr, "Got 'Site' but no expected site number. Aborting.\n");
-					exit(1);
-				}
-			} else if(tok && (strcmp(tok, "Totals:") == 0)) {
-				/* Ignore the totals */
-				continue;
-			} else {
-				/* Get some information about a site */
-				if(tok && (strcmp(tok, "Accesses:") == 0)) {
-					tok = strtok(NULL, " ");
-					if(!tok) {
-						fprintf(stderr, "Got 'Accesses:' but no value. Aborting.\n");
-						exit(1);
-					}
-					cur_site->accesses = strtoimax(tok, NULL, 10);
-				} else if(tok && (strcmp(tok, "Peak") == 0)) {
-					tok = strtok(NULL, " ");
-					if(tok && (strcmp(tok, "RSS:") == 0)) {
-						tok = strtok(NULL, " ");
-						if(!tok) {
-							fprintf(stderr, "Got 'Peak RSS:' but no value. Aborting.\n");
-							exit(1);
-						}
-						cur_site->peak_rss = strtoumax(tok, NULL, 10);
-					} else {
-						fprintf(stderr, "Got 'Peak' but not 'RSS:'. Aborting.\n");
-						exit(1);
-					}
-				} else {
-					fprintf(stderr, "Got a site number but no expected information. Aborting.\n");
-					exit(1);
-				}
-			}
-		} else {
-			/* Parse the output of /usr/bin/time to get peak RSS */
-			if(tok && strcmp(tok, "Maximum") == 0) {
-				tok = strtok(NULL, " ");
-				if(!tok || !(strcmp(tok, "resident") == 0)) {
-					continue;
-				}
-				tok = strtok(NULL, " ");
-				if(!tok || !(strcmp(tok, "set") == 0)) {
-					continue;
-				}
-				tok = strtok(NULL, " ");
-				if(!tok || !(strcmp(tok, "size") == 0)) {
-					continue;
-				}
-				tok = strtok(NULL, " ");
-				if(!tok || !(strcmp(tok, "(kbytes):") == 0)) {
-					continue;
-				}
-				tok = strtok(NULL, " ");
-				if(!tok) {
-					continue;
-				}
-				info->peak_rss = strtoimax(tok, NULL, 10) * 1024; /* it's in kilobytes */
-			} else if(tok && (strcmp(tok, "Elapsed") == 0)) {
-				/* Skip the next six tokens to get the elapsed wall clock time */
-				tok = strtok(NULL, " ");
-				if(!tok || !(strcmp(tok, "(wall") == 0)) {
-					continue;
-				}
-				tok = strtok(NULL, " ");
-				tok = strtok(NULL, " ");
-				tok = strtok(NULL, " ");
-				tok = strtok(NULL, " ");
-				tok = strtok(NULL, " ");
-				tok = strtok(NULL, " ");
-				if(!tok) {
-					continue;
-				}
-				/* Now this string is in hh:mm:ss or m:ss. We want seconds. */
-				/* Count the number of colons. */
-				i = 0;
-				ptr = tok;
-				while((ptr = strchr(ptr, ':')) != NULL) {
-					i++;
-					ptr++;
-				}
-				if(i == 2) {
-					/* Get hours, then minutes, then seconds. */
-					hours = 0;
-					minutes = 0;
-					seconds = 0;
-					sscanf(tok, "%d:%d:%f", &hours, &minutes, &seconds);
-				} else if(i == 1) {
-					/* Minutes, then seconds. */
-					hours = 0;
-					minutes = 0;
-					seconds = 0;
-					sscanf(tok, "%d:%f", &minutes, &seconds);
-				} else {
-					fprintf(stderr, "Got a GNU time wall clock time that was unfamiliar. Aborting.\n");
-					exit(1);
-				}
-				info->num_times++;
-				tmp_time = ((hours * 60 * 60) + (minutes * 60) + ((int) seconds));
-				total_time += tmp_time;
-				info->time = total_time / info->num_times;
-				if(tmp_time > info->max_time) {
-					info->max_time = tmp_time;
-				}
-				if(tmp_time < info->min_time) {
-					info->min_time = tmp_time;
-				}
-			}
-		}
+      /* Get number of PEBS accesses */
+      num_tok = sscanf(line, "  Accesses: %zu\n", &val);
+      if(num_tok == 1) {
+        /* This value applies to all sites in the arena */
+        for(i = 0; i < num_sites; i++) {
+          cur_sites[i]->accesses = val;
+        }
+      }
+
+      /* Get Peak RSS */
+      num_tok = sscanf(line, "  Peak RSS: %zu\n", &val);
+      if(num_tok == 1) {
+        /* This value applies to all sites in the arena */
+        for(i = 0; i < num_sites; i++) {
+          cur_sites[i]->peak_rss = val;
+        }
+      }
+
+      /* If we're at the end of a block of PEBS results */
+      if(strncmp(line, "===== END PEBS RESULTS =====\n", 32) == 0) {
+        in_block = 0;
+        free(cur_sites);
+        continue;
+      }
+    }
 	}
 	free(line);
 
-	info->site_peak_rss = 0;
-	tree_traverse(info->sites, it) {
-		info->site_peak_rss += tree_it_val(it)->peak_rss;
-	}
+  info->site_peak_rss = 0;
+  tree_traverse(info->sites, it) {
+    info->site_peak_rss += tree_it_val(it)->peak_rss;
+  }
 
 	return info;
 }
