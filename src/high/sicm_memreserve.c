@@ -34,14 +34,13 @@ int main(int argc, char **argv)
 	long long freemem;
 	int strict, node;
 	
-	if(argc != 7) {
+	if(argc != 6) {
 		fprintf(stderr, "USAGE: ./memreserve [node] [num_threads] [amount] ['hold','release'] ['prefer','bind']\n");
 		fprintf(stderr, "node: the node to reserve memory on\n");
 		fprintf(stderr, "num_threads: the number of threads to use to fill in the memory with garbage data\n");
 		fprintf(stderr, "amount: the amount of pages to reserve.\n");
 		fprintf(stderr, "hold/release: 'hold' to pause after allocating, 'release' to let go after fulfilling the allocation.\n");
 		fprintf(stderr, "prefer,bind: choose between 'prefer'ing the numa node or 'bind'ing to it strictly.\n");
-		fprintf(stderr, "If 'ratio', provide profiling information about the application on 'stdin'.\n");
 		exit(1);
 	}
 
