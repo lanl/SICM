@@ -17,35 +17,51 @@
 #include "sicm_profile.h"
 #include "sicm_rdspy.h"
 
+/* Stores all machine devices and device
+ * we should bind to by default */
 static struct sicm_device_list device_list;
 int num_numa_nodes;
 struct sicm_device *default_device;
 
-tree(int, deviceptr) site_nodes; /* Allocation site ID -> device */
-tree(deviceptr, int) device_arenas; /* For per-device arena layouts only */
+/* Allocation site ID -> device */
+tree(int, deviceptr) site_nodes;
+/* Stores arenas associated with a device,
+ * for the per-device arena layouts only. */
+tree(deviceptr, int) device_arenas;
 
-/* For profiling */
+/* Should we do profiling? */
 int should_profile_online;
-int should_profile_all; /* For sampling */
-float profile_all_rate;
-int should_profile_one; /* For bandwidth profiling */
+int should_profile_all;
+int should_profile_one;
 int should_profile_rss;
+int should_run_rdspy;
+
+/* How quickly to sample accesses/RSS */
+float profile_all_rate;
 float profile_rss_rate;
+int sample_freq;
+int max_sample_pages;
+
+/* The device to profile bandwidth on */
 struct sicm_device *profile_one_device;
+
+/* Online profiling device and parameters */
 struct sicm_device *online_device;
 ssize_t online_device_cap, online_device_packed_size;
+
+/* Sampling and bandwidth perf event, input to libpfm4 */
 char *profile_one_event;
 char *profile_all_event;
-int max_sample_pages;
-int sample_freq;
-int num_imcs, max_imc_len, max_event_len;
-char **imcs; /* Array of strings of IMCs for the bandwidth profiling */
 
-int should_run_rdspy;
+/* Array of strings of IMCs for the bandwidth profiling */
+char **imcs;
+int num_imcs, max_imc_len, max_event_len;
 
 /* Keep track of all extents */
 extent_arr *extents;
 extent_arr *rss_extents; /* The extents that we want to get the RSS of */
+
+/* Gets locked when we add a new extent */
 pthread_rwlock_t extents_lock = PTHREAD_RWLOCK_INITIALIZER;
 
 /* Keeps track of arenas */
@@ -53,6 +69,15 @@ arena_info **arenas;
 static enum arena_layout layout;
 static int max_arenas, arenas_per_thread, max_sites_per_arena;
 int max_index;
+
+/* Stores which arena an allocation site goes into. Only for
+ * the `*_SITE_ARENAS` layouts, where there is an arena for
+ * each allocation site.
+ */
+tree(int, int) site_arenas;
+int arena_counter;
+
+/* Gets locked when we add an arena */
 pthread_mutex_t arena_lock = PTHREAD_MUTEX_INITIALIZER;
 
 /* Associates a thread with an index (starting at 0) into the `arenas` array */
@@ -531,13 +556,16 @@ int get_thread_index() {
 void sh_create_arena(int index, int id, sicm_device *device) {
   int i;
 
+  if((arenas[index] != NULL) && (get_alloc_site(arenas[index], id) != -1)) {
+    return;
+  }
+
+  /* Keep track of which arena we chose for this site */
+  tree_insert(site_arenas, id, index);
+
   /* If we've already created this arena */
   if(arenas[index] != NULL) {
 
-    if(get_alloc_site(arenas[index], id) != -1) {
-      return;
-    }
-    
     /* Add the site to the arena */
     if(arenas[index]->num_alloc_sites == max_sites_per_arena) {
       fprintf(stderr, "Sites: ");
@@ -550,6 +578,7 @@ void sh_create_arena(int index, int id, sicm_device *device) {
     }
     arenas[index]->alloc_sites[arenas[index]->num_alloc_sites] = id;
     arenas[index]->num_alloc_sites++;
+
     return;
   }
 
@@ -605,6 +634,24 @@ void sh_create_extent(void *start, void *end) {
   }
 }
 
+int get_site_arena(int id) {
+  tree_it(int, int) it;
+  int ret;
+
+  it = tree_lookup(site_arenas, id);
+  if(tree_it_good(it)) {
+    /* We've already got an arena for this site, use it */
+    ret = tree_it_val(it);
+  } else {
+    /* We need to create an arena for this site. Grab the next
+     * available arena and increment.
+     */
+    ret = __sync_fetch_and_add(&arena_counter, 1);
+  }
+
+  return ret;
+}
+
 /* Gets the device that this site should go onto from the site_nodes tree */
 sicm_device *get_site_device(int id) {
   sicm_device *device;
@@ -652,6 +699,7 @@ int get_device_arena(int id, sicm_device **device) {
 int get_arena_index(int id) {
   int ret, thread_index;
   sicm_device *device;
+  tree_it(int, int) it;
 
   thread_index = get_thread_index();
 
@@ -673,7 +721,7 @@ int get_arena_index(int id) {
       ret = (thread_index * arenas_per_thread) + ret;
       break;
     case SHARED_SITE_ARENAS:
-      ret = id;
+      ret = get_site_arena(id);
       device = get_site_device(id);
       /* Special case for profiling */
       if(profile_one_device && (id == should_profile_one)) {
@@ -704,6 +752,7 @@ int get_arena_index(int id) {
 
   pending_indices[thread_index] = ret;
   pthread_mutex_lock(&arena_lock);
+  printf("Site %d is going to arena %d.\n", id, ret);
   sh_create_arena(ret, id, device);
   pthread_mutex_unlock(&arena_lock);
 
@@ -809,8 +858,6 @@ void sh_init() {
   int i;
   long size;
 
-  //pthread_rwlock_init(&extents_lock, NULL);
-
   device_list = sicm_init();
 
   /* Get the number of NUMA nodes with memory, since we ignore huge pages with
@@ -823,13 +870,15 @@ void sh_init() {
     }
   }
 
+  arena_counter = 0;
+  site_arenas = tree_make(int, int);
   site_nodes = tree_make(int, deviceptr);
   device_arenas = tree_make(deviceptr, int);
   set_options();
   
   if(layout != INVALID_LAYOUT) {
-    /* `arenas` is a pseudo-two-dimensional array, first dimension is per-thread */
-    /* Second dimension is one for each arena that each thread will have.
+    /* `arenas` is a pseudo-two-dimensional array, first dimension is per-thread.
+     * Second dimension is one for each arena that each thread will have.
      * If the arena layout isn't per-thread (`EXCLUSIVE_`), arenas_per_thread is just
      * the total number of arenas.
      */

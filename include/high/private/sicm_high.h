@@ -33,6 +33,7 @@ typedef struct arena_info {
 typedef sicm_device * deviceptr;
 use_tree(int, deviceptr);
 use_tree(deviceptr, int);
+use_tree(int, int);
 
 /* So we can access these things from profile.c.
  * These variables are defined in src/high/high.c.
