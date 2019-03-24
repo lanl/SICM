@@ -752,7 +752,6 @@ int get_arena_index(int id) {
 
   pending_indices[thread_index] = ret;
   pthread_mutex_lock(&arena_lock);
-  printf("Site %d is going to arena %d.\n", id, ret);
   sh_create_arena(ret, id, device);
   pthread_mutex_unlock(&arena_lock);
 
