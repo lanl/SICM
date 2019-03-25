@@ -297,7 +297,7 @@ void set_options() {
     }
   }
 
-  if(should_profile_one) {
+  if(should_profile_one != -1) {
     /* If the above is true, which NUMA node should we isolate the allocation site
      * onto? The user should also set SH_DEFAULT_DEVICE to another device to avoid
      * the two being the same, if the allocation site is to be isolated.
