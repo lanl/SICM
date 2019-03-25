@@ -674,6 +674,9 @@ static bool sa_dalloc(extent_hooks_t *h, void *addr, size_t size, bool committed
 	sarena *sa;
 	bool ret;
 
+  printf("Deallocating\n");
+  fflush(stdout);
+
 	ret = false;
 	sa = container_of(h, sarena, hooks);
 	pthread_mutex_lock(sa->mutex);

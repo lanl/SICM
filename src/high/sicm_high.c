@@ -847,6 +847,7 @@ void sh_free(void* ptr) {
   if(layout == INVALID_LAYOUT) {
     je_free(ptr);
   } else {
+    printf("Freeing ptr\n");
     sicm_free(ptr);
   }
 }
