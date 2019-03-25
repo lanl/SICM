@@ -286,7 +286,7 @@ void set_options() {
    * ID as the value of this environment variable.
    */
   env = getenv("SH_PROFILE_ONE");
-  should_profile_one = 0;
+  should_profile_one = -1;
   if(env) {
     tmp_val = strtoimax(env, NULL, 10);
     if((tmp_val == 0) || (tmp_val > INT_MAX)) {
@@ -601,7 +601,6 @@ void sh_create_arena(int index, int id, sicm_device *device) {
   arenas[index]->rss = 0;
   arenas[index]->peak_rss = 0;
   arenas[index]->arena = sicm_arena_create(0, device);
-  sarena *tmparena = arenas[index]->arena;
 }
 
 /* Adds an extent to the `extents` array. */
@@ -618,7 +617,7 @@ void sh_create_extent(void *start, void *end) {
     exit(1);
   }
 
-  if(should_profile_rss && (get_alloc_site(arenas[arena_index], should_profile_one) != -1)) {
+  if(should_profile_rss && (should_profile_one != -1) && (get_alloc_site(arenas[arena_index], should_profile_one) != -1)) {
     /* If we're profiling RSS and this is the site that we're isolating */
     extent_arr_insert(rss_extents, start, end, arenas[arena_index]);
   }
@@ -903,7 +902,7 @@ void sh_init() {
     extents = extent_arr_init();
     if(should_profile_rss) {
       rss_extents = extents;
-      if(should_profile_one) {
+      if(should_profile_one != -1) {
         rss_extents = extent_arr_init();
       }
     }
@@ -946,7 +945,7 @@ void sh_terminate() {
   if(layout != INVALID_LAYOUT) {
 
     /* Clean up the profiler */
-    if(should_profile_all || should_profile_one || should_profile_rss) {
+    if(should_profile_all || (should_profile_one != -1) || should_profile_rss) {
       sh_stop_profile_thread();
     }
 

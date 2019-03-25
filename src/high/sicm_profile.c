@@ -118,13 +118,13 @@ void sh_get_event() {
   /* Get the array of event strs that we want to use */
   if(should_profile_all) {
     event_strs = accesses_event_strs;
-  } else if(should_profile_one) {
+  } else if(should_profile_one != -1) {
     event_strs = bandwidth_event_strs;
   }
 
   /* Iterate through the array of event strs and see which one works. 
    * For should_profile_one, just use the first given IMC. */
-  if(should_profile_one && profile_one_event) {
+  if((should_profile_one != -1) && profile_one_event) {
     event = &profile_one_event;
     printf("Using a user-specified event: %s\n", profile_one_event);
   } else {
@@ -163,7 +163,7 @@ void sh_get_event() {
     prof.pes[0]->sample_period = sample_freq;
 
   /* If we're doing memory bandwidth sampling, initialize the other IMCs with the same event */
-  } else if(should_profile_one) {
+  } else if(should_profile_one != -1) {
     buf = calloc(max_imc_len + max_event_len + 3, sizeof(char));
     for(i = 0; i < num_imcs; i++) {
 
@@ -212,7 +212,7 @@ void sh_start_profile_thread() {
   num_events = 0;
   if(should_profile_all) {
     num_events = 1;
-  } else if(should_profile_one) {
+  } else if(should_profile_one != -1) {
     num_events = num_imcs;
   }
 
@@ -227,7 +227,7 @@ void sh_start_profile_thread() {
   }
 
   /* Use libpfm to fill the pe struct */
-  if(should_profile_all || should_profile_one) {
+  if(should_profile_all || (should_profile_one != -1)) {
     sh_get_event();
   }
 
@@ -239,7 +239,7 @@ void sh_start_profile_thread() {
       strerror(errno);
       exit(EXIT_FAILURE);
     }
-  } else if(should_profile_one) {
+  } else if(should_profile_one != -1) {
     for(i = 0; i < num_events; i++) {
       prof.fds[i] = syscall(__NR_perf_event_open, prof.pes[i], -1, 0, -1, 0);
       if (prof.fds[i] == -1) {
@@ -264,7 +264,7 @@ void sh_start_profile_thread() {
   pthread_mutex_lock(&prof.mtx);
   if(should_profile_all) {
     pthread_create(&prof.profile_all_id, NULL, &profile_all, NULL);
-  } else if(should_profile_one) {
+  } else if(should_profile_one != -1) {
     pthread_create(&prof.profile_one_id, NULL, &profile_one, NULL);
   }
   if(should_profile_rss) {
@@ -285,7 +285,7 @@ void sh_stop_profile_thread() {
   pthread_mutex_unlock(&prof.mtx);
   if(should_profile_all) {
     pthread_join(prof.profile_all_id, NULL);
-  } else if(should_profile_one) {
+  } else if(should_profile_one != -1) {
     pthread_join(prof.profile_one_id, NULL);
   }
   if(should_profile_rss) {
@@ -314,7 +314,7 @@ void sh_stop_profile_thread() {
     }
     printf("Totals: %zu / %zu\n", associated, prof.total);
     printf("===== END PEBS RESULTS =====\n");
-  } else if(should_profile_one) {
+  } else if(should_profile_one != -1) {
     printf("===== MBI RESULTS FOR SITE %u =====\n", should_profile_one);
     printf("Average bandwidth: %.1f MB/s\n", prof.running_avg);
     if(should_profile_rss) {
