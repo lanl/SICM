@@ -410,6 +410,7 @@ sicm_arena sicm_lookup(void *ptr) {
 static void *sa_alloc(extent_hooks_t *, void *, size_t, size_t, bool *, bool *, unsigned);
 static void *sa_alloc_shared(extent_hooks_t *, void *, size_t, size_t, bool *, bool *, unsigned);
 static bool sa_dalloc(extent_hooks_t *, void *, size_t, bool, unsigned);
+static bool sa_purge(extent_hooks_t *, void *, size_t, size_t, size_t, unsigned);
 static void sa_destroy(extent_hooks_t *, void *, size_t, bool, unsigned);
 static bool sa_commit(extent_hooks_t *, void *, size_t, size_t, size_t, unsigned);
 static bool sa_decommit(extent_hooks_t *, void *, size_t, size_t, size_t, unsigned);
