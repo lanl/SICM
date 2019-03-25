@@ -749,8 +749,8 @@ int get_arena_index(int id) {
     ret = ret % max_arenas;
   }
 
-  pending_indices[thread_index] = ret;
   pthread_mutex_lock(&arena_lock);
+  pending_indices[thread_index] = ret;
   sh_create_arena(ret, id, device);
   pthread_mutex_unlock(&arena_lock);
 
