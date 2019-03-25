@@ -422,8 +422,8 @@ static extent_hooks_t sa_hooks = {
 	.destroy = sa_destroy,
 	.commit = sa_commit,
 	.decommit = sa_decommit,
-	.purge_lazy = NULL,
-	.purge_forced = NULL,
+	.purge_lazy = sa_purge,
+	.purge_forced = sa_purge,
 	.split = sa_split,
 	.merge = sa_merge,
 };
@@ -687,6 +687,16 @@ static bool sa_dalloc(extent_hooks_t *h, void *addr, size_t size, bool committed
 	pthread_mutex_unlock(sa->mutex);
 	return ret;
 }
+
+
+static bool sa_purge(extent_hooks_t *extent_hooks, void *addr, size_t size, size_t offset, size_t length, unsigned arena_id) {
+  int err;
+  printf("Purge called\n");
+  fflush(stdout);
+  err = madvise(((char *)addr) + offset, length, MADV_DONTNEED);
+  return (err != 0);
+}
+
 
 static void sa_destroy(extent_hooks_t *h, void *addr, size_t size, bool committed, unsigned arena_ind) {
 	sa_dalloc(h, addr, size, committed, arena_ind);
