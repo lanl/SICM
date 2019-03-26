@@ -24,6 +24,7 @@ void (*sicm_extent_alloc_callback)(void *start, void *end) = NULL;
 
 static void sarena_init() {
 	int err;
+  char boolean;
 	size_t miblen;
 
 	pthread_key_create(&sa_default_key, NULL);
@@ -31,6 +32,10 @@ static void sarena_init() {
 	err = je_mallctlnametomib("arenas.lookup", sa_lookup_mib, &miblen);
 	if (err != 0)
 		fprintf(stderr, "can't get mib: %d\n", err);
+  boolean = 1;
+  err = je_mallctl("background_thread", NULL, NULL, &boolean, sizeof(char));
+  if (err != 0)
+    fprintf(stderr, "Can't enable background threads: %d\n", err);
 }
 
 sicm_arena sicm_arena_create(size_t sz, sicm_device *dev) {
@@ -360,11 +365,13 @@ void sicm_free(void *ptr) {
   int err;
 	//je_free(ptr);
   je_dallocx(ptr, MALLOCX_TCACHE_NONE);
+  /*
 	err = je_mallctl("arena.4096.purge", NULL, NULL, NULL, 0);
   if(err != 0) {
     printf("Failure: %d\n", err);
     exit(1);
   }
+  */
 }
 
 void *sicm_realloc(void *ptr, size_t sz) {
