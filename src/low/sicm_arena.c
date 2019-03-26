@@ -357,6 +357,7 @@ void *sicm_alloc_aligned(size_t sz, size_t align) {
 }
 
 void sicm_free(void *ptr) {
+  int err;
 	//je_free(ptr);
   je_dallocx(ptr, MALLOCX_TCACHE_NONE);
 	err = je_mallctl("arena.arenas.narenas.purge", NULL, NULL, NULL, 0);
