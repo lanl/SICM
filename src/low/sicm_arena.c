@@ -362,7 +362,7 @@ void sicm_free(void *ptr) {
   je_dallocx(ptr, MALLOCX_TCACHE_NONE);
 	err = je_mallctl("arena.arenas.narenas.purge", NULL, NULL, NULL, 0);
   if(err != 0) {
-    printf("Failure\n");
+    printf("Failure: %d\n", err);
     exit(1);
   }
 }
