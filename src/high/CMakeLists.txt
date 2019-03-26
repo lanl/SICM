@@ -30,6 +30,7 @@ target_link_libraries(sicm_new_delete sicm_high)
 #     jemalloc     #
 ####################
 find_package(Jemalloc REQUIRED)
+set(JEMALLOC_LIBRARIES ${JEMALLOC_LIBRARIES} " -lpthread")
 target_include_directories(sicm_high PRIVATE ${JEMALLOC_INCLUDE_DIR})
 target_link_libraries(sicm_high ${JEMALLOC_LIBRARIES})
 target_include_directories(sicm_memreserve PRIVATE ${JEMALLOC_INCLUDE_DIR})
@@ -68,7 +69,6 @@ target_link_libraries(sicm_rdspy ${LLVM_LIBRARIES})
 #     PThreads     #
 ####################
 target_link_libraries(sicm_memreserve pthread)
-target_link_libraries(sicm_high pthread)
 
 install(TARGETS sicm_high sicm_compass sicm_rdspy sicm_memreserve sicm_hotset sicm_new_delete
         LIBRARY DESTINATION lib
