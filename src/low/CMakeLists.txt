@@ -12,7 +12,7 @@ target_include_directories(sicm_cpp PRIVATE ${CMAKE_SOURCE_DIR}/include/low/priv
 target_include_directories(sicm_cpp PUBLIC ${CMAKE_SOURCE_DIR}/include/low/public)
 
 find_package(Jemalloc REQUIRED)
-set(JEMALLOC_LIBRARIES ${JEMALLOC_LIBRARIES} "-lpthread")
+set (CMAKE_SHARED_LINKER_FLAGS "-Wl,--no-as-needed")
 target_link_libraries(sicm ${JEMALLOC_LIBRARIES})
 target_include_directories(sicm PRIVATE ${JEMALLOC_INCLUDE_DIR})
 
