@@ -35,7 +35,7 @@ find_package(Jemalloc REQUIRED)
 target_include_directories(sicm_high PRIVATE ${JEMALLOC_INCLUDE_DIR})
 target_link_libraries(sicm_high ${JEMALLOC_LIBRARIES} ${CMAKE_THREAD_LIBS_INIT})
 target_include_directories(sicm_memreserve PRIVATE ${JEMALLOC_INCLUDE_DIR})
-target_link_libraries(sicm_memreserve ${JEMALLOC_LIBRARIES})
+target_link_libraries(sicm_memreserve ${JEMALLOC_LIBRARIES} ${CMAKE_THREAD_LIBS_INIT})
 target_include_directories(sicm_hotset PRIVATE ${JEMALLOC_INCLUDE_DIR})
 target_link_libraries(sicm_hotset ${JEMALLOC_LIBRARIES})
 
