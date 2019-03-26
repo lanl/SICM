@@ -30,7 +30,7 @@ target_link_libraries(sicm_new_delete sicm_high)
 #     jemalloc     #
 ####################
 find_package(Jemalloc REQUIRED)
-set(JEMALLOC_LIBRARIES ${JEMALLOC_LIBRARIES} " -lpthread")
+set(JEMALLOC_LIBRARIES ${JEMALLOC_LIBRARIES} "-lpthread")
 target_include_directories(sicm_high PRIVATE ${JEMALLOC_INCLUDE_DIR})
 target_link_libraries(sicm_high ${JEMALLOC_LIBRARIES})
 target_include_directories(sicm_memreserve PRIVATE ${JEMALLOC_INCLUDE_DIR})
