@@ -26,12 +26,14 @@ target_include_directories(sicm_new_delete PUBLIC ${CMAKE_SOURCE_DIR}/include/lo
 target_link_libraries(sicm_high sicm)
 target_link_libraries(sicm_new_delete sicm_high)
 
+find_package(Threads)
+
 ####################
 #     jemalloc     #
 ####################
 find_package(Jemalloc REQUIRED)
 target_include_directories(sicm_high PRIVATE ${JEMALLOC_INCLUDE_DIR})
-target_link_libraries(sicm_high ${JEMALLOC_LIBRARIES})
+target_link_libraries(sicm_high ${JEMALLOC_LIBRARIES} ${CMAKE_THREAD_LIBS_INIT})
 target_include_directories(sicm_memreserve PRIVATE ${JEMALLOC_INCLUDE_DIR})
 target_link_libraries(sicm_memreserve ${JEMALLOC_LIBRARIES})
 target_include_directories(sicm_hotset PRIVATE ${JEMALLOC_INCLUDE_DIR})
@@ -63,11 +65,6 @@ target_include_directories(sicm_compass PRIVATE ${LLVM_INCLUDE_DIR})
 target_link_libraries(sicm_compass ${LLVM_LIBRARIES})
 target_include_directories(sicm_rdspy PRIVATE ${LLVM_INCLUDE_DIR})
 target_link_libraries(sicm_rdspy ${LLVM_LIBRARIES})
-
-####################
-#     PThreads     #
-####################
-target_link_libraries(sicm_memreserve pthread)
 
 install(TARGETS sicm_high sicm_compass sicm_rdspy sicm_memreserve sicm_hotset sicm_new_delete
         LIBRARY DESTINATION lib
