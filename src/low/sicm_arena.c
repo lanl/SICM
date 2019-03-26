@@ -359,7 +359,11 @@ void *sicm_alloc_aligned(size_t sz, size_t align) {
 void sicm_free(void *ptr) {
 	//je_free(ptr);
   je_dallocx(ptr, MALLOCX_TCACHE_NONE);
-	je_mallctl("arena.arenas.narenas.purge", NULL, NULL, NULL, 0);
+	err = je_mallctl("arena.arenas.narenas.purge", NULL, NULL, NULL, 0);
+  if(err != 0) {
+    printf("Failure\n");
+    exit(1);
+  }
 }
 
 void *sicm_realloc(void *ptr, size_t sz) {
