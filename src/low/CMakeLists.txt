@@ -19,6 +19,10 @@ find_package(NUMA REQUIRED)
 target_link_libraries(sicm ${NUMA_LIBRARY})
 target_include_directories(sicm PRIVATE ${NUMA_INCLUDE_DIR})
 
+find_package(Threads)
+target_link_libraries(sicm ${CMAKE_THREAD_LIBS_INIT})
+
+
 install(TARGETS sicm sicm_f90 sicm_cpp
         LIBRARY DESTINATION lib)
 install(DIRECTORY ${CMAKE_SOURCE_DIR}/include/low/public/
