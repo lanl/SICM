@@ -25,7 +25,7 @@ void (*sicm_extent_alloc_callback)(void *start, void *end) = NULL;
 static void sarena_init() {
 	int err;
   char boolean;
-	size_t miblen, max_background_threads;
+	size_t miblen, max_background_threads, decay_ms;
 
 	pthread_key_create(&sa_default_key, NULL);
 	miblen = 2;
@@ -33,6 +33,10 @@ static void sarena_init() {
 	if (err != 0)
 		fprintf(stderr, "can't get mib: %d\n", err);
 
+  decay_ms = 0;
+  err = je_mallctl("arena.MALLCTL_ARENAS_ALL.dirty_decay_ms", NULL, NULL, &decay_ms, sizeof(size_t));
+  if(err != 0)
+    fprintf(stderr, "Can't set decay: %d\n", err);
   /*
   max_background_threads = 1;
   err = je_mallctl("max_background_threads", NULL, NULL, &max_background_threads, sizeof(size_t));
