@@ -687,9 +687,6 @@ static bool sa_dalloc(extent_hooks_t *h, void *addr, size_t size, bool committed
 	sarena *sa;
 	bool ret;
 
-  printf("Deallocating\n");
-  fflush(stdout);
-
 	ret = false;
 	sa = container_of(h, sarena, hooks);
 	pthread_mutex_lock(sa->mutex);
@@ -708,8 +705,6 @@ static bool sa_dalloc(extent_hooks_t *h, void *addr, size_t size, bool committed
 
 static bool sa_purge(extent_hooks_t *extent_hooks, void *addr, size_t size, size_t offset, size_t length, unsigned arena_id) {
   int err;
-  printf("Purge called\n");
-  fflush(stdout);
   err = madvise(((char *)addr) + offset, length, MADV_DONTNEED);
   return (err != 0);
 }
