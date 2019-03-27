@@ -33,16 +33,17 @@ static void sarena_init() {
 	if (err != 0)
 		fprintf(stderr, "can't get mib: %d\n", err);
 
+  /*
   max_background_threads = 1;
   err = je_mallctl("max_background_threads", NULL, NULL, &max_background_threads, sizeof(size_t));
   if(err != 0)
     fprintf(stderr, "Can't set the maximum background threads: %d\n", err);
 
-  /* Turn on background threads */
   boolean = 1;
   err = je_mallctl("background_thread", NULL, NULL, &boolean, sizeof(char));
   if (err != 0)
     fprintf(stderr, "Can't enable background threads: %d\n", err);
+    */
 }
 
 sicm_arena sicm_arena_create(size_t sz, sicm_device *dev) {
