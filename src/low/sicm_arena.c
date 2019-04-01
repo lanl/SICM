@@ -475,7 +475,7 @@ static void *sa_alloc(extent_hooks_t *h, void *new_addr, size_t size, size_t ali
 	struct bitmask *nodemask;
 	struct bitmask *oldnodemask;
 
-	*commit = 1;
+	*commit = 0;
 	*zero = 0;
 	ret = NULL;
 	sa = container_of(h, sarena, hooks);
