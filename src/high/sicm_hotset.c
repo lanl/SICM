@@ -339,16 +339,16 @@ tree(int, siteptr) get_thermos(tree(int, siteptr) sites, size_t capacity, char p
  */
 int main(int argc, char **argv) {
   char proftype, algo, captype, *endptr;
-  size_t cap_bytes, total_weight;
+  size_t cap_bytes, total_weight, tot_peak_rss;
   union metric total_value;
   long long node;
-  float cap_float;
+  float cap_float, scale;
   tree(int, siteptr) sites, chosen_sites;
   tree_it(int, siteptr) it;
   app_info *info;
 
   /* Read in the arguments */
-  if(argc != 6) {
+  if(argc != 7) {
     fprintf(stderr, "USAGE: ./hotset proftype algo captype cap node\n");
     fprintf(stderr, "proftype: mbi or pebs, the type of profiling.\n");
     fprintf(stderr, "algo: knapsack, hotset, or thermos. The packing algorithm.\n");
@@ -356,6 +356,7 @@ int main(int argc, char **argv) {
     fprintf(stderr, "cap: the capacity. A float 0-1 if captype is 'ratio', or a\n");
     fprintf(stderr, "  constant number of bytes otherwise.\n");
     fprintf(stderr, "node: the node that chosen sites should be associated with.\n");
+    fprintf(stderr, "tot_peak_rss: the peak RSS of the run, to be used to scale the site RSS. Set to 0 for no scaling.\n");
     exit(1);
   }
   if(strcmp(argv[1], "mbi") == 0) {
@@ -393,12 +394,29 @@ int main(int argc, char **argv) {
     fprintf(stderr, "The node that you specified is greater than an integer can store. Aborting.\n");
     exit(1);
   }
+  endptr = NULL;
+  tot_peak_rss = strtoumax(argv[6], &endptr, 10);
 
   info = sh_parse_site_info(stdin);
 
   if(captype == 0) {
     /* Figure out cap_bytes from the ratio */
     cap_bytes = info->site_peak_rss * cap_float;
+  }
+
+  /* Scale the sites' peak RSS down according to the peak RSS of the whole run */
+  if(tot_peak_rss != 0) {
+    /* Ratio of:
+     * 1. The sum of all sites' peak RSS
+     * 2. The actual peak RSS of the whole application
+     */
+    scale = ((float)tot_peak_rss) / ((float) info->site_peak_rss);
+    printf("Scaling sites down by %f\n", scale);
+    tree_traverse(info->sites, it) {
+      printf("Scaling %zu -> ", tree_it_val(it)->peak_rss);
+      tree_it_val(it)->peak_rss /= scale;
+      printf("%zu\n", tree_it_val(it)->peak_rss);
+    }
   }
 
   /* Now run the packing algorithm */
