@@ -101,11 +101,11 @@ void scale_sites(tree(int, siteptr) sites, float scale) {
   size_t gcd, multiples;
 
   /* First get the GCD of the original sites, adhere to that so that knapsack will still work */
-  gcd = get_gcd(info->sites);
+  gcd = get_gcd(sites);
 
   /* Scale each site */
   printf("Scaling sites down by %f\n", scale);
-  tree_traverse(info->sites, it) {
+  tree_traverse(sites, it) {
     printf("Scaling %zu -> ", tree_it_val(it)->peak_rss);
 
     tree_it_val(it)->peak_rss *= scale;
