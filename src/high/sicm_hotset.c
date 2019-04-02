@@ -96,16 +96,17 @@ size_t get_gcd(tree(int, siteptr) sites) {
   return gcd;
 }
 
-void scale_sites(tree(int, siteptr) sites, float scale) {
+void scale_sites(app_info *info, float scale) {
   tree_it(int, siteptr) it;
-  size_t gcd, multiples;
+  size_t gcd, multiples, total;
 
   /* First get the GCD of the original sites, adhere to that so that knapsack will still work */
-  gcd = get_gcd(sites);
+  gcd = get_gcd(info->sites);
 
   /* Scale each site */
   printf("Scaling sites down by %f\n", scale);
-  tree_traverse(sites, it) {
+  total = 0;
+  tree_traverse(info->sites, it) {
     printf("Scaling %zu -> ", tree_it_val(it)->peak_rss);
 
     tree_it_val(it)->peak_rss *= scale;
@@ -113,9 +114,11 @@ void scale_sites(tree(int, siteptr) sites, float scale) {
     /* Round down to the nearest multiple of the GCD */
     multiples = tree_it_val(it)->peak_rss / gcd;
     tree_it_val(it)->peak_rss = gcd * multiples;
+    total += tree_it_val(it)->peak_rss;
 
     printf("%zu\n", tree_it_val(it)->peak_rss);
   }
+  info->site_peak_rss = total;
 }
 
 /* Input is a tree of sites and the capacity (in bytes) that you want to fill
@@ -433,7 +436,7 @@ int main(int argc, char **argv) {
      * 2. The actual peak RSS of the whole application
      */
     scale = ((float)tot_peak_rss) / ((float) info->site_peak_rss);
-    scale_sites(info->sites, scale);
+    scale_sites(info, scale);
   }
 
   /* Now run the packing algorithm */
