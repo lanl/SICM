@@ -96,6 +96,28 @@ size_t get_gcd(tree(int, siteptr) sites) {
   return gcd;
 }
 
+void scale_sites(tree(int, siteptr) sites, float scale) {
+  tree_it(int, siteptr) it;
+  size_t gcd, multiples;
+
+  /* First get the GCD of the original sites, adhere to that so that knapsack will still work */
+  gcd = get_gcd(info->sites);
+
+  /* Scale each site */
+  printf("Scaling sites down by %f\n", scale);
+  tree_traverse(info->sites, it) {
+    printf("Scaling %zu -> ", tree_it_val(it)->peak_rss);
+
+    tree_it_val(it)->peak_rss *= scale;
+
+    /* Round down to the nearest multiple of the GCD */
+    multiples = tree_it_val(it)->peak_rss / gcd;
+    tree_it_val(it)->peak_rss = gcd * multiples;
+
+    printf("%zu\n", tree_it_val(it)->peak_rss);
+  }
+}
+
 /* Input is a tree of sites and the capacity (in bytes) that you want to fill
  * up to. Outputs the optimal knapsack. Uses dynamic programming combined with
  * an approximation optimization to limit the amount of memory and runtime it
@@ -339,7 +361,7 @@ tree(int, siteptr) get_thermos(tree(int, siteptr) sites, size_t capacity, char p
  */
 int main(int argc, char **argv) {
   char proftype, algo, captype, *endptr;
-  size_t cap_bytes, total_weight, tot_peak_rss;
+  size_t cap_bytes, total_weight, tot_peak_rss, gcd;
   union metric total_value;
   long long node;
   float cap_float, scale;
@@ -411,12 +433,7 @@ int main(int argc, char **argv) {
      * 2. The actual peak RSS of the whole application
      */
     scale = ((float)tot_peak_rss) / ((float) info->site_peak_rss);
-    printf("Scaling sites down by %f\n", scale);
-    tree_traverse(info->sites, it) {
-      printf("Scaling %zu -> ", tree_it_val(it)->peak_rss);
-      tree_it_val(it)->peak_rss *= scale;
-      printf("%zu\n", tree_it_val(it)->peak_rss);
-    }
+    scale_sites(info->sites, scale);
   }
 
   /* Now run the packing algorithm */
