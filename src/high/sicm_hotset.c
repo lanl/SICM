@@ -414,7 +414,7 @@ int main(int argc, char **argv) {
     printf("Scaling sites down by %f\n", scale);
     tree_traverse(info->sites, it) {
       printf("Scaling %zu -> ", tree_it_val(it)->peak_rss);
-      tree_it_val(it)->peak_rss /= scale;
+      tree_it_val(it)->peak_rss *= scale;
       printf("%zu\n", tree_it_val(it)->peak_rss);
     }
   }
