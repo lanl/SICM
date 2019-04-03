@@ -476,6 +476,7 @@ get_rss() {
   /* Maintain a rolling average of the RSS of each arena,
    * using the previous 10 values
    */
+  num_rss_samples++;
   for(i = 0; i <= max_index; i++) {
     if(!(arenas[i])) continue;
 
@@ -483,10 +484,9 @@ get_rss() {
       arenas[i]->avg_rss = arenas[i]->rss;
     }
 
-    arenas[i]->avg_rss -= arenas[i]->avg_rss / 10;
-    arenas[i]->avg_rss += arenas[i]->rss / 10;
+    arenas[i]->avg_rss -= arenas[i]->avg_rss / num_rss_samples;
+    arenas[i]->avg_rss += arenas[i]->rss / num_rss_samples;
   }
-  num_rss_samples++;
 
   pthread_rwlock_unlock(&extents_lock);
 }
