@@ -7,6 +7,7 @@
 #include <fcntl.h>
 
 profile_thread prof;
+size_t num_rss_samples = 0;
 use_tree(double, size_t);
 use_tree(size_t, deviceptr);
 
@@ -314,6 +315,7 @@ void sh_stop_profile_thread() {
       }
     }
     printf("Totals: %zu / %zu\n", associated, prof.total);
+    printf("Number of RSS samples: %zu\n", num_rss_samples);
     printf("===== END PEBS RESULTS =====\n");
   } else if(should_profile_one != -1) {
     printf("===== MBI RESULTS FOR SITE %u =====\n", should_profile_one);
@@ -484,7 +486,7 @@ get_rss() {
     arenas[i]->avg_rss -= arenas[i]->avg_rss / 10;
     arenas[i]->avg_rss += arenas[i]->rss / 10;
   }
-  
+  num_rss_samples++;
 
   pthread_rwlock_unlock(&extents_lock);
 }
