@@ -600,6 +600,7 @@ void sh_create_arena(int index, int id, sicm_device *device) {
   arenas[index]->num_alloc_sites = 1;
   arenas[index]->rss = 0;
   arenas[index]->peak_rss = 0;
+  arenas[index]->avg_rss = 0;
   arenas[index]->arena = sicm_arena_create(0, device);
 }
 

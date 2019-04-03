@@ -310,6 +310,7 @@ void sh_stop_profile_thread() {
       printf("  Accesses: %zu\n", arenas[i]->accesses);
       if(should_profile_rss) {
         printf("  Peak RSS: %zu\n", arenas[i]->peak_rss);
+        printf("  Average RSS: %zu\n", arenas[i]->avg_rss);
       }
     }
     printf("Totals: %zu / %zu\n", associated, prof.total);
@@ -446,7 +447,6 @@ get_rss() {
 	size_t i, n, numpages;
   uint64_t start, end;
   arena_info *arena;
-  ssize_t num_read;
 
   /* Grab the lock for the extents array */
   pthread_rwlock_rdlock(&extents_lock);
@@ -463,35 +463,29 @@ get_rss() {
 		end = (uint64_t) rss_extents->arr[i].end;
 		arena = rss_extents->arr[i].arena;
 
-    numpages = (end - start) /prof.pagesize;
-		prof.pfndata = (union pfn_t *) realloc(prof.pfndata, numpages * prof.addrsize);
-
-		/* Seek to the starting of this chunk in the pagemap */
-		if(lseek64(prof.pagemap_fd, (start / prof.pagesize) * prof.addrsize, SEEK_SET) == ((off64_t) - 1)) {
-			close(prof.pagemap_fd);
-			fprintf(stderr, "Failed to seek in the PageMap file. Aborting.\n");
-			exit(1);
-		}
-
-		/* Read in all of the pfns for this chunk */
-    if(read(prof.pagemap_fd, prof.pfndata, prof.addrsize * numpages) != (prof.addrsize * numpages)) {
-			fprintf(stderr, "Failed to read the PageMap file. Aborting.\n");
-			exit(1);
-		}
-
-		/* Iterate over them and check them, sum up RSS in arena->rss */
-		for(n = 0; n < numpages; n++) {
-			if(!(prof.pfndata[n].obj.present)) {
-				continue;
-		  }
-      arena->rss += prof.pagesize;
-		}
+    arena->rss += end - start;
 
 		/* Maintain the peak for this arena */
 		if(arena->rss > arena->peak_rss) {
 			arena->peak_rss = arena->rss;
 		}
 	}
+
+  /* Maintain a rolling average of the RSS of each arena,
+   * using the previous 10 values
+   */
+  for(i = 0; i <= max_index; i++) {
+    if(!(arenas[i])) continue;
+
+    if(!(arenas[i]->avg_rss)) {
+      arenas[i]->avg_rss = arenas[i]->rss;
+    }
+
+    arenas[i]->avg_rss -= arenas[i]->avg_rss / 10;
+    arenas[i]->avg_rss += arenas[i]->rss / 10;
+  }
+  
+
   pthread_rwlock_unlock(&extents_lock);
 }
 
