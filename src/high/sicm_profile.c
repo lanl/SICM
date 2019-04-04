@@ -450,7 +450,8 @@ get_rss() {
   uint64_t start, end;
   arena_info *arena;
 
-  /* Grab the lock for the extents array */
+  /* Make sure we don't stomp on any toes */
+  pthread_mutex_lock(&arena_lock);
   pthread_rwlock_rdlock(&extents_lock);
 
 	/* Zero out the RSS values for each arena */
@@ -489,6 +490,7 @@ get_rss() {
   }
 
   pthread_rwlock_unlock(&extents_lock);
+  pthread_mutex_unlock(&arena_lock);
 }
 
 void *profile_rss(void *a) {

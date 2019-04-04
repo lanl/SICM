@@ -750,14 +750,10 @@ int get_arena_index(int id) {
     ret = ret % max_arenas;
   }
 
-  /* Make sure we don't create any other arenas
-   * or add any extents until arena creation is complete */
-  pthread_rwlock_rdlock(&extents_lock);
-
+  pthread_mutex_lock(&arena_lock);
   pending_indices[thread_index] = ret;
   sh_create_arena(ret, id, device);
-
-  pthread_rwlock_unlock(&extents_lock);
+  pthread_mutex_unlock(&arena_lock);
 
   return ret;
 }
