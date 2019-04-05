@@ -315,7 +315,7 @@ tree(int, siteptr) get_thermos(tree(int, siteptr) sites, size_t capacity, char p
 			tmp_size = 0;
 			tmp_accs = 0;
 			tmp_band = 0.0;
-      tree_traverse(sorted_sites, tmp_sit) {
+      tree_traverse(ret, tmp_sit) {
 				tmp_size += tree_it_key(tmp_sit)->peak_rss;
 				if(proftype == 0) {
 					tmp_band += tree_it_key(tmp_sit)->bandwidth;
