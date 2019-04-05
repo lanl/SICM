@@ -316,11 +316,11 @@ tree(int, siteptr) get_thermos(tree(int, siteptr) sites, size_t capacity, char p
 			tmp_accs = 0;
 			tmp_band = 0.0;
       tree_traverse(ret, tmp_sit) {
-				tmp_size += tree_it_key(tmp_sit)->peak_rss;
+				tmp_size += tree_it_val(tmp_sit)->peak_rss;
 				if(proftype == 0) {
-					tmp_band += tree_it_key(tmp_sit)->bandwidth;
+					tmp_band += tree_it_val(tmp_sit)->bandwidth;
 				} else {
-					tmp_accs += tree_it_key(tmp_sit)->accesses;
+					tmp_accs += tree_it_val(tmp_sit)->accesses;
 				}
 				if(tmp_size > over) {
 					break;
