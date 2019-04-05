@@ -138,6 +138,7 @@ sicm_arena sicm_arena_create_mmapped(size_t sz, sicm_device *dev, int fd, off_t 
 	}
 
 	sa->extents = extent_arr_init();
+	sa->hooks = sa_shared_hooks;
 	new_hooks = &sa->hooks;
 	arena_ind_sz = sizeof(unsigned); // sa->arena_ind);
 	arena_ind = -1;
