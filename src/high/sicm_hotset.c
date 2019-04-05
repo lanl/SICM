@@ -263,7 +263,7 @@ tree(int, siteptr) get_thermos(tree(int, siteptr) sites, size_t capacity, char p
   tree(int, siteptr) ret;
   tree_it(int, siteptr) it;
   tree_it(siteptr, int) sit;
-  tree_it(siteptr, int) tmp_sit;
+  tree_it(int, siteptr) tmp_sit;
   char break_next_site;
   size_t packed_size, site_size, over, tmp_size, tmp_accs, site_accs;
 	float site_band, tmp_band;
