@@ -93,6 +93,7 @@ size_t get_gcd(tree(int, siteptr) sites) {
     tree_it_next(it);
   }
 
+  printf("GCD of site sizes is %zu.\n", gcd);
   return gcd;
 }
 
