@@ -436,6 +436,7 @@ int main(int argc, char **argv) {
      * 1. The sum of all sites' peak RSS
      * 2. The actual peak RSS of the whole application
      */
+    printf("Scaling from a peak RSS of %zu to a peak RSS of %zu.\n", info->site_peak_rss, tot_peak_rss);
     scale = ((float)tot_peak_rss) / ((float) info->site_peak_rss);
     scale_sites(info, scale);
   }
