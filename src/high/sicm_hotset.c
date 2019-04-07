@@ -363,7 +363,7 @@ tree(int, siteptr) get_thermos(tree(int, siteptr) sites, size_t capacity, char p
  */
 int main(int argc, char **argv) {
   char proftype, algo, captype, *endptr;
-  size_t cap_bytes, chosen_weight, tot_peak_rss, gcd;
+  size_t cap_bytes, chosen_weight, total_weight, tot_peak_rss, gcd;
   union metric chosen_value, total_value;
   long long node;
   float cap_float, scale;
