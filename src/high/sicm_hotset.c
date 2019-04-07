@@ -108,8 +108,6 @@ void scale_sites(app_info *info, float scale) {
   printf("Scaling sites down by %f\n", scale);
   total = 0;
   tree_traverse(info->sites, it) {
-    printf("Scaling %zu -> ", tree_it_val(it)->peak_rss);
-
     tree_it_val(it)->peak_rss *= scale;
 
     /* Round down to the nearest multiple of the GCD */
