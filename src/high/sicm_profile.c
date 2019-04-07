@@ -444,6 +444,7 @@ get_bandwidth()
   prof.running_avg = ((prof.running_avg * (prof.num_intervals - 1)) + total) / prof.num_intervals;
 }
 
+#if 0
 static void
 get_rss() {
 	size_t i, n, numpages;
@@ -489,6 +490,63 @@ get_rss() {
     arenas[i]->avg_rss += arenas[i]->rss / num_rss_samples;
   }
 
+  pthread_rwlock_unlock(&extents_lock);
+  pthread_mutex_unlock(&arena_lock);
+}
+#endif
+
+static void
+get_rss() {
+	size_t i, n, numpages;
+  uint64_t start, end;
+  arena_info *arena;
+  ssize_t num_read;
+
+  /* Grab the lock for the extents array */
+  pthread_mutex_lock(&arena_lock);
+  pthread_rwlock_rdlock(&extents_lock);
+
+	/* Zero out the RSS values for each arena */
+	extent_arr_for(rss_extents, i) {
+    arena = rss_extents->arr[i].arena;
+		arena->rss = 0;
+	}
+
+	/* Iterate over the chunks */
+	extent_arr_for(rss_extents, i) {
+		start = (uint64_t) rss_extents->arr[i].start;
+		end = (uint64_t) rss_extents->arr[i].end;
+		arena = rss_extents->arr[i].arena;
+
+    numpages = (end - start) /prof.pagesize;
+		prof.pfndata = (union pfn_t *) realloc(prof.pfndata, numpages * prof.addrsize);
+
+		/* Seek to the starting of this chunk in the pagemap */
+		if(lseek64(prof.pagemap_fd, (start / prof.pagesize) * prof.addrsize, SEEK_SET) == ((off64_t) - 1)) {
+			close(prof.pagemap_fd);
+			fprintf(stderr, "Failed to seek in the PageMap file. Aborting.\n");
+			exit(1);
+		}
+
+		/* Read in all of the pfns for this chunk */
+    if(read(prof.pagemap_fd, prof.pfndata, prof.addrsize * numpages) != (prof.addrsize * numpages)) {
+			fprintf(stderr, "Failed to read the PageMap file. Aborting.\n");
+			exit(1);
+		}
+
+		/* Iterate over them and check them, sum up RSS in arena->rss */
+		for(n = 0; n < numpages; n++) {
+			if(!(prof.pfndata[n].obj.present)) {
+				continue;
+		  }
+      arena->rss += prof.pagesize;
+		}
+
+		/* Maintain the peak for this arena */
+		if(arena->rss > arena->peak_rss) {
+			arena->peak_rss = arena->rss;
+		}
+	}
   pthread_rwlock_unlock(&extents_lock);
   pthread_mutex_unlock(&arena_lock);
 }
