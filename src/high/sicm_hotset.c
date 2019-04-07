@@ -365,8 +365,8 @@ tree(int, siteptr) get_thermos(tree(int, siteptr) sites, size_t capacity, char p
  */
 int main(int argc, char **argv) {
   char proftype, algo, captype, *endptr;
-  size_t cap_bytes, total_weight, tot_peak_rss, gcd;
-  union metric total_value;
+  size_t cap_bytes, chosen_weight, tot_peak_rss, gcd;
+  union metric chosen_value, total_value;
   long long node;
   float cap_float, scale;
   tree(int, siteptr) sites, chosen_sites;
@@ -450,18 +450,36 @@ int main(int argc, char **argv) {
     chosen_sites = get_thermos(info->sites, cap_bytes, proftype);
   }
 
-  printf("===== GUIDANCE =====\n");
+  /* Calculate what we had to choose from */
   total_weight = 0;
   total_value.acc = 0;
   total_value.band = 0;
-  tree_traverse(chosen_sites, it) {
-    printf("%u %d\n", tree_it_key(it), (int) node);
+  tree_traverse(info->sites, it) {
     total_weight += tree_it_val(it)->peak_rss;
     if(proftype == 0) { 
       total_value.band += tree_it_val(it)->bandwidth;
     } else {
       total_value.acc += tree_it_val(it)->accesses;
     }
+  }
+
+  /* Calculate what we chose */
+  chosen_weight = 0;
+  chosen_value.acc = 0;
+  chosen_value.band = 0;
+  tree_traverse(chosen_sites, it) {
+    chosen_weight += tree_it_val(it)->peak_rss;
+    if(proftype == 0) { 
+      chosen_value.band += tree_it_val(it)->bandwidth;
+    } else {
+      chosen_value.acc += tree_it_val(it)->accesses;
+    }
+  }
+
+  /* Print out the calculated results */
+  printf("===== GUIDANCE =====\n");
+  tree_traverse(chosen_sites, it) {
+    printf("%u %d\n", tree_it_key(it), (int) node);
   }
   printf("===== END GUIDANCE =====\n");
   if(algo == 0) {
@@ -471,16 +489,13 @@ int main(int argc, char **argv) {
   } else if(algo == 2) {
     printf("Strategy: Thermos\n");
   }
-  printf("Used capacity: %zu bytes\n", total_weight);
+  printf("Used capacity: %zu/%zu bytes\n", chosen_weight, total_weight);
   if(proftype == 0) {
-    printf("Total value: %f\n", total_value.band);
+    printf("Value: %f/%f\n", chosen_value.band, total_value.band);
   } else {
-    printf("Total value: %zu\n", total_value.acc);
+    printf("Value: %zu/%zu\n", chosen_value.acc, total_value.band);
   }
   printf("Capacity: %zu bytes\n", cap_bytes);
-  if(captype == 0) {
-    printf("Capacity Ratio: %f\n", cap_float);
-  }
   printf("Peak RSS: %zu bytes\n", info->site_peak_rss);
 
   /* Clean up */
