@@ -59,9 +59,8 @@ typedef struct sicm_powerpc_hbm_data {
 
 /// Data specific to a persistent memory block device.
 typedef struct sicm_pmem_data {
-  int fd;
-  int page_size;
-}
+  char *dirname;
+} sicm_pmem_data;
 
 /// Data that, given a device type, uniquely identify the device within that type.
 /**
