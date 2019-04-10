@@ -8,6 +8,7 @@
 #include <sys/mman.h>
 #include <sys/time.h>
 #include <unistd.h>
+#include <fcntl.h>
 
 #include "sicm_low.h"
 #include "sicm_impl.h"
