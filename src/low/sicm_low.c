@@ -101,7 +101,7 @@ struct sicm_device_list sicm_init() {
         if((part->mnt_fsname != NULL) && (strcmp(part->mnt_fsname, devname)) == 0) {
           pmem_devices_count++;
 					dirnames = realloc(dirnames, pmem_devices_count * sizeof(char *));
-          strcpy(dirnames[pmem_devices_count - 1], part->mnt_dirname);
+          strcpy(dirnames[pmem_devices_count - 1], part->mnt_dir);
         }
       }
     }
