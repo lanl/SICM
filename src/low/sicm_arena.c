@@ -32,22 +32,6 @@ static void sarena_init() {
 	err = je_mallctlnametomib("arenas.lookup", sa_lookup_mib, &miblen);
 	if (err != 0)
 		fprintf(stderr, "can't get mib: %d\n", err);
-
-  /*
-  decay_ms = 0;
-  err = je_mallctl("arena.MALLCTL_ARENAS_ALL.dirty_decay_ms", NULL, NULL, &decay_ms, sizeof(size_t));
-  if(err != 0)
-    fprintf(stderr, "Can't set decay: %d\n", err);
-  max_background_threads = 1;
-  err = je_mallctl("max_background_threads", NULL, NULL, &max_background_threads, sizeof(size_t));
-  if(err != 0)
-    fprintf(stderr, "Can't set the maximum background threads: %d\n", err);
-
-  boolean = 1;
-  err = je_mallctl("background_thread", NULL, NULL, &boolean, sizeof(char));
-  if (err != 0)
-    fprintf(stderr, "Can't enable background threads: %d\n", err);
-    */
 }
 
 sicm_arena sicm_arena_create(size_t sz, sicm_device *dev) {
@@ -469,11 +453,13 @@ static extent_hooks_t sa_shared_hooks = {
 static void *sa_alloc(extent_hooks_t *h, void *new_addr, size_t size, size_t alignment, bool *zero, bool *commit, unsigned arena_ind) {
 	sarena *sa;
 	uintptr_t n, m;
-	int oldmode;
+	int oldmode, fd;
 	void *ret;
 	size_t sasize, maxsize;
 	struct bitmask *nodemask;
 	struct bitmask *oldnodemask;
+  sicm_device_tag type;
+  char *template;
 
 	*commit = 1;
 	*zero = 0;
@@ -484,10 +470,21 @@ static void *sa_alloc(extent_hooks_t *h, void *new_addr, size_t size, size_t ali
 	pthread_mutex_lock(sa->mutex);
 	sasize = sa->size;
 	maxsize = sa->maxsize;
+  type = sa->dev->tag;
+  if(type == SICM_PMEM) {
+    template = sa->dev->data.file_template;
+  }
 	pthread_mutex_unlock(sa->mutex);
 	if (maxsize > 0 && sasize + size > maxsize) {
 		return NULL;
 	}
+
+  /* For pmem, we need to create a file for this extent */
+  if(type == SICM_PMEM) {
+    fd = mkstemp(template);
+    posix_fallocate(fd, 0, (off_t) size);
+    printf("Creating a file for this extent: %d\n", fd);
+  }
 
 	nodemask = numa_allocate_nodemask();
 	oldnodemask = numa_allocate_nodemask();
@@ -499,7 +496,11 @@ static void *sa_alloc(extent_hooks_t *h, void *new_addr, size_t size, size_t ali
 		goto free_nodemasks;
 	}
 
-	ret = mmap(new_addr, size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANON, -1, 0);
+  if(type == SICM_PMEM) {
+    ret = mmap(new_addr, size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANON, fd, 0);
+  } else {
+    ret = mmap(new_addr, size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANON, -1, 0);
+  }
 	if (ret == MAP_FAILED) {
 		ret = NULL;
 		goto restore_mempolicy;
@@ -519,7 +520,11 @@ static void *sa_alloc(extent_hooks_t *h, void *new_addr, size_t size, size_t ali
 	}
 
 	size += alignment;
-	ret = mmap(NULL, size + alignment, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANON, -1, 0);
+  if(type == SICM_PMEM) {
+    ret = mmap(NULL, size + alignment, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANON, fd, 0);
+  } else {
+    ret = mmap(NULL, size + alignment, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANON, -1, 0);
+  }
 	if (ret == MAP_FAILED) {
 		ret = NULL;
 		goto restore_mempolicy;
@@ -531,11 +536,13 @@ static void *sa_alloc(extent_hooks_t *h, void *new_addr, size_t size, size_t ali
 	ret = (void *) m;
 
 success:
-	if (mbind(ret, size, MPOL_PREFERRED, nodemask->maskp, nodemask->size, MPOL_MF_MOVE) < 0) {
-		munmap(ret, size);
-		ret = NULL;
-		goto restore_mempolicy;
-	}
+  if(type != SICM_PMEM) {
+    if (mbind(ret, size, MPOL_PREFERRED, nodemask->maskp, nodemask->size, MPOL_MF_MOVE) < 0) {
+      munmap(ret, size);
+      ret = NULL;
+      goto restore_mempolicy;
+    }
+  }
 
 	pthread_mutex_lock(sa->mutex);
 
