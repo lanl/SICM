@@ -491,7 +491,7 @@ int main(int argc, char **argv) {
   if(proftype == 0) {
     printf("Value: %f/%f\n", chosen_value.band, total_value.band);
   } else {
-    printf("Value: %zu/%zu\n", chosen_value.acc, total_value.band);
+    printf("Value: %zu/%zu\n", chosen_value.acc, total_value.acc);
   }
   printf("Capacity: %zu bytes\n", cap_bytes);
   printf("Peak RSS: %zu bytes\n", info->site_peak_rss);
