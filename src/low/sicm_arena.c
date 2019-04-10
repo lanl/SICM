@@ -472,7 +472,7 @@ static void *sa_alloc(extent_hooks_t *h, void *new_addr, size_t size, size_t ali
 	maxsize = sa->maxsize;
   type = sa->dev->tag;
   if(type == SICM_PMEM) {
-    template = sa->dev->data.file_template;
+    template = sa->dev->data.pmem.file_template;
   }
 	pthread_mutex_unlock(sa->mutex);
 	if (maxsize > 0 && sasize + size > maxsize) {

@@ -246,15 +246,15 @@ struct sicm_device_list sicm_init() {
   for(i = 0; i < pmem_devices_count; i++) {
     devices[idx].tag = SICM_PMEM;
 
-    devices[idx].data.mount_point = malloc((strlen(dirnames[i]) + 1) * sizeof(char));
-    devices[idx].data.file_template = malloc((strlen(dirnames[i]) + 8) * sizeof(char));
+    devices[idx].data.pmem.mount_point = malloc((strlen(dirnames[i]) + 1) * sizeof(char));
+    devices[idx].data.pmem.file_template = malloc((strlen(dirnames[i]) + 8) * sizeof(char));
 
-    strcpy(devices[idx].data.mount_point, dirnames[i]);
-    strcpy(devices[idx].data.file_template, dirnames[i]);
-    strcat(devices[idx].data.file_template, "/XXXXXX");
+    strcpy(devices[idx].data.pmem.mount_point, dirnames[i]);
+    strcpy(devices[idx].data.pmem.file_template, dirnames[i]);
+    strcat(devices[idx].data.pmem.file_template, "/XXXXXX");
 
-    devices[idx].data.node = numa_max_node() + 1;
-    printf("Detected pmem: %s, assigned to node %d\n", devices[idx].data.dirname, devices[idx].data.node);
+    devices[idx].data.pmem.node = numa_max_node() + 1;
+    printf("Detected pmem: %s, assigned to node %d\n", devices[idx].data.pmem.mount_point, devices[idx].data.pmem.node);
     idx++;
   }
   
@@ -521,7 +521,7 @@ int sicm_device_eq(sicm_device* dev1, sicm_device* dev2) {
     case SICM_PMEM:
       return
           (dev1->data.pmem.node == dev2->data.pmem.node) &&
-          (strcmp(dev1->data.pmem.dirname, dev2->data.pmem.dirname) == 0);
+          (strcmp(dev1->data.pmem.mount_point, dev2->data.pmem.mount_point) == 0);
     case INVALID_TAG:
     default:
       return 0;
