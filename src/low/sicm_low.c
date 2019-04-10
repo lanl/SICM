@@ -34,6 +34,8 @@ sicm_device_tag sicm_get_device_tag(char *env) {
 		return SICM_KNL_HBM;
 	} else if(strncmp(env, "SICM_POWERPC_HBM", max_chars) == 0) {
 		return SICM_POWERPC_HBM;
+	} else if(strncmp(env, "SICM_PMEM", max_chars) == 0) {
+    return SICM_PMEM;
   }
 
   return INVALID_TAG;
@@ -47,6 +49,8 @@ const char * const sicm_device_tag_str(sicm_device_tag tag) {
         return "SICM_KNL_HBM";
     case SICM_POWERPC_HBM:
         return "SICM_POWERPC_HBM";
+    case SICM_PMEM:
+        return "SICM_PMEM";
     case INVALID_TAG:
         break;
   }
@@ -76,8 +80,36 @@ struct sicm_device_list sicm_init() {
     if(entry->d_name[0] != '.') huge_page_size_count++;
   closedir(dir);
 
+  int pmem_devices_count = 0;
+  FILE * mtab = NULL;
+  struct mntent * part = NULL;
+  char *devname;
+	char **dirnames = NULL;
+  dir = opendir("/dev/");
+  while((entry = readdir(dir)) != NULL) {
+    /* Only pmem devices */
+    if(strncmp(entry->d_name, "pmem", 4) != 0) continue;
+    devname = malloc(sizeof(char) * (strlen(entry->d_name) + 6));
+    strcpy(devname, "/dev/");
+    strcat(devname, entry->d_name);
+
+    /* Iterate over mtab entries */
+    if((mtab = setmntent("/etc/mtab", "r")) != NULL) {
+      while((part = getmntent(mtab)) != NULL) {
+        /* If it's mounted and has the same device name as the one we're looking at */
+        if((part->mnt_fsname != NULL) && (strcmp(part->mnt_fsname, devname)) == 0) {
+          pmem_devices_count++;
+					dirnames = realloc(dirnames, pmem_devices_count * sizeof(char *));
+          strcpy(dirnames[pmem_devices_count - 1], part->mnt_dirname);
+        }
+      }
+    }
+    endmntent(mtab);
+  }
+  closedir(dir);
+
   int node_count = numa_max_node() + 1, depth;
-  int device_count = node_count * (huge_page_size_count + 1);
+  int device_count = node_count * (huge_page_size_count + 1) + pmem_devices_count;
 
   struct bitmask* non_dram_nodes = numa_bitmask_alloc(node_count);
 
@@ -206,6 +238,11 @@ struct sicm_device_list sicm_init() {
         }
       }
     }
+  }
+
+  // Persistent memory
+  for(i = 0; i < pmem_devices_count; i++) {
+    printf("Detected pmem: %s\n", dirnames[i]);
   }
 
   numa_bitmask_free(compute_nodes);

@@ -31,6 +31,7 @@ typedef enum sicm_device_tag {
   SICM_DRAM,
   SICM_KNL_HBM,
   SICM_POWERPC_HBM,
+  SICM_PMEM,
   INVALID_TAG
 } sicm_device_tag;
 
@@ -56,6 +57,12 @@ typedef struct sicm_powerpc_hbm_data {
   int page_size;
 } sicm_powerpc_hbm_data;
 
+/// Data specific to a persistent memory block device.
+typedef struct sicm_pmem_data {
+  int fd;
+  int page_size;
+}
+
 /// Data that, given a device type, uniquely identify the device within that type.
 /**
  * This union is only meaningful in the presence of a sicm_device_tag,
@@ -67,6 +74,7 @@ typedef union sicm_device_data {
   sicm_dram_data dram;
   sicm_knl_hbm_data knl_hbm;
   sicm_powerpc_hbm_data powerpc_hbm;
+  sicm_pmem_data pmem;
 } sicm_device_data;
 
 /// Tagged/discriminated union that fully identifies a device.
