@@ -242,9 +242,16 @@ tree(int, siteptr) get_hotset(tree(int, siteptr) sites, size_t capacity, char pr
   /* Now iterate over the sorted sites and add them until we overflow */
 	break_next_site = 0;
   packed_size = 0;
+  printf("Sorted sites:\n");
   tree_traverse(sorted_sites, sit) {
 		packed_size += tree_it_key(sit)->peak_rss;
 		tree_insert(ret, tree_it_val(sit), tree_it_key(sit));
+
+    if(proftype == 0) {
+      printf("%d: %f\n", tree_it_val(sit), ((float)tree_it_key(sit)->bandwidth) / ((float)tree_it_key(sit)->peak_rss));
+    } else {
+      printf("%d: %f\n", tree_it_val(sit), ((float)tree_it_key(sit)->accesses) / ((float)tree_it_key(sit)->peak_rss));
+    }
 
 		/* If we're over capacity, break. We've already added the site,
 		 * so we overflow by exactly one site. */
