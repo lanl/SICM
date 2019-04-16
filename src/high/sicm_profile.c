@@ -612,7 +612,7 @@ void *profile_one(void *a) {
   }
   prof.num_intervals = 0;
   prof.running_avg = 0;
-  prof.max_banwidth = 0;
+  prof.max_bandwidth = 0;
 
   timer.tv_sec = 1;
   timer.tv_nsec = 0;
