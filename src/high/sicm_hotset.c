@@ -39,13 +39,13 @@ static inline int both_cmp(float a, float b) {
  * size of the site if those are exactly equal.
  */
 int bandwidth_cmp(siteptr a, siteptr b) {
-  float a_bpb, b_bpb;
+  double a_bpb, b_bpb;
   int retval;
 
   if(a == b) return 0;
 
-  a_bpb = ((float)a->bandwidth) / ((float)a->peak_rss);
-  b_bpb = ((float)b->bandwidth) / ((float)b->peak_rss);
+  a_bpb = ((double)a->bandwidth) / ((double)a->peak_rss);
+  b_bpb = ((double)b->bandwidth) / ((double)b->peak_rss);
 
   return both_cmp(a_bpb, b_bpb);
 }
@@ -55,13 +55,13 @@ int bandwidth_cmp(siteptr a, siteptr b) {
  * size of the site if those are exactly equal.
  */
 int accesses_cmp(siteptr a, siteptr b) {
-  float a_bpb, b_bpb;
+  double a_bpb, b_bpb;
   int retval;
 
   if(a == b) return 0;
 
-  a_bpb = ((float)a->accesses) / ((float)a->peak_rss);
-  b_bpb = ((float)b->accesses) / ((float)b->peak_rss);
+  a_bpb = ((double)a->accesses) / ((double)a->peak_rss);
+  b_bpb = ((double)b->accesses) / ((double)b->peak_rss);
 
   return both_cmp(a_bpb, b_bpb);
 }
@@ -248,9 +248,9 @@ tree(int, siteptr) get_hotset(tree(int, siteptr) sites, size_t capacity, char pr
 		tree_insert(ret, tree_it_val(sit), tree_it_key(sit));
 
     if(proftype == 0) {
-      printf("%d: %f\n", tree_it_val(sit), ((float)tree_it_key(sit)->bandwidth) / ((float)tree_it_key(sit)->peak_rss));
+      printf("%d: %f %zu %f\n", tree_it_val(sit), tree_it_key(sit)->bandwidth, tree_it_key(sit)->peak_rss, ((double)tree_it_key(sit)->bandwidth) / ((double)tree_it_key(sit)->peak_rss));
     } else {
-      printf("%d: %f\n", tree_it_val(sit), ((float)tree_it_key(sit)->accesses) / ((float)tree_it_key(sit)->peak_rss));
+      printf("%d: %zu %zu %f\n", tree_it_val(sit), tree_it_key(sit)->accesses, tree_it_key(sit)->peak_rss, ((double)tree_it_key(sit)->accesses) / ((double)tree_it_key(sit)->peak_rss));
     }
 
 		/* If we're over capacity, break. We've already added the site,
