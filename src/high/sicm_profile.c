@@ -124,7 +124,7 @@ void sh_get_event() {
   }
 
   /* Iterate through the array of event strs and see which one works. 
-   * For should_profile_one, just use the first given IMC. */
+   * For should_profile_one, just use the first given event. */
   if((should_profile_one != -1) && profile_one_event) {
     event = &profile_one_event;
     printf("Using a user-specified event: %s\n", profile_one_event);
@@ -419,8 +419,9 @@ get_accesses() {
 static void
 get_bandwidth()
 {
-  float count_f, total;
+  float count_f;
   long long count;
+  size_t total;
   int num, i;
   struct itimerspec it;
 
@@ -429,15 +430,16 @@ get_bandwidth()
   for(i = 0; i < num_events; i++) {
     ioctl(prof.fds[i], PERF_EVENT_IOC_DISABLE, 0);
     read(prof.fds[i], &count, sizeof(long long));
-    count_f = (float) count * 64 / 1024 / 1024;
-    total += count_f;
+    //count_f = (float) count * 64 / 1024 / 1024;
+    //total += count_f;
+    total += count;
 
     /* Start it back up again */
     ioctl(prof.fds[i], PERF_EVENT_IOC_RESET, 0);
     ioctl(prof.fds[i], PERF_EVENT_IOC_ENABLE, 0);
   }
 
-  printf("%.2f MB/s\n", total);
+  printf("%zu\n", total);
   
   /* Calculate the running average */
   prof.num_intervals++;
