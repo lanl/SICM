@@ -320,6 +320,7 @@ void sh_stop_profile_thread() {
   } else if(should_profile_one != -1) {
     printf("===== MBI RESULTS FOR SITE %u =====\n", should_profile_one);
     printf("Average bandwidth: %.1f MB/s\n", prof.running_avg);
+    printf("Maximum bandwidth: %.1f MB/s\n", prof.max_bandwidth);
     if(should_profile_rss) {
       printf("Peak RSS: %zu\n", arenas[should_profile_one]->peak_rss);
     }
@@ -419,9 +420,8 @@ get_accesses() {
 static void
 get_bandwidth()
 {
-  float count_f;
+  float count_f, total;
   long long count;
-  size_t total;
   int num, i;
   struct itimerspec it;
 
@@ -430,20 +430,23 @@ get_bandwidth()
   for(i = 0; i < num_events; i++) {
     ioctl(prof.fds[i], PERF_EVENT_IOC_DISABLE, 0);
     read(prof.fds[i], &count, sizeof(long long));
-    //count_f = (float) count * 64 / 1024 / 1024;
-    //total += count_f;
-    total += count;
+    count_f = (float) count * 64 / 1024 / 1024;
+    total += count_f;
 
     /* Start it back up again */
     ioctl(prof.fds[i], PERF_EVENT_IOC_RESET, 0);
     ioctl(prof.fds[i], PERF_EVENT_IOC_ENABLE, 0);
   }
 
-  printf("%zu\n", total);
+  printf("%f MB/s\n", total);
   
   /* Calculate the running average */
   prof.num_intervals++;
   prof.running_avg = ((prof.running_avg * (prof.num_intervals - 1)) + total) / prof.num_intervals;
+
+  if(total > prof.max_bandwidth) {
+    prof.max_bandwidth = total;
+  }
 }
 
 #if 0
@@ -609,6 +612,7 @@ void *profile_one(void *a) {
   }
   prof.num_intervals = 0;
   prof.running_avg = 0;
+  prof.max_banwidth = 0;
 
   timer.tv_sec = 1;
   timer.tv_nsec = 0;

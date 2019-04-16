@@ -61,6 +61,7 @@ typedef struct profile_thread {
   /* For measuring bandwidth */
   size_t num_intervals;
   float running_avg;
+  float max_bandwidth;
 } profile_thread;
 
 void sh_start_profile_thread();
