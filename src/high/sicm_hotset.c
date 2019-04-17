@@ -105,7 +105,7 @@ void scale_sites(app_info *info, float scale) {
   gcd = get_gcd(info->sites);
 
   /* Scale each site */
-  printf("Scaling sites down by %f\n", scale);
+  printf("Scaling sites down by %f.\n", scale);
   total = 0;
   tree_traverse(info->sites, it) {
     tree_it_val(it)->peak_rss *= scale;
@@ -114,8 +114,6 @@ void scale_sites(app_info *info, float scale) {
     multiples = tree_it_val(it)->peak_rss / gcd;
     tree_it_val(it)->peak_rss = gcd * multiples;
     total += tree_it_val(it)->peak_rss;
-
-    printf("%zu\n", tree_it_val(it)->peak_rss);
   }
   info->site_peak_rss = total;
 }
