@@ -39,7 +39,7 @@ sicm_device_tag sicm_get_device_tag(char *env) {
   return INVALID_TAG;
 }
 
-const char * const sicm_device_tag_str(sicm_device_tag tag) {
+char * sicm_device_tag_str(sicm_device_tag tag) {
   switch(tag) {
     case SICM_DRAM:
         return "SICM_DRAM";
