@@ -378,7 +378,7 @@ get_accesses() {
 
   /* Read all of the samples */
   pthread_rwlock_rdlock(&extents_lock);
-  while(begin != end) {
+  while(begin <= (end - 8)) {
 
     header = (struct perf_event_header *)begin;
     if(header->size == 0) {
