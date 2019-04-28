@@ -82,6 +82,8 @@ struct sicm_device_list sicm_init() {
   closedir(dir);
 
   int pmem_devices_count = 0;
+#if 0
+  /* Need a way to see if the user is using a different, non-filesystem-supporting driver for PMEM */
   FILE * mtab = NULL;
   struct mntent * part = NULL;
   char *devname;
@@ -109,6 +111,7 @@ struct sicm_device_list sicm_init() {
     endmntent(mtab);
   }
   closedir(dir);
+#endif
 
   int node_count = numa_max_node() + 1, depth;
   int device_count = node_count * (huge_page_size_count + 1) + pmem_devices_count;
@@ -243,6 +246,7 @@ struct sicm_device_list sicm_init() {
   }
 
   // Persistent memory
+  /*
   for(i = 0; i < pmem_devices_count; i++) {
     devices[idx].tag = SICM_PMEM;
 
@@ -256,13 +260,15 @@ struct sicm_device_list sicm_init() {
     devices[idx].data.pmem.node = numa_max_node() + 1;
     printf("Detected pmem: %s, assigned to node %d\n", devices[idx].data.pmem.mount_point, devices[idx].data.pmem.node);
     idx++;
-  }
+  } */
   
   /* Free up from pmem detection */
-  for(i = 0; i < pmem_devices_count; i++) {
+  /*
+  for(i = 0; i < pmem_devices_count; i++) { 
     free(dirnames[i]);
   }
   free(dirnames);
+  */
 
   numa_bitmask_free(compute_nodes);
   numa_bitmask_free(non_dram_nodes);
