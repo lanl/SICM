@@ -162,10 +162,12 @@ sicm_device *get_device_from_numa_node(int id) {
   retval = NULL;
   /* Figure out which device the NUMA node corresponds to */
   device = device_list.devices;
+  printf("Looking for node: %d\n", id);
   for(i = 0; i < device_list.count; i++) {
     /* If the device has a NUMA node, and if that node is the node we're
      * looking for.
      */
+    printf("Looking at node %d\n", sicm_numa_id(device));
     if((device->tag == SICM_DRAM ||
        device->tag == SICM_KNL_HBM || 
        device->tag == SICM_POWERPC_HBM) &&
