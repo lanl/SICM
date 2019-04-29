@@ -136,6 +136,9 @@ tree(int, siteptr) get_knapsack(tree(int, siteptr) sites, size_t capacity, char 
   gcd = get_gcd(sites);
   num_sites = tree_len(sites);
   num_weights = (capacity / gcd) + 1;
+
+  printf("There are %zu distinct weights in the knapsack.\n", num_weights);
+  printf("Allocating %zu bytes for the knapsack.\n", sizeof(union metric) * num_weights * (num_sites + 1));
   table = malloc(sizeof(union metric *) * (num_sites + 1));
   for(i = 0; i <= num_sites; i++) {
     table[i] = calloc(num_weights, sizeof(union metric));
