@@ -39,13 +39,13 @@ static inline int both_cmp(float a, float b) {
  * size of the site if those are exactly equal.
  */
 int bandwidth_cmp(siteptr a, siteptr b) {
-  float a_bpb, b_bpb;
+  double a_bpb, b_bpb;
   int retval;
 
   if(a == b) return 0;
 
-  a_bpb = ((float)a->bandwidth) / ((float)a->peak_rss);
-  b_bpb = ((float)b->bandwidth) / ((float)b->peak_rss);
+  a_bpb = ((double)a->bandwidth) / ((double)a->peak_rss);
+  b_bpb = ((double)b->bandwidth) / ((double)b->peak_rss);
 
   return both_cmp(a_bpb, b_bpb);
 }
@@ -55,13 +55,13 @@ int bandwidth_cmp(siteptr a, siteptr b) {
  * size of the site if those are exactly equal.
  */
 int accesses_cmp(siteptr a, siteptr b) {
-  float a_bpb, b_bpb;
+  double a_bpb, b_bpb;
   int retval;
 
   if(a == b) return 0;
 
-  a_bpb = ((float)a->accesses) / ((float)a->peak_rss);
-  b_bpb = ((float)b->accesses) / ((float)b->peak_rss);
+  a_bpb = ((double)a->accesses) / ((double)a->peak_rss);
+  b_bpb = ((double)b->accesses) / ((double)b->peak_rss);
 
   return both_cmp(a_bpb, b_bpb);
 }
@@ -105,7 +105,7 @@ void scale_sites(app_info *info, float scale) {
   gcd = get_gcd(info->sites);
 
   /* Scale each site */
-  printf("Scaling sites down by %f\n", scale);
+  printf("Scaling sites down by %f.\n", scale);
   total = 0;
   tree_traverse(info->sites, it) {
     tree_it_val(it)->peak_rss *= scale;
@@ -114,8 +114,6 @@ void scale_sites(app_info *info, float scale) {
     multiples = tree_it_val(it)->peak_rss / gcd;
     tree_it_val(it)->peak_rss = gcd * multiples;
     total += tree_it_val(it)->peak_rss;
-
-    printf("%zu\n", tree_it_val(it)->peak_rss);
   }
   info->site_peak_rss = total;
 }
@@ -236,6 +234,15 @@ tree(int, siteptr) get_hotset(tree(int, siteptr) sites, size_t capacity, char pr
       tree_insert(sorted_sites, tree_it_val(it), tree_it_key(it));
     } else {
       fprintf(stderr, "WARNING: Site %d doesn't have a peak RSS.\n", tree_it_key(it));
+    }
+  }
+
+  printf("Sorted sites:\n");
+  tree_traverse(sorted_sites, sit) {
+    if(proftype == 0) {
+      printf("%d: %f %zu %f\n", tree_it_val(sit), tree_it_key(sit)->bandwidth, tree_it_key(sit)->peak_rss, ((double)tree_it_key(sit)->bandwidth) / ((double)tree_it_key(sit)->peak_rss));
+    } else {
+      printf("%d: %zu %zu %f\n", tree_it_val(sit), tree_it_key(sit)->accesses, tree_it_key(sit)->peak_rss, ((double)tree_it_key(sit)->accesses) / ((double)tree_it_key(sit)->peak_rss));
     }
   }
 
@@ -491,7 +498,7 @@ int main(int argc, char **argv) {
   if(proftype == 0) {
     printf("Value: %f/%f\n", chosen_value.band, total_value.band);
   } else {
-    printf("Value: %zu/%zu\n", chosen_value.acc, total_value.band);
+    printf("Value: %zu/%zu\n", chosen_value.acc, total_value.acc);
   }
   printf("Capacity: %zu bytes\n", cap_bytes);
   printf("Peak RSS: %zu bytes\n", info->site_peak_rss);

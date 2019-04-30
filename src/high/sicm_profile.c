@@ -124,7 +124,7 @@ void sh_get_event() {
   }
 
   /* Iterate through the array of event strs and see which one works. 
-   * For should_profile_one, just use the first given IMC. */
+   * For should_profile_one, just use the first given event. */
   if((should_profile_one != -1) && profile_one_event) {
     event = &profile_one_event;
     printf("Using a user-specified event: %s\n", profile_one_event);
@@ -320,6 +320,7 @@ void sh_stop_profile_thread() {
   } else if(should_profile_one != -1) {
     printf("===== MBI RESULTS FOR SITE %u =====\n", should_profile_one);
     printf("Average bandwidth: %.1f MB/s\n", prof.running_avg);
+    printf("Maximum bandwidth: %.1f MB/s\n", prof.max_bandwidth);
     if(should_profile_rss) {
       printf("Peak RSS: %zu\n", arenas[should_profile_one]->peak_rss);
     }
@@ -437,11 +438,15 @@ get_bandwidth()
     ioctl(prof.fds[i], PERF_EVENT_IOC_ENABLE, 0);
   }
 
-  printf("%.2f MB/s\n", total);
+  printf("%f MB/s\n", total);
   
   /* Calculate the running average */
   prof.num_intervals++;
   prof.running_avg = ((prof.running_avg * (prof.num_intervals - 1)) + total) / prof.num_intervals;
+
+  if(total > prof.max_bandwidth) {
+    prof.max_bandwidth = total;
+  }
 }
 
 #if 0
@@ -607,6 +612,7 @@ void *profile_one(void *a) {
   }
   prof.num_intervals = 0;
   prof.running_avg = 0;
+  prof.max_bandwidth = 0;
 
   timer.tv_sec = 1;
   timer.tv_nsec = 0;
