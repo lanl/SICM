@@ -21,7 +21,7 @@ union metric {
 
 use_tree(siteptr, int);
 
-static inline int both_cmp(float a, float b) {
+static inline int sizet_cmp(size_t a, size_t b) {
   int retval;
   /* Maximize bandwidth/byte */
   if(a < b) {
@@ -32,6 +32,35 @@ static inline int both_cmp(float a, float b) {
     retval = 1;
   }
   return retval;
+}
+
+static inline int double_cmp(double a, double b) {
+  int retval;
+  /* Maximize bandwidth/byte */
+  if(a < b) {
+    retval = 1;
+  } else if(a > b) {
+    retval = -1;
+  } else {
+    retval = 1;
+  }
+  return retval;
+}
+
+/* A comparison function to compare two site structs.  Used to created the
+ * sorted_sites tree. Uses accesses/byte as the metric for comparison, and
+ * size of the site if those are exactly equal.
+ */
+int accesses_cmp2(siteptr a, siteptr b) {
+  double a_bpb, b_bpb;
+  int retval;
+
+  if(a == b) return 0;
+
+  a_bpb = (double)a->accesses;
+  b_bpb = (double)b->accesses;
+
+  return sizet_cmp(a_bpb, b_bpb);
 }
 
 /* A comparison function to compare two site structs.  Used to created the
@@ -47,7 +76,7 @@ int bandwidth_cmp(siteptr a, siteptr b) {
   a_bpb = ((double)a->bandwidth) / ((double)a->peak_rss);
   b_bpb = ((double)b->bandwidth) / ((double)b->peak_rss);
 
-  return both_cmp(a_bpb, b_bpb);
+  return double_cmp(a_bpb, b_bpb);
 }
 
 /* A comparison function to compare two site structs.  Used to created the
@@ -63,7 +92,7 @@ int accesses_cmp(siteptr a, siteptr b) {
   a_bpb = ((double)a->accesses) / ((double)a->peak_rss);
   b_bpb = ((double)b->accesses) / ((double)b->peak_rss);
 
-  return both_cmp(a_bpb, b_bpb);
+  return double_cmp(a_bpb, b_bpb);
 }
 
 
@@ -226,7 +255,7 @@ tree(int, siteptr) get_hotset(tree(int, siteptr) sites, size_t capacity, char pr
     sorted_sites = tree_make_c(siteptr, int, &bandwidth_cmp);
   } else {
     /* accesses/byte */
-    sorted_sites = tree_make_c(siteptr, int, &accesses_cmp);
+    sorted_sites = tree_make_c(siteptr, int, &accesses_cmp2);
   }
   tree_traverse(sites, it) {
     /* Only insert if the site has a peak_rss value */
