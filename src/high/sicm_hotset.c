@@ -285,15 +285,15 @@ tree(int, siteptr) get_filtered_hotset(tree(int, siteptr) sites, size_t capacity
     
     /* First just grab the more important sites, even if they're larger */
     if(proftype == 0) {
-      if(tree_it_key(sit)->accesses / total_value.accesses > 0.005) {
+      if(tree_it_key(sit)->accesses / total_value.acc > 0.005) {
         printf("Adding %d: %zu %zu %f\n", tree_it_val(sit), tree_it_key(sit)->accesses, tree_it_key(sit)->peak_rss, ((double)tree_it_key(sit)->accesses) / ((double)tree_it_key(sit)->peak_rss));
         packed_size += tree_it_key(sit)->peak_rss;
         tree_insert(ret, tree_it_val(sit), tree_it_key(sit));
       } else {
         printf("SKIPPING %d: %zu %zu %f\n", tree_it_val(sit), tree_it_key(sit)->accesses, tree_it_key(sit)->peak_rss, ((double)tree_it_key(sit)->accesses) / ((double)tree_it_key(sit)->peak_rss));
       }
-    else {
-      if(tree_it_key(sit)->bandwidth / total_value.bandwidth > 0.005) {
+    } else {
+      if(tree_it_key(sit)->bandwidth / total_value.band > 0.005) {
         packed_size += tree_it_key(sit)->peak_rss;
         tree_insert(ret, tree_it_val(sit), tree_it_key(sit));
       }
