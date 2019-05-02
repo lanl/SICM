@@ -285,7 +285,7 @@ tree(int, siteptr) get_filtered_hotset(tree(int, siteptr) sites, size_t capacity
     } else if(proftype == 1) {
       printf("%d: %zu %zu %f\n", tree_it_val(sit), tree_it_key(sit)->accesses, tree_it_key(sit)->peak_rss, ((double)tree_it_key(sit)->accesses) / ((double)tree_it_key(sit)->peak_rss));
     } else if(proftype == 2) {
-      printf("%d: %zu %zu\n", tree_it_val(sit), tree_it_key(sit)->acc_per_sample, tree_it_key(sit)->peak_rss);
+      printf("%d: %.10f %zu\n", tree_it_val(sit), tree_it_key(sit)->acc_per_sample, tree_it_key(sit)->peak_rss);
     }
   }
 
@@ -381,7 +381,7 @@ tree(int, siteptr) get_hotset(tree(int, siteptr) sites, size_t capacity, char pr
     } else if(proftype == 1) {
       printf("%d: %zu %zu %f\n", tree_it_val(sit), tree_it_key(sit)->accesses, tree_it_key(sit)->peak_rss, ((double)tree_it_key(sit)->accesses) / ((double)tree_it_key(sit)->peak_rss));
     } else if(proftype == 2) {
-      printf("%d: %zu %.10f\n", tree_it_val(sit), tree_it_key(sit)->acc_per_sample, tree_it_key(sit)->peak_rss);
+      printf("%d: %.10f %zu\n", tree_it_val(sit), tree_it_key(sit)->acc_per_sample, tree_it_key(sit)->peak_rss);
     }
   }
 
