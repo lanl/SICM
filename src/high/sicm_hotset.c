@@ -50,7 +50,7 @@ static inline int double_cmp(double a, double b) {
 
 /* A bunch of comparison functions, used to sort the trees by
  * different metrics. */
-int acc_per_byte_cmp(siteptr a, siteptr b) {
+int acc_per_sample_cmp(siteptr a, siteptr b) {
   double a_bpb, b_bpb;
   int retval;
 
