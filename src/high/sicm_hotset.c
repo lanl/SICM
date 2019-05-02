@@ -242,6 +242,90 @@ tree(int, siteptr) get_knapsack(tree(int, siteptr) sites, size_t capacity, char 
 /* Input is a tree of sites and the capacity (in bytes) that you want to fill
  * up to. Outputs a greedy hotset.
  */
+tree(int, siteptr) get_filtered_hotset(tree(int, siteptr) sites, size_t capacity, char proftype, union metric total_value) {
+  tree(siteptr, int) sorted_sites;
+  tree(int, siteptr) ret;
+  tree_it(int, siteptr) it;
+  tree_it(siteptr, int) sit;
+  char break_next_site;
+  size_t packed_size;
+
+  ret = tree_make(int, siteptr);
+
+  /* Now sort the sites by accesses/byte or bandwidth/byte */
+  if(proftype == 0) {
+    /* bandwidth/byte */
+    sorted_sites = tree_make_c(siteptr, int, &bandwidth_cmp);
+  } else {
+    /* accesses/byte */
+    sorted_sites = tree_make_c(siteptr, int, &accesses_cmp);
+  }
+  tree_traverse(sites, it) {
+    /* Only insert if the site has a peak_rss value */
+    if(tree_it_val(it)->peak_rss) {
+      tree_insert(sorted_sites, tree_it_val(it), tree_it_key(it));
+    } else {
+      fprintf(stderr, "WARNING: Site %d doesn't have a peak RSS.\n", tree_it_key(it));
+    }
+  }
+
+  printf("Sorted sites:\n");
+  tree_traverse(sorted_sites, sit) {
+    if(proftype == 0) {
+      printf("%d: %f %zu %f\n", tree_it_val(sit), tree_it_key(sit)->bandwidth, tree_it_key(sit)->peak_rss, ((double)tree_it_key(sit)->bandwidth) / ((double)tree_it_key(sit)->peak_rss));
+    } else {
+      printf("%d: %zu %zu %f\n", tree_it_val(sit), tree_it_key(sit)->accesses, tree_it_key(sit)->peak_rss, ((double)tree_it_key(sit)->accesses) / ((double)tree_it_key(sit)->peak_rss));
+    }
+  }
+
+  /* Now iterate over the sorted sites and add them until we overflow */
+	break_next_site = 0;
+  packed_size = 0;
+  tree_traverse(sorted_sites, sit) {
+    
+    /* First just grab the more important sites, even if they're larger */
+    if(proftype == 0) {
+      if(tree_it_key(sit)->accesses / total_value.accesses > 0.005) {
+        printf("Adding %d: %zu %zu %f\n", tree_it_val(sit), tree_it_key(sit)->accesses, tree_it_key(sit)->peak_rss, ((double)tree_it_key(sit)->accesses) / ((double)tree_it_key(sit)->peak_rss));
+        packed_size += tree_it_key(sit)->peak_rss;
+        tree_insert(ret, tree_it_val(sit), tree_it_key(sit));
+      } else {
+        printf("SKIPPING %d: %zu %zu %f\n", tree_it_val(sit), tree_it_key(sit)->accesses, tree_it_key(sit)->peak_rss, ((double)tree_it_key(sit)->accesses) / ((double)tree_it_key(sit)->peak_rss));
+      }
+    else {
+      if(tree_it_key(sit)->bandwidth / total_value.bandwidth > 0.005) {
+        packed_size += tree_it_key(sit)->peak_rss;
+        tree_insert(ret, tree_it_val(sit), tree_it_key(sit));
+      }
+    }
+
+		/* If we're over capacity, break. We've already added the site,
+		 * so we overflow by exactly one site. */
+		if(packed_size > capacity) {
+			break;
+		}
+	}
+
+  if(packed_size < capacity) {
+    tree_traverse(sorted_sites, sit) {
+      packed_size += tree_it_key(sit)->peak_rss;
+      tree_insert(ret, tree_it_val(sit), tree_it_key(sit));
+      printf("Backfilling %d: %zu %zu %f\n", tree_it_val(sit), tree_it_key(sit)->accesses, tree_it_key(sit)->peak_rss, ((double)tree_it_key(sit)->accesses) / ((double)tree_it_key(sit)->peak_rss));
+
+      /* If we're over capacity, break. We've already added the site,
+       * so we overflow by exactly one site. */
+      if(packed_size > capacity) {
+        break;
+      }
+    }
+  }
+
+	return ret;
+}
+
+/* Input is a tree of sites and the capacity (in bytes) that you want to fill
+ * up to. Outputs a greedy hotset.
+ */
 tree(int, siteptr) get_hotset(tree(int, siteptr) sites, size_t capacity, char proftype) {
   tree(siteptr, int) sorted_sites;
   tree(int, siteptr) ret;
@@ -436,6 +520,8 @@ int main(int argc, char **argv) {
     algo = 1;
   } else if(strcmp(argv[2], "thermos") == 0) {
     algo = 2;
+  } else if(strcmp(argv[2], "filtered_hotset") == 0) {
+    algo = 3;
   } else {
     fprintf(stderr, "Algo not recognized. Aborting.\n");
     exit(1);
@@ -478,15 +564,6 @@ int main(int argc, char **argv) {
     scale_sites(info, scale);
   }
 
-  /* Now run the packing algorithm */
-  if(algo == 0) {
-    chosen_sites = get_knapsack(info->sites, cap_bytes, proftype);
-  } else if(algo == 1) {
-    chosen_sites = get_hotset(info->sites, cap_bytes, proftype);
-  } else if(algo == 2) {
-    chosen_sites = get_thermos(info->sites, cap_bytes, proftype);
-  }
-
   /* Calculate what we had to choose from */
   total_weight = 0;
   total_value.acc = 0;
@@ -498,6 +575,17 @@ int main(int argc, char **argv) {
     } else {
       total_value.acc += tree_it_val(it)->accesses;
     }
+  }
+
+  /* Now run the packing algorithm */
+  if(algo == 0) {
+    chosen_sites = get_knapsack(info->sites, cap_bytes, proftype);
+  } else if(algo == 1) {
+    chosen_sites = get_hotset(info->sites, cap_bytes, proftype);
+  } else if(algo == 2) {
+    chosen_sites = get_thermos(info->sites, cap_bytes, proftype);
+  } else if(algo == 3) {
+    chosen_sites = get_filtered_hotset(info->sites, cap_bytes, proftype, total_value);
   }
 
   /* Calculate what we chose */

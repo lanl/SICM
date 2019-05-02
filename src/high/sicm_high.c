@@ -597,6 +597,7 @@ void sh_create_arena(int index, int id, sicm_device *device) {
   arenas[index] = calloc(1, sizeof(arena_info));
   arenas[index]->index = index;
   arenas[index]->accesses = 0;
+  arenas[index]->acc_per_sample = 0.0;
   arenas[index]->alloc_sites = malloc(sizeof(int) * max_sites_per_arena);
   arenas[index]->alloc_sites[0] = id;
   arenas[index]->num_alloc_sites = 1;

@@ -8,6 +8,7 @@
 
 profile_thread prof;
 size_t num_rss_samples = 0;
+size_t num_acc_samples = 0;
 use_tree(double, size_t);
 use_tree(size_t, deviceptr);
 
@@ -297,6 +298,7 @@ void sh_stop_profile_thread() {
     close(prof.fds[i]);
   }
 
+  /* PEBS profiling */
   if(should_profile_all) {
     printf("===== PEBS RESULTS =====\n");
     associated = 0;
@@ -309,6 +311,7 @@ void sh_stop_profile_thread() {
       }
       printf("\n");
       printf("  Accesses: %zu\n", arenas[i]->accesses);
+      printf("  Accesses per sample: %f\n", arenas[i]->acc_per_sample);
       if(should_profile_rss) {
         printf("  Peak RSS: %zu\n", arenas[i]->peak_rss);
         printf("  Average RSS: %zu\n", arenas[i]->avg_rss);
@@ -317,6 +320,8 @@ void sh_stop_profile_thread() {
     printf("Totals: %zu / %zu\n", associated, prof.total);
     printf("Number of RSS samples: %zu\n", num_rss_samples);
     printf("===== END PEBS RESULTS =====\n");
+
+  /* MBI profiling */
   } else if(should_profile_one != -1) {
     printf("===== MBI RESULTS FOR SITE %u =====\n", should_profile_one);
     printf("Average bandwidth: %.1f MB/s\n", prof.running_avg);
@@ -325,6 +330,8 @@ void sh_stop_profile_thread() {
       printf("Peak RSS: %zu\n", arenas[should_profile_one]->peak_rss);
     }
     printf("===== END MBI RESULTS =====\n");
+
+  /* RSS profiling */
   } else if(should_profile_rss) {
     printf("===== RSS RESULTS =====\n");
     for(i = 0; i <= max_index; i++) {
@@ -353,6 +360,12 @@ get_accesses() {
   struct perf_event_header *header;
   int err;
   size_t i;
+
+  num_acc_samples++;
+  for(i = 0; i <= max_index; i++) {
+    if(!(arenas[i])) continue;
+    arenas[i]->cur_accesses = 0;
+  }
 
   /* Wait for the perf buffer to be ready */
   prof.pfd.fd = prof.fds[0];
@@ -394,7 +407,7 @@ get_accesses() {
         if(!extents->arr[i].start && !extents->arr[i].end) continue;
         arena = extents->arr[i].arena;
         if((addr >= extents->arr[i].start) && (addr <= extents->arr[i].end)) {
-          arena->accesses++;
+          arena->cur_accesses++;
         }
       }
     }
@@ -411,6 +424,13 @@ get_accesses() {
   /* Let perf know that we've read this far */
   prof.metadata->data_tail = head;
   __sync_synchronize();
+
+  /* Now calculate an average accesses/sample for each arena */
+  for(i = 0; i <= max_index; i++) {
+    if(!(arenas[i])) continue;
+    arenas[i]->accesses += arenas[i]->cur_accesses;
+    arenas[i]->acc_per_sample = ((double)arenas[i]->accesses) / ((double)num_acc_samples);
+  }
 
   if(should_profile_online) {
     online_reconfigure();
