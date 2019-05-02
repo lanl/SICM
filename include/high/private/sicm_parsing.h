@@ -30,6 +30,7 @@ typedef struct app_info {
 static inline app_info *sh_parse_site_info(FILE *file) {
 	char *line, in_block, *tok;
 	size_t len, val;
+  double val_double;
   ssize_t read;
 	siteptr *cur_sites; /* An array of site pointers */
 	int site_id, num_tok, num_sites, i;
@@ -149,11 +150,11 @@ static inline app_info *sh_parse_site_info(FILE *file) {
         }
       }
 
-      num_tok = sscanf(line, "  Accesses per sample: %f\n", &val);
+      num_tok = sscanf(line, "  Accesses per sample: %f\n", &val_double);
       if(num_tok == 1) {
         /* This value applies to all sites in the arena */
         for(i = 0; i < num_sites; i++) {
-          cur_sites[i]->acc_per_sample = val;
+          cur_sites[i]->acc_per_sample = val_double;
         }
       }
 
