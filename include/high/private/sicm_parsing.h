@@ -12,6 +12,7 @@
 typedef struct site {
 	float bandwidth;
 	size_t peak_rss, accesses;
+  double acc_per_sample;
 } site;
 typedef site * siteptr;
 
@@ -74,6 +75,7 @@ static inline app_info *sh_parse_site_info(FILE *file) {
           cur_sites[0]->bandwidth = 0;
           cur_sites[0]->peak_rss = 0;
           cur_sites[0]->accesses = 0;
+          cur_sites[0]->acc_per_sample = 0.0;
           tree_insert(info->sites, site_id, cur_sites[0]);
           info->num_mbi_sites++;
         }
@@ -126,6 +128,7 @@ static inline app_info *sh_parse_site_info(FILE *file) {
               cur_sites[i]->bandwidth = 0;
               cur_sites[i]->peak_rss = 0;
               cur_sites[i]->accesses = 0;
+              cur_sites[i]->acc_per_sample = 0.0;
               tree_insert(info->sites, site_id, cur_sites[i]);
               info->num_pebs_sites++;
             }
@@ -143,6 +146,14 @@ static inline app_info *sh_parse_site_info(FILE *file) {
         /* This value applies to all sites in the arena */
         for(i = 0; i < num_sites; i++) {
           cur_sites[i]->accesses = val;
+        }
+      }
+
+      num_tok = sscanf(line, "  Accesses per sample: %f\n", &val);
+      if(num_tok == 1) {
+        /* This value applies to all sites in the arena */
+        for(i = 0; i < num_sites; i++) {
+          cur_sites[i]->acc_per_sample = val;
         }
       }
 

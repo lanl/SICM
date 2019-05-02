@@ -311,7 +311,7 @@ void sh_stop_profile_thread() {
       }
       printf("\n");
       printf("  Accesses: %zu\n", arenas[i]->accesses);
-      printf("  Accesses per sample: %f\n", arenas[i]->acc_per_sample);
+      printf("  Accesses per sample: %.10f\n", arenas[i]->acc_per_sample);
       if(should_profile_rss) {
         printf("  Peak RSS: %zu\n", arenas[i]->peak_rss);
         printf("  Average RSS: %zu\n", arenas[i]->avg_rss);

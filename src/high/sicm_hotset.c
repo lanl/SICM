@@ -497,7 +497,7 @@ int main(int argc, char **argv) {
   /* Read in the arguments */
   if(argc != 7) {
     fprintf(stderr, "USAGE: ./hotset proftype algo captype cap node\n");
-    fprintf(stderr, "proftype: mbi or pebs, the type of profiling.\n");
+    fprintf(stderr, "proftype: band, acc, or acc_per_sample, the type of profiling.\n");
     fprintf(stderr, "algo: knapsack, hotset, or thermos. The packing algorithm.\n");
     fprintf(stderr, "captype: ratio or constant. The type of capacity.\n");
     fprintf(stderr, "cap: the capacity. A float 0-1 if captype is 'ratio', or a\n");
@@ -506,10 +506,12 @@ int main(int argc, char **argv) {
     fprintf(stderr, "tot_peak_rss: the peak RSS of the run, to be used to scale the site RSS. Set to 0 for no scaling.\n");
     exit(1);
   }
-  if(strcmp(argv[1], "mbi") == 0) {
+  if(strcmp(argv[1], "band") == 0) {
     proftype = 0;
-  } else if(strcmp(argv[1], "pebs") == 0) {
+  } else if(strcmp(argv[1], "acc") == 0) {
     proftype = 1;
+  } else if(strcmp(argv[1], "acc_per_sample") == 0) {
+    proftype = 2;
   } else {
     fprintf(stderr, "Proftype not recognized. Aborting.\n");
     exit(1);
