@@ -317,27 +317,7 @@ tree(int, siteptr) get_filtered_hotset(tree(int, siteptr) sites, size_t capacity
         printf("SKIPPING %d\n", tree_it_val(sit));
       }
     }
-
-		/* If we're over capacity, break. We've already added the site,
-		 * so we overflow by exactly one site. */
-		if(packed_size > capacity) {
-			break;
-		}
 	}
-
-  if(packed_size < capacity) {
-    tree_traverse(sorted_sites, sit) {
-      packed_size += tree_it_key(sit)->peak_rss;
-      tree_insert(ret, tree_it_val(sit), tree_it_key(sit));
-      printf("Backfilling %d\n", tree_it_val(sit));
-
-      /* If we're over capacity, break. We've already added the site,
-       * so we overflow by exactly one site. */
-      if(packed_size > capacity) {
-        break;
-      }
-    }
-  }
 
 	return ret;
 }
