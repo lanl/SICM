@@ -17,6 +17,7 @@
 union metric {
   float band;
   size_t acc;
+  double acc_per_sample;
 };
 
 use_tree(siteptr, int);
@@ -47,10 +48,19 @@ static inline int double_cmp(double a, double b) {
   return retval;
 }
 
-/* A comparison function to compare two site structs.  Used to created the
- * sorted_sites tree. Uses accesses/byte as the metric for comparison, and
- * size of the site if those are exactly equal.
- */
+/* A bunch of comparison functions, used to sort the trees by
+ * different metrics. */
+int acc_per_byte_cmp(siteptr a, siteptr b) {
+  double a_bpb, b_bpb;
+  int retval;
+
+  if(a == b) return 0;
+
+  a_bpb = a->acc_per_sample;
+  b_bpb = b->acc_per_sample;
+
+  return double_cmp(a_bpb, b_bpb);
+}
 int accesses_cmp2(siteptr a, siteptr b) {
   double a_bpb, b_bpb;
   int retval;
@@ -62,11 +72,6 @@ int accesses_cmp2(siteptr a, siteptr b) {
 
   return sizet_cmp(a_bpb, b_bpb);
 }
-
-/* A comparison function to compare two site structs.  Used to created the
- * sorted_sites tree. Uses bandwidth/byte as the metric for comparison, and
- * size of the site if those are exactly equal.
- */
 int bandwidth_cmp(siteptr a, siteptr b) {
   double a_bpb, b_bpb;
   int retval;
@@ -78,11 +83,6 @@ int bandwidth_cmp(siteptr a, siteptr b) {
 
   return double_cmp(a_bpb, b_bpb);
 }
-
-/* A comparison function to compare two site structs.  Used to created the
- * sorted_sites tree. Uses accesses/byte as the metric for comparison, and
- * size of the site if those are exactly equal.
- */
 int accesses_cmp(siteptr a, siteptr b) {
   double a_bpb, b_bpb;
   int retval;
@@ -186,18 +186,24 @@ tree(int, siteptr) get_knapsack(tree(int, siteptr) sites, size_t capacity, char 
         table[i][j] = table[i - 1][j];
       } else {
         /* Two cases: MBI and PEBS */
+        a = table[i - 1][j];
         if(proftype == 0) {
-          a = table[i - 1][j];
           b.band = table[i - 1][j - weight].band + tree_it_val(it)->bandwidth;
           if(a.band > b.band) {
             table[i][j] = a;
           } else {
             table[i][j] = b;
           }
-        } else {
-          a = table[i - 1][j];
+        } else if(proftype == 1) {
           b.acc = table[i - 1][j - weight].acc + tree_it_val(it)->accesses;
           if(a.acc > b.acc) {
+            table[i][j] = a;
+          } else {
+            table[i][j] = b;
+          }
+        } else if(proftype == 2) {
+          b.acc_per_sample = table[i - 1][j - weight].acc_per_sample + tree_it_val(it)->acc_per_sample;
+          if(a.acc_per_sample > b.acc_per_sample) {
             table[i][j] = a;
           } else {
             table[i][j] = b;
@@ -256,10 +262,13 @@ tree(int, siteptr) get_filtered_hotset(tree(int, siteptr) sites, size_t capacity
   if(proftype == 0) {
     /* bandwidth/byte */
     sorted_sites = tree_make_c(siteptr, int, &bandwidth_cmp);
-  } else {
+  } else if(proftype == 1) {
     /* accesses/byte */
     sorted_sites = tree_make_c(siteptr, int, &accesses_cmp);
+  } else if(proftype == 2) {
+    sorted_sites = tree_make_c(siteptr, int, &acc_per_sample_cmp);
   }
+
   tree_traverse(sites, it) {
     /* Only insert if the site has a peak_rss value */
     if(tree_it_val(it)->peak_rss) {
@@ -273,8 +282,10 @@ tree(int, siteptr) get_filtered_hotset(tree(int, siteptr) sites, size_t capacity
   tree_traverse(sorted_sites, sit) {
     if(proftype == 0) {
       printf("%d: %f %zu %f\n", tree_it_val(sit), tree_it_key(sit)->bandwidth, tree_it_key(sit)->peak_rss, ((double)tree_it_key(sit)->bandwidth) / ((double)tree_it_key(sit)->peak_rss));
-    } else {
+    } else if(proftype == 1) {
       printf("%d: %zu %zu %f\n", tree_it_val(sit), tree_it_key(sit)->accesses, tree_it_key(sit)->peak_rss, ((double)tree_it_key(sit)->accesses) / ((double)tree_it_key(sit)->peak_rss));
+    } else if(proftype == 2) {
+      printf("%d: %zu %zu\n", tree_it_val(sit), tree_it_key(sit)->acc_per_sample, tree_it_key(sit)->peak_rss);
     }
   }
 
@@ -285,17 +296,25 @@ tree(int, siteptr) get_filtered_hotset(tree(int, siteptr) sites, size_t capacity
     
     /* First just grab the more important sites, even if they're larger */
     if(proftype == 0) {
-      if(tree_it_key(sit)->accesses / total_value.acc > 0.005) {
-        printf("Adding %d: %zu %zu %f\n", tree_it_val(sit), tree_it_key(sit)->accesses, tree_it_key(sit)->peak_rss, ((double)tree_it_key(sit)->accesses) / ((double)tree_it_key(sit)->peak_rss));
-        packed_size += tree_it_key(sit)->peak_rss;
-        tree_insert(ret, tree_it_val(sit), tree_it_key(sit));
-      } else {
-        printf("SKIPPING %d: %zu %zu %f\n", tree_it_val(sit), tree_it_key(sit)->accesses, tree_it_key(sit)->peak_rss, ((double)tree_it_key(sit)->accesses) / ((double)tree_it_key(sit)->peak_rss));
-      }
-    } else {
       if(tree_it_key(sit)->bandwidth / total_value.band > 0.005) {
         packed_size += tree_it_key(sit)->peak_rss;
         tree_insert(ret, tree_it_val(sit), tree_it_key(sit));
+      }
+    } else if(proftype == 1) {
+      if(tree_it_key(sit)->accesses / total_value.acc > 0.005) {
+        printf("Adding %d\n", tree_it_val(sit));
+        packed_size += tree_it_key(sit)->peak_rss;
+        tree_insert(ret, tree_it_val(sit), tree_it_key(sit));
+      } else {
+        printf("SKIPPING %d\n", tree_it_val(sit));
+      }
+    } else if(proftype == 2) {
+      if(tree_it_key(sit)->acc_per_sample / total_value.acc_per_sample > 0.005) {
+        printf("Adding %d\n", tree_it_val(sit));
+        packed_size += tree_it_key(sit)->peak_rss;
+        tree_insert(ret, tree_it_val(sit), tree_it_key(sit));
+      } else {
+        printf("SKIPPING %d\n", tree_it_val(sit));
       }
     }
 
@@ -310,7 +329,7 @@ tree(int, siteptr) get_filtered_hotset(tree(int, siteptr) sites, size_t capacity
     tree_traverse(sorted_sites, sit) {
       packed_size += tree_it_key(sit)->peak_rss;
       tree_insert(ret, tree_it_val(sit), tree_it_key(sit));
-      printf("Backfilling %d: %zu %zu %f\n", tree_it_val(sit), tree_it_key(sit)->accesses, tree_it_key(sit)->peak_rss, ((double)tree_it_key(sit)->accesses) / ((double)tree_it_key(sit)->peak_rss));
+      printf("Backfilling %d\n", tree_it_val(sit));
 
       /* If we're over capacity, break. We've already added the site,
        * so we overflow by exactly one site. */
@@ -340,9 +359,11 @@ tree(int, siteptr) get_hotset(tree(int, siteptr) sites, size_t capacity, char pr
   if(proftype == 0) {
     /* bandwidth/byte */
     sorted_sites = tree_make_c(siteptr, int, &bandwidth_cmp);
-  } else {
+  } else if(proftype == 1) {
     /* accesses/byte */
     sorted_sites = tree_make_c(siteptr, int, &accesses_cmp);
+  } else if(proftype == 2) {
+    sorted_sites = tree_make_c(siteptr, int, &acc_per_sample_cmp);
   }
   tree_traverse(sites, it) {
     /* Only insert if the site has a peak_rss value */
@@ -357,8 +378,10 @@ tree(int, siteptr) get_hotset(tree(int, siteptr) sites, size_t capacity, char pr
   tree_traverse(sorted_sites, sit) {
     if(proftype == 0) {
       printf("%d: %f %zu %f\n", tree_it_val(sit), tree_it_key(sit)->bandwidth, tree_it_key(sit)->peak_rss, ((double)tree_it_key(sit)->bandwidth) / ((double)tree_it_key(sit)->peak_rss));
-    } else {
+    } else if(proftype == 1) {
       printf("%d: %zu %zu %f\n", tree_it_val(sit), tree_it_key(sit)->accesses, tree_it_key(sit)->peak_rss, ((double)tree_it_key(sit)->accesses) / ((double)tree_it_key(sit)->peak_rss));
+    } else if(proftype == 2) {
+      printf("%d: %zu %.10f\n", tree_it_val(sit), tree_it_key(sit)->acc_per_sample, tree_it_key(sit)->peak_rss);
     }
   }
 
@@ -389,6 +412,7 @@ tree(int, siteptr) get_thermos(tree(int, siteptr) sites, size_t capacity, char p
   char break_next_site;
   size_t packed_size, site_size, over, tmp_size, tmp_accs, site_accs;
 	float site_band, tmp_band;
+  double site_acc_per_sample, tmp_acc_per_sample;
 	int site;
 
   ret = tree_make(int, siteptr);
@@ -397,9 +421,11 @@ tree(int, siteptr) get_thermos(tree(int, siteptr) sites, size_t capacity, char p
   if(proftype == 0) {
     /* bandwidth/byte */
     sorted_sites = tree_make_c(siteptr, int, &bandwidth_cmp);
-  } else {
+  } else if(proftype == 1) {
     /* accesses/byte */
     sorted_sites = tree_make_c(siteptr, int, &accesses_cmp);
+  } else if(proftype == 2) {
+    sorted_sites = tree_make_c(siteptr, int, &acc_per_sample_cmp);
   }
   tree_traverse(sites, it) {
     /* Only insert if the site has a peak_rss and either a bandwidth or an accesses value */
@@ -417,14 +443,11 @@ tree(int, siteptr) get_thermos(tree(int, siteptr) sites, size_t capacity, char p
 		site_size = tree_it_key(sit)->peak_rss;
 		if(proftype == 0) {
 			site_band = tree_it_key(sit)->bandwidth;
-		} else {
+		} else if(proftype == 1) {
 			site_accs = tree_it_key(sit)->accesses;
-		}
-		/*
-		printf("Looking at site %zu, size %zu, accs %zu\n", site, site_size, site_accs);
-		printf("%lf\n", (double)site_accs / (double)site_size);
-		printf("Capacity is %zu, packed size with this site would be %zu\n", capacity, packed_size + site_size);
-		*/
+		} else if(proftype == 2) {
+			site_acc_per_sample = tree_it_key(sit)->acc_per_sample;
+    }
 
 		if((packed_size + site_size) > capacity) {
 			/* Store how much over the capacity we are */
@@ -441,9 +464,11 @@ tree(int, siteptr) get_thermos(tree(int, siteptr) sites, size_t capacity, char p
 				tmp_size += tree_it_val(tmp_sit)->peak_rss;
 				if(proftype == 0) {
 					tmp_band += tree_it_val(tmp_sit)->bandwidth;
-				} else {
+				} else if(proftype == 1) {
 					tmp_accs += tree_it_val(tmp_sit)->accesses;
-				}
+				} else if(proftype == 2) {
+					tmp_acc_per_sample += tree_it_val(tmp_sit)->acc_per_sample;
+        }
 				if(tmp_size > over) {
 					break;
 				}
@@ -461,15 +486,17 @@ tree(int, siteptr) get_thermos(tree(int, siteptr) sites, size_t capacity, char p
 					packed_size += tree_it_key(sit)->peak_rss;
 					tree_insert(ret, tree_it_val(sit), tree_it_key(sit));
 				}
-			} else { 
+			} else if(proftype == 1) { 
 				if(site_accs > tmp_accs) {
-					/*
-					printf("Adding it to the set.\n");
-					*/
 					packed_size += tree_it_key(sit)->peak_rss;
 					tree_insert(ret, tree_it_val(sit), tree_it_key(sit));
 				}
-			}
+			} else if(proftype == 2) {
+				if(site_acc_per_sample > tmp_acc_per_sample) {
+					packed_size += tree_it_key(sit)->peak_rss;
+					tree_insert(ret, tree_it_val(sit), tree_it_key(sit));
+				}
+      }
 		} else {
 			/* Add the site to the hotset */
 			/* printf("Not over yet. Adding site %u.\n", tree_it_val(sit)); */
@@ -574,8 +601,10 @@ int main(int argc, char **argv) {
     total_weight += tree_it_val(it)->peak_rss;
     if(proftype == 0) { 
       total_value.band += tree_it_val(it)->bandwidth;
-    } else {
+    } else if(proftype == 1) {
       total_value.acc += tree_it_val(it)->accesses;
+    } else if(proftype == 2) {
+      total_value.acc_per_sample += tree_it_val(it)->acc_per_sample;
     }
   }
 
@@ -598,8 +627,10 @@ int main(int argc, char **argv) {
     chosen_weight += tree_it_val(it)->peak_rss;
     if(proftype == 0) { 
       chosen_value.band += tree_it_val(it)->bandwidth;
-    } else {
+    } else if(proftype == 1) {
       chosen_value.acc += tree_it_val(it)->accesses;
+    } else if(proftype == 2) {
+      chosen_value.acc_per_sample += tree_it_val(it)->acc_per_sample;
     }
   }
 
@@ -619,8 +650,10 @@ int main(int argc, char **argv) {
   printf("Used capacity: %zu/%zu bytes\n", chosen_weight, total_weight);
   if(proftype == 0) {
     printf("Value: %f/%f\n", chosen_value.band, total_value.band);
-  } else {
+  } else if(proftype == 1) {
     printf("Value: %zu/%zu\n", chosen_value.acc, total_value.acc);
+  } else if(proftype == 2) {
+    printf("Value: %.10f/%.10f\n", chosen_value.acc_per_sample, total_value.acc_per_sample);
   }
   printf("Capacity: %zu bytes\n", cap_bytes);
   printf("Peak RSS: %zu bytes\n", info->site_peak_rss);
