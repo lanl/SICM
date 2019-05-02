@@ -56,8 +56,8 @@ int acc_per_sample_cmp(siteptr a, siteptr b) {
 
   if(a == b) return 0;
 
-  a_bpb = a->acc_per_sample;
-  b_bpb = b->acc_per_sample;
+  a_bpb = a->acc_per_sample / ((double)a->peak_rss);
+  b_bpb = b->acc_per_sample / ((double)b->peak_rss);
 
   return double_cmp(a_bpb, b_bpb);
 }

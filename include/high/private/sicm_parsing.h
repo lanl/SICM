@@ -154,7 +154,8 @@ static inline app_info *sh_parse_site_info(FILE *file) {
       if(num_tok == 1) {
         /* This value applies to all sites in the arena */
         for(i = 0; i < num_sites; i++) {
-          cur_sites[i]->acc_per_sample = val_double;
+          /* Multiply by 1000 so it's not so small */
+          cur_sites[i]->acc_per_sample = val_double * 1000;
         }
       }
 
