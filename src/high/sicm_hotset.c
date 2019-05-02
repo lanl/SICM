@@ -258,7 +258,7 @@ tree(int, siteptr) get_hotset(tree(int, siteptr) sites, size_t capacity, char pr
     sorted_sites = tree_make_c(siteptr, int, &bandwidth_cmp);
   } else {
     /* accesses/byte */
-    sorted_sites = tree_make_c(siteptr, int, &accesses_cmp2);
+    sorted_sites = tree_make_c(siteptr, int, &accesses_cmp);
   }
   tree_traverse(sites, it) {
     /* Only insert if the site has a peak_rss value */
