@@ -150,7 +150,7 @@ static inline app_info *sh_parse_site_info(FILE *file) {
         }
       }
 
-      num_tok = sscanf(line, "  Accesses per sample: %f\n", &val_double);
+      num_tok = sscanf(line, "  Accesses per sample: %.10f\n", &val_double);
       if(num_tok == 1) {
         /* This value applies to all sites in the arena */
         for(i = 0; i < num_sites; i++) {
