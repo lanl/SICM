@@ -725,9 +725,7 @@ int get_arena_index(int id) {
       ret = (thread_index * arenas_per_thread) + ret;
       break;
     case SHARED_SITE_ARENAS:
-      pthread_mutex_lock(&arena_lock);
       ret = get_site_arena(id);
-      pthread_mutex_unlock(&arena_lock);
       device = get_site_device(id);
       /* Special case for profiling */
       if(profile_one_device && (id == should_profile_one)) {
