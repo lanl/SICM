@@ -650,6 +650,7 @@ int get_site_arena(int id) {
      * available arena and increment.
      */
     ret = __sync_fetch_and_add(&arena_counter, 1);
+    tree_insert(site_arenas, id, ret);
   }
 
   return ret;
