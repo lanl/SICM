@@ -650,7 +650,6 @@ int get_site_arena(int id) {
      * available arena and increment.
      */
     ret = __sync_fetch_and_add(&arena_counter, 1);
-    tree_insert(site_arenas, id, ret);
   }
 
   return ret;
@@ -707,6 +706,7 @@ int get_arena_index(int id) {
 
   thread_index = get_thread_index();
 
+  pthread_mutex_lock(&arena_lock);
   ret = 0;
   device = NULL;
   switch(layout) {
@@ -757,7 +757,6 @@ int get_arena_index(int id) {
     ret = ret % max_arenas;
   }
 
-  pthread_mutex_lock(&arena_lock);
   pending_indices[thread_index] = ret;
   sh_create_arena(ret, id, device);
   pthread_mutex_unlock(&arena_lock);
