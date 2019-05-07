@@ -534,6 +534,7 @@ get_rss() {
 	/* Zero out the RSS values for each arena */
 	extent_arr_for(rss_extents, i) {
     arena = rss_extents->arr[i].arena;
+    if(!arena) continue;
 		arena->rss = 0;
 	}
 
@@ -542,6 +543,7 @@ get_rss() {
 		start = (uint64_t) rss_extents->arr[i].start;
 		end = (uint64_t) rss_extents->arr[i].end;
 		arena = rss_extents->arr[i].arena;
+    if(!arena) continue;
 
     numpages = (end - start) /prof.pagesize;
 		prof.pfndata = (union pfn_t *) realloc(prof.pfndata, numpages * prof.addrsize);
