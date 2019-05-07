@@ -731,7 +731,9 @@ int get_arena_index(int id) {
         /* If the site is the one we're profiling, isolate it */
         device = profile_one_device;
       }
-      printf("%d -> %d\n", id, ret);
+      if(id == 127) {
+        printf("%d -> %d\n", id, ret);
+      }
       break;
     case EXCLUSIVE_SITE_ARENAS:
       ret = (thread_index * arenas_per_thread) + id;
