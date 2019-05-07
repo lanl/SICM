@@ -12,7 +12,7 @@ DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null && pwd )"
 LIB_DIR="$DIR/../lib"
 LLVMPATH="${LLVMPATH:- }"
 LLVMLINK="${LLVMLINK:-llvm-link}"
-OPT="${OPT:-opt}"
+LLVMOPT="${LLVMOPT:-opt}"
 LD_COMPILER="${LD_COMPILER:-clang}"
 LD_LINKER="${LD_LINKER:-clang}"
 
@@ -80,7 +80,7 @@ fi
 ${LLVMPATH}${LLVMLINK} $BC_STR -o .sicm_ir.bc
 
 # Run the compiler pass to generate the call graph.
-${LLVMPATH}${OPT} -load ${LIB_DIR}/libsicm_compass.so -compass-mode=analyze \
+${LLVMPATH}${LLVMOPT} -load ${LIB_DIR}/libsicm_compass.so -compass-mode=analyze \
     -compass-quick-exit -compass -compass-depth=3 \
     .sicm_ir.bc -o .sicm_ir_transformed.bc
 
@@ -89,12 +89,12 @@ ${LLVMPATH}${OPT} -load ${LIB_DIR}/libsicm_compass.so -compass-mode=analyze \
 COMMANDS=""
 if [ -z ${SH_RDSPY+x} ]; then
     for file in "${FILES_ARR[@]}"; do
-      COMMANDS+="${LLVMPATH}${OPT} -load ${LIB_DIR}/libsicm_compass.so -compass-mode=transform -compass -compass-depth=3 ${file}.bc -o ${file}.bc"
+      COMMANDS+="${LLVMPATH}${LLVMOPT} -load ${LIB_DIR}/libsicm_compass.so -compass-mode=transform -compass -compass-depth=3 ${file}.bc -o ${file}.bc"
       COMMANDS+=$'\n'
     done
 else
     for file in "${FILES_ARR[@]}"; do
-      COMMANDS+="${LLVMPATH}${OPT} -load ${LIB_DIR}/libsicm_compass.so -load ${LIB_DIR}/libsicm_rdspy.so -compass-mode=transform -compass -compass-depth=3 -rdspy -rdspy-sampling-threshold=${SH_RDSPY_SAMPLE} ${file}.bc -o ${file}.bc"
+      COMMANDS+="${LLVMPATH}${LLVMOPT} -load ${LIB_DIR}/libsicm_compass.so -load ${LIB_DIR}/libsicm_rdspy.so -compass-mode=transform -compass -compass-depth=3 -rdspy -rdspy-sampling-threshold=${SH_RDSPY_SAMPLE} ${file}.bc -o ${file}.bc"
       COMMANDS+=$'\n'
     done
 fi
