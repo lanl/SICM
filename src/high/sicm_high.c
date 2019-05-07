@@ -563,7 +563,7 @@ void sh_create_arena(int index, int id, sicm_device *device) {
   }
 
   /* Keep track of which arena we chose for this site */
-  //tree_insert(site_arenas, id, index);
+  tree_insert(site_arenas, id, index);
 
   /* If we've already created this arena */
   if(arenas[index] != NULL) {
@@ -650,7 +650,6 @@ int get_site_arena(int id) {
      * available arena and increment.
      */
     ret = __sync_fetch_and_add(&arena_counter, 1);
-    tree_insert(site_arenas, id, ret);
   }
 
   return ret;
