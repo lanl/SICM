@@ -706,7 +706,6 @@ int get_arena_index(int id) {
 
   thread_index = get_thread_index();
 
-  pthread_mutex_lock(&arena_lock);
   ret = 0;
   device = NULL;
   switch(layout) {
@@ -725,7 +724,9 @@ int get_arena_index(int id) {
       ret = (thread_index * arenas_per_thread) + ret;
       break;
     case SHARED_SITE_ARENAS:
+      pthread_mutex_lock(&arena_lock);
       ret = get_site_arena(id);
+      pthread_mutex_unlock(&arena_lock);
       device = get_site_device(id);
       /* Special case for profiling */
       if(profile_one_device && (id == should_profile_one)) {
@@ -757,6 +758,7 @@ int get_arena_index(int id) {
     ret = ret % max_arenas;
   }
 
+  pthread_mutex_lock(&arena_lock);
   pending_indices[thread_index] = ret;
   sh_create_arena(ret, id, device);
   pthread_mutex_unlock(&arena_lock);
