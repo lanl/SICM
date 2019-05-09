@@ -731,8 +731,8 @@ int get_arena_index(int id) {
         /* If the site is the one we're profiling, isolate it */
         device = profile_one_device;
       }
-      if(id == 127) {
-        printf("%d -> %d\n", id, ret);
+      if(device == profile_one_device) {
+        printf("Site %d is being isolated.\n", id);
       }
       break;
     case EXCLUSIVE_SITE_ARENAS:
