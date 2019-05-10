@@ -6,7 +6,7 @@
 #include "sicm_high.h"
 
 /* Never inline these */
-void  *operator new(unsigned long) __attribute__((used)) __attribute__(noinline);
+void  *operator new(unsigned long) __attribute__((used)) __attribute__((noinline));
 void  *operator new(std::size_t size) __attribute__((used)) __attribute__((noinline));
 void  *operator new[](std::size_t size) __attribute__((used)) __attribute__((noinline));
 void  *operator new(std::size_t size, const std::nothrow_t &) noexcept __attribute__((used)) __attribute__((noinline));
