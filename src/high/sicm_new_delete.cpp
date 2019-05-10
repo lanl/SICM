@@ -17,7 +17,6 @@ void  operator delete[](void *ptr, const std::nothrow_t &) noexcept __attribute_
 
 /* Call sh_alloc from all of these */
 void  *operator new(std::size_t size) {
-  printf("Calling custom new with %zu bytes.\n", size);
   return sh_alloc(0, size);
 }
 void  *operator new[](std::size_t size) {
