@@ -1,9 +1,11 @@
 #ifndef OP_NEW_DEL
 #define OP_NEW_DEL
 
+#include <string.h>
 #include "sicm_high.h"
 
 /* Never inline these */
+#undef strdup
 char *strdup(const char *str1) __attribute__((used)) __attribute__((noinline));
 
 /* Call sh_alloc from all of these */
