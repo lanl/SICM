@@ -406,7 +406,7 @@ get_accesses() {
       extent_arr_for(extents, i) {
         if(!extents->arr[i].start && !extents->arr[i].end) continue;
         arena = extents->arr[i].arena;
-        if((addr >= extents->arr[i].start) && (addr <= extents->arr[i].end)) {
+        if((addr >= extents->arr[i].start) && (addr <= extents->arr[i].end) && arena) {
           arena->cur_accesses++;
         }
       }
