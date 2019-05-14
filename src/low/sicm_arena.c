@@ -402,7 +402,7 @@ out:
 	return sa;
 }
 
-sicm_arena sicm_lookup(void *ptr) {
+sicm_arena sicm_arena_lookup(void *ptr) {
 	return sarena_ptr2sarena(ptr);
 }
 
