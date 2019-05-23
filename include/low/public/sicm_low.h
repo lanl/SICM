@@ -39,20 +39,17 @@ sicm_device_tag sicm_get_device_tag(char *env);
 
 /// Data specific to a DRAM device.
 typedef struct sicm_dram_data {
-  int node; ///< NUMA node
   int page_size; ///< Page size
 } sicm_dram_data;
 
 /// Data specific to a KNL HBM device.
 typedef struct sicm_knl_hbm_data {
-  int node; ///< NUMA node
   int compute_node;
   int page_size; ///< Page size
 } sicm_knl_hbm_data;
 
 /// Data specific to a PowerPC 9 HBM device.
 typedef struct sicm_powerpc_hbm_data {
-  int node;
   int page_size;
 } sicm_powerpc_hbm_data;
 
@@ -77,13 +74,14 @@ typedef union sicm_device_data {
  * operations.
  */
 typedef struct sicm_device {
-  sicm_device_tag tag; ///< Type of memory device
+  sicm_device_tag tag;   ///< Type of memory device
+  int node;              ///< NUMA node
   sicm_device_data data; ///< Per-type identifying information
 } sicm_device;
 
 /// Explicitly-sized sicm_device array.
 typedef struct sicm_device_list {
-  unsigned int count; ///< Number of devices in the array.
+  unsigned int count;   ///< Number of devices in the array.
   sicm_device* devices; ///< Array of devices of count elements.
 } sicm_device_list;
 
@@ -92,10 +90,10 @@ typedef struct sicm_device_list {
  * All times are in milliseconds.
  */
 struct sicm_timing {
-  unsigned int alloc; ///< Time requried for allocation.
-  unsigned int write; ///< Time required for writing.
-  unsigned int read; ///< Time required for reading.
-  unsigned int free; ///< Time required for deallocation.
+  unsigned int alloc;   ///< Time requried for allocation.
+  unsigned int write;   ///< Time required for writing.
+  unsigned int read;    ///< Time required for reading.
+  unsigned int free;    ///< Time required for deallocation.
 };
 
 /// Handle to an arena.
