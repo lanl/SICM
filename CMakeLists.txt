@@ -4,6 +4,9 @@ project (SICM)
 # Use -DSICM_BUILD_HIGH_LEVEL=True to build the high-level interface.
 set(SICM_BUILD_HIGH_LEVEL False CACHE BOOL "Should we build the high-level interface?")
 
+find_package(Threads REQUIRED)
+link_libraries(Threads::Threads m dl)
+
 # Install custom CMake modules for jemalloc and libnuma.
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/Modules/")
 
