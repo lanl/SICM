@@ -670,6 +670,9 @@ sicm_device *get_site_device(int id) {
     /* Site's not in the guidance file. Use the default device. */
     device = default_device;
   }
+  if(id == should_profile_one) {
+    device = profile_one_device;
+  }
 
   return device;
 }
@@ -726,11 +729,6 @@ int get_arena_index(int id) {
     case SHARED_SITE_ARENAS:
       ret = get_site_arena(id);
       device = get_site_device(id);
-      /* Special case for profiling */
-      if(profile_one_device && (id == should_profile_one)) {
-        /* If the site is the one we're profiling, isolate it */
-        device = profile_one_device;
-      }
       break;
     case EXCLUSIVE_SITE_ARENAS:
       ret = (thread_index * arenas_per_thread) + id;
