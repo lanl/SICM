@@ -406,7 +406,7 @@ get_accesses() {
       extent_arr_for(extents, i) {
         if(!extents->arr[i].start && !extents->arr[i].end) continue;
         arena = extents->arr[i].arena;
-        if((addr >= extents->arr[i].start) && (addr <= extents->arr[i].end)) {
+        if((addr >= extents->arr[i].start) && (addr <= extents->arr[i].end) && arena) {
           arena->cur_accesses++;
         }
       }
@@ -534,6 +534,7 @@ get_rss() {
 	/* Zero out the RSS values for each arena */
 	extent_arr_for(rss_extents, i) {
     arena = rss_extents->arr[i].arena;
+    if(!arena) continue;
 		arena->rss = 0;
 	}
 
@@ -542,6 +543,7 @@ get_rss() {
 		start = (uint64_t) rss_extents->arr[i].start;
 		end = (uint64_t) rss_extents->arr[i].end;
 		arena = rss_extents->arr[i].arena;
+    if(!arena) continue;
 
     numpages = (end - start) /prof.pagesize;
 		prof.pfndata = (union pfn_t *) realloc(prof.pfndata, numpages * prof.addrsize);
