@@ -23,5 +23,9 @@ int main() {
 	buf2 = sicm_arena_alloc(s, 2048*1024);
 	sicm_free(buf1);
 	sicm_free(buf2);
+
+	sicm_arena_destroy(s);
+	sicm_fini();
+
 	return 0;
 }

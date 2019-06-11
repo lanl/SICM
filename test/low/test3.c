@@ -72,5 +72,11 @@ int main() {
 		return 0;
 	}
 
+
+	sicm_arena_destroy(s1);
+	sicm_arena_destroy(s2);
+	sicm_arena_destroy(s3);
+	sicm_fini();
+
 	return 0;
 }
