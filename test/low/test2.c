@@ -33,5 +33,10 @@ int main() {
 	}
 
 	sicm_free(buf2);
+
+	sicm_arena_destroy(s1);
+	sicm_arena_destroy(s2);
+	sicm_fini();
+
 	return 0;
 }

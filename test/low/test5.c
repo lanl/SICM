@@ -58,5 +58,9 @@ int main() {
 
 	printf("so far so good buf1 %p buf2 %p\n", buf1, buf2);
 
+	sicm_arena_destroy(s1);
+	sicm_arena_destroy(s2);
+	sicm_fini();
+
 	return 0;
 }
