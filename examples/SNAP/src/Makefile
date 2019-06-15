@@ -22,8 +22,8 @@ TARGET = gsnap
 #HASWELL = yes
 
 JEPATH ?= $(HOME)/jemalloc
-SICM_ROOT ?= $(HOME)/SICM
-SICM_LIB ?= $(SICM_ROOT)
+SICM_MOD ?= $(SICM_ROOT)/lib
+SICM_LIB ?= $(SICM_ROOT)/lib
 MPI_INCLUDE ?= $(HOME)/openmpi/include
 
 ifeq ($(MPI),yes)
@@ -51,7 +51,7 @@ endif
 PPFLAGS = $(foreach def,$(DEFS),-D$(def))
 
 ifeq ($(TARGET),gsnap)
-  FFLAGS = -g $(OMPFLAG) -I$(MPI_INCLUDE) -I$(SICM_ROOT) -L$(SICM_LIB) -L$(JEPATH)/lib -ljemalloc -lsicm_f90
+  FFLAGS = -g $(OMPFLAG) -I$(MPI_INCLUDE) -I$(SICM_MOD) -L$(SICM_LIB) -L$(JEPATH)/lib -ljemalloc -lsicm -lsicm_f90
   FFLAG2 =
   PP = cpp
   ifeq ($(OPT),no)
@@ -93,7 +93,7 @@ endif
 OBJS = global.o snap_main.o utils.o version.o plib.o geom.o sn.o \
        data.o control.o input.o setup.o dealloc.o translv.o solvar.o \
        outer.o expxs.o inner.o sweep.o octsweep.o dim1_sweep.o dim3_sweep.o \
-       output.o time.o mms.o analyze.o thrd_comm.o mkba_sweep.o $(SICM_LIB)/libsicm_f90.so
+       output.o time.o mms.o analyze.o thrd_comm.o mkba_sweep.o $(SICM_LIB)/libsicm_f90.so $(SICM_LIB)/libsicm.so
 
 SRCS = global.f90 snap_main.f90 utils.f90 version.f90 plib.F90 geom.f90 \
        sn.f90 data.f90 control.f90 input.f90 setup.f90 dealloc.f90 \

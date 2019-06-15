@@ -1,0 +1,59 @@
+*.o
+*.so
+*.a
+*.mod
+*.lo
+*.la
+*.pyc
+
+# Makefiles
+/Makefile.in
+/Makefile
+/bin/Makefile.in
+/bin/Makefile
+/include/Makefile.in
+/include/Makefile
+/src/Makefile.in
+/src/Makefile
+/src/high/Makefile.in
+/src/high/Makefile
+/src/low/Makefile.in
+/src/low/Makefile
+/examples/Makefile.in
+/examples/Makefile
+/examples/low/Makefile.in
+/examples/low/Makefile
+
+# Binaries
+/examples/low/basic
+/src/high/memreserve
+/src/high/hotset
+/src/high/dump_info
+
+autom4te.cache
+*.m4
+.deps
+.libs
+config.*
+depcomp
+install-sh
+libtool
+ltmain.sh
+missing
+compile
+configure
+*.swp
+
+# Lulesh
+lulesh2.0
+
+# Compass output
+buCG.txt
+contexts.txt
+nclones.txt
+nsites.txt
+*.bc
+*.args
+
+# Spack stuff
+spack.lock
