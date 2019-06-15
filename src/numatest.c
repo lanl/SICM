@@ -207,7 +207,7 @@ int main(int argc, char ** argv){
 
 
 			start = clock();
-            		while(j < (size/sizeof(int))){
+            while(j < (size/sizeof(int))){
 				j++;
 			}
 			end = clock();
