@@ -7,13 +7,16 @@ int main() {
 	int i;
 	sicm_arena s;
 	char *buf1, *buf2;
+	sicm_device_list ds;
 
 	devs = sicm_init();
 	for(i = 0; i < devs.count; i++) {
-		printf("%d %d\n", i, sicm_numa_id(&devs.devices[i]));
+		printf("%d %d\n", i, sicm_numa_id(devs.devices[i]));
 	}
 
-	s = sicm_arena_create(0, &devs.devices[0]);
+	ds.count = 1;
+	ds.devices = &devs.devices[0];
+	s = sicm_arena_create(0, 0, &ds);
 	if (s == NULL) {
 		fprintf(stderr, "sicm_arena_create failed\n");
 		return -1;
