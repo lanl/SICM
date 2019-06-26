@@ -19,6 +19,10 @@
 #include <stdlib.h>
 #include <sys/types.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 // default arena
 #define ARENA_DEFAULT NULL
 
@@ -534,5 +538,9 @@ size_t sicm_triad_kernel_linear(double* a, double* b, double* c, size_t size);
  * This can be used as a template for other bandwidth kernels.
  */
 size_t sicm_triad_kernel_random(double* a, double* b, double* c, size_t* indexes, size_t size);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif
