@@ -41,6 +41,13 @@ typedef enum sicm_device_tag {
 char * sicm_device_tag_str(sicm_device_tag tag);
 sicm_device_tag sicm_get_device_tag(char *env);
 
+/// Flags that define how allocations in an arena are performed
+typedef enum sicm_arena_flags {
+  SICM_ALLOC_MASK    = 7,	// lowest 3 bits
+  SICM_ALLOC_STRICT  = 0,	// don't use any devices outside of the assigned
+  SICM_ALLOC_RELAXED = 1,	// prefer the assigned devices, but use other memory too
+} sicm_arena_flags;
+
 /// Data specific to a DRAM device.
 typedef struct sicm_dram_data {
   int page_size; ///< Page size
@@ -86,7 +93,7 @@ typedef struct sicm_device {
 /// Explicitly-sized sicm_device array.
 typedef struct sicm_device_list {
   unsigned int count;   ///< Number of devices in the array.
-  sicm_device* devices; ///< Array of devices of count elements.
+  sicm_device** devices; ///< Array of devices of count elements.
 } sicm_device_list;
 
 /// Results of a latency timing.
@@ -135,6 +142,9 @@ void sicm_fini();
  */
 sicm_device *sicm_find_device(sicm_device_list *devs, const sicm_device_tag type, const int page_size, sicm_device *old);
 
+/// Free a device list, returned by functions other than sicm_init
+void sicm_device_list_free(sicm_device_list *);
+
 /// List of the defined arenas
 /**
  * @return list of the defined arenas
@@ -147,16 +157,18 @@ sicm_arena_list *sicm_arenas_list();
 /// Create new arena
 /**
  * @param maxsize maximum size of the arena.
- * @param dev initial device where the arena's allocations should use
+ * @param flags arena flags (currently unused)
+ * @param devs devices that will be used for the arena's allocations
  * @return handle to the newly created arena, or ARENA_DEFAULT if the
  *         the function failed.
  */
-sicm_arena sicm_arena_create(size_t maxsize, sicm_device *dev);
+sicm_arena sicm_arena_create(size_t maxsize, sicm_arena_flags flags, sicm_device_list *devs);
 
 /// Create new mapped arena
 /**
  * @param maxsize maximum size of the arena.
- * @param dev initial device where the arena's allocations should use
+ * @param flags arena flags (currently unused)
+ * @param devs devices that will be used for the arena's allocations
  * @param fd A valid file descriptor to map the memory into
  * @param offset Starting offset within the file descriptor
  * @param mutex_fd A valid file descriptor to map the mutex into
@@ -164,7 +176,8 @@ sicm_arena sicm_arena_create(size_t maxsize, sicm_device *dev);
  * @return handle to the newly created arena, or ARENA_DEFAULT if the
  *         the function failed.
  */
-sicm_arena sicm_arena_create_mmapped(size_t maxsize, sicm_device *dev, int fd, off_t offset, int mutex_fd, off_t mutex_offset);
+sicm_arena sicm_arena_create_mmapped(size_t maxsize, sicm_arena_flags flags, sicm_device_list *devs, int fd,
+					off_t offset, int mutex_fd, off_t mutex_offset);
 
 /// Free up arena
 /**
@@ -186,20 +199,20 @@ void sicm_arena_set_default(sicm_arena sa);
  */
 sicm_arena sicm_arena_get_default(void);
 
-/// Get the NUMA node for an arena
+/// Get the list of devices that are being used for the arena's allocations
 /**
  * @param sa arena
- * @return device for the arena
+ * @return list of the devices assigned to the arena
  */
-sicm_device *sicm_arena_get_device(sicm_arena sa);
+sicm_device_list sicm_arena_get_devices(sicm_arena sa);
 
-/// Set the NUMA node for an arena
+/// Set the list of devices to be used for the arena's allocations
 /**
  * @param sa arena
- * @param dev new device for the arena
+ * @param devs list of devices assigned to the arena
  * @return zero if the operation is successful
  */
-int sicm_arena_set_device(sicm_arena sa, sicm_device *dev);
+int sicm_arena_set_devices(sicm_arena sa, sicm_device_list *devs);
 
 /// Get arena size
 /**
