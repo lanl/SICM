@@ -201,13 +201,15 @@ struct sicm_device_list sicm_init() {
 	   }
          }
          devices[idx]->tag = SICM_OPTANE;
-         devices[idx]->data.optane = (struct sicm_optane_data){ .node=i,
+	 devices[idx]->node = i;
+         devices[idx]->data.optane = (struct sicm_optane_data){ 
            .compute_node=compute_node, .page_size=normal_page_size };
          numa_bitmask_setbit(non_dram_nodes, i);
          idx++;
          for(j = 0; j < huge_page_size_count; j++) {
              devices[idx]->tag = SICM_OPTANE;
-             devices[idx]->data.optane = (struct sicm_optane_data){ .node=i,
+	     devices[idx]->node = i;
+             devices[idx]->data.optane = (struct sicm_optane_data){
                .compute_node=compute_node, .page_size=huge_page_sizes[j] };
              idx++;
          }
@@ -487,7 +489,7 @@ int sicm_device_page_size(struct sicm_device* device) {
     case SICM_KNL_HBM:
       return device->data.knl_hbm.page_size;
     case SICM_OPTANE:
-      return device->data.optane.node;
+      return device->data.optane.page_size;
     case SICM_POWERPC_HBM:
       return device->data.powerpc_hbm.page_size;
     case INVALID_TAG:
@@ -523,7 +525,7 @@ int sicm_device_eq(sicm_device* dev1, sicm_device* dev2) {
           (dev1->data.knl_hbm.page_size == dev2->data.knl_hbm.page_size);
     case SICM_OPTANE:
       return
-          (dev1->data.optane.node == dev2->data.optane.node) &&
+          (dev1->data.optane.compute_node == dev2->data.optane.compute_node) &&
           (dev1->data.optane.page_size == dev2->data.optane.page_size);
     case SICM_POWERPC_HBM:
       return
@@ -679,18 +681,16 @@ int sicm_model_distance(struct sicm_device* device) {
 
 int sicm_is_near(struct sicm_device* device) {
   int dist;
+
+  dist = numa_distance(sicm_numa_id(device), numa_node_of_cpu(sched_getcpu()));
   switch(device->tag) {
     case SICM_DRAM:
-      dist = numa_distance(sicm_numa_id(device), numa_node_of_cpu(sched_getcpu()));
       return dist == 10;
     case SICM_KNL_HBM:
-      dist = numa_distance(sicm_numa_id(device), numa_node_of_cpu(sched_getcpu()));
       return dist == 31;
     case SICM_OPTANE:
-      dist = numa_distance(sicm_numa_id(device), numa_node_of_cpu(sched_getcpu()));
       return dist == 17;
     case SICM_POWERPC_HBM:
-      dist = numa_distance(sicm_numa_id(device), numa_node_of_cpu(sched_getcpu()));
       return dist == 80;
     case INVALID_TAG:
     default:

@@ -63,7 +63,6 @@ typedef struct sicm_powerpc_hbm_data {
 
 /// Data specific to a Optane device.
 typedef struct sicm_optane_data {
-  int node; ///< NUMA node
   int compute_node;
   int page_size; ///< Page size
 } sicm_optane_data;
