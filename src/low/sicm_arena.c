@@ -491,8 +491,10 @@ static void *sa_alloc(extent_hooks_t *h, void *new_addr, size_t size, size_t ali
 		break;
 	}
 
-	if (set_mempolicy(mpol, nodemaskp, maxnode) < 0)
+	if (set_mempolicy(mpol, nodemaskp, maxnode) < 0) {
+		perror("set_mempolicy");
 		goto free_nodemasks;
+	}
 
 	if (sa->fd == -1)
 		mmflags = MAP_ANONYMOUS|MAP_PRIVATE;
@@ -522,6 +524,7 @@ static void *sa_alloc(extent_hooks_t *h, void *new_addr, size_t size, size_t ali
 	size += alignment;
 	ret = mmap(NULL, size, PROT_READ | PROT_WRITE, mmflags, sa->fd, sa->size);
 	if (ret == MAP_FAILED) {
+		perror("mmap2");
 		ret = NULL;
 		goto restore_mempolicy;
 	}
@@ -534,6 +537,7 @@ static void *sa_alloc(extent_hooks_t *h, void *new_addr, size_t size, size_t ali
 success:
 	if (mbind(ret, size, mpol, nodemaskp, maxnode, MPOL_MF_MOVE) < 0) {
 		munmap(ret, size);
+		perror("mbind");
 		ret = NULL;
 		goto restore_mempolicy;
 	}
