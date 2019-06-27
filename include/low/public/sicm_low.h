@@ -35,6 +35,7 @@ typedef enum sicm_device_tag {
   SICM_DRAM,
   SICM_KNL_HBM,
   SICM_POWERPC_HBM,
+  SICM_OPTANE,
   INVALID_TAG
 } sicm_device_tag;
 
@@ -64,6 +65,12 @@ typedef struct sicm_powerpc_hbm_data {
   int page_size;
 } sicm_powerpc_hbm_data;
 
+/// Data specific to a Optane device.
+typedef struct sicm_optane_data {
+  int compute_node;
+  int page_size; ///< Page size
+} sicm_optane_data;
+
 /// Data that, given a device type, uniquely identify the device within that type.
 /**
  * This union is only meaningful in the presence of a sicm_device_tag,
@@ -75,6 +82,7 @@ typedef union sicm_device_data {
   sicm_dram_data dram;
   sicm_knl_hbm_data knl_hbm;
   sicm_powerpc_hbm_data powerpc_hbm;
+  sicm_optane_data optane;
 } sicm_device_data;
 
 /// Tagged/discriminated union that fully identifies a device.
