@@ -68,6 +68,8 @@ struct sicm_device_list sicm_init() {
       return sicm_global_devices;
   }
 
+  normal_page_size = numa_pagesize() >> 10;
+
   // Find the number of huge page sizes
   int huge_page_size_count = 0;
   DIR* dir;
