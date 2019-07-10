@@ -8,15 +8,19 @@ sicm_device_list devs;
 int main() {
 	sicm_arena s1, s2;
 	char *buf1[N], *buf2;
+	sicm_device_list ds;
 
 	devs = sicm_init();
-	s1 = sicm_arena_create(0, &devs.devices[0]);
+	ds.count = 1;
+	ds.devices = &devs.devices[0];
+	s1 = sicm_arena_create(0, 0, &ds);
 	if (s1 == NULL) {
 		fprintf(stderr, "sarena_create failed\n");
 		return -1;
 	}
 
-	s2 = sicm_arena_create(0, &devs.devices[devs.count - 1]);
+	ds.devices = &devs.devices[devs.count - 1];
+	s2 = sicm_arena_create(0, 0, &ds);
 	if (s2 == NULL) {
 		fprintf(stderr, "sarena_create failed\n");
 		return -1;
@@ -33,5 +37,10 @@ int main() {
 	}
 
 	sicm_free(buf2);
+
+	sicm_arena_destroy(s1);
+	sicm_arena_destroy(s2);
+	sicm_fini();
+
 	return 0;
 }

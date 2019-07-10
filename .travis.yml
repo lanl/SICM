@@ -21,7 +21,7 @@ matrix:
               packages:
                 - g++-7
                 - gfortran-7
-                - wget
+                - libnuma-dev
           env:
              - C_COMPILER="gcc-7"
              - CXX_COMPILER="g++-7"
@@ -34,7 +34,7 @@ matrix:
               packages:
                 - g++-8
                 - gfortran-8
-                - wget
+                - libnuma-dev
           env:
              - C_COMPILER="gcc-8"
              - CXX_COMPILER="g++-8"
@@ -46,13 +46,20 @@ before_install:
     - export FC="${FORTRAN_COMPILER}"
 
 install:
-    # Install Spack
-    - git clone https://github.com/benbenolson/spack.git
-    - cd spack
-    - . share/spack/setup-env.sh
-    - cd ..
+    # install jemalloc
+    - git clone --depth 1 https://github.com/jemalloc/jemalloc.git
+    - cd jemalloc
+    - ./autogen.sh
+    - mkdir build
+    - cd build
+    - ../configure --prefix=/tmp/jemalloc --with-jemalloc-prefix=je_
+    - make
+    - make install
+    - cd ../..
 
 script:
-    - export SICM_DIR="${TRAVIS_BUILD_DIR}"
-    - spack repo add spack-repo
-    - spack install --no-checksum spack.sicm-low
+    - mkdir build
+    - cd build
+    - cmake .. -DCMAKE_INSTALL_PREFIX=/tmp/SICM -DCMAKE_BUILD_TYPE=Debug -DJEMALLOC_INCLUDE_DIR=/tmp/jemalloc/include -DJEMALLOC_LIBRARIES=/tmp/jemalloc/lib/libjemalloc.so
+    - make
+    - make install

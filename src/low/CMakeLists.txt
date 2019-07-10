@@ -16,6 +16,8 @@ find_package(Threads)
 find_package(Jemalloc REQUIRED)
 target_link_libraries(sicm ${JEMALLOC_LIBRARIES} ${CMAKE_THREAD_LIBS_INIT})
 target_include_directories(sicm PRIVATE ${JEMALLOC_INCLUDE_DIR})
+target_include_directories(sicm_f90 PRIVATE ${JEMALLOC_INCLUDE_DIR})
+target_include_directories(sicm_cpp PRIVATE ${JEMALLOC_INCLUDE_DIR})
 
 find_package(NUMA REQUIRED)
 target_link_libraries(sicm ${NUMA_LIBRARY})

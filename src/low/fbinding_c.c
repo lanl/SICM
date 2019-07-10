@@ -22,7 +22,7 @@ void sicm_init_wrap_(struct sicm_fortran_device_list* devices_) {
   devices_->devices = malloc(devices.count * sizeof(struct sicm_device*));
   int i;
   for(i = 0; i < devices.count; i++)
-    devices_->devices[i] = &(devices.devices[i]);
+    devices_->devices[i] = devices.devices[i];
 }
 
 void sicm_get_device_wrap_(struct sicm_fortran_device_list* devices_, int* i, struct sicm_fortran_device* device) {
