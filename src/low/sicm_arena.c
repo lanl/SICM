@@ -56,22 +56,7 @@ static struct bitmask *sicm_device_list_check_numa(sicm_device_list *devs) {
 				goto error;
 		}
 
-<<<<<<< HEAD
-	sa->extents = extent_arr_init();
-	sa->hooks = sa_hooks;
-	new_hooks = &sa->hooks;
-	arena_ind_sz = sizeof(unsigned); // sa->arena_ind);
-	arena_ind = -1;
-	err = je_mallctl("arenas.create", (void *) &arena_ind, &arena_ind_sz, (void *)&new_hooks, sizeof(extent_hooks_t *));
-	if (err != 0) {
-		fprintf(stderr, "can't create an arena: %s\n", strerror(err));
-		pthread_mutex_destroy(sa->mutex);
-		munmap(sa->mutex, sizeof(pthread_mutex_t));
-		free(sa);
-		return NULL;
-=======
 		numa_bitmask_setbit(nodemask, numaid);
->>>>>>> origin/master
 	}
 
 	return nodemask;
@@ -481,11 +466,7 @@ static void *sa_alloc(extent_hooks_t *h, void *new_addr, size_t size, size_t ali
 	unsigned long *nodemaskp, maxnode;
 	sarena *sa;
 	uintptr_t n, m;
-<<<<<<< HEAD
-	int oldmode, fd;
-=======
 	int oldmode, mmflags;
->>>>>>> origin/master
 	void *ret;
 	struct bitmask *oldnodemask;
   sicm_device_tag type;
@@ -498,32 +479,10 @@ static void *sa_alloc(extent_hooks_t *h, void *new_addr, size_t size, size_t ali
 
 	// TODO: figure out a way to prevent taking the mutex twice (sa_range_add also takes it)...
 	pthread_mutex_lock(sa->mutex);
-<<<<<<< HEAD
-	sasize = sa->size;
-	maxsize = sa->maxsize;
-  type = sa->dev->tag;
-  if(type == SICM_PMEM) {
-    template = sa->dev->data.pmem.file_template;
-  }
-	pthread_mutex_unlock(sa->mutex);
-	if (maxsize > 0 && sasize + size > maxsize) {
-		return NULL;
-	}
-
-  /* For pmem, we need to create a file for this extent */
-  if(type == SICM_PMEM) {
-    fd = mkstemp(template);
-    posix_fallocate(fd, 0, (off_t) size);
-    printf("Creating a file for this extent: %d\n", fd);
-  }
-
-	nodemask = numa_allocate_nodemask();
-=======
 	if (sa->maxsize > 0 && sa->size + size > sa->maxsize) {
 		return NULL;
 	}
 
->>>>>>> origin/master
 	oldnodemask = numa_allocate_nodemask();
 	get_mempolicy(&oldmode, oldnodemask->maskp, oldnodemask->size, NULL, 0);
 	switch (sa->flags & SICM_ALLOC_MASK) {
@@ -552,20 +511,12 @@ static void *sa_alloc(extent_hooks_t *h, void *new_addr, size_t size, size_t ali
 		goto free_nodemasks;
 	}
 
-<<<<<<< HEAD
-  if(type == SICM_PMEM) {
-    ret = mmap(new_addr, size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANON, fd, 0);
-  } else {
-    ret = mmap(new_addr, size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANON, -1, 0);
-  }
-=======
 	if (sa->fd == -1)
 		mmflags = MAP_ANONYMOUS|MAP_PRIVATE;
 	else
 		mmflags = MAP_SHARED;
 
 	ret = mmap(new_addr, size, PROT_READ | PROT_WRITE, mmflags, sa->fd, sa->size);
->>>>>>> origin/master
 	if (ret == MAP_FAILED) {
 		ret = NULL;
 		perror("mmap");
@@ -586,15 +537,7 @@ static void *sa_alloc(extent_hooks_t *h, void *new_addr, size_t size, size_t ali
 		goto restore_mempolicy;
 
 	size += alignment;
-<<<<<<< HEAD
-  if(type == SICM_PMEM) {
-    ret = mmap(NULL, size + alignment, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANON, fd, 0);
-  } else {
-    ret = mmap(NULL, size + alignment, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANON, -1, 0);
-  }
-=======
 	ret = mmap(NULL, size, PROT_READ | PROT_WRITE, mmflags, sa->fd, sa->size);
->>>>>>> origin/master
 	if (ret == MAP_FAILED) {
 		perror("mmap2");
 		ret = NULL;
@@ -607,138 +550,7 @@ static void *sa_alloc(extent_hooks_t *h, void *new_addr, size_t size, size_t ali
 	ret = (void *) m;
 
 success:
-<<<<<<< HEAD
-  if(type != SICM_PMEM) {
-    if (mbind(ret, size, MPOL_PREFERRED, nodemask->maskp, nodemask->size, MPOL_MF_MOVE) < 0) {
-      munmap(ret, size);
-      ret = NULL;
-      goto restore_mempolicy;
-    }
-  }
-
-	pthread_mutex_lock(sa->mutex);
-
-	/* Add the extent to the array of extents */
-	extent_arr_insert(sa->extents, ret, (char *)ret + size, NULL);
-
-	/* Call the callback on this chunk if it's set */
-	if(sicm_extent_alloc_callback) {
-		(*sicm_extent_alloc_callback)(ret, (char *)ret + size);
-	}
-
-	sa->size += size;
-	pthread_mutex_unlock(sa->mutex);
-
-restore_mempolicy:
-	set_mempolicy(oldmode, oldnodemask->maskp, oldnodemask->size);
-
-free_nodemasks:
-	numa_free_nodemask(oldnodemask);
-	numa_free_nodemask(nodemask);
-
-	return ret;
-}
-
-static void *sa_alloc_shared(extent_hooks_t *h, void *new_addr, size_t size, size_t alignment, bool *zero, bool *commit, unsigned arena_ind) {
-	sarena *sa;
-	uintptr_t n, m;
-	int oldmode;
-	void *ret;
-	struct bitmask *nodemask;
-	struct bitmask *oldnodemask;
-
-	*commit = 0;
-	*zero = 0;
-	ret = NULL;
-	sa = container_of(h, sarena, hooks);
-
-	// TODO: figure out a way to prevent taking the mutex twice (sa_range_add also takes it)...
-	pthread_mutex_lock(sa->mutex);
-	pthread_mutex_unlock(sa->mutex);
-	if (sa->maxsize > 0 && sa->size + size > sa->maxsize) {
-		perror("bad size");
-		return NULL;
-	}
-
-	nodemask = numa_allocate_nodemask();
-	oldnodemask = numa_allocate_nodemask();
-	get_mempolicy(&oldmode, oldnodemask->maskp, oldnodemask->size, NULL, 0);
-	numa_bitmask_setbit(nodemask, sa->numaid);
-//	if (set_mempolicy(MPOL_MBIND, nodemask->maskp, nodemask->size) < 0) {
-	if (set_mempolicy(MPOL_DEFAULT, NULL, 0) < 0) {
-		perror("set_mempolicy");
-		goto free_nodemasks;
-	}
-
-	// triggered by the user
-	if (sa->user) {
-		ret = mmap(new_addr, size, PROT_READ | PROT_WRITE, MAP_SHARED, sa->fd, sa->size);
-		if (ret == MAP_FAILED) {
-			ret = NULL;
-			perror("mmap");
-			goto restore_mempolicy;
-		}
-
-		if (alignment == 0 || ((uintptr_t) ret)%alignment == 0) {
-			// we are lucky and got the right alignment
-			goto success;
-		}
-
-		// the alignment didn't work out, munmap and try again
-		munmap(ret, size);
-		ret = NULL;
-
-		// if new_addr is set, we can't fulfill the alignment, so just fail
-		if (new_addr != NULL)
-			goto restore_mempolicy;
-
-		size += alignment;
-		ret = mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_SHARED, sa->fd, sa->size);
-		if (ret == MAP_FAILED) {
-			ret = NULL;
-			goto restore_mempolicy;
-		}
-	}
-	// automatic
-	else {
-		ret = mmap(new_addr, size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANON, -1, 0);
-		if (ret == MAP_FAILED) {
-			ret = NULL;
-			perror("mmap");
-			goto restore_mempolicy;
-		}
-
-		if (alignment == 0 || ((uintptr_t) ret)%alignment == 0) {
-			// we are lucky and got the right alignment
-			goto success;
-		}
-
-		// the alignment didn't work out, munmap and try again
-		munmap(ret, size);
-		ret = NULL;
-
-		// if new_addr is set, we can't fulfill the alignment, so just fail
-		if (new_addr != NULL)
-			goto restore_mempolicy;
-
-		size += alignment;
-		ret = mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANON, -1, 0);
-		if (ret == MAP_FAILED) {
-			ret = NULL;
-			goto restore_mempolicy;
-		}
-	}
-
-	n = (uintptr_t) ret;
-	m = n + alignment - (n%alignment);
-	munmap(ret, m-n);
-	ret = (void *) m;
-
-success:
-	if (mbind(ret, size, MPOL_PREFERRED, nodemask->maskp, nodemask->size, MPOL_MF_MOVE) < 0) {
-=======
 	if (mbind(ret, size, mpol, nodemaskp, maxnode, MPOL_MF_MOVE) < 0) {
->>>>>>> origin/master
 		munmap(ret, size);
 		perror("mbind");
 		ret = NULL;
