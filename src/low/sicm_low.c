@@ -35,8 +35,8 @@ sicm_device_tag sicm_get_device_tag(char *env) {
 		return SICM_KNL_HBM;
 	} else if(strncmp(env, "SICM_POWERPC_HBM", max_chars) == 0) {
 		return SICM_POWERPC_HBM;
-	} else if(strncmp(env, "SICM_PMEM", max_chars) == 0) {
-    return SICM_PMEM;
+	} else if(strncmp(env, "SICM_OPTANE", max_chars) == 0) {
+		return SICM_OPTANE;
   }
 
   return INVALID_TAG;
