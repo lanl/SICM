@@ -36,6 +36,7 @@ use_tree(int, deviceptr);
 use_tree(deviceptr, int);
 use_tree(int, int);
 
+
 /* So we can access these things from profile.c.
  * These variables are defined in src/high/high.c.
  */
@@ -45,17 +46,7 @@ extern pthread_rwlock_t extents_lock;
 extern pthread_mutex_t arena_lock;
 extern arena_info **arenas;
 extern tree(int, deviceptr) site_nodes;
-extern int should_profile_all, should_profile_one, should_profile_rss, should_profile_online;
-extern float profile_all_rate, profile_rss_rate;
-extern char *profile_one_event, *profile_all_event;
-extern sicm_device *online_device;
-extern sicm_device *default_device;
-extern ssize_t online_device_cap;
 extern int max_index;
-extern int max_sample_pages;
-extern int sample_freq;
-extern int num_imcs, max_imc_len, max_event_len;
-extern char **imcs;
 
 #define DEFAULT_ARENA_LAYOUT INVALID_LAYOUT
 
