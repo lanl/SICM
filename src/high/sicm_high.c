@@ -21,7 +21,7 @@
  * we should bind to by default */
 static struct sicm_device_list device_list;
 int num_numa_nodes;
-struct sicm_device *default_device;
+deviceptr default_device;
 
 /* Allocation site ID -> device */
 tree(int, deviceptr) site_nodes;
@@ -134,16 +134,11 @@ sicm_device *get_device_from_numa_node(int id) {
   retval = NULL;
   /* Figure out which device the NUMA node corresponds to */
   device = device_list.devices;
-  printf("Looking for node: %d\n", id);
   for(i = 0; i < device_list.count; i++) {
     /* If the device has a NUMA node, and if that node is the node we're
      * looking for.
      */
-    printf("Looking at node %d\n", sicm_numa_id(device));
-    if((device->tag == SICM_DRAM ||
-       device->tag == SICM_KNL_HBM || 
-       device->tag == SICM_POWERPC_HBM) &&
-       sicm_numa_id(device) == id) {
+    if(sicm_numa_id(device) == id) {
       retval = device;
       break;
     }
@@ -229,7 +224,12 @@ void sh_create_arena(int index, int id, sicm_device *device) {
   arenas[index]->rss = 0;
   arenas[index]->peak_rss = 0;
   arenas[index]->avg_rss = 0;
-  arenas[index]->arena = sicm_arena_create(0, device);
+
+  /* Need to construct a sicm_device_list of one device */
+  sicm_device_list dl;
+  dl.count = 1;
+  dl.devices = device;
+  arenas[index]->arena = sicm_arena_create(0, SICM_ALLOC_RELAXED, &dl);
 }
 
 /* Adds an extent to the `extents` array. */
@@ -281,8 +281,8 @@ int get_site_arena(int id) {
 }
 
 /* Gets the device that this site should go onto from the site_nodes tree */
-sicm_device *get_site_device(int id) {
-  sicm_device *device;
+sicm_device_list *get_site_device(int id) {
+  deviceptr device;
   tree_it(int, deviceptr) it;
 
   it = tree_lookup(site_nodes, id);
@@ -303,7 +303,7 @@ sicm_device *get_site_device(int id) {
 }
 
 /* Chooses an arena for the per-device arena layouts. */
-int get_device_arena(int id, sicm_device **device) {
+int get_device_arena(int id, deviceptr *device) {
   tree_it(deviceptr, int) devit;
   int ret;
 
@@ -329,7 +329,7 @@ int get_device_arena(int id, sicm_device **device) {
 /* Gets the index that the allocation site should go into */
 int get_arena_index(int id) {
   int ret, thread_index;
-  sicm_device *device;
+  deviceptr device;
   tree_it(int, int) it;
 
   thread_index = get_thread_index();

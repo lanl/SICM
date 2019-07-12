@@ -67,6 +67,7 @@ typedef struct profiling_options {
   int should_profile_online;
   int should_profile_all;
   int should_profile_one;
+  int profile_one_site;
   int should_profile_rss;
   int should_run_rdspy;
 
@@ -77,10 +78,10 @@ typedef struct profiling_options {
   int max_sample_pages;
 
   /* The device to profile bandwidth on */
-  struct sicm_device *profile_one_device;
+  sicm_device_list profile_one_device;
 
   /* Online profiling device and parameters */
-  struct sicm_device *online_device;
+  sicm_device_list online_devices;
   ssize_t online_device_cap;
 
   /* Array of strings for profile_all events */

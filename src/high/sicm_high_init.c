@@ -8,7 +8,7 @@ profiling_options profopts = {0};
 void set_options() {
   char *env, *str, *line, guidance, found_guidance;
   long long tmp_val;
-  struct sicm_device *device;
+  deviceptr device;
   size_t i, n;
   int node, site;
   FILE *guidance_file;
@@ -21,7 +21,7 @@ void set_options() {
   if(env) {
     profopts.should_profile_online = 1;
     tmp_val = strtoimax(env, NULL, 10);
-    online_device = get_device_from_numa_node((int) tmp_val);
+    profopts.online_device = get_device_from_numa_node((int) tmp_val);
     profopts.online_device_cap = sicm_avail(online_device) * 1024; /* sicm_avail() returns kilobytes */
     printf("Doing online profiling, packing onto NUMA node %lld with a capacity of %zd.\n", tmp_val, profopts.online_device_cap);
   }
@@ -29,58 +29,58 @@ void set_options() {
   /* Get the arena layout */
   env = getenv("SH_ARENA_LAYOUT");
   if(env) {
-    layout = parse_layout(env);
+    profopts.layout = parse_layout(env);
   } else {
-    layout = DEFAULT_ARENA_LAYOUT;
+    profopts.layout = DEFAULT_ARENA_LAYOUT;
   }
   if(profopts.should_profile_online) {
-    layout = SHARED_SITE_ARENAS;
+    profopts.layout = SHARED_SITE_ARENAS;
   }
-  printf("Arena layout: %s\n", layout_str(layout));
+  printf("Arena layout: %s\n", layout_str(profopts.layout));
 
   /* Get max_threads */
-  max_threads = numa_num_possible_cpus();
+  profopts.max_threads = numa_num_possible_cpus();
   env = getenv("SH_MAX_THREADS");
   if(env) {
     tmp_val = strtoimax(env, NULL, 10);
     if((tmp_val == 0) || (tmp_val > INT_MAX)) {
-      printf("Invalid thread number given. Defaulting to %d.\n", max_threads);
+      printf("Invalid thread number given. Defaulting to %d.\n", profopts.max_threads);
     } else {
-      max_threads = (int) tmp_val;
+      profopts.max_threads = (int) tmp_val;
     }
   }
-  printf("Maximum threads: %d\n", max_threads);
+  printf("Maximum threads: %d\n", profopts.max_threads);
 
   /* Get max_arenas.
    * Keep in mind that 4096 is the maximum number supported by jemalloc.
    * An error occurs if this limit is reached.
    */
-  max_arenas = 4096;
+  profopts.max_arenas = 4096;
   env = getenv("SH_MAX_ARENAS");
   if(env) {
     tmp_val = strtoimax(env, NULL, 10);
     if((tmp_val == 0) || (tmp_val > INT_MAX)) {
-      printf("Invalid arena number given. Defaulting to %d.\n", max_arenas);
+      fprintf(stderr, "Invalid arena number given. Aborting.\n");
+      exit(1);
     } else {
-      max_arenas = (int) tmp_val;
+      profopts.max_arenas = (int) tmp_val;
     }
   }
-  printf("Maximum arenas: %d\n", max_arenas);
 
   /* Get max_sites_per_arena.
    * This is the maximum amount of allocation sites that a single arena can hold.
    */
-  max_sites_per_arena = 1;
+  profopts.max_sites_per_arena = 1;
   env = getenv("SH_MAX_SITES_PER_ARENA");
   if(env) {
     tmp_val = strtoimax(env, NULL, 10);
     if((tmp_val == 0) || (tmp_val > INT_MAX)) {
-      printf("Invalid arena number given. Defaulting to %d.\n", max_arenas);
+      fprintf(stderr, "Invalid arena number given. Aborting.\n");
+      exit(1);
     } else {
-      max_sites_per_arena = (int) tmp_val;
+      profopts.max_sites_per_arena = (int) tmp_val;
     }
   }
-  printf("Maximum allocation sites per arena: %d\n", max_sites_per_arena);
 
   /* Should we profile all allocation sites using sampling-based profiling? */
   env = getenv("SH_PROFILE_ALL");
@@ -153,7 +153,7 @@ void set_options() {
     }
 
     /* If the above is true, which NUMA node should we isolate the allocation site
-     * onto? The user should also set SH_DEFAULT_DEVICE to another device to avoid
+     * onto? The user should also set SH_DEFAULT_DEVICES to another device to avoid
      * the two being the same, if the allocation site is to be isolated.
      */
     env = getenv("SH_PROFILE_ONE_NODE");
@@ -179,7 +179,7 @@ void set_options() {
       while((str = strtok(env, ",")) != NULL) {
         printf("%s\n", str);
         profopts.num_imcs++;
-        profopts.imcs = realloc(imcs, sizeof(char *) * profopts.num_imcs);
+        profopts.imcs = realloc(profopts.imcs, sizeof(char *) * profopts.num_imcs);
         imcs[profopts.num_imcs - 1] = str;
         if(strlen(str) > profopts.max_imc_len) {
           profopts.max_imc_len = strlen(str);
@@ -234,11 +234,11 @@ void set_options() {
   env = getenv("SH_PROFILE_RSS");
   profopts.should_profile_rss = 0;
   if(env) {
-    if(layout == SHARED_SITE_ARENAS) {
+    if(profopts.layout == SHARED_SITE_ARENAS) {
       profopts.should_profile_rss = 1;
-      printf("Profiling RSS of all arenas.\n");
     } else {
-      printf("Can't profile RSS, because we're using the wrong arena layout.\n");
+      fprintf(stderr, "Can't profile RSS, because we're using the wrong arena layout.\n");
+      exit(1);
     }
   }
   if(profopts.should_profile_online) {
@@ -294,6 +294,12 @@ void set_options() {
     tmp_val = strtoimax(env, NULL, 10);
     default_device = get_device_from_numa_node((int) tmp_val);
   }
+  env = getenv("SH_DEFAULT_DEVICE");
+  default_device = NULL;
+  if(env) {
+    tmp_val = strtoimax(env, NULL, 10);
+    default_device = get_device_from_numa_node((int) tmp_val);
+  }
   if(!default_device) {
     /* This assumes that the normal page size is the first one that it'll find */
     default_device = get_device_from_numa_node(0);
@@ -301,7 +307,7 @@ void set_options() {
   printf("Default device: %s\n", sicm_device_tag_str(default_device->tag));
 
   /* Get arenas_per_thread */
-  switch(layout) {
+  switch(profopts.layout) {
     case SHARED_ONE_ARENA:
     case EXCLUSIVE_ONE_ARENA:
       arenas_per_thread = 1;
@@ -312,7 +318,7 @@ void set_options() {
       break;
     case SHARED_SITE_ARENAS:
     case EXCLUSIVE_SITE_ARENAS:
-      arenas_per_thread = max_arenas;
+      arenas_per_thread = profopts.max_arenas;
       break;
     case EXCLUSIVE_TWO_DEVICE_ARENAS:
       arenas_per_thread = 2 * num_numa_nodes; //((int) device_list.count);
@@ -434,13 +440,13 @@ void sh_init() {
   device_arenas = tree_make(deviceptr, int);
   set_options();
   
-  if(layout != INVALID_LAYOUT) {
+  if(profopts.layout != INVALID_LAYOUT) {
     /* `arenas` is a pseudo-two-dimensional array, first dimension is per-thread.
      * Second dimension is one for each arena that each thread will have.
      * If the arena layout isn't per-thread (`EXCLUSIVE_`), arenas_per_thread is just
      * the total number of arenas.
      */
-    switch(layout) {
+    switch(profopts.layout) {
       case SHARED_ONE_ARENA:
       case SHARED_DEVICE_ARENAS:
       case SHARED_SITE_ARENAS:
@@ -451,7 +457,7 @@ void sh_init() {
       case EXCLUSIVE_DEVICE_ARENAS:
       case EXCLUSIVE_TWO_DEVICE_ARENAS:
       case EXCLUSIVE_FOUR_DEVICE_ARENAS:
-        arenas = (arena_info **) calloc(max_threads * arenas_per_thread, sizeof(arena_info *));
+        arenas = (arena_info **) calloc(profopts.max_threads * arenas_per_thread, sizeof(arena_info *));
         break;
     }
 
@@ -469,18 +475,18 @@ void sh_init() {
 
     /* Stores the index into the `arenas` array for each thread */
     pthread_key_create(&thread_key, NULL);
-    thread_indices = (int *) malloc(max_threads * sizeof(int));
+    thread_indices = (int *) malloc(profopts.max_threads * sizeof(int));
     orig_thread_indices = thread_indices;
-    max_thread_indices = orig_thread_indices + max_threads;
-    for(i = 0; i < max_threads; i++) {
+    max_thread_indices = orig_thread_indices + profopts.max_threads;
+    for(i = 0; i < profopts.max_threads; i++) {
       thread_indices[i] = i;
     }
     pthread_setspecific(thread_key, (void *) thread_indices);
     thread_indices++;
 
     /* Stores an index into `arenas` for the extent hooks */
-    pending_indices = (int *) malloc(max_threads * sizeof(int));
-    for(i = 0; i < max_threads; i++) {
+    pending_indices = (int *) malloc(profopts.max_threads * sizeof(int));
+    for(i = 0; i < profopts.max_threads; i++) {
       pending_indices[i] = -1;
     }
 
@@ -491,7 +497,7 @@ void sh_init() {
   }
   
   if (profopts.should_run_rdspy) {
-    sh_rdspy_init(max_threads, num_static_sites);
+    sh_rdspy_init(profopts.max_threads, num_static_sites);
   }
 }
 
@@ -502,7 +508,7 @@ void sh_terminate() {
   /* Clean up the low-level interface */
   sicm_fini(&device_list);
 
-  if(layout != INVALID_LAYOUT) {
+  if(profopts.layout != INVALID_LAYOUT) {
 
     /* Clean up the profiler */
     if(profopts.should_profile_all || profopts.should_profile_one || profopts.should_profile_rss) {
