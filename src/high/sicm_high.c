@@ -60,9 +60,6 @@ static int num_static_sites;
 /* Passes an arena index to the extent hooks */
 static int *pending_indices;
 
-/* Profiling options */
-profiling_options profopts;
-
 /* Takes a string as input and outputs which arena layout it is */
 enum arena_layout parse_layout(char *env) {
 	size_t max_chars;

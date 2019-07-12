@@ -74,6 +74,7 @@ typedef struct profiling_options {
   size_t num_events;
   char **events;
 }
+extern profiling_options profopts;
 
 typedef struct profile_thread {
 

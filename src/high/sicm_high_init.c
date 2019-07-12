@@ -1,7 +1,9 @@
 #include "sicm_high.h"
 #include "sicm_low.h"
 #include "sicm_impl.h"
+#include "sicm_profile.h"
 
+profiling_options profopts;
 
 /* Gets environment variables and sets up globals */
 void set_options() {
