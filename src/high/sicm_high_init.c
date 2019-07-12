@@ -82,7 +82,6 @@ void set_options() {
     tmp_val = strtoimax(env, NULL, 10);
     profopts.online_device = get_device_from_numa_node((int) tmp_val);
     profopts.online_device_cap = sicm_avail(profopts.online_device) * 1024; /* sicm_avail() returns kilobytes */
-    printf("Doing online profiling, packing onto NUMA node %lld with a capacity of %zd.\n", tmp_val, profopts.online_device_cap);
   }
 
   /* Get the arena layout */
@@ -95,7 +94,6 @@ void set_options() {
   if(profopts.should_profile_online) {
     tracker.layout = SHARED_SITE_ARENAS;
   }
-  printf("Arena layout: %s\n", layout_str(tracker.layout));
 
   /* Get max_threads */
   tracker.max_threads = numa_num_possible_cpus();
@@ -103,12 +101,12 @@ void set_options() {
   if(env) {
     tmp_val = strtoimax(env, NULL, 10);
     if((tmp_val == 0) || (tmp_val > INT_MAX)) {
-      printf("Invalid thread number given. Defaulting to %d.\n", tracker.max_threads);
+      fprintf(stderr, "Invalid thread number given. Aborting.\n");
+      exit(1);
     } else {
       tracker.max_threads = (int) tmp_val;
     }
   }
-  printf("Maximum threads: %d\n", tracker.max_threads);
 
   /* Get max_arenas.
    * Keep in mind that 4096 is the maximum number supported by jemalloc.
@@ -219,8 +217,6 @@ void set_options() {
     if(env) {
       tmp_val = strtoimax(env, NULL, 10);
       profopts.profile_one_device = get_device_from_numa_node((int) tmp_val);
-      printf("Isolating node: %s, node %d\n", sicm_device_tag_str(profopts.profile_one_device->tag), 
-                                              sicm_numa_id(profopts.profile_one_device));
     }
 
     /* The user can also specify a comma-delimited list of IMCs to read the
@@ -233,10 +229,8 @@ void set_options() {
     profopts.max_imc_len = 0;
     profopts.imcs = NULL;
     if(env) {
-      printf("Got IMC string: %s\n", env);
       /* Parse out the IMCs into an array */
       while((str = strtok(env, ",")) != NULL) {
-        printf("%s\n", str);
         profopts.num_imcs++;
         profopts.imcs = realloc(profopts.imcs, sizeof(char *) * profopts.num_imcs);
         profopts.imcs[profopts.num_imcs - 1] = str;
@@ -259,7 +253,6 @@ void set_options() {
     if(env) {
       /* Parse out the events into an array */
       while((str = strtok(env, ",")) != NULL) {
-        printf("Profiling one arena with event: %s\n", str);
         profopts.num_profile_one_events++;
         tmp_profile_one_events = realloc(tmp_profile_one_events, sizeof(char *) * profopts.num_profile_one_events);
         tmp_profile_one_events[profopts.num_profile_one_events - 1] = str;
@@ -320,12 +313,12 @@ void set_options() {
   if(env) {
     tmp_val = strtoimax(env, NULL, 10);
     if((tmp_val <= 0)) {
-      printf("Invalid sample frequency given. Defaulting to %d.\n", profopts.sample_freq);
+      fprintf(stderr, "Invalid sample frequency given. Aborting.\n");
+      exit(1);
     } else {
       profopts.sample_freq = (int) tmp_val;
     }
   }
-  printf("Sample frequency: %d\n", profopts.sample_freq);
 
   /* How many samples should be collected by perf, maximum?
    * Assuming we're only tracking addresses, this number is multiplied by 
@@ -339,12 +332,12 @@ void set_options() {
     tmp_val = strtoimax(env, NULL, 10);
     /* Value needs to be non-negative, less than or equal to 512, and a power of 2. */
     if((tmp_val <= 0) || (tmp_val > 512) || (tmp_val & (tmp_val - 1))) {
-      printf("Invalid number of pages given (%d). Defaulting to %d.\n", tmp_val, profopts.max_sample_pages);
+      fprintf(stderr, "Invalid number of pages given. Aborting.\n");
+      exit(1);
     } else {
       profopts.max_sample_pages = (int) tmp_val;
     }
   }
-  printf("Maximum sample pages: %d\n", profopts.max_sample_pages);
 
   /* Get default_device_tag */
   env = getenv("SH_DEFAULT_NODE");
@@ -354,8 +347,12 @@ void set_options() {
     tracker.default_device = get_device_from_numa_node((int) tmp_val);
   }
   env = getenv("SH_DEFAULT_DEVICE");
-  tracker.default_device = NULL;
   if(env) {
+    if(tracker.default_device != NULL) {
+      /* We've already set the default device with SH_DEFAULT_NODE */
+      fprintf(stderr, "SH_DEFAULT_NODE and SH_DEFAULT_DEVICE cannot coexist. Aborting.\n");
+      exit(1);
+    }
     tmp_val = strtoimax(env, NULL, 10);
     tracker.default_device = get_device_from_numa_node((int) tmp_val);
   }
@@ -363,7 +360,6 @@ void set_options() {
     /* This assumes that the normal page size is the first one that it'll find */
     tracker.default_device = get_device_from_numa_node(0);
   }
-  printf("Default device: %s\n", sicm_device_tag_str(tracker.default_device->tag));
 
   /* Get arenas_per_thread */
   switch(tracker.layout) {
@@ -389,7 +385,6 @@ void set_options() {
       tracker.arenas_per_thread = 1;
       break;
   };
-  printf("Arenas per thread: %d\n", tracker.arenas_per_thread);
 
   /* Get the guidance file that tells where each site goes */
   env = getenv("SH_GUIDANCE_FILE");
@@ -432,7 +427,6 @@ void set_options() {
         }
         sscanf(str, "%d", &node);
         tree_insert(tracker.site_nodes, site, get_device_from_numa_node(node));
-        printf("Adding site %d to NUMA node %d.\n", site, node);
       } else {
         if(!str) continue;
         /* Find the "===== GUIDANCE" tokens */
