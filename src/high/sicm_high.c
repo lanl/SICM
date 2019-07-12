@@ -132,11 +132,10 @@ void sh_create_arena(int index, int id, sicm_device *device) {
   /* Need to construct a sicm_device_list of one device */
   sicm_device_list dl;
   dl.count = 1;
+  dl.devices = malloc(sizeof(sicm_device *) * 1);
   dl.devices[0] = device;
-  printf("device: %p\n", device);
-  printf("dl: %p\n", &dl);
-  printf("dl.devices: %p\n", dl.devices);
   tracker.arenas[index]->arena = sicm_arena_create(0, SICM_ALLOC_RELAXED, &dl);
+  free(dl.devices);
 }
 
 /* Adds an extent to the `extents` array. */
