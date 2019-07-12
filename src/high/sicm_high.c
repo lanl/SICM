@@ -199,8 +199,8 @@ sicm_device_list *get_site_device(int id) {
     /* Site's not in the guidance file. Use the default device. */
     device = tracker.default_device;
   }
-  if(id == profile_one_site) {
-    device = profile_one_device;
+  if(id == profopts.profile_one_site) {
+    device = profopts.profile_one_device;
   }
 
   return device;
@@ -275,9 +275,9 @@ int get_arena_index(int id) {
       break;
   };
 
-  if(ret > max_arenas) {
+  if(ret > tracker.max_arenas) {
     /* Fit the index to the maximum number of arenas */
-    ret = ret % max_arenas;
+    ret = ret % tracker.max_arenas;
   }
 
   pthread_mutex_lock(&tracker.arena_lock);
@@ -296,7 +296,7 @@ void* sh_realloc(int id, void *ptr, size_t sz) {
     ret = realloc(ptr, sz);
   } else {
     index = get_arena_index(id);
-    ret = sicm_arena_realloc(arenas[index]->arena, ptr, sz);
+    ret = sicm_arena_realloc(tracker.arenas[index]->arena, ptr, sz);
   }
 
   if (profopts.should_run_rdspy) {
@@ -315,7 +315,7 @@ void* sh_alloc(int id, size_t sz) {
     ret = je_malloc(sz);
   } else {
     index = get_arena_index(id);
-    ret = sicm_arena_alloc(arenas[index]->arena, sz);
+    ret = sicm_arena_alloc(tracker.arenas[index]->arena, sz);
   }
 
   if (profopts.should_run_rdspy) {
@@ -338,7 +338,7 @@ void* sh_aligned_alloc(int id, size_t alignment, size_t sz) {
     ret = je_aligned_alloc(alignment, sz);
   } else {
     index = get_arena_index(id);
-    ret = sicm_arena_alloc_aligned(arenas[index]->arena, sz, alignment);
+    ret = sicm_arena_alloc_aligned(tracker.arenas[index]->arena, sz, alignment);
   }
 
   if (profopts.should_run_rdspy) {

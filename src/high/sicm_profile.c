@@ -122,14 +122,14 @@ void sh_get_event() {
     /* If we're profiling all, set some additional options. */
     if(profopts.should_profile_all) {
       prof.pes[i]->sample_type = PERF_SAMPLE_ADDR;
-      prof.pes[i]->sample_period = tracker.sample_freq;
+      prof.pes[i]->sample_period = profopts.sample_freq;
       prof.pes[i]->mmap = 1;
       prof.pes[i]->disabled = 1;
       prof.pes[i]->exclude_kernel = 1;
       prof.pes[i]->exclude_hv = 1;
       prof.pes[i]->precise_ip = 2;
       prof.pes[i]->task = 1;
-      prof.pes[i]->sample_period = tracker.sample_freq;
+      prof.pes[i]->sample_period = profopts.sample_freq;
     }
   }
 }

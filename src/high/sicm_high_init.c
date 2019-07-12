@@ -480,8 +480,8 @@ void sh_init() {
   long size;
 
   tracker.device_list = sicm_init();
-  tracker.extents_lock = PTHREAD_RWLOCK_INITIALIZER;
-  tracker.arena_lock = PTHREAD_MUTEX_INITIALIZER;
+  pthread_rwlock_init(&tracker.extents_lock);
+  pthread_mutex_init(&tracker.arena_lock);
 
   /* Get the number of NUMA nodes with memory, since we ignore huge pages with
    * the DEVICE arena layouts */
