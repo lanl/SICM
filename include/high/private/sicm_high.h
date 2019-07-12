@@ -36,17 +36,51 @@ use_tree(int, deviceptr);
 use_tree(deviceptr, int);
 use_tree(int, int);
 
+/* Keeps track of arenas, extents, mutices, etc. */
+typedef struct tracker_struct {
+  /* Stores all machine devices and device
+   * we should bind to by default */
+  static struct sicm_device_list device_list;
+  int num_numa_nodes;
+  deviceptr default_device;
 
-/* So we can access these things from profile.c.
- * These variables are defined in src/high/high.c.
- */
-extern extent_arr *extents;
-extern extent_arr *rss_extents;
-extern pthread_rwlock_t extents_lock;
-extern pthread_mutex_t arena_lock;
-extern arena_info **arenas;
-extern tree(int, deviceptr) site_nodes;
-extern int max_index;
+  /* Allocation site ID -> device */
+  tree(int, deviceptr) site_nodes;
+  /* Stores arenas associated with a device,
+   * for the per-device arena layouts only. */
+  tree(deviceptr, int) device_arenas;
+
+  /* Keep track of all extents */
+  extent_arr *extents;
+  extent_arr *rss_extents; /* The extents that we want to get the RSS of */
+
+  /* Gets locked when we add a new extent */
+  pthread_rwlock_t extents_lock = PTHREAD_RWLOCK_INITIALIZER;
+
+  /* Keeps track of arenas */
+  arena_info **arenas;
+  static enum arena_layout layout;
+  static int max_arenas, arenas_per_thread, max_sites_per_arena;
+  int max_index;
+
+  /* Stores which arena an allocation site goes into. Only for
+   * the `*_SITE_ARENAS` layouts, where there is an arena for
+   * each allocation site.
+   */
+  tree(int, int) site_arenas;
+  int arena_counter;
+
+  /* Gets locked when we add an arena */
+  pthread_mutex_t arena_lock = PTHREAD_MUTEX_INITIALIZER;
+
+  /* Associates a thread with an index (starting at 0) into the `arenas` array */
+  static pthread_key_t thread_key;
+  static int *thread_indices, *orig_thread_indices, *max_thread_indices, max_threads;
+  static int num_static_sites;
+
+  /* Passes an arena index to the extent hooks */
+  static int *pending_indices;
+} tracker_struct;
 
 #define DEFAULT_ARENA_LAYOUT INVALID_LAYOUT
 
@@ -78,10 +112,10 @@ typedef struct profiling_options {
   int max_sample_pages;
 
   /* The device to profile bandwidth on */
-  sicm_device_list profile_one_device;
+  deviceptr profile_one_device;
 
   /* Online profiling device and parameters */
-  sicm_device_list online_devices;
+  deviceptr online_device;
   ssize_t online_device_cap;
 
   /* Array of strings for profile_all events */

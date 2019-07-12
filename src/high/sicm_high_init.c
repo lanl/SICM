@@ -2,7 +2,38 @@
 #include "sicm_low.h"
 #include "sicm_impl.h"
 
+/* Options for profiling */
 profiling_options profopts = {0};
+
+/* Keeps track of arenas, extents, etc. */
+tracker_struct tracker = {0};
+
+/* Converts an arena_layout to a string */
+char *layout_str(enum arena_layout layout) {
+  switch(layout) {
+    case SHARED_ONE_ARENA:
+      return "SHARED_ONE_ARENA";
+    case EXCLUSIVE_ONE_ARENA:
+      return "EXCLUSIVE_ONE_ARENA";
+    case SHARED_DEVICE_ARENAS:
+      return "SHARED_DEVICE_ARENAS";
+    case EXCLUSIVE_DEVICE_ARENAS:
+      return "EXCLUSIVE_DEVICE_ARENAS";
+    case SHARED_SITE_ARENAS:
+      return "SHARED_SITE_ARENAS";
+    case EXCLUSIVE_SITE_ARENAS:
+      return "EXCLUSIVE_SITE_ARENAS";
+    case EXCLUSIVE_TWO_DEVICE_ARENAS:
+      return "EXCLUSIVE_TWO_DEVICE_ARENAS";
+    case EXCLUSIVE_FOUR_DEVICE_ARENAS:
+      return "EXCLUSIVE_FOUR_DEVICE_ARENAS";
+    default:
+      break;
+  }
+
+  return "INVALID_LAYOUT";
+}
+
 
 /* Gets environment variables and sets up globals */
 void set_options() {
@@ -29,33 +60,33 @@ void set_options() {
   /* Get the arena layout */
   env = getenv("SH_ARENA_LAYOUT");
   if(env) {
-    profopts.layout = parse_layout(env);
+    tracker.layout = parse_layout(env);
   } else {
-    profopts.layout = DEFAULT_ARENA_LAYOUT;
+    tracker.layout = DEFAULT_ARENA_LAYOUT;
   }
   if(profopts.should_profile_online) {
-    profopts.layout = SHARED_SITE_ARENAS;
+    tracker.layout = SHARED_SITE_ARENAS;
   }
-  printf("Arena layout: %s\n", layout_str(profopts.layout));
+  printf("Arena layout: %s\n", layout_str(tracker.layout));
 
   /* Get max_threads */
-  profopts.max_threads = numa_num_possible_cpus();
+  tracker.max_threads = numa_num_possible_cpus();
   env = getenv("SH_MAX_THREADS");
   if(env) {
     tmp_val = strtoimax(env, NULL, 10);
     if((tmp_val == 0) || (tmp_val > INT_MAX)) {
-      printf("Invalid thread number given. Defaulting to %d.\n", profopts.max_threads);
+      printf("Invalid thread number given. Defaulting to %d.\n", tracker.max_threads);
     } else {
-      profopts.max_threads = (int) tmp_val;
+      tracker.max_threads = (int) tmp_val;
     }
   }
-  printf("Maximum threads: %d\n", profopts.max_threads);
+  printf("Maximum threads: %d\n", tracker.max_threads);
 
   /* Get max_arenas.
    * Keep in mind that 4096 is the maximum number supported by jemalloc.
    * An error occurs if this limit is reached.
    */
-  profopts.max_arenas = 4096;
+  tracker.max_arenas = 4096;
   env = getenv("SH_MAX_ARENAS");
   if(env) {
     tmp_val = strtoimax(env, NULL, 10);
@@ -63,14 +94,14 @@ void set_options() {
       fprintf(stderr, "Invalid arena number given. Aborting.\n");
       exit(1);
     } else {
-      profopts.max_arenas = (int) tmp_val;
+      tracker.max_arenas = (int) tmp_val;
     }
   }
 
   /* Get max_sites_per_arena.
    * This is the maximum amount of allocation sites that a single arena can hold.
    */
-  profopts.max_sites_per_arena = 1;
+  tracker.max_sites_per_arena = 1;
   env = getenv("SH_MAX_SITES_PER_ARENA");
   if(env) {
     tmp_val = strtoimax(env, NULL, 10);
@@ -78,7 +109,7 @@ void set_options() {
       fprintf(stderr, "Invalid arena number given. Aborting.\n");
       exit(1);
     } else {
-      profopts.max_sites_per_arena = (int) tmp_val;
+      tracker.max_sites_per_arena = (int) tmp_val;
     }
   }
 
@@ -234,7 +265,7 @@ void set_options() {
   env = getenv("SH_PROFILE_RSS");
   profopts.should_profile_rss = 0;
   if(env) {
-    if(profopts.layout == SHARED_SITE_ARENAS) {
+    if(tracker.layout == SHARED_SITE_ARENAS) {
       profopts.should_profile_rss = 1;
     } else {
       fprintf(stderr, "Can't profile RSS, because we're using the wrong arena layout.\n");
@@ -289,48 +320,48 @@ void set_options() {
 
   /* Get default_device_tag */
   env = getenv("SH_DEFAULT_NODE");
-  default_device = NULL;
+  tracker.default_device = NULL;
   if(env) {
     tmp_val = strtoimax(env, NULL, 10);
-    default_device = get_device_from_numa_node((int) tmp_val);
+    tracker.default_device = get_device_from_numa_node((int) tmp_val);
   }
   env = getenv("SH_DEFAULT_DEVICE");
-  default_device = NULL;
+  tracker.default_device = NULL;
   if(env) {
     tmp_val = strtoimax(env, NULL, 10);
-    default_device = get_device_from_numa_node((int) tmp_val);
+    tracker.default_device = get_device_from_numa_node((int) tmp_val);
   }
-  if(!default_device) {
+  if(!tracker.default_device) {
     /* This assumes that the normal page size is the first one that it'll find */
-    default_device = get_device_from_numa_node(0);
+    tracker.default_device = get_device_from_numa_node(0);
   }
-  printf("Default device: %s\n", sicm_device_tag_str(default_device->tag));
+  printf("Default device: %s\n", sicm_device_tag_str(tracker.default_device->tag));
 
   /* Get arenas_per_thread */
-  switch(profopts.layout) {
+  switch(tracker.layout) {
     case SHARED_ONE_ARENA:
     case EXCLUSIVE_ONE_ARENA:
-      arenas_per_thread = 1;
+      tracker.arenas_per_thread = 1;
       break;
     case SHARED_DEVICE_ARENAS:
     case EXCLUSIVE_DEVICE_ARENAS:
-      arenas_per_thread = num_numa_nodes; //(int) device_list.count;
+      tracker.arenas_per_thread = tracker.num_numa_nodes; //(int) device_list.count;
       break;
     case SHARED_SITE_ARENAS:
     case EXCLUSIVE_SITE_ARENAS:
-      arenas_per_thread = profopts.max_arenas;
+      tracker.arenas_per_thread = tracker.max_arenas;
       break;
     case EXCLUSIVE_TWO_DEVICE_ARENAS:
-      arenas_per_thread = 2 * num_numa_nodes; //((int) device_list.count);
+      tracker.arenas_per_thread = 2 * tracker.num_numa_nodes; //((int) device_list.count);
       break;
     case EXCLUSIVE_FOUR_DEVICE_ARENAS:
-      arenas_per_thread = 4 * num_numa_nodes; //((int) device_list.count);
+      tracker.arenas_per_thread = 4 * tracker.num_numa_nodes; //((int) device_list.count);
       break;
     default:
-      arenas_per_thread = 1;
+      tracker.arenas_per_thread = 1;
       break;
   };
-  printf("Arenas per thread: %d\n", arenas_per_thread);
+  printf("Arenas per thread: %d\n", tracker.arenas_per_thread);
 
   /* Get the guidance file that tells where each site goes */
   env = getenv("SH_GUIDANCE_FILE");
@@ -372,7 +403,7 @@ void set_options() {
           exit(1);
         }
         sscanf(str, "%d", &node);
-        tree_insert(site_nodes, site, get_device_from_numa_node(node));
+        tree_insert(tracker.site_nodes, site, get_device_from_numa_node(node));
         printf("Adding site %d to NUMA node %d.\n", site, node);
       } else {
         if(!str) continue;
@@ -422,42 +453,42 @@ void sh_init() {
   int i;
   long size;
 
-  device_list = sicm_init();
+  tracker.device_list = sicm_init();
 
   /* Get the number of NUMA nodes with memory, since we ignore huge pages with
    * the DEVICE arena layouts */
-  num_numa_nodes = 0;
+  tracker.num_numa_nodes = 0;
   for(i = 0; i <= numa_max_node(); i++) {
     size = -1;
     if ((numa_node_size(i, &size) != -1) && size) {
-      num_numa_nodes++;
+      tracker.num_numa_nodes++;
     }
   }
 
   arena_counter = 0;
   site_arenas = tree_make(int, int);
-  site_nodes = tree_make(int, deviceptr);
-  device_arenas = tree_make(deviceptr, int);
+  tracker.site_nodes = tree_make(int, deviceptr);
+  tracker.device_arenas = tree_make(deviceptr, int);
   set_options();
   
-  if(profopts.layout != INVALID_LAYOUT) {
+  if(tracker.layout != INVALID_LAYOUT) {
     /* `arenas` is a pseudo-two-dimensional array, first dimension is per-thread.
      * Second dimension is one for each arena that each thread will have.
      * If the arena layout isn't per-thread (`EXCLUSIVE_`), arenas_per_thread is just
      * the total number of arenas.
      */
-    switch(profopts.layout) {
+    switch(tracker.layout) {
       case SHARED_ONE_ARENA:
       case SHARED_DEVICE_ARENAS:
       case SHARED_SITE_ARENAS:
-        arenas = (arena_info **) calloc(arenas_per_thread, sizeof(arena_info *));
+        tracker.arenas = (arena_info **) calloc(tracker.arenas_per_thread, sizeof(arena_info *));
         break;
       case EXCLUSIVE_SITE_ARENAS:
       case EXCLUSIVE_ONE_ARENA:
       case EXCLUSIVE_DEVICE_ARENAS:
       case EXCLUSIVE_TWO_DEVICE_ARENAS:
       case EXCLUSIVE_FOUR_DEVICE_ARENAS:
-        arenas = (arena_info **) calloc(profopts.max_threads * arenas_per_thread, sizeof(arena_info *));
+        tracker.arenas = (arena_info **) calloc(tracker.max_threads * tracker.arenas_per_thread, sizeof(arena_info *));
         break;
     }
 
@@ -465,29 +496,29 @@ void sh_init() {
      * If we're just doing MBI on one site, initialize a new array that has extents from just that site.
      * If we're profiling all sites, rss_extents is just all extents.
      */
-    extents = extent_arr_init();
+    tracker.extents = extent_arr_init();
     if(profopts.should_profile_rss) {
-      rss_extents = extents;
+      tracker.rss_extents = tracker.extents;
       if(profopts.should_profile_one) {
-        rss_extents = extent_arr_init();
+        tracker.rss_extents = extent_arr_init();
       }
     }
 
     /* Stores the index into the `arenas` array for each thread */
-    pthread_key_create(&thread_key, NULL);
-    thread_indices = (int *) malloc(profopts.max_threads * sizeof(int));
-    orig_thread_indices = thread_indices;
-    max_thread_indices = orig_thread_indices + profopts.max_threads;
-    for(i = 0; i < profopts.max_threads; i++) {
-      thread_indices[i] = i;
+    pthread_key_create(&tracker.thread_key, NULL);
+    tracker.thread_indices = (int *) malloc(tracker.max_threads * sizeof(int));
+    tracker.orig_thread_indices = tracker.thread_indices;
+    tracker.max_thread_indices = tracker.orig_thread_indices + tracker.max_threads;
+    for(i = 0; i < tracker.max_threads; i++) {
+      tracker.thread_indices[i] = i;
     }
-    pthread_setspecific(thread_key, (void *) thread_indices);
-    thread_indices++;
+    pthread_setspecific(tracker.thread_key, (void *) tracker.thread_indices);
+    tracker.thread_indices++;
 
     /* Stores an index into `arenas` for the extent hooks */
-    pending_indices = (int *) malloc(profopts.max_threads * sizeof(int));
-    for(i = 0; i < profopts.max_threads; i++) {
-      pending_indices[i] = -1;
+    tracker.pending_indices = (int *) malloc(tracker.max_threads * sizeof(int));
+    for(i = 0; i < tracker.max_threads; i++) {
+      tracker.pending_indices[i] = -1;
     }
 
     /* Set the arena allocator's callback function */
@@ -497,7 +528,7 @@ void sh_init() {
   }
   
   if (profopts.should_run_rdspy) {
-    sh_rdspy_init(profopts.max_threads, num_static_sites);
+    sh_rdspy_init(tracker.max_threads, num_static_sites);
   }
 }
 
@@ -506,9 +537,9 @@ void sh_terminate() {
   size_t i;
 
   /* Clean up the low-level interface */
-  sicm_fini(&device_list);
+  sicm_fini(&tracker.device_list);
 
-  if(profopts.layout != INVALID_LAYOUT) {
+  if(tracker.layout != INVALID_LAYOUT) {
 
     /* Clean up the profiler */
     if(profopts.should_profile_all || profopts.should_profile_one || profopts.should_profile_rss) {
@@ -516,16 +547,16 @@ void sh_terminate() {
     }
 
     /* Clean up the arenas */
-    for(i = 0; i <= max_index; i++) {
-      if(!arenas[i]) continue;
-      sicm_arena_destroy(arenas[i]->arena);
-      free(arenas[i]);
+    for(i = 0; i <= tracker.max_index; i++) {
+      if(!tracker.arenas[i]) continue;
+      sicm_arena_destroy(tracker.arenas[i]->arena);
+      free(tracker.arenas[i]);
     }
-    free(arenas);
+    free(tracker.arenas);
 
-    free(pending_indices);
-    free(orig_thread_indices);
-    extent_arr_free(extents);
+    free(tracker.pending_indices);
+    free(tracker.orig_thread_indices);
+    extent_arr_free(tracker.extents);
   }
 
   if (profopts.should_run_rdspy) {

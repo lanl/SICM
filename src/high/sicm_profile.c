@@ -246,17 +246,17 @@ void sh_stop_profile_thread() {
     printf("===== PEBS RESULTS =====\n");
     associated = 0;
     for(i = 0; i <= max_index; i++) {
-      if(!arenas[i]) continue;
-      associated += arenas[i]->accesses;
-      printf("%d sites: ", arenas[i]->num_alloc_sites);
-      for(n = 0; n < arenas[i]->num_alloc_sites; n++) {
-        printf("%d ", arenas[i]->alloc_sites[n]);
+      if(!tracker.arenas[i]) continue;
+      associated += tracker.arenas[i]->accesses;
+      printf("%d sites: ", tracker.arenas[i]->num_alloc_sites);
+      for(n = 0; n < tracker.arenas[i]->num_alloc_sites; n++) {
+        printf("%d ", tracker.arenas[i]->alloc_sites[n]);
       }
       printf("\n");
-      printf("  Accesses: %zu\n", arenas[i]->accesses);
+      printf("  Accesses: %zu\n", tracker.arenas[i]->accesses);
       if(profopts.should_profile_rss) {
-        printf("  Peak RSS: %zu\n", arenas[i]->peak_rss);
-        printf("  Average RSS: %zu\n", arenas[i]->avg_rss);
+        printf("  Peak RSS: %zu\n", tracker.arenas[i]->peak_rss);
+        printf("  Average RSS: %zu\n", tracker.arenas[i]->avg_rss);
       }
     }
     printf("Totals: %zu / %zu\n", associated, prof.total);
@@ -269,7 +269,7 @@ void sh_stop_profile_thread() {
     printf("Average bandwidth: %.1f MB/s\n", prof.running_avg);
     printf("Maximum bandwidth: %.1f MB/s\n", prof.max_bandwidth);
     if(profopts.should_profile_rss) {
-      printf("Peak RSS: %zu\n", arenas[profopts.profile_one_site]->peak_rss);
+      printf("Peak RSS: %zu\n", tracker.arenas[profopts.profile_one_site]->peak_rss);
     }
     printf("===== END MBI RESULTS =====\n");
 
@@ -277,14 +277,14 @@ void sh_stop_profile_thread() {
   } else if(profopts.should_profile_rss) {
     printf("===== RSS RESULTS =====\n");
     for(i = 0; i <= max_index; i++) {
-      if(!arenas[i]) continue;
+      if(!tracker.arenas[i]) continue;
       printf("Sites: ");
-      for(n = 0; n < arenas[i]->num_alloc_sites; n++) {
-        printf("%d ", arenas[i]->alloc_sites[n]);
+      for(n = 0; n < tracker.arenas[i]->num_alloc_sites; n++) {
+        printf("%d ", tracker.arenas[i]->alloc_sites[n]);
       }
       printf("\n");
       if(profopts.should_profile_rss) {
-        printf("  Peak RSS: %zu\n", arenas[i]->peak_rss);
+        printf("  Peak RSS: %zu\n", tracker.arenas[i]->peak_rss);
       }
     }
     printf("===== END RSS RESULTS =====\n");
@@ -305,8 +305,8 @@ get_accesses() {
 
   num_acc_samples++;
   for(i = 0; i <= max_index; i++) {
-    if(!(arenas[i])) continue;
-    arenas[i]->cur_accesses = 0;
+    if(!(tracker.arenas[i])) continue;
+    tracker.arenas[i]->cur_accesses = 0;
   }
 
   /* Wait for the perf buffer to be ready */
@@ -332,7 +332,7 @@ get_accesses() {
   end = base + head % buf_size;
 
   /* Read all of the samples */
-  pthread_rwlock_rdlock(&extents_lock);
+  pthread_rwlock_rdlock(&tracker.extents_lock);
   while(begin <= (end - 8)) {
 
     header = (struct perf_event_header *)begin;
@@ -361,7 +361,7 @@ get_accesses() {
       begin = begin + header->size;
     }
   }
-  pthread_rwlock_unlock(&extents_lock);
+  pthread_rwlock_unlock(&tracker.extents_lock);
 
   /* Let perf know that we've read this far */
   prof.metadata->data_tail = head;
@@ -369,8 +369,8 @@ get_accesses() {
 
   /* Now calculate an average accesses/sample for each arena */
   for(i = 0; i <= max_index; i++) {
-    if(!(arenas[i])) continue;
-    arenas[i]->accesses += arenas[i]->cur_accesses;
+    if(!(tracker.arenas[i])) continue;
+    tracker.arenas[i]->accesses += tracker.arenas[i]->cur_accesses;
   }
 
 #if 0

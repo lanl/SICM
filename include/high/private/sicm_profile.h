@@ -36,6 +36,7 @@ union pfn_t {
 };
 
 extern profiling_options profopts;
+extern tracker_struct tracker;
 
 typedef struct profile_thread {
 
