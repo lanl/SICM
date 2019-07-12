@@ -1,7 +1,6 @@
 #include "sicm_high.h"
 #include "sicm_low.h"
 #include "sicm_impl.h"
-#include "sicm_profile.h"
 
 profiling_options profopts = {0};
 

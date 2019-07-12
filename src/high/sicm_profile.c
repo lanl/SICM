@@ -1,6 +1,6 @@
 #define _LARGEFILE64_SOURCE
-#include "sicm_high.h"
 #include "sicm_profile.h"
+#include "sicm_high.h"
 #include "sicm_impl.h"
 #include <sys/types.h>
 #include <unistd.h>

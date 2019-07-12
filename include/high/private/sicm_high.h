@@ -59,6 +59,47 @@ void sh_terminate();
 void sh_create_extent(void *begin, void *end);
 int get_arena_index(int id);
 
+/* Options for if/when/how to profile. Initialized in src/high/sicm_high_init.c,
+ * used by src/high/sicm_profile.c.
+ */
+typedef struct profiling_options {
+  /* Should we do profiling? */
+  int should_profile_online;
+  int should_profile_all;
+  int should_profile_one;
+  int should_profile_rss;
+  int should_run_rdspy;
+
+  /* How quickly to sample accesses/RSS */
+  float profile_all_rate;
+  float profile_rss_rate;
+  int sample_freq;
+  int max_sample_pages;
+
+  /* The device to profile bandwidth on */
+  struct sicm_device *profile_one_device;
+
+  /* Online profiling device and parameters */
+  struct sicm_device *online_device;
+  ssize_t online_device_cap;
+
+  /* Array of strings for profile_all events */
+  size_t num_profile_all_events;
+  char **profile_all_events;
+
+  /* Array of strings for profile_one events */
+  size_t num_profile_one_events;
+  char **profile_one_events;
+
+  /* Array of strings of IMCs for the bandwidth profiling */
+  char **imcs;
+  int num_imcs, max_imc_len, max_event_len;
+
+  /* Set depending on which type of profiling we're doing */
+  size_t num_events;
+  char **events;
+}
+
 #ifdef __cplusplus
 extern "C" {
 #endif
