@@ -40,7 +40,7 @@ use_tree(int, int);
 typedef struct tracker_struct {
   /* Stores all machine devices and device
    * we should bind to by default */
-  static struct sicm_device_list device_list;
+  struct sicm_device_list device_list;
   int num_numa_nodes;
   deviceptr default_device;
 
@@ -59,8 +59,8 @@ typedef struct tracker_struct {
 
   /* Keeps track of arenas */
   arena_info **arenas;
-  static enum arena_layout layout;
-  static int max_arenas, arenas_per_thread, max_sites_per_arena;
+  enum arena_layout layout;
+  int max_arenas, arenas_per_thread, max_sites_per_arena;
   int max_index;
 
   /* Stores which arena an allocation site goes into. Only for
@@ -74,12 +74,12 @@ typedef struct tracker_struct {
   pthread_mutex_t arena_lock = PTHREAD_MUTEX_INITIALIZER;
 
   /* Associates a thread with an index (starting at 0) into the `arenas` array */
-  static pthread_key_t thread_key;
-  static int *thread_indices, *orig_thread_indices, *max_thread_indices, max_threads;
-  static int num_static_sites;
+  pthread_key_t thread_key;
+  int *thread_indices, *orig_thread_indices, *max_thread_indices, max_threads;
+  int num_static_sites;
 
   /* Passes an arena index to the extent hooks */
-  static int *pending_indices;
+  int *pending_indices;
 } tracker_struct;
 
 #define DEFAULT_ARENA_LAYOUT INVALID_LAYOUT
