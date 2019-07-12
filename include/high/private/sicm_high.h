@@ -55,7 +55,7 @@ typedef struct tracker_struct {
   extent_arr *rss_extents; /* The extents that we want to get the RSS of */
 
   /* Gets locked when we add a new extent */
-  pthread_rwlock_t extents_lock = PTHREAD_RWLOCK_INITIALIZER;
+  pthread_rwlock_t extents_lock;
 
   /* Keeps track of arenas */
   arena_info **arenas;
@@ -71,7 +71,7 @@ typedef struct tracker_struct {
   int arena_counter;
 
   /* Gets locked when we add an arena */
-  pthread_mutex_t arena_lock = PTHREAD_MUTEX_INITIALIZER;
+  pthread_mutex_t arena_lock;
 
   /* Associates a thread with an index (starting at 0) into the `arenas` array */
   pthread_key_t thread_key;
