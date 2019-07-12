@@ -7,6 +7,7 @@ profiling_options profopts = {0};
 
 /* Keeps track of arenas, extents, etc. */
 tracker_struct tracker = {0};
+tracker.extents_lock = PTHREAD_RWLOCK_INITIALIZER;
 
 /* Converts an arena_layout to a string */
 char *layout_str(enum arena_layout layout) {
