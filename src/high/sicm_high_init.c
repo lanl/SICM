@@ -7,8 +7,6 @@ profiling_options profopts = {0};
 
 /* Keeps track of arenas, extents, etc. */
 tracker_struct tracker = {0};
-tracker.extents_lock = PTHREAD_RWLOCK_INITIALIZER;
-tracker.arena_lock = PTHREAD_MUTEX_INITIALIZER;
 
 /* Converts an arena_layout to a string */
 char *layout_str(enum arena_layout layout) {
@@ -36,6 +34,34 @@ char *layout_str(enum arena_layout layout) {
   return "INVALID_LAYOUT";
 }
 
+/* Gets the SICM low-level device that corresponds to a NUMA node ID */
+sicm_device *get_device_from_numa_node(int id) {
+  deviceptr retval;
+  deviceptr device;
+  int i;
+
+  retval = NULL;
+  /* Figure out which device the NUMA node corresponds to */
+  device = *(tracker.device_list.devices);
+  for(i = 0; i < tracker.device_list.count; i++) {
+    /* If the device has a NUMA node, and if that node is the node we're
+     * looking for.
+     */
+    if(sicm_numa_id(device) == id) {
+      retval = device;
+      break;
+    }
+    device++;
+  }
+  /* If we don't find an appropriate device, it stays NULL
+   * so that no allocation sites will be bound to it
+   */
+  if(!retval) {
+    fprintf(stderr, "Couldn't find an appropriate device for NUMA node %d.\n", id);
+  }
+
+  return retval;
+}
 
 /* Gets environment variables and sets up globals */
 void set_options() {
@@ -55,7 +81,7 @@ void set_options() {
     profopts.should_profile_online = 1;
     tmp_val = strtoimax(env, NULL, 10);
     profopts.online_device = get_device_from_numa_node((int) tmp_val);
-    profopts.online_device_cap = sicm_avail(online_device) * 1024; /* sicm_avail() returns kilobytes */
+    profopts.online_device_cap = sicm_avail(profopts.online_device) * 1024; /* sicm_avail() returns kilobytes */
     printf("Doing online profiling, packing onto NUMA node %lld with a capacity of %zd.\n", tmp_val, profopts.online_device_cap);
   }
 
@@ -213,7 +239,7 @@ void set_options() {
         printf("%s\n", str);
         profopts.num_imcs++;
         profopts.imcs = realloc(profopts.imcs, sizeof(char *) * profopts.num_imcs);
-        imcs[profopts.num_imcs - 1] = str;
+        profopts.imcs[profopts.num_imcs - 1] = str;
         if(strlen(str) > profopts.max_imc_len) {
           profopts.max_imc_len = strlen(str);
         }
@@ -430,23 +456,21 @@ void set_options() {
   if (env) {
     tmp_val = strtoimax(env, NULL, 10);
     if((tmp_val == 0) || (tmp_val > INT_MAX)) {
-      printf("Invalid number of static sites given.\n");
+      fprintf(stderr, "Invalid number of static sites given. Aborting.\n");
+      exit(1);
     } else {
-      num_static_sites = (int) tmp_val;
+      tracker.num_static_sites = (int) tmp_val;
     }
   }
-  printf("Number of static sites: %d\n", num_static_sites);
 
   env = getenv("SH_RDSPY");
   profopts.should_run_rdspy = 0;
   if (env) {
-    if (!num_static_sites) {
-      printf("Invalid static sites -- not running rdspy.\n");
+    if (!tracker.num_static_sites) {
+      fprintf(stderr, "Invalid number of static sites. Aborting.\n");
+      exit(1);
     }
-    profopts.should_run_rdspy = 1 && num_static_sites;
-    if (profopts.should_run_rdspy) {
-      printf("Running with rdspy.\n");
-    }
+    profopts.should_run_rdspy = 1 && tracker.num_static_sites;
   }
 }
 
@@ -456,6 +480,8 @@ void sh_init() {
   long size;
 
   tracker.device_list = sicm_init();
+  tracker.extents_lock = PTHREAD_RWLOCK_INITIALIZER;
+  tracker.arena_lock = PTHREAD_MUTEX_INITIALIZER;
 
   /* Get the number of NUMA nodes with memory, since we ignore huge pages with
    * the DEVICE arena layouts */
@@ -467,8 +493,8 @@ void sh_init() {
     }
   }
 
-  arena_counter = 0;
-  site_arenas = tree_make(int, int);
+  tracker.arena_counter = 0;
+  tracker.site_arenas = tree_make(int, int);
   tracker.site_nodes = tree_make(int, deviceptr);
   tracker.device_arenas = tree_make(deviceptr, int);
   set_options();
@@ -530,7 +556,7 @@ void sh_init() {
   }
   
   if (profopts.should_run_rdspy) {
-    sh_rdspy_init(tracker.max_threads, num_static_sites);
+    sh_rdspy_init(tracker.max_threads, tracker.num_static_sites);
   }
 }
 

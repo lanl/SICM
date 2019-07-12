@@ -57,50 +57,22 @@ int get_alloc_site(arena_info *arena, int id) {
   return -1;
 }
 
-/* Gets the SICM low-level device that corresponds to a NUMA node ID */
-sicm_device *get_device_from_numa_node(int id) {
-  deviceptr retval;
-  deviceptr device;
-  int i;
-
-  retval = NULL;
-  /* Figure out which device the NUMA node corresponds to */
-  device = *(tracker.device_list.devices);
-  for(i = 0; i < tracker.device_list.count; i++) {
-    /* If the device has a NUMA node, and if that node is the node we're
-     * looking for.
-     */
-    if(sicm_numa_id(device) == id) {
-      retval = device;
-      break;
-    }
-    device++;
-  }
-  /* If we don't find an appropriate device, it stays NULL
-   * so that no allocation sites will be bound to it
-   */
-  if(!retval) {
-    fprintf(stderr, "Couldn't find an appropriate device for NUMA node %d.\n", id);
-  }
-
-  return retval;
-}
 
 int get_thread_index() {
   int *val;
 
   /* Get this thread's index */
-  val = (int *) pthread_getspecific(thread_key);
+  val = (int *) pthread_getspecific(tracker.thread_key);
 
   /* If nonexistent, increment the counter and set it */
   if(val == NULL) {
-    if(thread_indices + 1 >= max_thread_indices) {
+    if(tracker.thread_indices + 1 >= tracker.max_thread_indices) {
       fprintf(stderr, "Maximum number of threads reached. Aborting.\n");
       exit(1);
     }
-    pthread_setspecific(thread_key, (void *) thread_indices);
-    val = thread_indices;
-    thread_indices++;
+    pthread_setspecific(tracker.thread_key, (void *) tracker.thread_indices);
+    val = tracker.thread_indices;
+    tracker.thread_indices++;
   }
 
   return *val;
@@ -137,8 +109,8 @@ void sh_create_arena(int index, int id, sicm_device *device) {
   }
 
   /* Put an upper bound on the indices that need to be searched */
-  if(index > max_index) {
-    max_index = index;
+  if(index > tracker.max_index) {
+    tracker.max_index = index;
   }
 
   if(!device) {
@@ -170,7 +142,7 @@ void sh_create_extent(void *start, void *end) {
 
   /* Get this thread's current arena index from `pending_indices` */
   thread_index = get_thread_index();
-  arena_index = pending_indices[thread_index];
+  arena_index = tracker.pending_indices[thread_index];
 
   /* A extent allocation is happening without an sh_alloc... */
   if(arena_index == -1) {
@@ -178,7 +150,7 @@ void sh_create_extent(void *start, void *end) {
     exit(1);
   }
 
-  if(should_profile_rss && should_profile_one && (get_alloc_site(tracker.arenas[arena_index], profile_one_site) != -1)) {
+  if(profopts.should_profile_rss && profopts.should_profile_one && (get_alloc_site(tracker.arenas[arena_index], profopts.profile_one_site) != -1)) {
     /* If we're profiling RSS and this is the site that we're isolating */
     extent_arr_insert(tracker.rss_extents, start, end, tracker.arenas[arena_index]);
   }
@@ -251,7 +223,7 @@ int get_device_arena(int id, deviceptr *device) {
      * that we never get a device that didn't exist on initialization.
      * Remember our choice.
      */
-    ret = max_index + 1;
+    ret = tracker.max_index + 1;
     tree_insert(tracker.device_arenas, *device, ret);
   }
 
@@ -268,7 +240,7 @@ int get_arena_index(int id) {
 
   ret = 0;
   device = NULL;
-  switch(layout) {
+  switch(tracker.layout) {
     case SHARED_ONE_ARENA:
       ret = 0;
       break;
@@ -309,7 +281,7 @@ int get_arena_index(int id) {
   }
 
   pthread_mutex_lock(&tracker.arena_lock);
-  pending_indices[thread_index] = ret;
+  tracker.pending_indices[thread_index] = ret;
   sh_create_arena(ret, id, device);
   pthread_mutex_unlock(&tracker.arena_lock);
 
@@ -320,14 +292,14 @@ void* sh_realloc(int id, void *ptr, size_t sz) {
   int   index;
   void *ret;
 
-  if(layout == INVALID_LAYOUT) {
+  if(tracker.layout == INVALID_LAYOUT) {
     ret = realloc(ptr, sz);
   } else {
     index = get_arena_index(id);
     ret = sicm_arena_realloc(arenas[index]->arena, ptr, sz);
   }
 
-  if (should_run_rdspy) {
+  if (profopts.should_run_rdspy) {
     sh_rdspy_realloc(ptr, ret, sz, id);
   }
 
@@ -339,14 +311,14 @@ void* sh_alloc(int id, size_t sz) {
   int index;
   void *ret;
 
-  if((layout == INVALID_LAYOUT) || !sz) {
+  if((tracker.layout == INVALID_LAYOUT) || !sz) {
     ret = je_malloc(sz);
   } else {
     index = get_arena_index(id);
     ret = sicm_arena_alloc(arenas[index]->arena, sz);
   }
 
-  if (should_run_rdspy) {
+  if (profopts.should_run_rdspy) {
     sh_rdspy_alloc(ret, sz, id);
   }
   
@@ -362,14 +334,14 @@ void* sh_aligned_alloc(int id, size_t alignment, size_t sz) {
     return NULL;
   }
 
-  if((layout == INVALID_LAYOUT) || !sz) {
+  if((tracker.layout == INVALID_LAYOUT) || !sz) {
     ret = je_aligned_alloc(alignment, sz);
   } else {
     index = get_arena_index(id);
     ret = sicm_arena_alloc_aligned(arenas[index]->arena, sz, alignment);
   }
 
-  if (should_run_rdspy) {
+  if (profopts.should_run_rdspy) {
     sh_rdspy_alloc(ret, sz, id);
   }
   
@@ -395,7 +367,7 @@ void* sh_calloc(int id, size_t num, size_t sz) {
 }
 
 void sh_free(void* ptr) {
-  if (should_run_rdspy) {
+  if (profopts.should_run_rdspy) {
       sh_rdspy_free(ptr);
   }
 
@@ -403,7 +375,7 @@ void sh_free(void* ptr) {
     return;
   }
 
-  if(layout == INVALID_LAYOUT) {
+  if(tracker.layout == INVALID_LAYOUT) {
     je_free(ptr);
   } else {
     sicm_free(ptr);

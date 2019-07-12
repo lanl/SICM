@@ -122,14 +122,14 @@ void sh_get_event() {
     /* If we're profiling all, set some additional options. */
     if(profopts.should_profile_all) {
       prof.pes[i]->sample_type = PERF_SAMPLE_ADDR;
-      prof.pes[i]->sample_period = sample_freq;
+      prof.pes[i]->sample_period = tracker.sample_freq;
       prof.pes[i]->mmap = 1;
       prof.pes[i]->disabled = 1;
       prof.pes[i]->exclude_kernel = 1;
       prof.pes[i]->exclude_hv = 1;
       prof.pes[i]->precise_ip = 2;
       prof.pes[i]->task = 1;
-      prof.pes[i]->sample_period = sample_freq;
+      prof.pes[i]->sample_period = tracker.sample_freq;
     }
   }
 }
@@ -245,7 +245,7 @@ void sh_stop_profile_thread() {
   if(profopts.should_profile_all) {
     printf("===== PEBS RESULTS =====\n");
     associated = 0;
-    for(i = 0; i <= max_index; i++) {
+    for(i = 0; i <= tracker.max_index; i++) {
       if(!tracker.arenas[i]) continue;
       associated += tracker.arenas[i]->accesses;
       printf("%d sites: ", tracker.arenas[i]->num_alloc_sites);
@@ -276,7 +276,7 @@ void sh_stop_profile_thread() {
   /* RSS profiling */
   } else if(profopts.should_profile_rss) {
     printf("===== RSS RESULTS =====\n");
-    for(i = 0; i <= max_index; i++) {
+    for(i = 0; i <= tracker.max_index; i++) {
       if(!tracker.arenas[i]) continue;
       printf("Sites: ");
       for(n = 0; n < tracker.arenas[i]->num_alloc_sites; n++) {
@@ -304,7 +304,7 @@ get_accesses() {
   size_t i;
 
   num_acc_samples++;
-  for(i = 0; i <= max_index; i++) {
+  for(i = 0; i <= tracker.max_index; i++) {
     if(!(tracker.arenas[i])) continue;
     tracker.arenas[i]->cur_accesses = 0;
   }
@@ -345,10 +345,10 @@ get_accesses() {
     if(addr) {
       prof.total++;
       /* Search for which extent it goes into */
-      extent_arr_for(extents, i) {
-        if(!extents->arr[i].start && !extents->arr[i].end) continue;
-        arena = extents->arr[i].arena;
-        if((addr >= extents->arr[i].start) && (addr <= extents->arr[i].end) && arena) {
+      extent_arr_for(tracker.extents, i) {
+        if(!tracker.extents->arr[i].start && !tracker.extents->arr[i].end) continue;
+        arena = tracker.extents->arr[i].arena;
+        if((addr >= tracker.extents->arr[i].start) && (addr <= tracker.extents->arr[i].end) && arena) {
           arena->cur_accesses++;
         }
       }
@@ -368,7 +368,7 @@ get_accesses() {
   __sync_synchronize();
 
   /* Now calculate an average accesses/sample for each arena */
-  for(i = 0; i <= max_index; i++) {
+  for(i = 0; i <= tracker.max_index; i++) {
     if(!(tracker.arenas[i])) continue;
     tracker.arenas[i]->accesses += tracker.arenas[i]->cur_accesses;
   }
