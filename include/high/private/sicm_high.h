@@ -98,7 +98,7 @@ typedef struct profiling_options {
   /* Set depending on which type of profiling we're doing */
   size_t num_events;
   char **events;
-}
+} profiling_options;
 
 #ifdef __cplusplus
 extern "C" {
