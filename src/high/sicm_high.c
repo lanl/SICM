@@ -133,6 +133,8 @@ void sh_create_arena(int index, int id, sicm_device *device) {
   sicm_device_list dl;
   dl.count = 1;
   dl.devices = device;
+  printf("device: %p\n", device);
+  printf("dl: %p\n", &dl);
   tracker.arenas[index]->arena = sicm_arena_create(0, SICM_ALLOC_RELAXED, &dl);
 }
 
