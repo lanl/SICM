@@ -293,7 +293,7 @@ get_accesses() {
   struct sample *sample;
   struct perf_event_header *header;
   int err;
-  size_t i;
+  size_t i, n;
 
   for(i = 0; i < profopts.num_events; i++) {
     for(n = 0; n <= tracker.max_index; n++) {
