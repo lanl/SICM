@@ -164,7 +164,6 @@ void set_options() {
     if(env) {
       /* Parse out the events into an array */
       while((str = strtok(env, ",")) != NULL) {
-        printf("Looking at event %s\n", str);
         profopts.num_profile_all_events++;
         profopts.profile_all_events = realloc(profopts.profile_all_events, sizeof(char *) * profopts.num_profile_all_events);
         profopts.profile_all_events[profopts.num_profile_all_events - 1] = malloc(sizeof(char) * (strlen(str) + 1));
@@ -179,12 +178,6 @@ void set_options() {
 
     profopts.num_events = profopts.num_profile_all_events;
     profopts.events = profopts.profile_all_events;
-
-    printf("Events are now:\n");
-    for(i = 0; i < profopts.num_profile_all_events; i++) {
-      printf("%s\n", profopts.events[i]);
-    }
-    fflush(stdout);
   }
 
   /* Should we profile (by isolating) a single allocation site onto a NUMA node
