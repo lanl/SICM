@@ -215,9 +215,7 @@ void sh_start_profile_thread() {
     pthread_create(&prof.profile_one_id, NULL, &profile_one, NULL);
   }
   if(profopts.should_profile_rss) {
-#if 0
     pthread_create(&prof.profile_rss_id, NULL, &profile_rss, NULL);
-#endif
   }
 }
 
@@ -467,7 +465,6 @@ get_rss() {
 }
 #endif
 
-#if 0
 static void
 get_rss() {
 	size_t i, n, numpages;
@@ -477,20 +474,20 @@ get_rss() {
 
   /* Grab the lock for the extents array */
   //pthread_mutex_lock(&arena_lock);
-  pthread_rwlock_rdlock(&extents_lock);
+  pthread_rwlock_rdlock(&tracker.extents_lock);
 
 	/* Zero out the RSS values for each arena */
-	extent_arr_for(rss_extents, i) {
-    arena = rss_extents->arr[i].arena;
+	extent_arr_for(tracker.rss_extents, i) {
+    arena = tracker.rss_extents->arr[i].arena;
     if(!arena) continue;
 		arena->rss = 0;
 	}
 
 	/* Iterate over the chunks */
-	extent_arr_for(rss_extents, i) {
-		start = (uint64_t) rss_extents->arr[i].start;
-		end = (uint64_t) rss_extents->arr[i].end;
-		arena = rss_extents->arr[i].arena;
+	extent_arr_for(tracker.rss_extents, i) {
+		start = (uint64_t) tracker.rss_extents->arr[i].start;
+		end = (uint64_t) tracker.rss_extents->arr[i].end;
+		arena = tracker.rss_extents->arr[i].arena;
     if(!arena) continue;
 
     numpages = (end - start) /prof.pagesize;
@@ -524,7 +521,7 @@ get_rss() {
 	}
 
   num_rss_samples++;
-  pthread_rwlock_unlock(&extents_lock);
+  pthread_rwlock_unlock(&tracker.extents_lock);
   //pthread_mutex_unlock(&arena_lock);
 }
 
@@ -545,7 +542,6 @@ void *profile_rss(void *a) {
     nanosleep(&timer, NULL);
   }
 }
-#endif
 
 void *profile_all(void *a) {
   struct timespec timer;
