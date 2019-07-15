@@ -114,6 +114,7 @@ void sh_get_event() {
     prof.pfm->attr = prof.pes[i];
 
     printf("Starting event %s\n", profopts.events[i]);
+    printf("%p\n", profopts.events[i]);
     fflush(stdout);
 
     err = pfm_get_os_event_encoding(profopts.events[i], PFM_PLM2 | PFM_PLM3, PFM_OS_PERF_EVENT, prof.pfm);
