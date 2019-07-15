@@ -46,13 +46,11 @@ typedef struct profile_thread {
   pthread_t profile_one_id;
 
   /* For perf */
-  size_t size, total;
+  size_t size;
   struct perf_event_attr **pes; /* Array of pe structs, for multiple events */
   struct perf_event_mmap_page *metadata;
   int *fds;
-  uint64_t consumed;
   struct pollfd pfd;
-  char oops;
 
   /* For libpfm */
   pfm_perf_encode_arg_t *pfm;

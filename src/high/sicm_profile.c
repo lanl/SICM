@@ -7,8 +7,6 @@
 #include <fcntl.h>
 
 profile_thread prof;
-size_t num_rss_samples = 0;
-size_t num_acc_samples = 0;
 use_tree(double, size_t);
 use_tree(size_t, deviceptr);
 
@@ -216,8 +214,7 @@ void sh_start_profile_thread() {
 }
 
 void sh_stop_profile_thread() {
-  size_t i, associated;
-  int n;
+  size_t i, n;
 
   /* Stop the actual sampling */
   for(i = 0; i < profopts.num_events; i++) {
@@ -242,22 +239,20 @@ void sh_stop_profile_thread() {
   /* PEBS profiling */
   if(profopts.should_profile_all) {
     printf("===== PEBS RESULTS =====\n");
-    associated = 0;
     for(i = 0; i <= tracker.max_index; i++) {
       if(!tracker.arenas[i]) continue;
-      associated += tracker.arenas[i]->accesses;
       printf("%d sites: ", tracker.arenas[i]->num_alloc_sites);
       for(n = 0; n < tracker.arenas[i]->num_alloc_sites; n++) {
         printf("%d ", tracker.arenas[i]->alloc_sites[n]);
       }
       printf("\n");
-      printf("  Accesses: %zu\n", tracker.arenas[i]->accesses);
+      for(n = 0; n < profopts.num_events; n++) {
+        printf("  %s: %zu\n", profopts.events[n], tracker.arenas[i]->event_totals[n]);
+      }
       if(profopts.should_profile_rss) {
         printf("  Peak RSS: %zu\n", tracker.arenas[i]->peak_rss);
       }
     }
-    printf("Totals: %zu / %zu\n", associated, prof.total);
-    printf("Number of RSS samples: %zu\n", num_rss_samples);
     printf("===== END PEBS RESULTS =====\n");
 
   /* MBI profiling */
@@ -300,74 +295,73 @@ get_accesses() {
   int err;
   size_t i;
 
-  num_acc_samples++;
-  for(i = 0; i <= tracker.max_index; i++) {
-    if(!(tracker.arenas[i])) continue;
-    tracker.arenas[i]->cur_accesses = 0;
-  }
-
-  /* Wait for the perf buffer to be ready */
-  prof.pfd.fd = prof.fds[0];
-  prof.pfd.events = POLLIN;
-  prof.pfd.revents = 0;
-  err = poll(&prof.pfd, 1, 0);
-  if(err == 0) {
-    return;
-  } else if(err == -1) {
-    fprintf(stderr, "Error occurred polling. Aborting.\n");
-    exit(1);
-  }
-
-  /* Get ready to read */
-  head = prof.metadata->data_head;
-  tail = prof.metadata->data_tail;
-  buf_size = prof.pagesize * profopts.max_sample_pages;
-  asm volatile("" ::: "memory"); /* Block after reading data_head, per perf docs */
-
-  base = (char *)prof.metadata + prof.pagesize;
-  begin = base + tail % buf_size;
-  end = base + head % buf_size;
-
-  /* Read all of the samples */
-  pthread_rwlock_rdlock(&tracker.extents_lock);
-  while(begin <= (end - 8)) {
-
-    header = (struct perf_event_header *)begin;
-    if(header->size == 0) {
-      break;
+  for(i = 0; i < profopts.num_events; i++) {
+    for(n = 0; n <= tracker.max_index; n++) {
+      if(!(tracker.arenas[n])) continue;
+      tracker.arenas[n]->accumulator = 0;
     }
-    sample = (struct sample *) (begin + 8);
-    addr = (void *) (sample->addr);
 
-    if(addr) {
-      prof.total++;
-      /* Search for which extent it goes into */
-      extent_arr_for(tracker.extents, i) {
-        if(!tracker.extents->arr[i].start && !tracker.extents->arr[i].end) continue;
-        arena = tracker.extents->arr[i].arena;
-        if((addr >= tracker.extents->arr[i].start) && (addr <= tracker.extents->arr[i].end) && arena) {
-          arena->cur_accesses++;
+    /* Wait for the perf buffer to be ready */
+    prof.pfd.fd = prof.fds[i];
+    prof.pfd.events = POLLIN;
+    prof.pfd.revents = 0;
+    err = poll(&prof.pfd, 1, 0);
+    if(err == 0) {
+      return;
+    } else if(err == -1) {
+      fprintf(stderr, "Error occurred polling. Aborting.\n");
+      exit(1);
+    }
+
+    /* Get ready to read */
+    head = prof.metadata->data_head;
+    tail = prof.metadata->data_tail;
+    buf_size = prof.pagesize * profopts.max_sample_pages;
+    asm volatile("" ::: "memory"); /* Block after reading data_head, per perf docs */
+
+    base = (char *)prof.metadata + prof.pagesize;
+    begin = base + tail % buf_size;
+    end = base + head % buf_size;
+
+    /* Read all of the samples */
+    pthread_rwlock_rdlock(&tracker.extents_lock);
+    while(begin <= (end - 8)) {
+
+      header = (struct perf_event_header *)begin;
+      if(header->size == 0) {
+        break;
+      }
+      sample = (struct sample *) (begin + 8);
+      addr = (void *) (sample->addr);
+
+      if(addr) {
+        /* Search for which extent it goes into */
+        extent_arr_for(tracker.extents, n) {
+          if(!tracker.extents->arr[n].start && !tracker.extents->arr[n].end) continue;
+          arena = tracker.extents->arr[n].arena;
+          if((addr >= tracker.extents->arr[n].start) && (addr <= tracker.extents->arr[n].end) && arena) {
+            arena->accumulator++;
+          }
         }
       }
+
+      /* Increment begin by the size of the sample */
+      if(((char *)header + header->size) == base + buf_size) {
+        begin = base;
+      } else {
+        begin = begin + header->size;
+      }
     }
+    pthread_rwlock_unlock(&tracker.extents_lock);
 
-    /* Increment begin by the size of the sample */
-    if(((char *)header + header->size) == base + buf_size) {
-      begin = base;
-    } else {
-      begin = begin + header->size;
+    /* Let perf know that we've read this far */
+    prof.metadata->data_tail = head;
+    __sync_synchronize();
+
+    for(n = 0; n <= tracker.max_index; n++) {
+      if(!(tracker.arenas[n])) continue;
+      tracker.arenas[n]->event_totals[i] += tracker.arenas[n]->accumulator;
     }
-  }
-  pthread_rwlock_unlock(&tracker.extents_lock);
-
-  /* Let perf know that we've read this far */
-  prof.metadata->data_tail = head;
-  __sync_synchronize();
-
-  /* Now calculate an average accesses/sample for each arena */
-  for(i = 0; i <= tracker.max_index; i++) {
-    if(!(tracker.arenas[i])) continue;
-    tracker.arenas[i]->accesses += tracker.arenas[i]->cur_accesses;
   }
 
 #if 0
@@ -515,11 +509,9 @@ get_rss() {
 		}
 	}
 
-  num_rss_samples++;
   pthread_rwlock_unlock(&tracker.extents_lock);
   //pthread_mutex_unlock(&arena_lock);
 }
-
 
 void *profile_rss(void *a) {
   struct timespec timer;
@@ -554,9 +546,6 @@ void *profile_all(void *a) {
     ioctl(prof.fds[i], PERF_EVENT_IOC_RESET, 0);
     ioctl(prof.fds[i], PERF_EVENT_IOC_ENABLE, 0);
   }
-  prof.consumed = 0;
-  prof.total = 0;
-  prof.oops = 0;
 
   timer.tv_sec = profopts.profile_all_rate;
   timer.tv_nsec = 0;

@@ -80,7 +80,7 @@ int get_thread_index() {
 
 /* Adds an arena to the `arenas` array. */
 void sh_create_arena(int index, int id, sicm_device *device) {
-  int i;
+  size_t i;
 
   if((tracker.arenas[index] != NULL) && (get_alloc_site(tracker.arenas[index], id) != -1)) {
     return;
@@ -120,14 +120,16 @@ void sh_create_arena(int index, int id, sicm_device *device) {
   /* Create the arena if it doesn't exist */
   tracker.arenas[index] = calloc(1, sizeof(arena_info));
   tracker.arenas[index]->index = index;
-  tracker.arenas[index]->accesses = 0;
-  tracker.arenas[index]->acc_per_sample = 0.0;
   tracker.arenas[index]->alloc_sites = malloc(sizeof(int) * tracker.max_sites_per_arena);
   tracker.arenas[index]->alloc_sites[0] = id;
   tracker.arenas[index]->num_alloc_sites = 1;
   tracker.arenas[index]->rss = 0;
   tracker.arenas[index]->peak_rss = 0;
   tracker.arenas[index]->avg_rss = 0;
+  tracker.arenas[index]->event_totals = calloc(profopts.num_events, sizeof(size_t));
+  for(i = 0; i < profopts.num_events; i++) {
+    tracker.arenas[index]->event_totals[i] = 0;
+  }
 
   /* Need to construct a sicm_device_list of one device */
   sicm_device_list dl;

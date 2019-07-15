@@ -22,8 +22,8 @@ typedef struct arena_info {
   int *alloc_sites, num_alloc_sites; /* Stores the allocation sites that are in this arena */
   unsigned index; /* Index into the arenas array */
   sicm_arena arena; /* SICM's low-level interface pointer */
-  size_t accesses, rss, peak_rss, avg_rss, cur_accesses; /* Profiling info */
-  double acc_per_sample;
+  size_t rss, peak_rss, avg_rss, accumulator; /* Profiling info */
+  size_t *event_totals; /* One for each event in num_events */
 } arena_info;
 
 /* A tree associating site IDs with device pointers.
