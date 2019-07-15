@@ -314,12 +314,12 @@ get_accesses() {
     }
 
     /* Get ready to read */
-    head = prof.metadata->data_head;
-    tail = prof.metadata->data_tail;
+    head = prof.metadata[i]->data_head;
+    tail = prof.metadata[i]->data_tail;
     buf_size = prof.pagesize * profopts.max_sample_pages;
     asm volatile("" ::: "memory"); /* Block after reading data_head, per perf docs */
 
-    base = (char *)prof.metadata + prof.pagesize;
+    base = (char *)prof.metadata[i] + prof.pagesize;
     begin = base + tail % buf_size;
     end = base + head % buf_size;
 
@@ -355,7 +355,7 @@ get_accesses() {
     pthread_rwlock_unlock(&tracker.extents_lock);
 
     /* Let perf know that we've read this far */
-    prof.metadata->data_tail = head;
+    prof.metadata[i]->data_tail = head;
     __sync_synchronize();
 
     for(n = 0; n <= tracker.max_index; n++) {
@@ -535,10 +535,13 @@ void *profile_all(void *a) {
   size_t i;
 
   /* mmap the file */
-  prof.metadata = mmap(NULL, prof.pagesize + (prof.pagesize * profopts.max_sample_pages), PROT_READ | PROT_WRITE, MAP_SHARED, prof.fds[0], 0);
-  if(prof.metadata == MAP_FAILED) {
-    fprintf(stderr, "Failed to mmap room (%zu bytes) for perf samples. Aborting with:\n%s\n", prof.pagesize + (prof.pagesize * profopts.max_sample_pages), strerror(errno));
-    exit(1);
+  prof.metadata = malloc(sizeof(struct perf_event_mmap_page *) * profopts.num_events);
+  for(i = 0; i < profopts.num_events; i++) {
+    prof.metadata[i] = mmap(NULL, prof.pagesize + (prof.pagesize * profopts.max_sample_pages), PROT_READ | PROT_WRITE, MAP_SHARED, prof.fds[i], 0);
+    if(prof.metadata[i] == MAP_FAILED) {
+      fprintf(stderr, "Failed to mmap room (%zu bytes) for perf samples. Aborting with:\n%s\n", prof.pagesize + (prof.pagesize * profopts.max_sample_pages), strerror(errno));
+      exit(1);
+    }
   }
 
   /* Initialize */

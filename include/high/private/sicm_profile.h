@@ -48,7 +48,7 @@ typedef struct profile_thread {
   /* For perf */
   size_t size;
   struct perf_event_attr **pes; /* Array of pe structs, for multiple events */
-  struct perf_event_mmap_page *metadata;
+  struct perf_event_mmap_page **metadata;
   int *fds;
   struct pollfd pfd;
 
