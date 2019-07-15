@@ -113,10 +113,6 @@ void sh_get_event() {
     prof.pfm->size = sizeof(pfm_perf_encode_arg_t);
     prof.pfm->attr = prof.pes[i];
 
-    printf("Starting event %s\n", profopts.events[i]);
-    printf("%p\n", profopts.events[i]);
-    fflush(stdout);
-
     err = pfm_get_os_event_encoding(profopts.events[i], PFM_PLM2 | PFM_PLM3, PFM_OS_PERF_EVENT, prof.pfm);
     if(err != PFM_SUCCESS) {
       fprintf(stderr, "Failed to initialize event '%s'. Aborting.\n", profopts.events[i]);
@@ -255,11 +251,9 @@ void sh_stop_profile_thread() {
         printf("%d ", tracker.arenas[i]->alloc_sites[n]);
       }
       printf("\n");
-      printf("TESTING\n");
       printf("  Accesses: %zu\n", tracker.arenas[i]->accesses);
       if(profopts.should_profile_rss) {
         printf("  Peak RSS: %zu\n", tracker.arenas[i]->peak_rss);
-        printf("  Average RSS: %zu\n", tracker.arenas[i]->avg_rss);
       }
     }
     printf("Totals: %zu / %zu\n", associated, prof.total);
