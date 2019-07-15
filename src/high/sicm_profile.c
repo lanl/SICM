@@ -255,6 +255,7 @@ void sh_stop_profile_thread() {
         printf("%d ", tracker.arenas[i]->alloc_sites[n]);
       }
       printf("\n");
+      printf("TESTING\n");
       printf("  Accesses: %zu\n", tracker.arenas[i]->accesses);
       if(profopts.should_profile_rss) {
         printf("  Peak RSS: %zu\n", tracker.arenas[i]->peak_rss);
