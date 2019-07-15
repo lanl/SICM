@@ -179,6 +179,12 @@ void set_options() {
 
     profopts.num_events = profopts.num_profile_all_events;
     profopts.events = profopts.profile_all_events;
+
+    printf("Events are now:\n");
+    for(i = 0; i < profopts.num_profile_all_events; i++) {
+      printf("%s\n", profopts.events[i]);
+    }
+    fflush(stdout);
   }
 
   /* Should we profile (by isolating) a single allocation site onto a NUMA node
@@ -189,7 +195,6 @@ void set_options() {
   if(env) {
     profopts.should_profile_one = 1;
   }
-
 
   if(profopts.should_profile_one) {
 
