@@ -17,7 +17,8 @@ C_COMPILER="${C_COMPILER:-clang}"
 CXX_COMPILER="${CXX_COMPILER:-clang++}"
 FORT_COMPILER="${FORT_COMPILER:-flang}"
 LD_WRAPPER="${LD_WRAPPER:-${DIR}/ld_wrapper.sh}"
-COMPILER="$C_COMPILER"
+DEFAULT_COMPILER="${DEFAULT_COMPILER:-${C_COMPILER}}"
+COMPILER=""
 OBJECT_FILES=""
 
 # The original arguments to the compiler
@@ -79,6 +80,11 @@ for word in $ARGS; do
   fi
 
 done
+
+if [[ $COMPILER = "" ]]; then
+  echo "WARNING: No input files found, but default compiler chosen: ${DEFAULT_COMPILER}"
+  COMPILER=${DEFAULT_COMPILER}
+fi
 
 # If the user sets this environment variable, just call the compiler
 if [[ $NO_TRANSFORM != " " ]]; then
