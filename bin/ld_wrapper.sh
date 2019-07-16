@@ -119,5 +119,6 @@ done
 echo "$COMMANDS" | xargs -I CMD --max-procs=64 bash -c CMD
 
 # Now finally link the transformed '.o' files
+echo "Using ${LLVMPATH}${LD_LINKER} $LINKER_INPUT_FILES $LINKARGS"
 LINKARGS="$LINKARGS -L${LIB_DIR} -lsicm_high -lsicm_new_delete -lsicm_cstd -Wl,-rpath,${LIB_DIR}"
 ${LLVMPATH}${LD_LINKER} $LINKER_INPUT_FILES $LINKARGS
