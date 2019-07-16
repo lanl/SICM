@@ -31,6 +31,7 @@ FILES_ARR=()
 BC_STR=""
 
 if [[ $NO_TRANSFORM != " " ]]; then
+  echo "Calling ${LLVMPATH}${LD_LINKER} $ARGS"
   ${LLVMPATH}${LD_LINKER} $ARGS
   exit $?
 fi
