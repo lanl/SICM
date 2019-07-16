@@ -344,14 +344,16 @@ struct compass : public ModulePass {
 
                 for (auto & BB : *f) {
                     for (auto it = BB.begin(); it != BB.end(); it++) {
-                        if (isCallSite(&*it)) {
-                            CallSite site(&*it);
-                            Function * callee = getCalledFunction(site);
-                            if (callee) {
-                                std::string combined = f->getName().str() + callee->getName().str();
-                                times1Calls2[combined] += 1;
-                                buCG[callee].insert(f);
-                                rec_search(callee);
+                        if (!it->isKnownSentinel()) {
+                            if (isCallSite(&*it)) {
+                                CallSite site(&*it);
+                                Function * callee = getCalledFunction(site);
+                                if (callee) {
+                                    std::string combined = f->getName().str() + callee->getName().str();
+                                    times1Calls2[combined] += 1;
+                                    buCG[callee].insert(f);
+                                    rec_search(callee);
+                                }
                             }
                         }
                     }
