@@ -367,7 +367,7 @@ struct compass : public ModulePass {
     }
 #endif
 		void rec_search(Function *f, std::set<Function*>& visited) {
-				if (!f)
+				if (!f || f->getLinkage() == llvm::GlobalValue::LinkageTypes::ExternalLinkage)
 						return;
 
 				if (visited.find(f) != visited.end())
