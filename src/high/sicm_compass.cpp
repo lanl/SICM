@@ -385,7 +385,7 @@ struct compass : public ModulePass {
 												std::string combined = f->getName().str() + callee->getName().str();
 												times1Calls2[combined] += 1;
 												buCG[callee].insert(f);
-												rec_search(callee);
+												rec_search(callee, visited);
 										}
 								}
 						}
@@ -396,7 +396,7 @@ struct compass : public ModulePass {
 				std::set<Function *> visited;
 
 				for (Function & node : *theModule) {
-						rec_search(&node);
+						rec_search(&node, visited);
 				}
 		}
     ////////////////////////////////////////////////////////////////////////////////
