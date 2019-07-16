@@ -31,12 +31,6 @@ ONLY_LINK=false # No input files, but at least one object file
 OUTPUT_FILE="" # `-o`
 GEN_DEPS=false
 
-# If the user sets this environment variable, just call the compiler
-if [[ $NO_TRANSFORM != " " ]]; then
-  ${LLVMPATH}${COMPILER} $ARGS
-  exit $?
-fi
-
 # Iterate over all arguments
 PREV=""
 for word in $ARGS; do
@@ -85,6 +79,12 @@ for word in $ARGS; do
   fi
 
 done
+
+# If the user sets this environment variable, just call the compiler
+if [[ $NO_TRANSFORM != " " ]]; then
+  ${LLVMPATH}${COMPILER} $ARGS
+  exit $?
+fi
 
 if [[ "$GEN_DEPS" = true ]]; then
   # The user is generating deps or preprocessing, just let
