@@ -161,6 +161,9 @@ if [[ "$ONLY_COMPILE" = false ]]; then
   done
 
   # Call the ld_wrapper
+  echo "Calling the LD wrapper:"
+  echo "${LD_WRAPPER} $EXTRA_ARGS $OBJECT_FILES -o $OUTPUT_FILE"
+
   if [[ $OUTPUT_FILE == "" ]]; then
     ${LD_WRAPPER} $EXTRA_ARGS $OBJECT_FILES
   else
