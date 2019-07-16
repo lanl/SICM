@@ -1169,11 +1169,12 @@ out:
 
             buildBottomUpCG();
 
+            /*
             std::ofstream os(BOTTOM_UP_CALL_GRAPH_FILE);
 
             writeBottomUpCG(os);
 
-            os.close();
+            os.close(); */
 
             //fprintf(stderr, "wrote to buCG.txt\n");
 
