@@ -81,14 +81,16 @@ for word in $ARGS; do
 
 done
 
-if [[ $COMPILER = "" ]]; then
-  echo "WARNING: No input files found, but default compiler chosen: ${DEFAULT_COMPILER}"
-  COMPILER=${DEFAULT_COMPILER}
-fi
-
-# If the user sets this environment variable, just call the compiler
-if [[ $NO_TRANSFORM != " " ]]; then
-  ${LLVMPATH}${COMPILER} $ARGS
+# If we're just going to call the default compiler
+if [[ ($NO_TRANSFORM != " ") ]]; then
+  if [[ ${ONLY_LINK} = false ]]; then
+    ${LLVMPATH}${COMPILER} $ARGS
+    if [[ ${ONLY_COMPILE} = false ]]; then
+      ${LD_WRAPPER} $ARGS
+    fi
+  else
+    ${LD_WRAPPER} $ARGS
+  fi
   exit $?
 fi
 
