@@ -81,19 +81,6 @@ for word in $ARGS; do
 
 done
 
-# If we're just going to call the default compiler
-if [[ ($NO_TRANSFORM != " ") ]]; then
-  if [[ ${ONLY_LINK} = false ]]; then
-    ${LLVMPATH}${COMPILER} $ARGS
-    if [[ ${ONLY_COMPILE} = false ]]; then
-      ${LD_WRAPPER} $ARGS
-    fi
-  else
-    ${LD_WRAPPER} $ARGS
-  fi
-  exit $?
-fi
-
 if [[ "$GEN_DEPS" = true ]]; then
   # The user is generating deps or preprocessing, just let
   # the compiler do this.
@@ -121,6 +108,19 @@ if [[ (${#INPUT_FILES[@]} -eq 0) ]]; then
     exit $?
   fi
   ONLY_LINK=true
+fi
+
+# If we're just going to call the default compiler
+if [[ ($NO_TRANSFORM != " ") ]]; then
+  if [[ ${ONLY_LINK} = false ]]; then
+    ${LLVMPATH}${COMPILER} $ARGS
+    if [[ ${ONLY_COMPILE} = false ]]; then
+      ${LD_WRAPPER} $ARGS
+    fi
+  else
+    ${LD_WRAPPER} $ARGS
+  fi
+  exit $?
 fi
 
 # Don't compile anything if there are no input files
