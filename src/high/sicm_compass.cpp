@@ -327,6 +327,7 @@ struct compass : public ModulePass {
 
     ///////////////////////////////////////////////// construct bottom-up call graph
     ////////////////////////////////////////////////////////////////////////////////
+#if 0
     void buildBottomUpCG() {
         std::set<Function *> visited;
 
@@ -364,6 +365,40 @@ struct compass : public ModulePass {
             rec_search(&node);
         }
     }
+#endif
+		void rec_search(Function *f, std::set<Function*>& visited) {
+				if (!f)
+						return;
+
+				if (visited.find(f) != visited.end())
+						return;
+				visited.insert(f);
+
+				buCG[f];
+
+				for (auto & BB : *f) {
+						for (auto it = BB.begin(); it != BB.end(); it++) {
+								if (isCallSite(&*it)) {
+										CallSite site(&*it);
+										Function * callee = getCalledFunction(site);
+										if (callee) {
+												std::string combined = f->getName().str() + callee->getName().str();
+												times1Calls2[combined] += 1;
+												buCG[callee].insert(f);
+												rec_search(callee);
+										}
+								}
+						}
+				}
+		}
+
+		void buildBottomUpCG() {
+				std::set<Function *> visited;
+
+				for (Function & node : *theModule) {
+						rec_search(&node);
+				}
+		}
     ////////////////////////////////////////////////////////////////////////////////
 
 
