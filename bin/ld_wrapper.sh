@@ -30,12 +30,6 @@ LINKER_INPUT_FILES=""
 FILES_ARR=()
 BC_STR=""
 
-if [[ $NO_TRANSFORM != " " ]]; then
-  echo "Calling ${LLVMPATH}${LD_LINKER} $ARGS"
-  ${LLVMPATH}${LD_LINKER} $ARGS
-  exit $?
-fi
-
 # Iterate over all arguments
 PREV=""
 OUTPUT_FILE=""
@@ -79,6 +73,13 @@ if [[ $OUTPUT_FILE == "" ]]; then
   OUTPUT_FILE="a.out"
   LINKARGS="$LINKARGS -o $OUTPUT_FILE"
 fi
+LINKARGS="$LINKARGS -L${LIB_DIR} -lsicm_high -lsicm_new_delete -lsicm_cstd -Wl,-rpath,${LIB_DIR}"
+
+# If we're going to skip the transformation
+if [[ $NO_TRANSFORM != " " ]]; then
+  ${LLVMPATH}${LD_LINKER} $ARGS -L${LIB_DIR} -lsicm_high -lsicm_new_delete -lsicm_cstd -Wl,-rpath,${LIB_DIR}
+  exit $?
+fi
 
 # Check if there are zero files
 if [ ${#FILES_ARR[@]} -eq 0 ]; then
@@ -119,6 +120,4 @@ done
 echo "$COMMANDS" | xargs -I CMD --max-procs=64 bash -c CMD
 
 # Now finally link the transformed '.o' files
-echo "Using ${LLVMPATH}${LD_LINKER} $LINKER_INPUT_FILES $LINKARGS"
-LINKARGS="$LINKARGS -L${LIB_DIR} -lsicm_high -lsicm_new_delete -lsicm_cstd -Wl,-rpath,${LIB_DIR}"
 ${LLVMPATH}${LD_LINKER} $LINKER_INPUT_FILES $LINKARGS
