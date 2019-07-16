@@ -16,6 +16,9 @@ LLVMOPT="${LLVMOPT:-opt}"
 LD_COMPILER="${LD_COMPILER:-clang}"
 LD_LINKER="${LD_LINKER:-clang}"
 
+# To disable transformation
+NO_TRANSFORM="${NO_TRANSFORM:- }"
+
 # The original arguments and the ones we're going to add
 ARGS=$@
 # The new arguments that we're going to use to link. We're going
@@ -26,6 +29,11 @@ LINKER_INPUT_FILES=""
 # An array and space-delimited string of object files that we want to link
 FILES_ARR=()
 BC_STR=""
+
+if [[ $NO_TRANSFORM != " " ]]; then
+  ${LLVMPATH}${LD_LINKER} $ARGS
+  exit $?
+fi
 
 # Iterate over all arguments
 PREV=""

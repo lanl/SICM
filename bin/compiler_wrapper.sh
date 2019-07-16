@@ -8,6 +8,9 @@
 # The path that this script is in
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 
+# To disable the transformation
+NO_TRANSFORM="${NO_TRANSFORM:- }"
+
 # Might want to define these manually depending on environment
 LLVMPATH="${LLVMPATH:- }"
 C_COMPILER="${C_COMPILER:-clang}"
@@ -27,6 +30,12 @@ ONLY_COMPILE=false # `-c`
 ONLY_LINK=false # No input files, but at least one object file
 OUTPUT_FILE="" # `-o`
 GEN_DEPS=false
+
+# If the user sets this environment variable, just call the compiler
+if [[ $NO_TRANSFORM != " " ]]; then
+  ${LLVMPATH}${COMPILER} $ARGS
+  exit $?
+fi
 
 # Iterate over all arguments
 PREV=""
