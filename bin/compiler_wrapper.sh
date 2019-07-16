@@ -65,7 +65,7 @@ for word in $ARGS; do
     INPUT_FILES+=("${BASH_REMATCH[1]}")
     EXTENSIONS+=("${BASH_REMATCH[2]}")
     COMPILER="$CXX_COMPILER"
-  elif [[ "$word" =~ (.*)\.(f90)$ ]] || [[ "$word" =~ (.*)\.(f95)$ ]] || [[ "$word" =~ (.*)\.(f03)$ ]] || [[ "$word" =~ (.*)\.(F90)$ ]]; then
+  elif [[ "$word" =~ (.*)\.(f90)$ ]] || [[ "$word" =~ (.*)\.(f95)$ ]] || [[ "$word" =~ (.*)\.(f03)$ ]] || [[ "$word" =~ (.*)\.(F90)$ ]] || [[ "$word" =~ (.*)\.(f)$ ]]; then
     # Or a Fortran file
     INPUT_FILES+=("${BASH_REMATCH[1]}")
     EXTENSIONS+=("${BASH_REMATCH[2]}")
@@ -84,14 +84,25 @@ if [[ "$GEN_DEPS" = true ]]; then
   exit $?
 fi
 
-if [[ ((${#INPUT_FILES[@]} -gt 1) && ($OUTPUT_FILE != "") && ("$ONLY_COMPILE" = true)) || \
-      ((${#INPUT_FILES[@]} -eq 0) && (${#OBJECT_FILES[@]} -eq 0)) ]]; then
+if [[ ((${#INPUT_FILES[@]} -gt 1) && ($OUTPUT_FILE != "") && ("$ONLY_COMPILE" = true)) ]]; then
   # This is illegal, just call the compiler to error out
+  echo "ERROR: There are multiple input files, we're not linking, and an output file was specified. Aborting."
+  ${LLVMPATH}${COMPILER} $ARGS
+  exit $?
+fi
+
+if [[ ((${#INPUT_FILES[@]} -eq 0) && (${#OBJECT_FILES[@]} -eq 0)) ]]; then
+  echo "ERROR: There are no input files or object files. Aborting."
   ${LLVMPATH}${COMPILER} $ARGS
   exit $?
 fi
 
 if [[ (${#INPUT_FILES[@]} -eq 0) ]]; then
+  if [[ $ONLY_COMPILE = true ]]; then
+    echo "ERROR: Specified to only compile with '-c', but specified no input files. Aborting."
+    ${LLVMPATH}${COMPILER} $ARGS
+    exit $?
+  fi
   ONLY_LINK=true
 fi
 
