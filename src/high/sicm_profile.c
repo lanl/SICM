@@ -247,7 +247,7 @@ void sh_stop_profile_thread() {
       }
       printf("\n");
       for(n = 0; n < profopts.num_events; n++) {
-        printf("  %s: %zu\n", profopts.events[n], tracker.arenas[i]->event_totals[n]);
+        printf("  %s: %zu\n", profopts.events[n], tracker.arenas[i]->profiles[n].total);
       }
       if(profopts.should_profile_rss) {
         printf("  Peak RSS: %zu\n", tracker.arenas[i]->peak_rss);
@@ -294,8 +294,12 @@ get_accesses() {
   struct perf_event_header *header;
   int err;
   size_t i, n;
+  profile_info *profinfo;
 
+  /* Outer loop loops over the events */
   for(i = 0; i < profopts.num_events; i++) {
+
+    /* Loops over the arenas */
     for(n = 0; n <= tracker.max_index; n++) {
       if(!(tracker.arenas[n])) continue;
       tracker.arenas[n]->accumulator = 0;
@@ -360,7 +364,12 @@ get_accesses() {
 
     for(n = 0; n <= tracker.max_index; n++) {
       if(!(tracker.arenas[n])) continue;
-      tracker.arenas[n]->event_totals[i] += tracker.arenas[n]->accumulator;
+      profinfo = &(tracker.arenas[n]->profiles[i]); /* This is a pointer to the profiling info for one arena for one event */
+      profinfo->total += tracker.arenas[n]->accumulator;
+      profinfo->num_intervals++;
+      /* One size_t per interval for this one event */
+      profinfo->intervals = realloc(profinfo->intervals, profinfo->num_intervals * sizeof(size_t));
+      profinfo->intervals[profinfo->num_intervals - 1] = tracker.arenas[n]->accumulator;
     }
   }
 

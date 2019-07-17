@@ -126,9 +126,11 @@ void sh_create_arena(int index, int id, sicm_device *device) {
   tracker.arenas[index]->rss = 0;
   tracker.arenas[index]->peak_rss = 0;
   tracker.arenas[index]->avg_rss = 0;
-  tracker.arenas[index]->event_totals = calloc(profopts.num_events, sizeof(size_t));
+  tracker.arenas[index]->profiles = calloc(profopts.num_events, sizeof(profile_info));
   for(i = 0; i < profopts.num_events; i++) {
-    tracker.arenas[index]->event_totals[i] = 0;
+    tracker.arenas[index]->profiles[i].total = 0;
+    tracker.arenas[index]->profiles[i].num_intervals = 0;
+    tracker.arenas[index]->profiles[i].interval_vals = NULL;
   }
 
   /* Need to construct a sicm_device_list of one device */
