@@ -368,8 +368,8 @@ get_accesses() {
       profinfo->total += tracker.arenas[n]->accumulator;
       profinfo->num_intervals++;
       /* One size_t per interval for this one event */
-      profinfo->intervals = realloc(profinfo->intervals, profinfo->num_intervals * sizeof(size_t));
-      profinfo->intervals[profinfo->num_intervals - 1] = tracker.arenas[n]->accumulator;
+      profinfo->interval_vals = realloc(profinfo->interval_vals, profinfo->num_intervals * sizeof(size_t));
+      profinfo->interval_vals[profinfo->num_intervals - 1] = tracker.arenas[n]->accumulator;
     }
   }
 
