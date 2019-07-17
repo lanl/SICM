@@ -17,6 +17,7 @@ LD_COMPILER="${LD_COMPILER:-clang}"
 LD_LINKER="${LD_LINKER:-clang}"
 
 # To disable transformation
+NO_IR="${NO_IR:- }"
 NO_TRANSFORM="${NO_TRANSFORM:- }"
 
 # The original arguments and the ones we're going to add
@@ -75,8 +76,8 @@ if [[ $OUTPUT_FILE == "" ]]; then
 fi
 LINKARGS="$LINKARGS -L${LIB_DIR} -lsicm_high -lsicm_new_delete -lsicm_cstd -Wl,-rpath,${LIB_DIR}"
 
-# If we're going to skip the transformation
-if [[ $NO_TRANSFORM != " " ]]; then
+# If we're going to skip going to IR
+if [[ $NO_IR != " " ]]; then
   ${LLVMPATH}${LD_LINKER} $ARGS -L${LIB_DIR} -lsicm_high -lsicm_new_delete -lsicm_cstd -Wl,-rpath,${LIB_DIR}
   exit $?
 fi
@@ -90,25 +91,27 @@ fi
 ${LLVMPATH}${LLVMLINK} $BC_STR -o .sicm_ir.bc
 
 # Run the compiler pass to generate the call graph.
-${LLVMPATH}${LLVMOPT} -load ${LIB_DIR}/libsicm_compass.so -compass-mode=analyze \
-    -compass-quick-exit -compass -compass-depth=3 \
-    .sicm_ir.bc -o .sicm_ir_transformed.bc
+if [[ $NO_TRANSFORM = " " ]]; then
+  ${LLVMPATH}${LLVMOPT} -load ${LIB_DIR}/libsicm_compass.so -compass-mode=analyze \
+      -compass-quick-exit -compass -compass-depth=3 \
+      .sicm_ir.bc -o .sicm_ir_transformed.bc
 
-# Run the compiler pass on each individual file
-# Construct a newline-separated list of commands.
-COMMANDS=""
-if [ -z ${SH_RDSPY+x} ]; then
-    for file in "${FILES_ARR[@]}"; do
-      COMMANDS+="${LLVMPATH}${OPT} -load ${LIB_DIR}/libsicm_compass.so -compass-detail -compass-mode=transform -compass -compass-depth=3 ${file}.bc -o ${file}.bc"
-      COMMANDS+=$'\n'
-    done
-else
-    for file in "${FILES_ARR[@]}"; do
-      COMMANDS+="${LLVMPATH}${LLVMOPT} -load ${LIB_DIR}/libsicm_compass.so -load ${LIB_DIR}/libsicm_rdspy.so -compass-mode=transform -compass -compass-depth=3 -rdspy -rdspy-sampling-threshold=${SH_RDSPY_SAMPLE} ${file}.bc -o ${file}.bc"
-      COMMANDS+=$'\n'
-    done
+  # Run the compiler pass on each individual file
+  # Construct a newline-separated list of commands.
+  COMMANDS=""
+  if [ -z ${SH_RDSPY+x} ]; then
+      for file in "${FILES_ARR[@]}"; do
+        COMMANDS+="${LLVMPATH}${OPT} -load ${LIB_DIR}/libsicm_compass.so -compass-detail -compass-mode=transform -compass -compass-depth=3 ${file}.bc -o ${file}.bc"
+        COMMANDS+=$'\n'
+      done
+  else
+      for file in "${FILES_ARR[@]}"; do
+        COMMANDS+="${LLVMPATH}${LLVMOPT} -load ${LIB_DIR}/libsicm_compass.so -load ${LIB_DIR}/libsicm_rdspy.so -compass-mode=transform -compass -compass-depth=3 -rdspy -rdspy-sampling-threshold=${SH_RDSPY_SAMPLE} ${file}.bc -o ${file}.bc"
+        COMMANDS+=$'\n'
+      done
+  fi
+  echo "$COMMANDS" | xargs -I CMD --max-procs=64 bash -c CMD
 fi
-echo "$COMMANDS" | xargs -I CMD --max-procs=64 bash -c CMD
 
 # Also compile each file to its transformed object file, overwriting the old one
 COMMANDS=""

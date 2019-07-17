@@ -9,6 +9,7 @@
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 
 # To disable the transformation
+NO_IR="${NO_IR:- }"
 NO_TRANSFORM="${NO_TRANSFORM:- }"
 
 # Might want to define these manually depending on environment
@@ -111,7 +112,7 @@ if [[ (${#INPUT_FILES[@]} -eq 0) ]]; then
 fi
 
 # If we're just going to call the default compiler
-if [[ ($NO_TRANSFORM != " ") ]]; then
+if [[ ($NO_IR != " ") ]]; then
   if [[ ${ONLY_LINK} = false ]]; then
     ${LLVMPATH}${COMPILER} $ARGS
     if [[ ${ONLY_COMPILE} = false ]]; then
