@@ -66,6 +66,11 @@ static cl::opt<bool>
                      cl::desc("Emit more detail about the calling contexts "
                               "to the contexts file."));
 
+__attribute__((used))
+static void plv(llvm::Value *v) {
+  v->print(llvm::outs());
+}
+
 static LLVMContext myContext;
 
 namespace {
@@ -324,45 +329,42 @@ struct compass : public ModulePass {
     }
     ////////////////////////////////////////////////////////////////////////////////
 
-    void plv(llvm::Value *value) {
-      value->print(llvm::outs());
-    }
 
     ///////////////////////////////////////////////// construct bottom-up call graph
     ////////////////////////////////////////////////////////////////////////////////
+   
+    void rec_search(Function * f, std::set<Function*>& visited) {
+        if (!f)
+            return;
+
+        if (visited.find(f) != visited.end())
+            return;
+        visited.insert(f);
+
+        buCG[f];
+
+        for (auto & BB : *f) {
+            for (auto it = BB.begin(); it != BB.end(); it++) {
+                if (isCallSite(&*it)) {
+                    CallSite site(&*it);
+                    Function * callee = getCalledFunction(site);
+                    if (callee) {
+                        std::string combined = f->getName().str() + callee->getName().str();
+                        times1Calls2[combined] += 1;
+                        buCG[callee].insert(f);
+                        rec_search(callee, visited);
+                    }
+                }
+            }
+        }
+    }
+    
     void buildBottomUpCG() {
         std::set<Function *> visited;
 
-        // recursive convenience lambda
-        std::function<void(Function *)> rec_search =
-            [&](Function * f) {
-                if (!f)
-                    return;
-
-                if (visited.find(f) != visited.end())
-                    return;
-                visited.insert(f);
-
-                buCG[f];
-
-                for (auto & BB : *f) {
-                    for (auto it = BB.begin(); it != BB.end(); it++) {
-                        if (isCallSite(&*it)) {
-                            CallSite site(&*it);
-                            Function * callee = getCalledFunction(site);
-                            if (callee) {
-                                std::string combined = f->getName().str() + callee->getName().str();
-                                times1Calls2[combined] += 1;
-                                buCG[callee].insert(f);
-                                rec_search(callee);
-                            }
-                        }
-                    }
-                }
-            };
 
         for (Function & node : *theModule) {
-            rec_search(&node);
+            rec_search(&node, visited);
         }
     }
     ////////////////////////////////////////////////////////////////////////////////
