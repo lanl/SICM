@@ -214,7 +214,7 @@ void sh_start_profile_thread() {
 }
 
 void sh_stop_profile_thread() {
-  size_t i, n;
+  size_t i, n, x;
 
   /* Stop the actual sampling */
   for(i = 0; i < profopts.num_events; i++) {
@@ -241,16 +241,27 @@ void sh_stop_profile_thread() {
     printf("===== PEBS RESULTS =====\n");
     for(i = 0; i <= tracker.max_index; i++) {
       if(!tracker.arenas[i]) continue;
+
+      /* Print the sites that are in this arena */
       printf("%d sites: ", tracker.arenas[i]->num_alloc_sites);
       for(n = 0; n < tracker.arenas[i]->num_alloc_sites; n++) {
         printf("%d ", tracker.arenas[i]->alloc_sites[n]);
       }
       printf("\n");
-      for(n = 0; n < profopts.num_events; n++) {
-        printf("  %s: %zu\n", profopts.events[n], tracker.arenas[i]->profiles[n].total);
-      }
+
+      /* Print the RSS of the arena */
       if(profopts.should_profile_rss) {
         printf("  Peak RSS: %zu\n", tracker.arenas[i]->peak_rss);
+      }
+
+      /* Print information for each event */
+      for(n = 0; n < profopts.num_events; n++) {
+        printf("  Event: %s\n", profopts.events[n]);
+        printf("    Total: %zu\n", tracker.arenas[i]->profiles[n].total);
+        printf("    Number of intervals: %zu\n", tracker.arenas[i]->profiles[n].num_intervals);
+        for(x = 0; x < tracker.arenas[i]->profiles[n].num_intervals; x++) {
+          printf("      %zu\n", tracker.arenas[i]->profiles[n].interval_vals[x]);
+        }
       }
     }
     printf("===== END PEBS RESULTS =====\n");
