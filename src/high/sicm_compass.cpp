@@ -300,7 +300,7 @@ struct compass : public ModulePass {
         val = getCalledValue(site);
 
         if (BitCastOperator * op = dyn_cast<BitCastOperator>(val))
-            return cast<Function>(op->stripPointerCasts());
+            return dyn_cast<Function>(op->stripPointerCasts());
 
         return nullptr;
     }
