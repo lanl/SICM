@@ -79,7 +79,7 @@ static sarena *sicm_arena_new(size_t sz, sicm_arena_flags flags, sicm_device_lis
 	if (nodemask == NULL)
 		return NULL;
 
-	
+
 	sa = malloc(sizeof(sarena));
 	if (sa == NULL) {
 		return NULL;
@@ -110,7 +110,7 @@ static sarena *sicm_arena_new(size_t sz, sicm_arena_flags flags, sicm_device_lis
 	sa->size = 0;
 	sa->maxsize = sz;
 	sa->nodemask = nodemask;
-	sa->fd = -1;	// DON'T TOUCH! sa_alloc depends on it being -1 when arenas.crete is called.
+	sa->fd = -1;	// DON'T TOUCH! sa_alloc depends on it being -1 when arenas.create is called.
 	sa->extents = extent_arr_init();
 	sa->hooks = sa_hooks;
 	new_hooks = &sa->hooks;
