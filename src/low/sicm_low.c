@@ -8,6 +8,7 @@
 #include <numaif.h>
 #include <sched.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <time.h>
 #include <unistd.h>
@@ -53,6 +54,17 @@ char * sicm_device_tag_str(sicm_device_tag tag) {
         break;
   }
   return NULL;
+}
+
+static int sicm_device_compare(const void * lhs, const void * rhs) {
+  sicm_device * l = * (sicm_device **) lhs;
+  sicm_device * r = * (sicm_device **) rhs;
+
+  if (l->node != r->node) {
+    return l->node - r->node;
+  }
+
+  return l->page_size - r->page_size;
 }
 
 /* Only initialize SICM once */
@@ -273,6 +285,8 @@ struct sicm_device_list sicm_init() {
   numa_bitmask_free(compute_nodes);
   numa_bitmask_free(non_dram_nodes);
   free(huge_page_sizes);
+
+  qsort(devices, idx, sizeof(sicm_device *), sicm_device_compare);
 
   sicm_global_devices = (struct sicm_device_list){ .count = idx, .devices = devices };
 
