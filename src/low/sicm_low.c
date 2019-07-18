@@ -84,7 +84,7 @@ struct sicm_device_list sicm_init() {
 
   struct bitmask* non_dram_nodes = numa_bitmask_alloc(node_count);
 
-  sicm_global_device_array = malloc((device_count + 1) * sizeof(struct sicm_device));
+  sicm_global_device_array = malloc(device_count * sizeof(struct sicm_device));
   int* huge_page_sizes = malloc(huge_page_size_count * sizeof(int));
 
   int i, j;
@@ -93,11 +93,12 @@ struct sicm_device_list sicm_init() {
   normal_page_size = numa_pagesize() / 1024;
 
   // initialize the device list
-  sicm_device **devices = malloc((device_count + 1) * sizeof(sicm_device *));
-  for(i = 0; i <= device_count; i++) {
+  sicm_device **devices = malloc(device_count * sizeof(sicm_device *));
+  for(i = 0; i < device_count; i++) {
       devices[i] = &sicm_global_device_array[i];
       devices[i]->tag = INVALID_TAG;
       devices[i]->node = -1;
+      devices[i]->page_size = -1;
   }
 
   // Find the actual set of huge page sizes (reported in KiB)
@@ -167,15 +168,17 @@ struct sicm_device_list sicm_init() {
           }
           devices[idx]->tag = SICM_KNL_HBM;
           devices[idx]->node = i;
+          devices[idx]->page_size = normal_page_size;
           devices[idx]->data.knl_hbm = (struct sicm_knl_hbm_data){
-            .compute_node=compute_node, .page_size=normal_page_size };
+            .compute_node=compute_node };
           numa_bitmask_setbit(non_dram_nodes, i);
           idx++;
           for(j = 0; j < huge_page_size_count; j++) {
               devices[idx]->tag = SICM_KNL_HBM;
               devices[idx]->node = i;
+              devices[idx]->page_size = huge_page_sizes[j];
               devices[idx]->data.knl_hbm = (struct sicm_knl_hbm_data){
-                .compute_node=compute_node, .page_size=huge_page_sizes[j] };
+                .compute_node=compute_node };
               idx++;
           }
         }
@@ -201,16 +204,18 @@ struct sicm_device_list sicm_init() {
 	   }
          }
          devices[idx]->tag = SICM_OPTANE;
-	 devices[idx]->node = i;
-         devices[idx]->data.optane = (struct sicm_optane_data){ 
-           .compute_node=compute_node, .page_size=normal_page_size };
+         devices[idx]->node = i;
+         devices[idx]->page_size = normal_page_size;
+         devices[idx]->data.optane = (struct sicm_optane_data){
+           .compute_node=compute_node };
          numa_bitmask_setbit(non_dram_nodes, i);
          idx++;
          for(j = 0; j < huge_page_size_count; j++) {
              devices[idx]->tag = SICM_OPTANE;
-	     devices[idx]->node = i;
+             devices[idx]->node = i;
+             devices[idx]->page_size = huge_page_sizes[j];
              devices[idx]->data.optane = (struct sicm_optane_data){
-               .compute_node=compute_node, .page_size=huge_page_sizes[j] };
+               .compute_node=compute_node };
              idx++;
          }
        }
@@ -228,13 +233,15 @@ struct sicm_device_list sicm_init() {
       if ((numa_node_size(i, &size) != -1) && size) {
         devices[idx]->tag = SICM_POWERPC_HBM;
         devices[idx]->node = i;
-        devices[idx]->data.powerpc_hbm = (struct sicm_powerpc_hbm_data){ .page_size=normal_page_size };
+        devices[idx]->page_size = normal_page_size;
+        devices[idx]->data.powerpc_hbm = (struct sicm_powerpc_hbm_data){ };
         numa_bitmask_setbit(non_dram_nodes, i);
         idx++;
         for(j = 0; j < huge_page_size_count; j++) {
           devices[idx]->tag = SICM_POWERPC_HBM;
           devices[idx]->node = i;
-          devices[idx]->data.powerpc_hbm = (struct sicm_powerpc_hbm_data){ .page_size=huge_page_sizes[j] };
+          devices[idx]->page_size = huge_page_sizes[j];
+          devices[idx]->data.powerpc_hbm = (struct sicm_powerpc_hbm_data){ };
           idx++;
         }
       }
@@ -249,12 +256,14 @@ struct sicm_device_list sicm_init() {
       if ((numa_node_size(i, &size) != -1) && size) {
         devices[idx]->tag = SICM_DRAM;
         devices[idx]->node = i;
-        devices[idx]->data.dram = (struct sicm_dram_data){ .page_size=normal_page_size };
+        devices[idx]->page_size = normal_page_size;
+        devices[idx]->data.dram = (struct sicm_dram_data){ };
         idx++;
         for(j = 0; j < huge_page_size_count; j++) {
           devices[idx]->tag = SICM_DRAM;
           devices[idx]->node = i;
-          devices[idx]->data.dram = (struct sicm_dram_data){ .page_size=huge_page_sizes[j] };
+          devices[idx]->page_size = huge_page_sizes[j];
+          devices[idx]->data.dram = (struct sicm_dram_data){ };
           idx++;
         }
       }
@@ -264,10 +273,6 @@ struct sicm_device_list sicm_init() {
   numa_bitmask_free(compute_nodes);
   numa_bitmask_free(non_dram_nodes);
   free(huge_page_sizes);
-
-  // "NULL terminate" list
-  devices[idx]->tag = INVALID_TAG;
-  devices[idx]->node = -1;
 
   sicm_global_devices = (struct sicm_device_list){ .count = idx, .devices = devices };
 
@@ -283,7 +288,7 @@ void sicm_fini() {
       sicm_init_count--;
       if (sicm_init_count == 0) {
           free(sicm_global_devices.devices);
-	  free(sicm_global_device_array);
+          free(sicm_global_device_array);
           memset(&sicm_global_devices, 0, sizeof(sicm_global_devices));
       }
   }
@@ -483,19 +488,7 @@ int sicm_numa_id(struct sicm_device* device) {
 }
 
 int sicm_device_page_size(struct sicm_device* device) {
-  switch(device->tag) {
-    case SICM_DRAM:
-      return device->data.dram.page_size;
-    case SICM_KNL_HBM:
-      return device->data.knl_hbm.page_size;
-    case SICM_OPTANE:
-      return device->data.optane.page_size;
-    case SICM_POWERPC_HBM:
-      return device->data.powerpc_hbm.page_size;
-    case INVALID_TAG:
-    default:
-      return -1;
-  }
+    return device?device->page_size:-1;
 }
 
 int sicm_device_eq(sicm_device* dev1, sicm_device* dev2) {
@@ -515,21 +508,21 @@ int sicm_device_eq(sicm_device* dev1, sicm_device* dev2) {
       return 0;
   }
 
+  if (dev1->page_size != dev2->page_size) {
+      return 0;
+  }
+
   switch(dev1->tag) {
     case SICM_DRAM:
-      return
-          (dev1->data.dram.page_size == dev2->data.dram.page_size);
+      return 1;
     case SICM_KNL_HBM:
       return
-          (dev1->data.knl_hbm.compute_node == dev2->data.knl_hbm.compute_node) &&
-          (dev1->data.knl_hbm.page_size == dev2->data.knl_hbm.page_size);
+          (dev1->data.knl_hbm.compute_node == dev2->data.knl_hbm.compute_node);
     case SICM_OPTANE:
       return
-          (dev1->data.optane.compute_node == dev2->data.optane.compute_node) &&
-          (dev1->data.optane.page_size == dev2->data.optane.page_size);
+          (dev1->data.optane.compute_node == dev2->data.optane.compute_node);
     case SICM_POWERPC_HBM:
-      return
-          (dev1->data.powerpc_hbm.page_size == dev2->data.powerpc_hbm.page_size);
+      return 1;
     case INVALID_TAG:
     default:
       return 0;
