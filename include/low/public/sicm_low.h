@@ -51,24 +51,22 @@ typedef enum sicm_arena_flags {
 
 /// Data specific to a DRAM device.
 typedef struct sicm_dram_data {
-  int page_size; ///< Page size
+  char pad;  // padding to make this struct have the same size in C and C++
 } sicm_dram_data;
 
 /// Data specific to a KNL HBM device.
 typedef struct sicm_knl_hbm_data {
   int compute_node;
-  int page_size; ///< Page size
 } sicm_knl_hbm_data;
 
 /// Data specific to a PowerPC 9 HBM device.
 typedef struct sicm_powerpc_hbm_data {
-  int page_size;
+  char pad;  // padding to make this struct have the same size in C and C++
 } sicm_powerpc_hbm_data;
 
 /// Data specific to a Optane device.
 typedef struct sicm_optane_data {
   int compute_node;
-  int page_size; ///< Page size
 } sicm_optane_data;
 
 /// Data that, given a device type, uniquely identify the device within that type.
@@ -95,6 +93,7 @@ typedef union sicm_device_data {
 typedef struct sicm_device {
   sicm_device_tag tag;   ///< Type of memory device
   int node;              ///< NUMA node
+  int page_size;         ///< Page size
   sicm_device_data data; ///< Per-type identifying information
 } sicm_device;
 
