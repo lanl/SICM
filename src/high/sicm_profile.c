@@ -318,7 +318,7 @@ get_accesses() {
       tracker.arenas[n]->accumulator = 0;
     }
 
-    /* Wait for the perf buffer to be ready */
+    /* Wait for the perf buffer to be ready
     prof.pfd.fd = prof.fds[i];
     prof.pfd.events = POLLIN;
     prof.pfd.revents = 0;
@@ -328,7 +328,7 @@ get_accesses() {
     } else if(err == -1) {
       fprintf(stderr, "Error occurred polling. Aborting.\n");
       exit(1);
-    }
+    } */
 
     /* Get ready to read */
     head = prof.metadata[i]->data_head;
