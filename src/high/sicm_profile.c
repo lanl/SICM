@@ -390,7 +390,9 @@ get_accesses() {
 
     for(n = 0; n <= tracker.max_index; n++) {
       arena = tracker.arenas[n];
-      if(!arena) continue;
+      /* This check is necessary because an arena could have been created
+       * after we added one to the num_intervals up above. num_intervals can't be zero. */
+      if((!arena) || (!arena->num_intervals)) continue;
       profinfo = &(arena->profiles[i]);
       profinfo->total += arena->accumulator;
       /* One size_t per interval for this one event */
