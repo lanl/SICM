@@ -260,7 +260,7 @@ void sh_stop_profile_thread() {
       for(n = 0; n < profopts.num_events; n++) {
         printf("  Event: %s\n", profopts.events[n]);
         printf("    Total: %zu\n", tracker.arenas[i]->profiles[n].total);
-        for(x = 0; x < tracker.arenas[i]->profiles[n].num_intervals; x++) {
+        for(x = 0; x < tracker.arenas[i]->num_intervals; x++) {
           printf("      %zu\n", tracker.arenas[i]->profiles[n].interval_vals[x]);
         }
       }
