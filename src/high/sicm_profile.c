@@ -311,7 +311,7 @@ get_accesses() {
 
   for(n = 0; n <= tracker.max_index; n++) {
     arena = tracker.arenas[n];
-    if(!(tracker.arenas[n])) continue;
+    if(!arena) continue;
     if(arena->num_intervals == 0) {
       /* This is the arena's first interval, make note */
       arena->first_interval = prof.cur_interval;
@@ -325,8 +325,9 @@ get_accesses() {
     /* Loops over the arenas */
     total_samples = 0;
     for(n = 0; n <= tracker.max_index; n++) {
-      if(!(tracker.arenas[n])) continue;
-      tracker.arenas[n]->accumulator = 0;
+      arena = tracker.arenas[n];
+      if(!arena) continue;
+      arena->accumulator = 0;
     }
 
     /* Wait for the perf buffer to be ready
