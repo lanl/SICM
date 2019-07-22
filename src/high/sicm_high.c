@@ -81,6 +81,7 @@ int get_thread_index() {
 /* Adds an arena to the `arenas` array. */
 void sh_create_arena(int index, int id, sicm_device *device) {
   size_t i;
+  arena_info *arena;
 
   if((tracker.arenas[index] != NULL) && (get_alloc_site(tracker.arenas[index], id) != -1)) {
     return;
@@ -118,20 +119,20 @@ void sh_create_arena(int index, int id, sicm_device *device) {
   }
 
   /* Create the arena if it doesn't exist */
-  tracker.arenas[index] = calloc(1, sizeof(arena_info));
-  tracker.arenas[index]->index = index;
-  tracker.arenas[index]->alloc_sites = malloc(sizeof(int) * tracker.max_sites_per_arena);
-  tracker.arenas[index]->alloc_sites[0] = id;
-  tracker.arenas[index]->num_alloc_sites = 1;
-  tracker.arenas[index]->num_intervals = 0;
-  tracker.arenas[index]->first_interval = 0;
-  tracker.arenas[index]->rss = 0;
-  tracker.arenas[index]->peak_rss = 0;
-  tracker.arenas[index]->avg_rss = 0;
-  tracker.arenas[index]->profiles = calloc(profopts.num_events, sizeof(profile_info));
+  arena = calloc(1, sizeof(arena_info));
+  arena->index = index;
+  arena->alloc_sites = malloc(sizeof(int) * tracker.max_sites_per_arena);
+  arena->alloc_sites[0] = id;
+  arena->num_alloc_sites = 1;
+  arena->num_intervals = 0;
+  arena->first_interval = 0;
+  arena->rss = 0;
+  arena->peak_rss = 0;
+  arena->avg_rss = 0;
+  arena->profiles = calloc(profopts.num_events, sizeof(profile_info));
   for(i = 0; i < profopts.num_events; i++) {
-    tracker.arenas[index]->profiles[i].total = 0;
-    tracker.arenas[index]->profiles[i].interval_vals = NULL;
+    arena->profiles[i].total = 0;
+    arena->profiles[i].interval_vals = NULL;
   }
 
   /* Need to construct a sicm_device_list of one device */
@@ -139,8 +140,11 @@ void sh_create_arena(int index, int id, sicm_device *device) {
   dl.count = 1;
   dl.devices = malloc(sizeof(sicm_device *) * 1);
   dl.devices[0] = device;
-  tracker.arenas[index]->arena = sicm_arena_create(0, SICM_ALLOC_RELAXED, &dl);
+  arena->arena = sicm_arena_create(0, SICM_ALLOC_RELAXED, &dl);
   free(dl.devices);
+
+  /* Now add the arena to the array of arenas */
+  tracker.arenas[index] = arena;
 }
 
 /* Adds an extent to the `extents` array. */
