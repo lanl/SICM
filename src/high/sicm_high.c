@@ -123,6 +123,8 @@ void sh_create_arena(int index, int id, sicm_device *device) {
   tracker.arenas[index]->alloc_sites = malloc(sizeof(int) * tracker.max_sites_per_arena);
   tracker.arenas[index]->alloc_sites[0] = id;
   tracker.arenas[index]->num_alloc_sites = 1;
+  tracker.arenas[index]->num_intervals = 0;
+  tracker.arenas[index]->first_interval = 0;
   tracker.arenas[index]->rss = 0;
   tracker.arenas[index]->peak_rss = 0;
   tracker.arenas[index]->avg_rss = 0;

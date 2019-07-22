@@ -17,14 +17,15 @@ enum arena_layout {
   INVALID_LAYOUT
 };
 
+/* Profiling information for one event in a single arena */
 typedef struct profile_info {
-  size_t total, num_intervals;
+  size_t total;
   size_t *interval_vals; /* One for each interval */
 } profile_info;
 
 /* Keeps track of additional information about arenas */
 typedef struct arena_info {
-  size_t rss, peak_rss, avg_rss, accumulator; /* Profiling info */
+  size_t rss, peak_rss, avg_rss, accumulator, num_intervals, first_interval; /* Profiling info */
   int *alloc_sites, num_alloc_sites; /* Stores the allocation sites that are in this arena */
   unsigned index; /* Index into the arenas array */
   sicm_arena arena; /* SICM's low-level interface pointer */

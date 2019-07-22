@@ -45,6 +45,9 @@ typedef struct profile_thread {
   pthread_t profile_all_id;
   pthread_t profile_one_id;
 
+  /* Keeping track of intervals */
+  size_t cur_interval;
+
   /* For perf */
   size_t size;
   struct perf_event_attr **pes; /* Array of pe structs, for multiple events */
@@ -61,7 +64,7 @@ typedef struct profile_thread {
   size_t pagesize, addrsize;
 
   /* For measuring bandwidth */
-  size_t num_intervals;
+  size_t num_bandwidth_intervals;
   float running_avg;
   float max_bandwidth;
 } profile_thread;

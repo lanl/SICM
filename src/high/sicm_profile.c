@@ -253,12 +253,13 @@ void sh_stop_profile_thread() {
       if(profopts.should_profile_rss) {
         printf("  Peak RSS: %zu\n", tracker.arenas[i]->peak_rss);
       }
+      printf("    Number of intervals: %zu\n", tracker.arenas[i]->num_intervals);
+      printf("    First interval: %zu\n", tracker.arenas[i]->first_interval);
 
       /* Print information for each event */
       for(n = 0; n < profopts.num_events; n++) {
         printf("  Event: %s\n", profopts.events[n]);
         printf("    Total: %zu\n", tracker.arenas[i]->profiles[n].total);
-        printf("    Number of intervals: %zu\n", tracker.arenas[i]->profiles[n].num_intervals);
         for(x = 0; x < tracker.arenas[i]->profiles[n].num_intervals; x++) {
           printf("      %zu\n", tracker.arenas[i]->profiles[n].interval_vals[x]);
         }
@@ -307,6 +308,15 @@ get_accesses() {
   size_t i, n;
   profile_info *profinfo;
   size_t total_samples;
+
+  for(n = 0; n <= tracker.max_index; n++) {
+    arena = tracker.arenas[n];
+    if(arena->num_intervals == 0) {
+      /* This is the arena's first interval, make note */
+      arena->first_interval = prof.cur_interval;
+    }
+    arena->num_intervals++;
+  }
 
   /* Outer loop loops over the events */
   for(i = 0; i < profopts.num_events; i++) {
@@ -376,16 +386,14 @@ get_accesses() {
     prof.metadata[i]->data_tail = head;
     __sync_synchronize();
 
-    if(total_samples > 0) {
-      for(n = 0; n <= tracker.max_index; n++) {
-        if(!(tracker.arenas[n])) continue;
-        profinfo = &(tracker.arenas[n]->profiles[i]); /* This is a pointer to the profiling info for one arena for one event */
-        profinfo->total += tracker.arenas[n]->accumulator;
-        profinfo->num_intervals++;
-        /* One size_t per interval for this one event */
-        profinfo->interval_vals = realloc(profinfo->interval_vals, profinfo->num_intervals * sizeof(size_t));
-        profinfo->interval_vals[profinfo->num_intervals - 1] = tracker.arenas[n]->accumulator;
-      }
+    for(n = 0; n <= tracker.max_index; n++) {
+      arena = tracker.arenas[n];
+      if(!arena) continue;
+      profinfo = &(arena->profiles[i]);
+      profinfo->total += arena->accumulator;
+      /* One size_t per interval for this one event */
+      profinfo->interval_vals = realloc(profinfo->interval_vals, arena->num_intervals * sizeof(size_t));
+      profinfo->interval_vals[arena->num_intervals - 1] = arena->accumulator;
     }
   }
 
@@ -420,8 +428,8 @@ get_bandwidth()
   printf("%f MB/s\n", total);
   
   /* Calculate the running average */
-  prof.num_intervals++;
-  prof.running_avg = ((prof.running_avg * (prof.num_intervals - 1)) + total) / prof.num_intervals;
+  prof.num_bandwidth_intervals++;
+  prof.running_avg = ((prof.running_avg * (prof.num_bandwidth_intervals - 1)) + total) / prof.num_bandwidth_intervals;
 
   if(total > prof.max_bandwidth) {
     prof.max_bandwidth = total;
@@ -577,10 +585,12 @@ void *profile_all(void *a) {
 
   timer.tv_sec = profopts.profile_all_rate;
   timer.tv_nsec = 0;
+  prof.cur_interval = 0;
 
   while(!sh_should_stop()) {
     get_accesses();
     nanosleep(&timer, NULL);
+    prof.cur_interval++;
   }
 }
 
@@ -592,7 +602,7 @@ void *profile_one(void *a) {
     ioctl(prof.fds[i], PERF_EVENT_IOC_RESET, 0);
     ioctl(prof.fds[i], PERF_EVENT_IOC_ENABLE, 0);
   }
-  prof.num_intervals = 0;
+  prof.num_bandwidth_intervals = 0;
   prof.running_avg = 0;
   prof.max_bandwidth = 0;
 
