@@ -584,8 +584,8 @@ void *profile_all(void *a) {
     ioctl(prof.fds[i], PERF_EVENT_IOC_ENABLE, 0);
   }
 
-  timer.tv_sec = profopts.profile_all_rate;
-  timer.tv_nsec = 0;
+  timer.tv_sec = profopts.profile_all_rate_seconds;
+  timer.tv_nsec = profopts.profile_all_rate_nseconds;
   prof.cur_interval = 0;
 
   while(!sh_should_stop()) {

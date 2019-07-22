@@ -150,11 +150,16 @@ void set_options() {
     profopts.should_profile_all = 1;
   }
   if(profopts.should_profile_all) {
-    profopts.profile_all_rate = 1.0;
+    profopts.profile_all_rate_seconds = 1;
+    profopts.profile_all_rate_nseconds = 0;
     if(profopts.should_profile_all) {
-      env = getenv("SH_PROFILE_ALL_RATE");
+      env = getenv("SH_PROFILE_ALL_RATE_SECONDS");
       if(env) {
-        profopts.profile_all_rate = strtof(env, NULL);
+        profopts.profile_all_rate_seconds = strtoimax(env, NULL, 10);
+      }
+      env = getenv("SH_PROFILE_ALL_RATE_NSECONDS");
+      if(env) {
+        profopts.profile_all_rate_nseconds = strtoimax(env, NULL, 10);
       }
     }
 
