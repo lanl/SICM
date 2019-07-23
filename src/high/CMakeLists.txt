@@ -1,4 +1,4 @@
-add_library(sicm_high SHARED sicm_high.c sicm_high_init.c sicm_profile.c sicm_rdspy.c)
+add_library(sicm_high SHARED sicm_high_arenas.c sicm_high_init.c sicm_profile.c sicm_rdspy.c)
 add_library(sicm_compass SHARED sicm_compass.cpp)
 add_library(sicm_rdspy SHARED sicm_rdspy.cpp)
 add_library(sicm_new_delete SHARED sicm_new_delete.cpp)
