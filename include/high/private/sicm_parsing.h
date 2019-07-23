@@ -38,7 +38,7 @@ static inline app_info *sh_parse_site_info(FILE *file) {
 	tree_it(int, siteptr) it;
 	app_info *info;
 
-	info = malloc(sizeof(app_info));
+	info = (app_info *)malloc(sizeof(app_info));
 	info->sites = tree_make(int, siteptr);
 	info->num_pebs_sites = 0;
 	info->num_mbi_sites = 0;
@@ -68,11 +68,11 @@ static inline app_info *sh_parse_site_info(FILE *file) {
         /* Found some MBI results */
         in_block = 1;
         it = tree_lookup(info->sites, site_id);
-        cur_sites = malloc(sizeof(siteptr));
+        cur_sites = (siteptr *)malloc(sizeof(siteptr));
         if(tree_it_good(it)) {
           cur_sites[0] = tree_it_val(it);
         } else {
-          cur_sites[0] = malloc(sizeof(site));
+          cur_sites[0] = (siteptr) malloc(sizeof(site));
           cur_sites[0]->bandwidth = 0;
           cur_sites[0]->peak_rss = 0;
           cur_sites[0]->accesses = 0;
@@ -112,7 +112,7 @@ static inline app_info *sh_parse_site_info(FILE *file) {
                       "%d sites:",
                       &num_sites);
       if(num_tok == 1) {
-        cur_sites = malloc(sizeof(siteptr) * num_sites);
+        cur_sites = (siteptr *) malloc(sizeof(siteptr) * num_sites);
         /* Iterate over the site IDs and read them in */
         tok = strtok(line, " ");
         tok = strtok(NULL, " ");
@@ -125,7 +125,7 @@ static inline app_info *sh_parse_site_info(FILE *file) {
             if(tree_it_good(it)) {
               cur_sites[i] = tree_it_val(it);
             } else {
-              cur_sites[i] = malloc(sizeof(site));
+              cur_sites[i] = (siteptr) malloc(sizeof(site));
               cur_sites[i]->bandwidth = 0;
               cur_sites[i]->peak_rss = 0;
               cur_sites[i]->accesses = 0;

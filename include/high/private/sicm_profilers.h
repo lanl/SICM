@@ -77,7 +77,7 @@ get_accesses(int s) {
         /* Search for which extent it goes into */
         extent_arr_for(tracker.extents, n) {
           if(!tracker.extents->arr[n].start && !tracker.extents->arr[n].end) continue;
-          arena = tracker.extents->arr[n].arena;
+          arena = (arena_info *)tracker.extents->arr[n].arena;
           if((addr >= tracker.extents->arr[n].start) && (addr <= tracker.extents->arr[n].end) && arena) {
             arena->accumulator++;
             total_samples++;
@@ -106,7 +106,7 @@ get_accesses(int s) {
       profinfo = &(arena->profiles[i]);
       profinfo->total += arena->accumulator;
       /* One size_t per interval for this one event */
-      profinfo->interval_vals = realloc(profinfo->interval_vals, arena->num_intervals * sizeof(size_t));
+      profinfo->interval_vals = (size_t *)realloc(profinfo->interval_vals, arena->num_intervals * sizeof(size_t));
       profinfo->interval_vals[arena->num_intervals - 1] = arena->accumulator;
     }
   }
@@ -157,7 +157,7 @@ get_rss(int s) {
 
 	/* Zero out the RSS values for each arena */
 	extent_arr_for(tracker.rss_extents, i) {
-    arena = tracker.rss_extents->arr[i].arena;
+    arena = (arena_info *)tracker.rss_extents->arr[i].arena;
     if(!arena) continue;
 		arena->rss = 0;
 	}
@@ -166,7 +166,7 @@ get_rss(int s) {
 	extent_arr_for(tracker.rss_extents, i) {
 		start = (uint64_t) tracker.rss_extents->arr[i].start;
 		end = (uint64_t) tracker.rss_extents->arr[i].end;
-		arena = tracker.rss_extents->arr[i].arena;
+		arena = (arena_info *)tracker.rss_extents->arr[i].arena;
     if(!arena) continue;
 
     numpages = (end - start) /prof.pagesize;
