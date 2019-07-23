@@ -15,7 +15,7 @@ void setup_timer(profile_thread *pt) {
 
   /* We need to wait until the thread has initialized
    * its tid */
-  printf("Waiting for a tid to be defined...\n");
+  printf("Waiting for a tid in %p to be defined...\n", pt);
   while(pt->tid == NULL) {}
   printf("Finished waiting.\n");
 
@@ -325,7 +325,7 @@ void *profile_all(void *a) {
   *tid = syscall(SYS_gettid);
   prof.profile_all.tid = tid;
 
-  printf("Profile_all thread entering infinite loop\n");
+  printf("Profile_all thread entering infinite loop. Filled the tid in %p.\n", &prof.profile_all);
 
   while(!sh_should_stop()) {
     /*
