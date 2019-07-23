@@ -16,7 +16,9 @@ void setup_timer(profile_thread *pt) {
   /* We need to wait until the thread has initialized
    * its tid */
   printf("Waiting for a tid in %p to be defined...\n", pt);
-  while(pt->tid == NULL) {}
+  while(pt->tid == NULL) {
+    printf("Still waiting: %p\n", pt->tid);
+  }
   printf("Finished waiting.\n");
 
   /* Set up the signal handler */
