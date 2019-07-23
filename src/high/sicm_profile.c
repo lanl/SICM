@@ -5,95 +5,64 @@
 #include <sys/types.h>
 #include <unistd.h>
 #include <fcntl.h>
+#include <time.h>
+#include <sys/syscall.h>
+#include <signal.h>
 
-profile_thread prof;
+profiler prof;
 use_tree(double, size_t);
 use_tree(size_t, deviceptr);
 
-#if 0
-void online_reconfigure() {
-  size_t i, packed_size, total_value;
-  double acc_per_byte;
-  tree(double, size_t) sorted_arenas;
-  tree(size_t, deviceptr) new_knapsack;
-  tree_it(double, size_t) it;
-  tree_it(size_t, deviceptr) kit;
-  tree_it(int, deviceptr) sit;
-  char break_next_site;
-  int id;
+void setup_timer(profile_thread *pt) {
+  sigset_t mask;
 
-  printf("===== STARTING RECONFIGURING =====\n");
-  /* Sort all sites by accesses/byte */
-  sorted_arenas = tree_make(double, size_t); /* acc_per_byte -> arena index */
-  packed_size = 0;
-  for(i = 0; i <= max_index; i++) {
-    if(!arenas[i]) continue;
-    if(arenas[i]->peak_rss == 0) continue;
-    if(arenas[i]->accesses == 0) continue;
-    acc_per_byte = ((double)arenas[i]->accesses) / ((double) arenas[i]->peak_rss);
-    it = tree_lookup(sorted_arenas, acc_per_byte);
-    while(tree_it_good(it)) {
-      /* Inch this site a little higher to avoid collisions in the tree */
-      acc_per_byte += 0.000000000000000001;
-      it = tree_lookup(sorted_arenas, acc_per_byte);
-    }
-    tree_insert(sorted_arenas, acc_per_byte, i);
+  /* We need to wait until the thread has initialized
+   * its tid */
+  while(pt->tid == NULL) {}
+
+  /* Set up the signal handler */
+  pt->sa.sa_flags = SA_SIGINFO;
+  pt->sa.sa_handler = pt->func;
+  sigemptyset(&pt->sa.sa_mask);
+  if(sigaction(SIGRTMIN, &pt->sa, NULL) == -1) {
+    fprintf(stderr, "Error creating signal handler. Aborting.\n");
+    exit(1);
   }
 
-  /* Use a greedy algorithm to pack sites into the knapsack */
-  total_value = 0;
-  break_next_site = 0;
-  new_knapsack = tree_make(size_t, deviceptr); /* arena index -> online_device */
-  it = tree_last(sorted_arenas);
-  while(tree_it_good(it)) {
-    packed_size += arenas[tree_it_val(it)]->peak_rss;
-    total_value += arenas[tree_it_val(it)]->accesses;
-    tree_insert(new_knapsack, tree_it_val(it), online_device);
-    for(id = 0; id < arenas[tree_it_val(it)]->num_alloc_sites; id++) {
-      printf("%d ", arenas[tree_it_val(it)]->alloc_sites[id]);
-    }
-    if(break_next_site) {
-      break;
-    }
-    if(packed_size > online_device_cap) {
-      break_next_site = 1;
-    }
-    tree_it_prev(it);
-  }
-  printf("\n");
-  printf("Total value: %zu\n", total_value);
-  printf("Packed size: %zu\n", packed_size);
-  printf("Capacity:    %zd\n", online_device_cap);
-
-  /* Get rid of sites that aren't in the new knapsack but are in the old */
-  tree_traverse(site_nodes, sit) {
-    i = get_arena_index(tree_it_key(sit));
-    kit = tree_lookup(new_knapsack, i);
-    if(!tree_it_good(kit)) {
-      /* The site isn't in the new, so remove it from the upper tier */
-      tree_delete(site_nodes, tree_it_key(sit));
-      sicm_arena_set_device(arenas[i]->arena, default_device);
-      printf("Moving %d out of the MCDRAM\n", tree_it_key(sit));
-    }
+  /* Block the signal for a bit */
+  sigemptyset(&mask);
+  sigaddset(&mask, SIGRTMIN);
+  if(sigprocmask(SIG_SETMASK, &mask, NULL) == -1) {
+    fprintf(stderr, "Error blocking signal. Aborting.\n");
+    exit(1);
   }
 
-  /* Add sites that weren't in the old knapsack but are in the new */
-  tree_traverse(new_knapsack, kit) {
-    for(id = 0; id < arenas[tree_it_key(kit)]->num_alloc_sites; id++) {
-      /* Lookup this site in the old knapsack */
-      sit = tree_lookup(site_nodes, arenas[tree_it_key(kit)]->alloc_sites[id]);
-      if(!tree_it_good(sit)) {
-        /* This site is in the new but not the old */
-        tree_insert(site_nodes, arenas[tree_it_key(kit)]->alloc_sites[id], online_device);
-        sicm_arena_set_device(arenas[tree_it_key(kit)]->arena, online_device);
-        printf("Moving %d into the MCDRAM\n", arenas[tree_it_key(kit)]->alloc_sites[id]);
-      }
-    }
+  /* Create the timer */
+  pt->sev.sigev_notify = SIGEV_THREAD_ID;
+  pt->sev.sigev_signo = SIG;
+  pt->sev.sigev_value.sival_ptr = &pt->timer;
+  pt->sev._sigev_un._tid = *pt->tid;
+  if(timer_create(CLOCKID, &pt->sev, &pt->timer) == -1) {
+    fprintf(stderr, "Error creating timer. Aborting.\n");
+    exit(1);
+  }
+  
+  /* Set the timer */
+  pt->its.it_value.tv_sec = profopts.profile_rate_nseconds / 1000000000;
+  pt->its.it_value.tv_nsec = profopts.profile_rate_nseconds % 1000000000;
+  pt->its.it_interval.tv_sec = pt->its.it_value.tv_sec;
+  pt->its.it_interval.tv_nsec = pt->its.it_value.tv_nsec;
+  if(timer_settime(pt->timer, 0, &pt->its, NULL) == -1) {
+    fprintf(stderr, "Error setting the timer. Aborting.\n");
+    exit(1);
   }
 
-  tree_free(sorted_arenas);
+  /* Unblock the signal */
+  if(sigprocmask(SIG_UNBLOCK, &mask, NULL) == -1) {
+    fprintf(stderr, "Error unblocking signal. Aborting.\n");
+    exit(1);
+  }
 }
-#endif
 
 /* Uses libpfm to figure out the event we're going to use */
 void sh_get_event() {
@@ -132,16 +101,6 @@ void sh_get_event() {
   }
 }
 
-int sh_should_stop() {
-  switch(pthread_mutex_trylock(&prof.mtx)) {
-    case 0:
-      pthread_mutex_unlock(&prof.mtx);
-      return 1;
-    case EBUSY:
-      return 0;
-  }
-  return 1;
-}
 
 void sh_start_profile_thread() {
   size_t i;
@@ -204,13 +163,40 @@ void sh_start_profile_thread() {
   pthread_mutex_init(&prof.mtx, NULL);
   pthread_mutex_lock(&prof.mtx);
   if(profopts.should_profile_all) {
-    pthread_create(&prof.profile_all_id, NULL, &profile_all, NULL);
-  } else if(profopts.should_profile_one) {
-    pthread_create(&prof.profile_one_id, NULL, &profile_one, NULL);
+    prof.profile_all.tid = NULL;
+    prof.profile_all.func = &get_accesses;
+    pthread_create(&prof.profile_all.id, NULL, &profile_all, NULL);
+    setup_timer(&prof.profile_all);
+  }
+  if(profopts.should_profile_one) {
+    prof.profile_one.tid = NULL;
+    prof.profile_one.func = &get_bandwidth;
+    pthread_create(&prof.profile_one.id, NULL, &profile_one, NULL);
+    setup_timer(&prof.profile_one);
   }
   if(profopts.should_profile_rss) {
-    pthread_create(&prof.profile_rss_id, NULL, &profile_rss, NULL);
+    prof.profile_rss.tid = NULL;
+    prof.profile_rss.func = &get_rss;
+    pthread_create(&prof.profile_rss.id, NULL, &profile_rss, NULL);
+    setup_timer(&prof.profile_rss);
   }
+  if(profopts.should_profile_allocs) {
+    prof.profile_allocs.tid = NULL;
+    prof.profile_allocs.func = &get_allocs;
+    pthread_create(&prof.profile_allocs.id, NULL, &profile_allocs, NULL);
+    setup_timer(&prof.profile_allocs);
+  }
+}
+
+int sh_should_stop() {
+  switch(pthread_mutex_trylock(&prof.mtx)) {
+    case 0:
+      pthread_mutex_unlock(&prof.mtx);
+      return 1;
+    case EBUSY:
+      return 0;
+  }
+  return 1;
 }
 
 void sh_stop_profile_thread() {
@@ -295,261 +281,6 @@ void sh_stop_profile_thread() {
   }
 }
 
-/* Adds up accesses to the arenas */
-static void
-get_accesses() {
-  uint64_t head, tail, buf_size;
-  arena_info *arena;
-  void *addr;
-  char *base, *begin, *end, break_next_site;
-  struct sample *sample;
-  struct perf_event_header *header;
-  int err;
-  size_t i, n;
-  profile_info *profinfo;
-  size_t total_samples;
-
-  for(n = 0; n <= tracker.max_index; n++) {
-    arena = tracker.arenas[n];
-    if(!arena) continue;
-    if(arena->num_intervals == 0) {
-      /* This is the arena's first interval, make note */
-      arena->first_interval = prof.cur_interval;
-    }
-    arena->num_intervals++;
-  }
-
-  /* Outer loop loops over the events */
-  for(i = 0; i < profopts.num_events; i++) {
-
-    /* Loops over the arenas */
-    total_samples = 0;
-    for(n = 0; n <= tracker.max_index; n++) {
-      arena = tracker.arenas[n];
-      if(!arena) continue;
-      arena->accumulator = 0;
-    }
-
-    /* Wait for the perf buffer to be ready
-    prof.pfd.fd = prof.fds[i];
-    prof.pfd.events = POLLIN;
-    prof.pfd.revents = 0;
-    err = poll(&prof.pfd, 1, 0);
-    if(err == 0) {
-      return;
-    } else if(err == -1) {
-      fprintf(stderr, "Error occurred polling. Aborting.\n");
-      exit(1);
-    } */
-
-    /* Get ready to read */
-    head = prof.metadata[i]->data_head;
-    tail = prof.metadata[i]->data_tail;
-    buf_size = prof.pagesize * profopts.max_sample_pages;
-    asm volatile("" ::: "memory"); /* Block after reading data_head, per perf docs */
-
-    base = (char *)prof.metadata[i] + prof.pagesize;
-    begin = base + tail % buf_size;
-    end = base + head % buf_size;
-
-    /* Read all of the samples */
-    pthread_rwlock_rdlock(&tracker.extents_lock);
-    while(begin <= (end - 8)) {
-
-      header = (struct perf_event_header *)begin;
-      if(header->size == 0) {
-        break;
-      }
-      sample = (struct sample *) (begin + 8);
-      addr = (void *) (sample->addr);
-
-      if(addr) {
-        /* Search for which extent it goes into */
-        extent_arr_for(tracker.extents, n) {
-          if(!tracker.extents->arr[n].start && !tracker.extents->arr[n].end) continue;
-          arena = tracker.extents->arr[n].arena;
-          if((addr >= tracker.extents->arr[n].start) && (addr <= tracker.extents->arr[n].end) && arena) {
-            arena->accumulator++;
-            total_samples++;
-          }
-        }
-      }
-
-      /* Increment begin by the size of the sample */
-      if(((char *)header + header->size) == base + buf_size) {
-        begin = base;
-      } else {
-        begin = begin + header->size;
-      }
-    }
-    pthread_rwlock_unlock(&tracker.extents_lock);
-
-    /* Let perf know that we've read this far */
-    prof.metadata[i]->data_tail = head;
-    __sync_synchronize();
-
-    for(n = 0; n <= tracker.max_index; n++) {
-      arena = tracker.arenas[n];
-      /* This check is necessary because an arena could have been created
-       * after we added one to the num_intervals up above. num_intervals can't be zero. */
-      if((!arena) || (!arena->num_intervals)) continue;
-      profinfo = &(arena->profiles[i]);
-      profinfo->total += arena->accumulator;
-      /* One size_t per interval for this one event */
-      profinfo->interval_vals = realloc(profinfo->interval_vals, arena->num_intervals * sizeof(size_t));
-      profinfo->interval_vals[arena->num_intervals - 1] = arena->accumulator;
-    }
-  }
-
-#if 0
-  if(should_profile_online) {
-    online_reconfigure();
-  }
-#endif
-}
-
-static void
-get_bandwidth()
-{
-  float count_f, total;
-  long long count;
-  int num, i;
-  struct itimerspec it;
-
-  /* Stop the counter and read the value if it has been at least a second */
-  total = 0;
-  for(i = 0; i < profopts.num_events; i++) {
-    ioctl(prof.fds[i], PERF_EVENT_IOC_DISABLE, 0);
-    read(prof.fds[i], &count, sizeof(long long));
-    count_f = (float) count * 64 / 1024 / 1024;
-    total += count_f;
-
-    /* Start it back up again */
-    ioctl(prof.fds[i], PERF_EVENT_IOC_RESET, 0);
-    ioctl(prof.fds[i], PERF_EVENT_IOC_ENABLE, 0);
-  }
-
-  printf("%f MB/s\n", total);
-  
-  /* Calculate the running average */
-  prof.num_bandwidth_intervals++;
-  prof.running_avg = ((prof.running_avg * (prof.num_bandwidth_intervals - 1)) + total) / prof.num_bandwidth_intervals;
-
-  if(total > prof.max_bandwidth) {
-    prof.max_bandwidth = total;
-  }
-}
-
-#if 0
-static void
-get_rss() {
-	size_t i, n, numpages;
-  uint64_t start, end;
-  arena_info *arena;
-
-  /* Make sure we don't stomp on any toes */
-  pthread_mutex_lock(&arena_lock);
-  pthread_rwlock_rdlock(&extents_lock);
-
-	/* Zero out the RSS values for each arena */
-	extent_arr_for(rss_extents, i) {
-    arena = rss_extents->arr[i].arena;
-		arena->rss = 0;
-	}
-
-	/* Iterate over the chunks */
-	extent_arr_for(rss_extents, i) {
-		start = (uint64_t) rss_extents->arr[i].start;
-		end = (uint64_t) rss_extents->arr[i].end;
-		arena = rss_extents->arr[i].arena;
-
-    arena->rss += end - start;
-
-		/* Maintain the peak for this arena */
-		if(arena->rss > arena->peak_rss) {
-			arena->peak_rss = arena->rss;
-		}
-	}
-
-  /* Maintain a rolling average of the RSS of each arena,
-   * using the previous 10 values
-   */
-  num_rss_samples++;
-  for(i = 0; i <= max_index; i++) {
-    if(!(arenas[i])) continue;
-
-    if(!(arenas[i]->avg_rss)) {
-      arenas[i]->avg_rss = arenas[i]->rss;
-    }
-
-    arenas[i]->avg_rss -= arenas[i]->avg_rss / num_rss_samples;
-    arenas[i]->avg_rss += arenas[i]->rss / num_rss_samples;
-  }
-
-  pthread_rwlock_unlock(&extents_lock);
-  pthread_mutex_unlock(&arena_lock);
-}
-#endif
-
-static void
-get_rss() {
-	size_t i, n, numpages;
-  uint64_t start, end;
-  arena_info *arena;
-  ssize_t num_read;
-
-  /* Grab the lock for the extents array */
-  //pthread_mutex_lock(&arena_lock);
-  pthread_rwlock_rdlock(&tracker.extents_lock);
-
-	/* Zero out the RSS values for each arena */
-	extent_arr_for(tracker.rss_extents, i) {
-    arena = tracker.rss_extents->arr[i].arena;
-    if(!arena) continue;
-		arena->rss = 0;
-	}
-
-	/* Iterate over the chunks */
-	extent_arr_for(tracker.rss_extents, i) {
-		start = (uint64_t) tracker.rss_extents->arr[i].start;
-		end = (uint64_t) tracker.rss_extents->arr[i].end;
-		arena = tracker.rss_extents->arr[i].arena;
-    if(!arena) continue;
-
-    numpages = (end - start) /prof.pagesize;
-		prof.pfndata = (union pfn_t *) realloc(prof.pfndata, numpages * prof.addrsize);
-
-		/* Seek to the starting of this chunk in the pagemap */
-		if(lseek64(prof.pagemap_fd, (start / prof.pagesize) * prof.addrsize, SEEK_SET) == ((off64_t) - 1)) {
-			close(prof.pagemap_fd);
-			fprintf(stderr, "Failed to seek in the PageMap file. Aborting.\n");
-			exit(1);
-		}
-
-		/* Read in all of the pfns for this chunk */
-    if(read(prof.pagemap_fd, prof.pfndata, prof.addrsize * numpages) != (prof.addrsize * numpages)) {
-			fprintf(stderr, "Failed to read the PageMap file. Aborting.\n");
-			exit(1);
-		}
-
-		/* Iterate over them and check them, sum up RSS in arena->rss */
-		for(n = 0; n < numpages; n++) {
-			if(!(prof.pfndata[n].obj.present)) {
-				continue;
-		  }
-      arena->rss += prof.pagesize;
-		}
-
-		/* Maintain the peak for this arena */
-		if(arena->rss > arena->peak_rss) {
-			arena->peak_rss = arena->rss;
-		}
-	}
-
-  pthread_rwlock_unlock(&tracker.extents_lock);
-  //pthread_mutex_unlock(&arena_lock);
-}
-
 void *profile_rss(void *a) {
   struct timespec timer;
 
@@ -558,18 +289,16 @@ void *profile_rss(void *a) {
   prof.pfndata = NULL;
   prof.addrsize = sizeof(uint64_t);
 
-  timer.tv_sec = 1;
-  timer.tv_nsec = 0;
-
   while(!sh_should_stop()) {
+    /*
     get_rss();
-    nanosleep(&timer, NULL);
+    */
   }
 }
 
 void *profile_all(void *a) {
-  struct timespec timer;
   size_t i;
+  pid_t *tid;
 
   /* mmap the file */
   prof.metadata = malloc(sizeof(struct perf_event_mmap_page *) * profopts.num_events);
@@ -587,20 +316,20 @@ void *profile_all(void *a) {
     ioctl(prof.fds[i], PERF_EVENT_IOC_ENABLE, 0);
   }
 
-  timer.tv_sec = profopts.profile_all_rate_seconds;
-  timer.tv_nsec = profopts.profile_all_rate_nseconds;
-  prof.cur_interval = 0;
+  /* Defined the moment the pointer is non-NULL */
+  tid = malloc(sizeof(pid_t));
+  *tid = syscall(SYS_gettid);
+  prof.profile_all.tid = tid;
 
   while(!sh_should_stop()) {
+    /*
     get_accesses();
-    nanosleep(&timer, NULL);
-    prof.cur_interval++;
+    */
   }
 }
 
 void *profile_one(void *a) {
   int i;
-  struct timespec timer;
 
   for(i = 0; i < profopts.num_events; i++) {
     ioctl(prof.fds[i], PERF_EVENT_IOC_RESET, 0);
@@ -610,11 +339,14 @@ void *profile_one(void *a) {
   prof.running_avg = 0;
   prof.max_bandwidth = 0;
 
-  timer.tv_sec = 1;
-  timer.tv_nsec = 0;
-
   while(!sh_should_stop()) {
+    /*
     get_bandwidth();
-    nanosleep(&timer, NULL);
+    */
+  }
+}
+
+void *profile_allocs(void *a) {
+  while(!sh_should_stop()) {
   }
 }

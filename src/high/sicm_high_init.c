@@ -139,29 +139,20 @@ void set_options() {
     }
   }
 
+  /* Controls the profiling rate of all profiling types */
+  profopts.profile_rate_nseconds = 0;
+  env = getenv("SH_PROFILE_RATE_NSECONDS");
+  if(env) {
+    profopts.profile_rate_nseconds = strtoimax(env, NULL, 10);
+  }
+
   /* Should we profile all allocation sites using sampling-based profiling? */
   env = getenv("SH_PROFILE_ALL");
   profopts.should_profile_all = 0;
   if(env) {
     profopts.should_profile_all = 1;
   }
-  /* The online approach requires online profiling */
-  if(profopts.should_profile_online) {
-    profopts.should_profile_all = 1;
-  }
   if(profopts.should_profile_all) {
-    profopts.profile_all_rate_seconds = 1;
-    profopts.profile_all_rate_nseconds = 0;
-    if(profopts.should_profile_all) {
-      env = getenv("SH_PROFILE_ALL_RATE_SECONDS");
-      if(env) {
-        profopts.profile_all_rate_seconds = strtoimax(env, NULL, 10);
-      }
-      env = getenv("SH_PROFILE_ALL_RATE_NSECONDS");
-      if(env) {
-        profopts.profile_all_rate_nseconds = strtoimax(env, NULL, 10);
-      }
-    }
 
     env = getenv("SH_PROFILE_ALL_EVENTS");
     profopts.num_profile_all_events = 0;
@@ -183,6 +174,13 @@ void set_options() {
 
     profopts.num_events = profopts.num_profile_all_events;
     profopts.events = profopts.profile_all_events;
+  }
+
+  /* Should we keep track of when each allocation happened, in intervals? */
+  env = getenv("SH_PROFILE_ALLOCS");
+  profopts.should_profile_allocs = 0;
+  if(env) {
+    profopts.should_profile_allocs = 1;
   }
 
   /* Should we profile (by isolating) a single allocation site onto a NUMA node
@@ -298,17 +296,6 @@ void set_options() {
       exit(1);
     }
   }
-  if(profopts.should_profile_online) {
-    profopts.should_profile_rss = 1;
-  }
-  profopts.profile_rss_rate = 1.0;
-  if(profopts.should_profile_rss) {
-    env = getenv("SH_PROFILE_RSS_RATE");
-    if(env) {
-      profopts.profile_rss_rate = strtof(env, NULL);
-    }
-  }
-
 
   /* What sample frequency should we use? Default is 2048. Higher
    * frequencies will fill up the sample pages (below) faster.

@@ -39,11 +39,22 @@ extern profiling_options profopts;
 extern tracker_struct tracker;
 
 typedef struct profile_thread {
+  pthread_t id; /* e.g. returned by pthread_self */
+  pid_t *tid; /* e.g. returned by gettid. */
+  timer_t timer;
+  struct sigevent sev;
+  struct sigaction sa;
+  struct itimerspec its;
+  void (*func)(int);
+} profile_thread;
+
+typedef struct profiler {
 
   pthread_mutex_t mtx;
-  pthread_t profile_rss_id;
-  pthread_t profile_all_id;
-  pthread_t profile_one_id;
+  profile_thread profile_all;
+  profile_thread profile_one;
+  profile_thread profile_rss;
+  profile_thread profile_allocs;
 
   /* Keeping track of intervals */
   size_t cur_interval;
@@ -67,10 +78,11 @@ typedef struct profile_thread {
   size_t num_bandwidth_intervals;
   float running_avg;
   float max_bandwidth;
-} profile_thread;
+} profiler;
 
 void sh_start_profile_thread();
 void sh_stop_profile_thread();
 void *profile_all(void *);
 void *profile_one(void *);
 void *profile_rss(void *);
+void *profile_allocs(void *);

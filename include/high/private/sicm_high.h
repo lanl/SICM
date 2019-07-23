@@ -111,9 +111,8 @@ typedef struct profiling_options {
   int should_profile_rss;
   int should_run_rdspy;
 
-  /* How quickly to sample accesses/RSS */
-  size_t profile_all_rate_seconds, profile_all_rate_nseconds;
-  float profile_rss_rate;
+  /* Sample rates */
+  size_t profile_rate_nseconds;
   int sample_freq;
   int max_sample_pages;
 
