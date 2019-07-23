@@ -1,4 +1,5 @@
 #pragma once
+#include <sys/types.h>
 #include "sicm_profile.h"
 
 /* Adds up accesses to the arenas */
