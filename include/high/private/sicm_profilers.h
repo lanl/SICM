@@ -203,5 +203,5 @@ get_rss(int s) {
   //pthread_mutex_unlock(&arena_lock);
 }
 
-void get_allocs(int s) {
+static void get_allocs(int s) {
 }
