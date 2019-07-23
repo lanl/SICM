@@ -5,12 +5,10 @@
  * December, 2018
  */
 
-#include "sicm_rdspy.h"
-#include "sicm_tree.h"
-
 #include <assert.h>
 #include <pthread.h>
 #include <stdio.h>
+#include "sicm_high.h"
 
 int get_thread_index();
 

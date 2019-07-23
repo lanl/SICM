@@ -11,8 +11,6 @@
 #include <inttypes.h>
 #include <limits.h>
 #include "sicm_high.h"
-#include "sicm_parsing.h"
-#include "sicm_tree.h"
 
 union metric {
   float band;

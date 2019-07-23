@@ -1,5 +1,4 @@
 #pragma once
-#include "sicm_profile.h"
 
 /* Adds up accesses to the arenas */
 static void
@@ -199,4 +198,7 @@ get_rss(int s) {
 
   pthread_rwlock_unlock(&tracker.extents_lock);
   //pthread_mutex_unlock(&arena_lock);
+}
+
+void get_allocs(int s) {
 }

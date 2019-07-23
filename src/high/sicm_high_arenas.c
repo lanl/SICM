@@ -12,10 +12,6 @@
 #include <jemalloc/jemalloc.h>
 
 #include "sicm_high.h"
-#include "sicm_low.h"
-#include "sicm_impl.h"
-#include "sicm_profile.h"
-#include "sicm_rdspy.h"
 
 /* Takes a string as input and outputs which arena layout it is */
 enum arena_layout parse_layout(char *env) {

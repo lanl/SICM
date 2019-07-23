@@ -1,13 +1,11 @@
 #define _LARGEFILE64_SOURCE
-#include "sicm_profile.h"
-#include "sicm_high.h"
-#include "sicm_impl.h"
 #include <sys/types.h>
 #include <unistd.h>
 #include <fcntl.h>
 #include <time.h>
 #include <sys/syscall.h>
 #include <signal.h>
+#include "sicm_high.h"
 
 profiler prof;
 use_tree(double, size_t);
@@ -39,10 +37,10 @@ void setup_timer(profile_thread *pt) {
 
   /* Create the timer */
   pt->sev.sigev_notify = SIGEV_THREAD_ID;
-  pt->sev.sigev_signo = SIG;
+  pt->sev.sigev_signo = SIGRTMIN;
   pt->sev.sigev_value.sival_ptr = &pt->timer;
   pt->sev._sigev_un._tid = *pt->tid;
-  if(timer_create(CLOCKID, &pt->sev, &pt->timer) == -1) {
+  if(timer_create(CLOCK_REALTIME, &pt->sev, &pt->timer) == -1) {
     fprintf(stderr, "Error creating timer. Aborting.\n");
     exit(1);
   }
@@ -210,12 +208,16 @@ void sh_stop_profile_thread() {
   /* Stop the timers and join the threads */
   pthread_mutex_unlock(&prof.mtx);
   if(profopts.should_profile_all) {
-    pthread_join(prof.profile_all_id, NULL);
-  } else if(profopts.should_profile_one) {
-    pthread_join(prof.profile_one_id, NULL);
+    pthread_join(prof.profile_all.id, NULL);
+  }
+  if(profopts.should_profile_one) {
+    pthread_join(prof.profile_one.id, NULL);
   }
   if(profopts.should_profile_rss) {
-    pthread_join(prof.profile_rss_id, NULL);
+    pthread_join(prof.profile_rss.id, NULL);
+  }
+  if(profopts.should_profile_allocs) {
+    pthread_join(prof.profile_allocs.id, NULL);
   }
 
   for(i = 0; i < profopts.num_events; i++) {
