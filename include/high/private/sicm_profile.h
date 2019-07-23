@@ -35,9 +35,6 @@ union pfn_t {
   } obj;
 };
 
-extern profiling_options profopts;
-extern tracker_struct tracker;
-
 typedef struct profile_thread {
   pthread_t id; /* e.g. returned by pthread_self */
   pid_t *tid; /* e.g. returned by gettid. */
@@ -79,6 +76,10 @@ typedef struct profiler {
   float running_avg;
   float max_bandwidth;
 } profiler;
+
+extern profiling_options profopts;
+extern tracker_struct tracker;
+extern profiler prof;
 
 void sh_start_profile_thread();
 void sh_stop_profile_thread();
