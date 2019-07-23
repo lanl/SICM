@@ -18,7 +18,7 @@
 #include <pthread.h>
 #include <errno.h>
 #include <poll.h>
-#include "sicm_high.h"
+#include "sicm_high_arenas.h"
 
 struct __attribute__ ((__packed__)) sample {
     uint64_t addr;
