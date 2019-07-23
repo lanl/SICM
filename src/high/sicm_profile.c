@@ -326,6 +326,7 @@ void *profile_all(void *a) {
   prof.profile_all.tid = tid;
 
   printf("Profile_all thread entering infinite loop. Filled the tid in %p.\n", &prof.profile_all);
+  printf("Value of tid is %p\n", prof.profile_all.tid);
 
   while(!sh_should_stop()) {
     /*
