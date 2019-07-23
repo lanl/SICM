@@ -173,7 +173,7 @@ get_rss(int s) {
 		prof.pfndata = (union pfn_t *) realloc(prof.pfndata, numpages * prof.addrsize);
 
 		/* Seek to the starting of this chunk in the pagemap */
-		if(lseek64(prof.pagemap_fd, (start / prof.pagesize) * prof.addrsize, SEEK_SET) == ((off64_t) - 1)) {
+		if(lseek64(prof.pagemap_fd, (start / prof.pagesize) * prof.addrsize, SEEK_SET) == ((__off64_t) - 1)) {
 			close(prof.pagemap_fd);
 			fprintf(stderr, "Failed to seek in the PageMap file. Aborting.\n");
 			exit(1);
