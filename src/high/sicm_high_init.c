@@ -520,7 +520,7 @@ void sh_init() {
     }
 
     /* Initialize the extents array.
-     * If we're just doing MBI on one site, initialize a new array that has extents from just that site.
+     * If we're just profiling one site, initialize a new array that has extents from just that site.
      * If we're profiling all sites, rss_extents is just all extents.
      */
     tracker.extents = extent_arr_init();
