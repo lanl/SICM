@@ -1,5 +1,5 @@
 #pragma once
-#define _LARGEFILE64_SOURCE
+#define __USE_LARGEFILE64
 #include <sys/types.h>
 #include "sicm_profile.h"
 
