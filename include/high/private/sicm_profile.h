@@ -69,6 +69,7 @@ typedef struct profiler {
   /* For determining RSS */
   int pagemap_fd;
   union pfn_t *pfndata;
+  pthread_mutex_t pfndata_mtx;
   size_t pagesize, addrsize;
 
   /* For measuring bandwidth */

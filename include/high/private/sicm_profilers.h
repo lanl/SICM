@@ -168,8 +168,10 @@ get_rss(int s) {
     if(!arena) continue;
 
     numpages = (end - start) / prof.pagesize;
+    pthread_mutex_lock(&prof.pfndata_mtx);
     printf("Reallocating %zu bytes\n", numpages * prof.addrsize);
 		prof.pfndata = (union pfn_t *) realloc(prof.pfndata, numpages * prof.addrsize);
+    pthread_mutex_unlock(&prof.pfndata_mtx);
 
 		/* Seek to the starting of this chunk in the pagemap */
 		if(lseek64(prof.pagemap_fd, (start / prof.pagesize) * prof.addrsize, SEEK_SET) == ((__off64_t) - 1)) {
