@@ -291,10 +291,12 @@ void *profile_rss(void *a) {
   prof.pfndata = NULL;
   prof.addrsize = sizeof(uint64_t);
 
+  /* Defined the moment the pointer is non-NULL */
+  tid = malloc(sizeof(pid_t));
+  *tid = syscall(SYS_gettid);
+  prof.profile_rss.tid = tid;
+
   while(!sh_should_stop()) {
-    /*
-    get_rss();
-    */
   }
 }
 
