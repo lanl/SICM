@@ -155,6 +155,9 @@ void sh_start_profile_thread() {
       fprintf(stderr, "Failed to open /proc/self/pagemap. Aborting.\n");
       exit(1);
     }
+    prof.pfndata = NULL;
+    prof.addrsize = sizeof(uint64_t);
+    prof.pagesize = (size_t) sysconf(_SC_PAGESIZE);
   }
 
   /* Start the profiling threads */
@@ -286,11 +289,6 @@ void sh_stop_profile_thread() {
 void *profile_rss(void *a) {
   struct timespec timer;
   pid_t *tid;
-
-  prof.pagesize = (size_t) sysconf(_SC_PAGESIZE);
-
-  prof.pfndata = NULL;
-  prof.addrsize = sizeof(uint64_t);
 
   /* Defined the moment the pointer is non-NULL */
   tid = malloc(sizeof(pid_t));
