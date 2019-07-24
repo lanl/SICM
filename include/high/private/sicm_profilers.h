@@ -60,6 +60,7 @@ get_accesses(int s) {
     begin = base + tail % buf_size;
     end = base + head % buf_size;
 
+#if 0
     /* Read all of the samples */
     pthread_rwlock_rdlock(&tracker.extents_lock);
     while(begin <= (end - 8)) {
@@ -91,6 +92,7 @@ get_accesses(int s) {
       }
     }
     pthread_rwlock_unlock(&tracker.extents_lock);
+#endif
 
     /* Let perf know that we've read this far */
     prof.metadata[i]->data_tail = head;

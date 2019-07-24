@@ -554,7 +554,7 @@ void sh_terminate() {
   if(tracker.layout != INVALID_LAYOUT) {
 
     /* Clean up the profiler */
-    if(profopts.should_profile_all || profopts.should_profile_one || profopts.should_profile_rss) {
+    if(profopts.should_profile_all || profopts.should_profile_one || profopts.should_profile_rss || profopts.should_profile_allocs) {
       sh_stop_profile_thread();
     }
 
