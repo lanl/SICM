@@ -203,6 +203,7 @@ get_rss(int s) {
 	}
 
   pthread_rwlock_unlock(&tracker.extents_lock);
+  pthread_yield();
   //pthread_mutex_unlock(&arena_lock);
 }
 
