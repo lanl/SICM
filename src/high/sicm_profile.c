@@ -17,7 +17,6 @@ void setup_timer(profile_thread *pt) {
    * its tid */
   printf("Waiting for a tid in %p to be defined...\n", pt);
   while(pt->tid == NULL) {
-    asm("");
   }
   printf("Finished waiting.\n");
 
