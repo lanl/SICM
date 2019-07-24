@@ -19,17 +19,17 @@ void setup_timer(profile_thread *pt) {
   }
 
   /* Set up the signal handler */
-  pt->sa.sa_flags = SA_SIGINFO;
+  pt->sa.sa_flags = 0;
   pt->sa.sa_handler = pt->func;
   sigemptyset(&pt->sa.sa_mask);
-  if(sigaction(SIGRTMIN, &pt->sa, NULL) == -1) {
+  if(sigaction(pt->signal, &pt->sa, NULL) == -1) {
     fprintf(stderr, "Error creating signal handler. Aborting.\n");
     exit(1);
   }
 
   /* Block the signal for a bit */
   sigemptyset(&mask);
-  sigaddset(&mask, SIGRTMIN);
+  sigaddset(&mask, pt->signal);
   if(sigprocmask(SIG_SETMASK, &mask, NULL) == -1) {
     fprintf(stderr, "Error blocking signal. Aborting.\n");
     exit(1);
@@ -37,7 +37,7 @@ void setup_timer(profile_thread *pt) {
 
   /* Create the timer */
   pt->sev.sigev_notify = SIGEV_THREAD_ID;
-  pt->sev.sigev_signo = SIGRTMIN;
+  pt->sev.sigev_signo = pt->signal;
   pt->sev.sigev_value.sival_ptr = &pt->timer;
   pt->sev._sigev_un._tid = *pt->tid;
   if(timer_create(CLOCK_REALTIME, &pt->sev, &pt->timer) == -1) {
@@ -103,7 +103,7 @@ void sh_get_event() {
 void sh_start_profile_thread() {
   size_t i;
   pid_t pid;
-  int cpu, group_fd;
+  int cpu, group_fd, signal;
   unsigned long flags;
 
   /* All of this initialization HAS to happen in the main SICM thread.
@@ -164,31 +164,38 @@ void sh_start_profile_thread() {
   /* Start the profiling threads */
   pthread_mutex_init(&prof.mtx, NULL);
   pthread_mutex_lock(&prof.mtx);
+  signal = SIGRTMIN;
   if(profopts.should_profile_all) {
     prof.profile_all.tid = NULL;
     prof.profile_all.func = &get_accesses;
-#if 0
+    prof.profile_all.signal = signal;
     pthread_create(&prof.profile_all.id, NULL, &profile_all, NULL);
     setup_timer(&prof.profile_all);
-#endif
+    signal++;
   }
   if(profopts.should_profile_one) {
     prof.profile_one.tid = NULL;
     prof.profile_one.func = &get_bandwidth;
+    prof.profile_one.signal = signal;
     pthread_create(&prof.profile_one.id, NULL, &profile_one, NULL);
     setup_timer(&prof.profile_one);
+    signal++;
   }
   if(profopts.should_profile_rss) {
     prof.profile_rss.tid = NULL;
     prof.profile_rss.func = &get_rss;
+    prof.profile_rss.signal = signal;
     pthread_create(&prof.profile_rss.id, NULL, &profile_rss, NULL);
     setup_timer(&prof.profile_rss);
+    signal++;
   }
   if(profopts.should_profile_allocs) {
     prof.profile_allocs.tid = NULL;
     prof.profile_allocs.func = &get_allocs;
+    prof.profile_allocs.signal = signal;
     pthread_create(&prof.profile_allocs.id, NULL, &profile_allocs, NULL);
     setup_timer(&prof.profile_allocs);
+    signal++;
   }
 }
 

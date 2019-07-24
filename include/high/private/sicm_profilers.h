@@ -6,7 +6,6 @@
 /* Adds up accesses to the arenas */
 static void
 get_accesses(int s) {
-#if 0
   uint64_t head, tail, buf_size;
   arena_info *arena;
   void *addr;
@@ -62,7 +61,6 @@ get_accesses(int s) {
     begin = base + tail % buf_size;
     end = base + head % buf_size;
 
-#if 0
     /* Read all of the samples */
     pthread_rwlock_rdlock(&tracker.extents_lock);
     while(begin <= (end - 8)) {
@@ -94,7 +92,6 @@ get_accesses(int s) {
       }
     }
     pthread_rwlock_unlock(&tracker.extents_lock);
-#endif
 
     /* Let perf know that we've read this far */
     prof.metadata[i]->data_tail = head;
@@ -112,8 +109,6 @@ get_accesses(int s) {
       profinfo->interval_vals[arena->num_intervals - 1] = arena->accumulator;
     }
   }
-#endif
-  printf("Running profile_all\n");
 }
 
 static void
