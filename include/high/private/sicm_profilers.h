@@ -6,6 +6,7 @@
 /* Adds up accesses to the arenas */
 static void
 get_accesses(int s) {
+#if 0
   uint64_t head, tail, buf_size;
   arena_info *arena;
   void *addr;
@@ -17,7 +18,6 @@ get_accesses(int s) {
   profile_info *profinfo;
   size_t total_samples;
 
-#if 0
 
   for(n = 0; n <= tracker.max_index; n++) {
     arena = tracker.arenas[n];
