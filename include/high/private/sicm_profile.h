@@ -37,7 +37,7 @@ union pfn_t {
 
 typedef struct profile_thread {
   pthread_t id; /* e.g. returned by pthread_self */
-  volatile pid_t *tid; /* e.g. returned by gettid. */
+  volatile pid_t * volatile tid; /* e.g. returned by gettid. */
   timer_t timer;
   struct sigevent sev;
   struct sigaction sa;
