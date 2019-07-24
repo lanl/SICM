@@ -101,7 +101,6 @@ void sh_get_event() {
 
 
 void sh_start_profile_thread() {
-    pthread_mutex_init(&prof.pfndata_mtx, NULL);
   size_t i;
   pid_t pid;
   int cpu, group_fd, signal;
