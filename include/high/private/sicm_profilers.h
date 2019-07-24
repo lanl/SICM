@@ -181,7 +181,7 @@ get_rss(int s) {
 		/* Read in all of the pfns for this chunk */
     num_read = read(prof.pagemap_fd, prof.pfndata, prof.addrsize * numpages);
     if(num_read == -1) {
-      fprintf(stderr, "Failed to read from PageMap file. Aborting.\n");
+      fprintf(stderr, "Failed to read from PageMap file. Aborting: %s\n", strerror(errno));
       exit(1);
 		} else if(num_read < prof.addrsize * numpages) {
       printf("WARNING: Read less bytes than expected.\n");
