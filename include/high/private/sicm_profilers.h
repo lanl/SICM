@@ -179,8 +179,8 @@ get_rss(int s) {
 
 		/* Read in all of the pfns for this chunk */
     if(read(prof.pagemap_fd, prof.pfndata, prof.addrsize * numpages) != (prof.addrsize * numpages)) {
-			fprintf(stderr, "Failed to read the PageMap file. Aborting.\n");
-			exit(1);
+      /* I guess the extent isn't fully allocated yet. Skip it. */
+      continue;
 		}
 
 		/* Iterate over them and check them, sum up RSS in arena->rss */
