@@ -225,16 +225,24 @@ void sh_stop_profile_thread() {
   /* Stop the timers and join the threads */
   pthread_mutex_unlock(&prof.mtx);
   if(profopts.should_profile_all) {
+    timer_delete(prof.profile_all.timer);
     pthread_join(prof.profile_all.id, NULL);
+    printf("Stopped profile_all thread.\n");
   }
   if(profopts.should_profile_one) {
+    timer_delete(prof.profile_one.timer);
     pthread_join(prof.profile_one.id, NULL);
+    printf("Stopped profile_one thread.\n");
   }
   if(profopts.should_profile_rss) {
+    timer_delete(prof.profile_rss.timer);
     pthread_join(prof.profile_rss.id, NULL);
+    printf("Stopped profile_rss thread.\n");
   }
   if(profopts.should_profile_allocs) {
+    timer_delete(prof.profile_allocs.timer);
     pthread_join(prof.profile_allocs.id, NULL);
+    printf("Stopped profile_allocs thread.\n");
   }
 
   for(i = 0; i < profopts.num_events; i++) {
