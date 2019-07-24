@@ -152,6 +152,8 @@ get_rss(int s) {
 
   prof.profile_rss.tmp_intervals++;
   if(prof.profile_rss.skip_intervals != prof.profile_rss.tmp_intervals) {
+    /* Here I would store the interval's value as some canary value, indicating
+     * that we've skipped this interval */
     return;
   }
   prof.profile_rss.tmp_intervals = 0;
