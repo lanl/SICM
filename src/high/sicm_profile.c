@@ -167,8 +167,10 @@ void sh_start_profile_thread() {
   if(profopts.should_profile_all) {
     prof.profile_all.tid = NULL;
     prof.profile_all.func = &get_accesses;
+#if 0
     pthread_create(&prof.profile_all.id, NULL, &profile_all, NULL);
     setup_timer(&prof.profile_all);
+#endif
   }
   if(profopts.should_profile_one) {
     prof.profile_one.tid = NULL;
