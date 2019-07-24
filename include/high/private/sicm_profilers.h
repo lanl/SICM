@@ -17,6 +17,8 @@ get_accesses(int s) {
   profile_info *profinfo;
   size_t total_samples;
 
+#if 0
+
   for(n = 0; n <= tracker.max_index; n++) {
     arena = tracker.arenas[n];
     if(!arena) continue;
@@ -110,6 +112,8 @@ get_accesses(int s) {
       profinfo->interval_vals[arena->num_intervals - 1] = arena->accumulator;
     }
   }
+#endif
+  printf("Running profile_all\n");
 }
 
 static void
