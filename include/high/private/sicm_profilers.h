@@ -167,7 +167,7 @@ get_rss(int s) {
 		arena = (arena_info *)tracker.rss_extents->arr[i].arena;
     if(!arena) continue;
 
-    numpages = (end - start) /prof.pagesize;
+    numpages = (end - start) / prof.pagesize;
 		prof.pfndata = (union pfn_t *) realloc(prof.pfndata, numpages * prof.addrsize);
 
 		/* Seek to the starting of this chunk in the pagemap */
@@ -178,10 +178,14 @@ get_rss(int s) {
 		}
 
 		/* Read in all of the pfns for this chunk */
-    if(read(prof.pagemap_fd, prof.pfndata, prof.addrsize * numpages) != (prof.addrsize * numpages)) {
-      /* I guess the extent isn't fully allocated yet. Skip it. */
+    num_read = read(prof.pagemap_fd, prof.pfndata, prof.addrsize * numpages);
+    if(num_read == -1) {
+      fprintf(stderr, "Failed to read from PageMap file. Aborting.\n");
+      exit(1);
+		} else if(num_read < prof.addrsize * numpages) {
+      printf("WARNING: Read less bytes than expected.\n");
       continue;
-		}
+    }
 
 		/* Iterate over them and check them, sum up RSS in arena->rss */
 		for(n = 0; n < numpages; n++) {
