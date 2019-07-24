@@ -44,6 +44,7 @@ typedef struct profile_thread {
   struct sigaction sa;
   struct itimerspec its;
   void (*func)(int);
+  unsigned long skip_intervals, tmp_intervals;
 } profile_thread;
 
 typedef struct profiler {

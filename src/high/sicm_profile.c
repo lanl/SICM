@@ -168,6 +168,7 @@ void sh_start_profile_thread() {
     prof.profile_all.tid = NULL;
     prof.profile_all.func = &get_accesses;
     prof.profile_all.signal = signal;
+    prof.profile_all.tmp_intervals = 0;
     pthread_create(&prof.profile_all.id, NULL, &profile_all, NULL);
     setup_timer(&prof.profile_all);
     signal++;
@@ -176,6 +177,7 @@ void sh_start_profile_thread() {
     prof.profile_one.tid = NULL;
     prof.profile_one.func = &get_bandwidth;
     prof.profile_one.signal = signal;
+    prof.profile_one.tmp_intervals = 0;
     pthread_create(&prof.profile_one.id, NULL, &profile_one, NULL);
     setup_timer(&prof.profile_one);
     signal++;
@@ -184,6 +186,8 @@ void sh_start_profile_thread() {
     prof.profile_rss.tid = NULL;
     prof.profile_rss.func = &get_rss;
     prof.profile_rss.signal = signal;
+    prof.profile_rss.skip_intervals = profopts.profile_rss_skip_intervals;
+    prof.profile_rss.tmp_intervals = 0;
     pthread_create(&prof.profile_rss.id, NULL, &profile_rss, NULL);
     setup_timer(&prof.profile_rss);
     signal++;
@@ -192,6 +196,7 @@ void sh_start_profile_thread() {
     prof.profile_allocs.tid = NULL;
     prof.profile_allocs.func = &get_allocs;
     prof.profile_allocs.signal = signal;
+    prof.profile_allocs.tmp_intervals = 0;
     pthread_create(&prof.profile_allocs.id, NULL, &profile_allocs, NULL);
     setup_timer(&prof.profile_allocs);
     signal++;

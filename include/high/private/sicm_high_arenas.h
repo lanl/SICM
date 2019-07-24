@@ -114,6 +114,7 @@ typedef struct profiling_options {
 
   /* Sample rates */
   size_t profile_rate_nseconds;
+  unsigned long profile_rss_skip_intervals;
   int sample_freq;
   int max_sample_pages;
 

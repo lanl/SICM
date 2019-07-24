@@ -293,6 +293,12 @@ void set_options() {
       fprintf(stderr, "Can't profile RSS, because we're using the wrong arena layout.\n");
       exit(1);
     }
+
+    env = getenv("SH_PROFILE_RSS_SKIP_INTERVALS");
+    profopts.profile_rss_skip_intervals = 1;
+    if(env) {
+      profopts.profile_rss_skip_intervals = strtoul(env, NULL, 0);
+    }
   }
 
   /* What sample frequency should we use? Default is 2048. Higher

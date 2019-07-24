@@ -150,6 +150,12 @@ get_rss(int s) {
   arena_info *arena;
   ssize_t num_read;
 
+  prof.profile_rss.tmp_intervals++;
+  if(prof.profile_rss.skip_intervals != prof.profile_rss.tmp_intervals) {
+    return;
+  }
+  prof.profile_rss.tmp_intervals = 0;
+
   /* Grab the lock for the extents array */
   //pthread_mutex_lock(&arena_lock);
   pthread_rwlock_rdlock(&tracker.extents_lock);
@@ -203,7 +209,6 @@ get_rss(int s) {
 	}
 
   pthread_rwlock_unlock(&tracker.extents_lock);
-  pthread_yield();
   //pthread_mutex_unlock(&arena_lock);
 }
 
