@@ -158,7 +158,6 @@ void sh_start_profile_thread() {
     prof.pfndata = NULL;
     prof.addrsize = sizeof(uint64_t);
     prof.pagesize = (size_t) sysconf(_SC_PAGESIZE);
-    pthread_mutex_init(&prof.pfndata_mtx, NULL);
   }
 
   /* Start the profiling threads */
