@@ -164,7 +164,7 @@ get_rss(int s) {
 	extent_arr_for(tracker.rss_extents, i) {
 		start = (uint64_t) tracker.rss_extents->arr[i].start;
 		end = (uint64_t) tracker.rss_extents->arr[i].end;
-		arena = (arena_info *)tracker.rss_extents->arr[i].arena;
+		arena = (arena_info *) tracker.rss_extents->arr[i].arena;
     if(!arena) continue;
 
     numpages = (end - start) / prof.pagesize;

@@ -557,8 +557,9 @@ success:
 		goto restore_mempolicy;
 	}
 
-	/* Add the extent to the array of extents */
-	extent_arr_insert(sa->extents, ret, (char *)ret + size, NULL);
+	/* Add the extent to the array of extents
+  extent_arr_insert(sa->extents, ret, (char *)ret + size, NULL);
+  */
 
 	/* Call the callback on this chunk if it's set */
 	if(sicm_extent_alloc_callback) {
