@@ -15,10 +15,8 @@ void setup_timer(profile_thread *pt) {
 
   /* We need to wait until the thread has initialized
    * its tid */
-  printf("Waiting for a tid in %p to be defined...\n", pt);
   while(pt->tid == NULL) {
   }
-  printf("Finished waiting.\n");
 
   /* Set up the signal handler */
   pt->sa.sa_flags = SA_SIGINFO;
@@ -165,7 +163,6 @@ void sh_start_profile_thread() {
   if(profopts.should_profile_all) {
     prof.profile_all.tid = NULL;
     prof.profile_all.func = &get_accesses;
-    printf("Starting profile_all thread.\n");
     pthread_create(&prof.profile_all.id, NULL, &profile_all, NULL);
     setup_timer(&prof.profile_all);
   }
@@ -325,9 +322,6 @@ void *profile_all(void *a) {
   tid = malloc(sizeof(pid_t));
   *tid = syscall(SYS_gettid);
   prof.profile_all.tid = tid;
-
-  printf("Profile_all thread entering infinite loop. Filled the tid in %p.\n", &prof.profile_all);
-  printf("Value of tid is %p\n", prof.profile_all.tid);
 
   while(!sh_should_stop()) {
     /*

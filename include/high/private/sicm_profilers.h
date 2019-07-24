@@ -17,9 +17,6 @@ get_accesses(int s) {
   profile_info *profinfo;
   size_t total_samples;
 
-  printf("Triggering an interval.\n");
-  fflush(stdout);
-
   for(n = 0; n <= tracker.max_index; n++) {
     arena = tracker.arenas[n];
     if(!arena) continue;
