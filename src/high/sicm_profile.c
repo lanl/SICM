@@ -285,6 +285,7 @@ void sh_stop_profile_thread() {
 
 void *profile_rss(void *a) {
   struct timespec timer;
+  pid_t *tid;
 
   prof.pagesize = (size_t) sysconf(_SC_PAGESIZE);
 
