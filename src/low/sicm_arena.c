@@ -220,14 +220,14 @@ static void sicm_arena_range_move(void *aux, void *start, void *end) {
 	case SICM_ALLOC_STRICT:
 		mpol = MPOL_BIND;
 		nodemaskp = sa->nodemask->maskp;
-		maxnode = sa->nodemask->size;
+		maxnode = sa->nodemask->size + 1;
 		break;
 
 	case SICM_ALLOC_RELAXED:
 		// TODO: this will work only for single device, fix it
 		mpol = MPOL_PREFERRED;
 		nodemaskp = sa->nodemask->maskp;
-		maxnode = sa->nodemask->size;
+		maxnode = sa->nodemask->size + 1;
 		break;
 
 	default:
@@ -469,19 +469,19 @@ static void *sa_alloc(extent_hooks_t *h, void *new_addr, size_t size, size_t ali
 	}
 
 	oldnodemask = numa_allocate_nodemask();
-	get_mempolicy(&oldmode, oldnodemask->maskp, oldnodemask->size, NULL, 0);
+	get_mempolicy(&oldmode, oldnodemask->maskp, oldnodemask->size + 1, NULL, 0);
 	switch (sa->flags & SICM_ALLOC_MASK) {
 	case SICM_ALLOC_STRICT:
 		mpol = MPOL_BIND;
 		nodemaskp = sa->nodemask->maskp;
-		maxnode = sa->nodemask->size;
+		maxnode = sa->nodemask->size + 1;
 		break;
 
 	case SICM_ALLOC_RELAXED:
 		// TODO: this will work only for single device, fix it
 		mpol = MPOL_PREFERRED;
 		nodemaskp = sa->nodemask->maskp;
-		maxnode = sa->nodemask->size;
+		maxnode = sa->nodemask->size + 1;
 		break;
 
 	default:
@@ -562,7 +562,7 @@ success:
 	}
 
 restore_mempolicy:
-	set_mempolicy(oldmode, oldnodemask->maskp, oldnodemask->size);
+	set_mempolicy(oldmode, oldnodemask->maskp, oldnodemask->size + 1);
 
 free_nodemasks:
 	numa_free_nodemask(oldnodemask);
