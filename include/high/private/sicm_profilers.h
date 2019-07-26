@@ -15,7 +15,7 @@ struct __attribute__ ((__packed__)) sample {
 /* profile_all info for each event */
 typedef struct per_event_profile_all_info {
   size_t total, peak, *intervals;
-}
+} per_event_profile_all_info;
 
 /* profile_all info for each arena */
 typedef struct profile_all_info {
