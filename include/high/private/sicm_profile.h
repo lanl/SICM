@@ -41,6 +41,8 @@ typedef struct profile_thread {
 } profile_thread;
 
 typedef struct profiler {
+  pthread_t master_id;
+
   /* One for each profiling thread */
   profile_thread *profile_threads;
   size_t num_profile_threads;

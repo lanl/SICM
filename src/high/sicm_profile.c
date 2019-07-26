@@ -250,7 +250,7 @@ void *profile_master(void *a) {
 
 void initialize_profiling() {
   /* Allocate room for the per-arena profiling information */
-  prof.info = calloc(profopts.max_arenas, sizeof(profile_info *));
+  prof.info = calloc(tracker.max_arenas, sizeof(profile_info *));
 
   /* All of this initialization HAS to happen in the main SICM thread.
    * If it's not, the `perf_event_open` system call won't profile
@@ -281,20 +281,17 @@ void sh_start_profile_master_thread() {
   initialize_profiling();
 
   /* All the main thread should do is start the master thread */
-  pthread_create(&master_id, NULL, &master_profile, NULL);
+  pthread_create(&prof.master_id, NULL, &profile_master, NULL);
 }
 
 void deinitialize_profiling() {
-  for(i = 0; i < profopts.num_events; i++) {
-    ioctl(prof.fds[i], PERF_EVENT_IOC_DISABLE, 0);
-  }
-
-  for(i = 0; i < profopts.num_events; i++) {
-    close(prof.fds[i]);
+  if(profopts.should_profile_all) {
+    profile_all_deinit();
   }
 }
 
 void print_profiling() {
+#if 0
   /* PEBS profiling */
   if(profopts.should_profile_all) {
     printf("===== PEBS RESULTS =====\n");
@@ -308,12 +305,10 @@ void print_profiling() {
       }
       printf("\n");
 
-#if 0
       /* Print the RSS of the arena */
       if(profopts.should_profile_rss) {
         printf("  Peak RSS: %zu\n", tracker.arenas[i]->peak_rss);
       }
-#endif
       printf("    Number of intervals: %zu\n", tracker.arenas[i]->num_intervals);
       printf("    First interval: %zu\n", tracker.arenas[i]->first_interval);
 
@@ -328,7 +323,6 @@ void print_profiling() {
     }
     printf("===== END PEBS RESULTS =====\n");
 
-#if 0
   /* MBI profiling */
   } else if(profopts.should_profile_one) {
     printf("===== MBI RESULTS FOR SITE %u =====\n", profopts.profile_one_site);
@@ -359,11 +353,9 @@ void print_profiling() {
 }
 
 void sh_stop_profile_master_thread() {
-  size_t i, n, x;
+  pthread_join(prof.master_id, NULL);
 
-  pthread_join(master_id, NULL);
-
-  deinitialize_profiling();
   print_profiling();
+  deinitialize_profiling();
 }
 

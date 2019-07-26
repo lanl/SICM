@@ -11,6 +11,18 @@ void profile_all_arena_init(profile_all_info *info) {
   }
 }
 
+void profile_all_deinit() {
+  size_t i;
+
+  for(i = 0; i < profopts.num_profile_all_events; i++) {
+    ioctl(prof.profile_all.fds[i], PERF_EVENT_IOC_DISABLE, 0);
+  }
+
+  for(i = 0; i < profopts.num_profile_all_events; i++) {
+    close(prof.profile_all.fds[i]);
+  }
+}
+
 void profile_all_init() {
   size_t i;
   pid_t pid;
@@ -147,7 +159,7 @@ void profile_all_interval(int s) {
 
       if(addr) {
         /* Search for which extent it goes into */
-        extent_are_for(tracker.extents, n) {
+        extent_arr_for(tracker.extents, n) {
           if(!tracker.extents->arr[n].start && !tracker.extents->arr[n].end) continue;
           arena = (arena_info *)tracker.extents->arr[n].arena;
           if((addr >= tracker.extents->arr[n].start) && (addr <= tracker.extents->arr[n].end) && arena) {
@@ -179,10 +191,10 @@ void profile_all_interval(int s) {
        * after we added one to the num_intervals up above. num_intervals can't be zero. */
       if((!arena) || (!profinfo) || (!profinfo->num_intervals)) continue;
 
-      per_event_profinfo->total += profinfo->tmp_accumulator;
+      per_event_profinfo->total += profinfo->profile_all.tmp_accumulator;
       /* One size_t per interval for this one event */
       per_event_profinfo->intervals = (size_t *)realloc(per_event_profinfo->intervals, profinfo->num_intervals * sizeof(size_t));
-      per_event_profinfo->intervals[profinfo->num_intervals - 1] = profinfo->tmp_accumulator;
+      per_event_profinfo->intervals[profinfo->num_intervals - 1] = profinfo->profile_all.tmp_accumulator;
     }
   }
 
@@ -348,30 +360,30 @@ void sh_get_event() {
   pfm_initialize();
 
   /* Make sure all of the events work. Initialize the pes. */
-  for(i = 0; i < profopts.num_events; i++) {
-    memset(prof.pes[i], 0, sizeof(struct perf_event_attr));
-    prof.pes[i]->size = sizeof(struct perf_event_attr);
+  for(i = 0; i < profopts.num_profile_all_events; i++) {
+    memset(prof.profile_all.pes[i], 0, sizeof(struct perf_event_attr));
+    prof.profile_all.pes[i]->size = sizeof(struct perf_event_attr);
     memset(&pfm, 0, sizeof(pfm_perf_encode_arg_t));
     pfm.size = sizeof(pfm_perf_encode_arg_t);
-    pfm.attr = prof.pes[i];
+    pfm.attr = prof.profile_all.pes[i];
 
-    err = pfm_get_os_event_encoding(profopts.events[i], PFM_PLM2 | PFM_PLM3, PFM_OS_PERF_EVENT, pfm);
+    err = pfm_get_os_event_encoding(profopts.profile_all_events[i], PFM_PLM2 | PFM_PLM3, PFM_OS_PERF_EVENT, &pfm);
     if(err != PFM_SUCCESS) {
-      fprintf(stderr, "Failed to initialize event '%s'. Aborting.\n", profopts.events[i]);
+      fprintf(stderr, "Failed to initialize event '%s'. Aborting.\n", profopts.profile_all_events[i]);
       exit(1);
     }
 
     /* If we're profiling all, set some additional options. */
     if(profopts.should_profile_all) {
-      prof.pes[i]->sample_type = PERF_SAMPLE_ADDR;
-      prof.pes[i]->sample_period = profopts.sample_freq;
-      prof.pes[i]->mmap = 1;
-      prof.pes[i]->disabled = 1;
-      prof.pes[i]->exclude_kernel = 1;
-      prof.pes[i]->exclude_hv = 1;
-      prof.pes[i]->precise_ip = 2;
-      prof.pes[i]->task = 1;
-      prof.pes[i]->sample_period = profopts.sample_freq;
+      prof.profile_all.pes[i]->sample_type = PERF_SAMPLE_ADDR;
+      prof.profile_all.pes[i]->sample_period = profopts.sample_freq;
+      prof.profile_all.pes[i]->mmap = 1;
+      prof.profile_all.pes[i]->disabled = 1;
+      prof.profile_all.pes[i]->exclude_kernel = 1;
+      prof.profile_all.pes[i]->exclude_hv = 1;
+      prof.profile_all.pes[i]->precise_ip = 2;
+      prof.profile_all.pes[i]->task = 1;
+      prof.profile_all.pes[i]->sample_period = profopts.sample_freq;
     }
   }
 }

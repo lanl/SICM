@@ -13,32 +13,6 @@
 
 #include "sicm_high.h"
 
-/* Takes a string as input and outputs which arena layout it is */
-enum arena_layout parse_layout(char *env) {
-	size_t max_chars;
-
-	max_chars = 32;
-
-	if(strncmp(env, "SHARED_ONE_ARENA", max_chars) == 0) {
-		return SHARED_ONE_ARENA;
-	} else if(strncmp(env, "EXCLUSIVE_ONE_ARENA", max_chars) == 0) {
-		return EXCLUSIVE_ONE_ARENA;
-	} else if(strncmp(env, "SHARED_DEVICE_ARENAS", max_chars) == 0) {
-		return SHARED_DEVICE_ARENAS;
-	} else if(strncmp(env, "EXCLUSIVE_DEVICE_ARENAS", max_chars) == 0) {
-		return EXCLUSIVE_DEVICE_ARENAS;
-	} else if(strncmp(env, "SHARED_SITE_ARENAS", max_chars) == 0) {
-		return SHARED_SITE_ARENAS;
-	} else if(strncmp(env, "EXCLUSIVE_SITE_ARENAS", max_chars) == 0) {
-		return EXCLUSIVE_SITE_ARENAS;
-	} else if(strncmp(env, "EXCLUSIVE_TWO_DEVICE_ARENAS", max_chars) == 0) {
-		return EXCLUSIVE_TWO_DEVICE_ARENAS;
-	} else if(strncmp(env, "EXCLUSIVE_FOUR_DEVICE_ARENAS", max_chars) == 0) {
-		return EXCLUSIVE_FOUR_DEVICE_ARENAS;
-	}
-
-  return INVALID_LAYOUT;
-}
 
 /* Returns the index of an allocation site in an arena,
  * -1 if it's not there */
