@@ -559,7 +559,7 @@ success:
 
   extent_arr_insert(sa->extents, ret, (char *)ret + size, NULL);
 
-	/ Call the callback on this chunk if it's set */
+	/* Call the callback on this chunk if it's set */
 	if(sicm_extent_alloc_callback) {
 		(*sicm_extent_alloc_callback)(ret, (char *)ret + size);
 	}
