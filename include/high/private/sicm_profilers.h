@@ -40,8 +40,9 @@ typedef struct profile_all_data {
 void sh_get_event();
 void profile_all_init();
 void profile_all_deinit();
-void *profile_all(void *a);
-void profile_all_interval(int s);
+void *profile_all(void *);
+void profile_all_interval(int);
+void profile_all_arena_init(int);
 
 #if 0
 /* RSS */

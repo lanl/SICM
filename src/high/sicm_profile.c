@@ -91,6 +91,7 @@ void profile_master_interval(int s) {
 	struct timeval tv;
   size_t i;
   unsigned copy;
+  profile_info *profinfo;
   syscall(SYS_gettimeofday, &tv, NULL);
 
   printf("\n\n====================\n");
@@ -155,7 +156,7 @@ void setup_profile_thread(void *(*main)(void *), /* Spinning loop function */
   profthread = &(prof.profile_threads[prof.num_profile_threads - 1]);
 
   /* Start the thread */
-  pthread_create(&(profthread->id), NULL, &main, NULL);
+  pthread_create(&(profthread->id), NULL, main, NULL);
 
   /* Set up the signal handler */
   profthread->signal = global_signal;
