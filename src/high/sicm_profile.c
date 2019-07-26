@@ -164,7 +164,7 @@ void setup_profile_thread(void *(*main)(void *), /* Spinning loop function */
   sa.sa_handler = interval;
   sigemptyset(&sa.sa_mask);
   if(sigaction(profthread->signal, &sa, NULL) == -1) {
-    fprintf(stderr, "Error creating slave signal handler. Aborting.\n");
+    fprintf(stderr, "Error creating signal handler for signal %d. Aborting: %s\n", profthread->signal, strerror(errno));
     exit(1);
   }
 
