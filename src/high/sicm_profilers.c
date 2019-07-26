@@ -1,4 +1,6 @@
-profile_all_init() {
+#include "sicm_high.h"
+
+void profile_all_init() {
   size_t i;
   pid_t pid;
   int cpu, group_fd;
