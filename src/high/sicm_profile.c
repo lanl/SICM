@@ -120,7 +120,7 @@ void profile_master_interval(int s) {
       /* At least one thread is finished, check if it's all of them */
       copy = prof.threads_finished;
       pthread_mutex_unlock(&prof.mtx);
-      if(prof.threads_finished == 2) {
+      if(prof.threads_finished == prof.num_profile_threads) {
         /* They're all done. */
         printf("Profiling threads are all done.\n");
         fflush(stdout);
