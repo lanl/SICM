@@ -9,7 +9,13 @@
 profiler prof;
 static int global_signal;
 
-void create_profile_arena(int index) {
+/* Allocates room for profiling information for this arena.
+ * Returns a pointer to the profile_info struct as a void pointer
+ * so that the arena can have a pointer to its profiling information.
+ * Some profilers use this pointer to get to the profiling information
+ * when all they have is a pointer to the arena.
+ */
+void *create_profile_arena(int index) {
   prof.info[index] = calloc(1, sizeof(profile_info));
   prof.info[index]->num_intervals = 0;
   prof.info[index]->first_interval = 0;
@@ -28,6 +34,11 @@ void create_profile_arena(int index) {
     profile_allocs_arena_init(&(prof.info[index]->profile_allocs));
   }
 #endif
+
+  /* Return this so that the arena can have a pointer to its profiling
+   * information
+   */
+  return (void *)prof.info[index];
 }
 
 /* Function used by the profile threads to block/unblock

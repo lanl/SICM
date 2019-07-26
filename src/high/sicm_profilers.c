@@ -1,11 +1,13 @@
 #include "sicm_high.h"
 
-void profile_all_arena_init(profile_info *info) {
-  events = calloc(profopts.num_profile_all_events, sizeof(per_event_profile_all_info));
+void profile_all_arena_init(profile_all_info *info) {
+  size_t i;
+
+  info->events = calloc(profopts.num_profile_all_events, sizeof(per_event_profile_all_info));
   for(i = 0; i < profopts.num_profile_all_events; i++) {
-    events[i].total = 0;
-    events[i].peak = 0;
-    events[i].intervals = NULL;
+    info->events[i].total = 0;
+    info->events[i].peak = 0;
+    info->events[i].intervals = NULL;
   }
 }
 
@@ -82,18 +84,19 @@ void profile_all_interval(int s) {
   int err;
   size_t i, n;
   profile_info *profinfo;
+  per_event_profile_all_info *per_event_profinfo;
   size_t total_samples;
 
   block_signal(s);
 
   for(n = 0; n <= tracker.max_index; n++) {
-    arena = tracker.arenas[n];
-    if(!arena) continue;
-    if(arena->num_intervals == 0) {
+    profinfo = prof.info[n];
+    if(!profinfo) continue;
+    if(profinfo->num_intervals == 0) {
       /* This is the arena's first interval, make note */
-      arena->first_interval = prof.cur_interval;
+      profinfo->first_interval = prof.cur_interval;
     }
-    arena->num_intervals++;
+    profinfo->num_intervals++;
   }
 
   /* Outer loop loops over the events */
@@ -102,9 +105,9 @@ void profile_all_interval(int s) {
     /* Loops over the arenas */
     total_samples = 0;
     for(n = 0; n <= tracker.max_index; n++) {
-      arena = tracker.arenas[n];
-      if(!arena) continue;
-      arena->tmp_accumulator = 0;
+      profinfo = prof.info[n];
+      if(!profinfo) continue;
+      profinfo->profile_all.tmp_accumulator = 0;
     }
 
 #if 0
@@ -144,11 +147,11 @@ void profile_all_interval(int s) {
 
       if(addr) {
         /* Search for which extent it goes into */
-        extent_arr_for(tracker.extents, n) {
+        extent_are_for(tracker.extents, n) {
           if(!tracker.extents->arr[n].start && !tracker.extents->arr[n].end) continue;
           arena = (arena_info *)tracker.extents->arr[n].arena;
           if((addr >= tracker.extents->arr[n].start) && (addr <= tracker.extents->arr[n].end) && arena) {
-            arena->tmp_accumulator++;
+            ((profile_info *)arena->info)->profile_all.tmp_accumulator++;
             total_samples++;
           }
         }
@@ -169,14 +172,17 @@ void profile_all_interval(int s) {
 
     for(n = 0; n <= tracker.max_index; n++) {
       arena = tracker.arenas[n];
+      profinfo = prof.info[n];
+      per_event_profinfo = &(profinfo->profile_all.events[i]);
+
       /* This check is necessary because an arena could have been created
        * after we added one to the num_intervals up above. num_intervals can't be zero. */
-      if((!arena) || (!arena->num_intervals)) continue;
-      profinfo = &(arena->profiles[i]);
-      profinfo->total += arena->tmp_accumulator;
+      if((!arena) || (!profinfo) || (!profinfo->num_intervals)) continue;
+
+      per_event_profinfo->total += profinfo->tmp_accumulator;
       /* One size_t per interval for this one event */
-      profinfo->interval_vals = (size_t *)realloc(profinfo->interval_vals, arena->num_intervals * sizeof(size_t));
-      profinfo->interval_vals[arena->num_intervals - 1] = arena->tmp_accumulator;
+      per_event_profinfo->intervals = (size_t *)realloc(per_event_profinfo->intervals, profinfo->num_intervals * sizeof(size_t));
+      per_event_profinfo->intervals[profinfo->num_intervals - 1] = profinfo->tmp_accumulator;
     }
   }
 

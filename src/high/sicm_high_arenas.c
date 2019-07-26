@@ -130,7 +130,7 @@ void sh_create_arena(int index, int id, sicm_device *device) {
   free(dl.devices);
 
   /* Tell the profiler that this arena has been created */
-  create_new_profile_arena(index);
+  arena->info = create_new_profile_arena(index);
 
   /* Now add the arena to the array of arenas */
   tracker.arenas[index] = arena;

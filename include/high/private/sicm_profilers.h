@@ -21,6 +21,10 @@ typedef struct per_event_profile_all_info {
 typedef struct profile_all_info {
   /* One for each event */
   per_event_profile_all_info *events;
+
+  /* Used to temporarily store a per-interval per-event
+   * total */
+  size_t tmp_accumulator;
 } profile_all_info;
 
 typedef struct profile_all_data {
