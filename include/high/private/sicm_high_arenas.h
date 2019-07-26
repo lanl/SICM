@@ -19,17 +19,18 @@ enum arena_layout {
 
 /* Profiling information for one event in a single arena */
 typedef struct profile_info {
-  size_t total;
+  size_t total, peak;
   size_t *interval_vals; /* One for each interval */
 } profile_info;
 
 /* Keeps track of additional information about arenas */
 typedef struct arena_info {
-  size_t rss, peak_rss, avg_rss, accumulator, num_intervals, first_interval; /* Profiling info */
+  size_t tmp_rss, tmp_accumulator, num_intervals, first_interval; /* Profiling info */
   int *alloc_sites, num_alloc_sites; /* Stores the allocation sites that are in this arena */
   unsigned index; /* Index into the arenas array */
   sicm_arena arena; /* SICM's low-level interface pointer */
   profile_info *profiles; /* One for each event in num_events */
+  profile_info *rss_profiles; /* One only */
 } arena_info;
 
 /* A tree associating site IDs with device pointers.
@@ -42,7 +43,7 @@ use_tree(int, deviceptr);
 use_tree(deviceptr, int);
 use_tree(int, int);
 
-/* Keeps track of arenas, extents, mutices, etc. */
+/* Keeps track of all allocated data: arenas, extents, threads, etc. */
 typedef struct tracker_struct {
   /* Stores all machine devices and device
    * we should bind to by default */

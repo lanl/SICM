@@ -7,50 +7,194 @@
 #include "sicm_high.h"
 
 profiler prof;
-use_tree(double, size_t);
-use_tree(size_t, deviceptr);
+static global_signal = SIGRTMIN;
 
-void setup_timer(profile_thread *pt) {
-  sigset_t mask;
+/* Function used by the profile threads to block/unblock
+ * their own signal.
+ */
+void block_signal(int signal) {
+	sigset_t mask;
 
-  /* We need to wait until the thread has initialized
-   * its tid */
-  while(pt->tid == NULL) {
+  /* Block the signal */
+  sigemptyset(&mask);
+  sigaddset(&mask, signal);
+  if(sigprocmask(SIG_SETMASK, &mask, NULL) == -1) {
+    fprintf(stderr, "Error blocking signal %d. Aborting.\n", signal);
+    exit(1);
   }
 
+  /* Print out what time we were triggered */
+  syscall(SYS_gettimeofday, &tv, NULL);
+  printf("Profiling thread %d triggered: %ld.%06ld\n", signal, tv.tv_sec, tv.tv_usec);
+  fflush(stdout);
+}
+
+/* Unblocks a signal. Also notifies the Master thread. */
+void unblock_signal(int signal) {
+	sigset_t mask;
+
+  /* Signal the master thread that we're done */
+  pthread_mutex_lock(&prof.mtx);
+  syscall(SYS_gettimeofday, &tv, NULL);
+  printf("Profiling thread %d done: %ld.%06ld\n", signal, tv.tv_sec, tv.tv_usec);
+  fflush(stdout);
+  prof.threads_finished++;
+  pthread_cond_signal(&prof.cond);
+  pthread_mutex_unlock(&prof.mtx);
+
+  sigemptyset(&mask);
+  sigaddset(&mask, signal);
+  if(sigprocmask(SIG_UNBLOCK, &mask, NULL) == -1) {
+    fprintf(stderr, "Error unblocking signal. Aborting.\n");
+    exit(1);
+  }
+}
+
+/* This is the signal handler for the Master thread, so
+ * it does this on every interval.
+ */
+void profile_master_interval(int s) {
+	struct timeval tv;
+  size_t i;
+  unsigned copy;
+  syscall(SYS_gettimeofday, &tv, NULL);
+
+  printf("\n\n====================\n");
+  printf("Master triggered at time %ld.%06ld\n", tv.tv_sec, tv.tv_usec);
+  fflush(stdout);
+
+  /* Notify the threads */
+  for(i = 0; i < prof.num_profile_threads; i++) {
+    pthread_kill(prof.profile_threads[i].id, prof.profile_threads[i].signal);
+  }
+
+  /* Wait for the threads to do their bit */
+  pthread_mutex_lock(&prof.mtx);
+  while(1) {
+    if(prof.threads_finished) {
+      /* At least one thread is finished, check if it's all of them */
+      copy = prof.threads_finished;
+      pthread_mutex_unlock(&prof.mtx);
+      if(prof.threads_finished == 2) {
+        /* They're all done. */
+        printf("Profiling threads are all done.\n");
+        fflush(stdout);
+        pthread_mutex_lock(&prof.mtx);
+        prof.threads_finished = 0;
+        break;
+      }
+      /* At least one was done, but not all of them. Continue waiting. */
+      pthread_mutex_lock(&prof.mtx);
+    } else {
+      /* Wait for at least one thread to signal us */
+      pthread_cond_wait(&prof.cond, &prof.mtx);
+    }
+  }
+
+  /* Finished handling this interval. Wait for another. */
+  prof.cur_interval++;
+  pthread_mutex_unlock(&prof.mtx);
+  printf("Exited the loop, we're now ready to receive another signal\n");
+  printf("====================\n");
+  fflush(stdout);
+}
+
+void setup_profile_thread(void *(*main)(void *), /* Spinning loop function */
+                          void (*interval)(int), /* Per-interval function */
+                          unsigned long skip_intervals) {
+  struct sigaction sa;
+  profile_thread *profthread;
+
+  /* Add a new profile_thread struct for it */
+  prof.num_profile_threads++;
+  prof.profile_threads = realloc(prof.profile_threads, sizeof(profile_thread) * prof.num_profile_threads);
+  profthread = &(prof.profile_threads[prof.num_profile_threads - 1]);
+
+  /* Start the thread */
+  pthread_create(&(profthread->id), NULL, &main, NULL);
+
   /* Set up the signal handler */
-  pt->sa.sa_flags = 0;
-  pt->sa.sa_handler = pt->func;
-  sigemptyset(&pt->sa.sa_mask);
-  if(sigaction(pt->signal, &pt->sa, NULL) == -1) {
+  profthread->signal = global_signal;
+	sa.sa_flags = 0;
+  sa.sa_handler = interval;
+  sigemptyset(&sa.sa_mask);
+  if(sigaction(profthread->signal, &sa, NULL) == -1) {
+    fprintf(stderr, "Error creating slave signal handler. Aborting.\n");
+    exit(1);
+  }
+
+  profthread->skip_intervals = skip_intervals;
+
+  /* Get ready for the next one */
+  global_signal++;
+}
+
+/* This is the Master thread, it keeps track of intervals
+ * and starts/stops the profiling threads. It has a timer
+ * which signals it at a certain interval. Each time this
+ * happens, it notifies the profiling threads.
+ */
+void *profile_master(void *a) {
+  timer_t timerid;
+  struct sigevent sev;
+  struct sigaction sa;
+  struct itimerspec its;
+  long long frequency;
+  sigset_t mask;
+  pid_t tid;
+  int master_signal;
+
+  if(profopts.should_profile_all) {
+    setup_profile_thread(&profile_all, &profile_all_interval, 0);
+  }
+  if(profopts.should_profile_rss) {
+    setup_profile_thread(&profile_rss, &profile_rss_interval, 0);
+  }
+  if(profopts.should_profile_one) {
+    setup_profile_thread(&profile_one, &profile_one_interval, 0);
+  }
+  if(profopts.should_profile_allocs) {
+    setup_profile_thread(&profile_allocs, &profile_allocs_interval, 0);
+  }
+  
+  /* Initialize synchronization primitives */
+  pthread_mutex_init(&prof.mtx, NULL);
+  pthread_cond_init(&prof.cond, NULL);
+  prof.cur_interval = 0;
+
+  /* Set up a signal handler for the master */
+  sa.sa_flags = 0;
+  sa.sa_handler = profile_master_interval;
+  sigemptyset(&sa.sa_mask);
+  if(sigaction(master_signal, &sa, NULL) == -1) {
     fprintf(stderr, "Error creating signal handler. Aborting.\n");
     exit(1);
   }
 
   /* Block the signal for a bit */
   sigemptyset(&mask);
-  sigaddset(&mask, pt->signal);
+  sigaddset(&mask, master_signal);
   if(sigprocmask(SIG_SETMASK, &mask, NULL) == -1) {
     fprintf(stderr, "Error blocking signal. Aborting.\n");
     exit(1);
   }
 
   /* Create the timer */
-  pt->sev.sigev_notify = SIGEV_THREAD_ID;
-  pt->sev.sigev_signo = pt->signal;
-  pt->sev.sigev_value.sival_ptr = &pt->timer;
-  pt->sev._sigev_un._tid = *pt->tid;
-  if(timer_create(CLOCK_REALTIME, &pt->sev, &pt->timer) == -1) {
+  sev.sigev_notify = SIGEV_THREAD_ID;
+  sev.sigev_signo = master_signal;
+  sev.sigev_value.sival_ptr = &timerid;
+  sev._sigev_un._tid = *tid;
+  if(timer_create(CLOCK_REALTIME, &sev, &timerid) == -1) {
     fprintf(stderr, "Error creating timer. Aborting.\n");
     exit(1);
   }
   
   /* Set the timer */
-  pt->its.it_value.tv_sec = profopts.profile_rate_nseconds / 1000000000;
-  pt->its.it_value.tv_nsec = profopts.profile_rate_nseconds % 1000000000;
-  pt->its.it_interval.tv_sec = pt->its.it_value.tv_sec;
-  pt->its.it_interval.tv_nsec = pt->its.it_value.tv_nsec;
-  if(timer_settime(pt->timer, 0, &pt->its, NULL) == -1) {
+  its.it_value.tv_sec = profopts.profile_rate_nseconds / 1000000000;
+  its.it_value.tv_nsec = profopts.profile_rate_nseconds % 1000000000;
+  its.it_interval.tv_sec = its.it_value.tv_sec;
+  its.it_interval.tv_nsec = its.it_value.tv_nsec;
+  if(timer_settime(timerid, 0, &its, NULL) == -1) {
     fprintf(stderr, "Error setting the timer. Aborting.\n");
     exit(1);
   }
@@ -60,50 +204,17 @@ void setup_timer(profile_thread *pt) {
     fprintf(stderr, "Error unblocking signal. Aborting.\n");
     exit(1);
   }
-}
 
-/* Uses libpfm to figure out the event we're going to use */
-void sh_get_event() {
-  int err;
-  size_t i;
-
-  pfm_initialize();
-  prof.pfm = malloc(sizeof(pfm_perf_encode_arg_t));
-
-  /* Make sure all of the events work. Initialize the pes. */
-  for(i = 0; i < profopts.num_events; i++) {
-    memset(prof.pes[i], 0, sizeof(struct perf_event_attr));
-    prof.pes[i]->size = sizeof(struct perf_event_attr);
-    memset(prof.pfm, 0, sizeof(pfm_perf_encode_arg_t));
-    prof.pfm->size = sizeof(pfm_perf_encode_arg_t);
-    prof.pfm->attr = prof.pes[i];
-
-    err = pfm_get_os_event_encoding(profopts.events[i], PFM_PLM2 | PFM_PLM3, PFM_OS_PERF_EVENT, prof.pfm);
-    if(err != PFM_SUCCESS) {
-      fprintf(stderr, "Failed to initialize event '%s'. Aborting.\n", profopts.events[i]);
-      exit(1);
-    }
-
-    /* If we're profiling all, set some additional options. */
-    if(profopts.should_profile_all) {
-      prof.pes[i]->sample_type = PERF_SAMPLE_ADDR;
-      prof.pes[i]->sample_period = profopts.sample_freq;
-      prof.pes[i]->mmap = 1;
-      prof.pes[i]->disabled = 1;
-      prof.pes[i]->exclude_kernel = 1;
-      prof.pes[i]->exclude_hv = 1;
-      prof.pes[i]->precise_ip = 2;
-      prof.pes[i]->task = 1;
-      prof.pes[i]->sample_period = profopts.sample_freq;
-    }
-  }
+  /* Now we wait for the timer to signal us */
+  /* TODO: implement how to stop the master thread */
+  while(1) {}
 }
 
 
-void sh_start_profile_thread() {
+void initialize_profiling() {
   size_t i;
   pid_t pid;
-  int cpu, group_fd, signal;
+  int cpu, group_fd;
   unsigned long flags;
 
   /* All of this initialization HAS to happen in the main SICM thread.
@@ -159,96 +270,30 @@ void sh_start_profile_thread() {
     prof.addrsize = sizeof(uint64_t);
     prof.pagesize = (size_t) sysconf(_SC_PAGESIZE);
   }
-
-  /* Start the profiling threads */
-  pthread_mutex_init(&prof.mtx, NULL);
-  pthread_mutex_lock(&prof.mtx);
-  signal = SIGRTMIN;
-  if(profopts.should_profile_all) {
-    prof.profile_all.tid = NULL;
-    prof.profile_all.func = &get_accesses;
-    prof.profile_all.signal = signal;
-    prof.profile_all.tmp_intervals = 0;
-    pthread_create(&prof.profile_all.id, NULL, &profile_all, NULL);
-    setup_timer(&prof.profile_all);
-    signal++;
-  }
-  if(profopts.should_profile_one) {
-    prof.profile_one.tid = NULL;
-    prof.profile_one.func = &get_bandwidth;
-    prof.profile_one.signal = signal;
-    prof.profile_one.tmp_intervals = 0;
-    pthread_create(&prof.profile_one.id, NULL, &profile_one, NULL);
-    setup_timer(&prof.profile_one);
-    signal++;
-  }
-  if(profopts.should_profile_rss) {
-    prof.profile_rss.tid = NULL;
-    prof.profile_rss.func = &get_rss;
-    prof.profile_rss.signal = signal;
-    prof.profile_rss.skip_intervals = profopts.profile_rss_skip_intervals;
-    prof.profile_rss.tmp_intervals = 0;
-    pthread_create(&prof.profile_rss.id, NULL, &profile_rss, NULL);
-    setup_timer(&prof.profile_rss);
-    signal++;
-  }
-  if(profopts.should_profile_allocs) {
-    prof.profile_allocs.tid = NULL;
-    prof.profile_allocs.func = &get_allocs;
-    prof.profile_allocs.signal = signal;
-    prof.profile_allocs.tmp_intervals = 0;
-    pthread_create(&prof.profile_allocs.id, NULL, &profile_allocs, NULL);
-    setup_timer(&prof.profile_allocs);
-    signal++;
-  }
 }
 
-int sh_should_stop() {
-  switch(pthread_mutex_trylock(&prof.mtx)) {
-    case 0:
-      pthread_mutex_unlock(&prof.mtx);
-      return 1;
-    case EBUSY:
-      return 0;
-  }
-  return 1;
+void sh_start_profile_master_thread() {
+
+  /* This initializes the values that the threads will need to do their profiling,
+   * including perf events, file descriptors, etc.
+   */
+  initialize_profiling();
+
+  /* All the main thread should do is start the master thread */
+  pthread_create(&master_id, NULL, &master_profile, NULL);
 }
 
-void sh_stop_profile_thread() {
-  size_t i, n, x;
-
-  /* Stop the actual sampling */
+void deinitialize_profiling() {
   for(i = 0; i < profopts.num_events; i++) {
     ioctl(prof.fds[i], PERF_EVENT_IOC_DISABLE, 0);
-  }
-
-  /* Stop the timers and join the threads */
-  pthread_mutex_unlock(&prof.mtx);
-  if(profopts.should_profile_all) {
-    timer_delete(prof.profile_all.timer);
-    pthread_join(prof.profile_all.id, NULL);
-    printf("Stopped profile_all thread.\n");
-  }
-  if(profopts.should_profile_one) {
-    timer_delete(prof.profile_one.timer);
-    pthread_join(prof.profile_one.id, NULL);
-    printf("Stopped profile_one thread.\n");
-  }
-  if(profopts.should_profile_rss) {
-    timer_delete(prof.profile_rss.timer);
-    pthread_join(prof.profile_rss.id, NULL);
-    printf("Stopped profile_rss thread.\n");
-  }
-  if(profopts.should_profile_allocs) {
-    timer_delete(prof.profile_allocs.timer);
-    pthread_join(prof.profile_allocs.id, NULL);
-    printf("Stopped profile_allocs thread.\n");
   }
 
   for(i = 0; i < profopts.num_events; i++) {
     close(prof.fds[i]);
   }
+}
 
+void print_profiling() {
   /* PEBS profiling */
   if(profopts.should_profile_all) {
     printf("===== PEBS RESULTS =====\n");
@@ -308,70 +353,12 @@ void sh_stop_profile_thread() {
   }
 }
 
-void *profile_rss(void *a) {
-  struct timespec timer;
-  pid_t *tid;
+void sh_stop_profile_master_thread() {
+  size_t i, n, x;
 
-  /* Defined the moment the pointer is non-NULL */
-  tid = malloc(sizeof(pid_t));
-  *tid = syscall(SYS_gettid);
-  prof.profile_rss.tid = tid;
+  pthread_join(master_id, NULL);
 
-  while(!sh_should_stop()) {
-  }
+  deinitialize_profiling();
+  print_profiling();
 }
 
-void *profile_all(void *a) {
-  size_t i;
-  pid_t *tid;
-
-  /* mmap the file */
-  prof.metadata = malloc(sizeof(struct perf_event_mmap_page *) * profopts.num_events);
-  for(i = 0; i < profopts.num_events; i++) {
-    prof.metadata[i] = mmap(NULL, prof.pagesize + (prof.pagesize * profopts.max_sample_pages), PROT_READ | PROT_WRITE, MAP_SHARED, prof.fds[i], 0);
-    if(prof.metadata[i] == MAP_FAILED) {
-      fprintf(stderr, "Failed to mmap room (%zu bytes) for perf samples. Aborting with:\n%s\n", prof.pagesize + (prof.pagesize * profopts.max_sample_pages), strerror(errno));
-      exit(1);
-    }
-  }
-
-  /* Initialize */
-  for(i = 0; i < profopts.num_events; i++) {
-    ioctl(prof.fds[i], PERF_EVENT_IOC_RESET, 0);
-    ioctl(prof.fds[i], PERF_EVENT_IOC_ENABLE, 0);
-  }
-
-  /* Defined the moment the pointer is non-NULL */
-  tid = malloc(sizeof(pid_t));
-  *tid = syscall(SYS_gettid);
-  prof.profile_all.tid = tid;
-
-  while(!sh_should_stop()) {
-    /*
-    get_accesses();
-    */
-  }
-}
-
-void *profile_one(void *a) {
-  int i;
-
-  for(i = 0; i < profopts.num_events; i++) {
-    ioctl(prof.fds[i], PERF_EVENT_IOC_RESET, 0);
-    ioctl(prof.fds[i], PERF_EVENT_IOC_ENABLE, 0);
-  }
-  prof.num_bandwidth_intervals = 0;
-  prof.running_avg = 0;
-  prof.max_bandwidth = 0;
-
-  while(!sh_should_stop()) {
-    /*
-    get_bandwidth();
-    */
-  }
-}
-
-void *profile_allocs(void *a) {
-  while(!sh_should_stop()) {
-  }
-}

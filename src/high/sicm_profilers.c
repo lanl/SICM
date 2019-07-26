@@ -1,0 +1,302 @@
+void *profile_rss(void *a) {
+  while(1) { }
+}
+
+void *profile_all(void *a) {
+  size_t i;
+
+  /* mmap the perf file descriptors */
+  prof.metadata = malloc(sizeof(struct perf_event_mmap_page *) * profopts.num_events);
+  for(i = 0; i < profopts.num_events; i++) {
+    prof.metadata[i] = mmap(NULL, prof.pagesize + (prof.pagesize * profopts.max_sample_pages), PROT_READ | PROT_WRITE, MAP_SHARED, prof.fds[i], 0);
+    if(prof.metadata[i] == MAP_FAILED) {
+      fprintf(stderr, "Failed to mmap room (%zu bytes) for perf samples. Aborting with:\n%s\n", prof.pagesize + (prof.pagesize * profopts.max_sample_pages), strerror(errno));
+      exit(1);
+    }
+  }
+
+  /* Start the events sampling */
+  for(i = 0; i < profopts.num_events; i++) {
+    ioctl(prof.fds[i], PERF_EVENT_IOC_RESET, 0);
+    ioctl(prof.fds[i], PERF_EVENT_IOC_ENABLE, 0);
+  }
+
+  /* Wait for signals */
+  while(1) { }
+}
+
+#if 0
+void *profile_one(void *a) {
+  int i;
+
+  /* Start the events sampling */
+  for(i = 0; i < profopts.num_events; i++) {
+    ioctl(prof.fds[i], PERF_EVENT_IOC_RESET, 0);
+    ioctl(prof.fds[i], PERF_EVENT_IOC_ENABLE, 0);
+  }
+  prof.num_bandwidth_intervals = 0;
+  prof.running_avg = 0;
+  prof.max_bandwidth = 0;
+
+  while(1) { }
+}
+#endif
+
+void *profile_allocs(void *a) {
+  while(1) { }
+}
+
+/* Adds up accesses to the arenas */
+void profile_all_interval(int s) {
+  uint64_t head, tail, buf_size;
+  arena_info *arena;
+  void *addr;
+  char *base, *begin, *end, break_next_site;
+  struct sample *sample;
+  struct perf_event_header *header;
+  int err;
+  size_t i, n;
+  profile_info *profinfo;
+  size_t total_samples;
+
+  block_signal(s);
+
+  for(n = 0; n <= tracker.max_index; n++) {
+    arena = tracker.arenas[n];
+    if(!arena) continue;
+    if(arena->num_intervals == 0) {
+      /* This is the arena's first interval, make note */
+      arena->first_interval = prof.cur_interval;
+    }
+    arena->num_intervals++;
+  }
+
+  /* Outer loop loops over the events */
+  for(i = 0; i < profopts.num_events; i++) {
+
+    /* Loops over the arenas */
+    total_samples = 0;
+    for(n = 0; n <= tracker.max_index; n++) {
+      arena = tracker.arenas[n];
+      if(!arena) continue;
+      arena->tmp_accumulator = 0;
+    }
+
+#if 0
+    /* Wait for the perf buffer to be ready */
+    prof.pfd.fd = prof.fds[i];
+    prof.pfd.events = POLLIN;
+    prof.pfd.revents = 0;
+    err = poll(&prof.pfd, 1, 0);
+    if(err == 0) {
+      return;
+    } else if(err == -1) {
+      fprintf(stderr, "Error occurred polling. Aborting.\n");
+      exit(1);
+    }
+#endif
+
+    /* Get ready to read */
+    head = prof.metadata[i]->data_head;
+    tail = prof.metadata[i]->data_tail;
+    buf_size = prof.pagesize * profopts.max_sample_pages;
+    asm volatile("" ::: "memory"); /* Block after reading data_head, per perf docs */
+
+    base = (char *)prof.metadata[i] + prof.pagesize;
+    begin = base + tail % buf_size;
+    end = base + head % buf_size;
+
+    /* Read all of the samples */
+    pthread_rwlock_rdlock(&tracker.extents_lock);
+    while(begin <= (end - 8)) {
+
+      header = (struct perf_event_header *)begin;
+      if(header->size == 0) {
+        break;
+      }
+      sample = (struct sample *) (begin + 8);
+      addr = (void *) (sample->addr);
+
+      if(addr) {
+        /* Search for which extent it goes into */
+        extent_arr_for(tracker.extents, n) {
+          if(!tracker.extents->arr[n].start && !tracker.extents->arr[n].end) continue;
+          arena = (arena_info *)tracker.extents->arr[n].arena;
+          if((addr >= tracker.extents->arr[n].start) && (addr <= tracker.extents->arr[n].end) && arena) {
+            arena->tmp_accumulator++;
+            total_samples++;
+          }
+        }
+      }
+
+      /* Increment begin by the size of the sample */
+      if(((char *)header + header->size) == base + buf_size) {
+        begin = base;
+      } else {
+        begin = begin + header->size;
+      }
+    }
+    pthread_rwlock_unlock(&tracker.extents_lock);
+
+    /* Let perf know that we've read this far */
+    prof.metadata[i]->data_tail = head;
+    __sync_synchronize();
+
+    for(n = 0; n <= tracker.max_index; n++) {
+      arena = tracker.arenas[n];
+      /* This check is necessary because an arena could have been created
+       * after we added one to the num_intervals up above. num_intervals can't be zero. */
+      if((!arena) || (!arena->num_intervals)) continue;
+      profinfo = &(arena->profiles[i]);
+      profinfo->total += arena->tmp_accumulator;
+      /* One size_t per interval for this one event */
+      profinfo->interval_vals = (size_t *)realloc(profinfo->interval_vals, arena->num_intervals * sizeof(size_t));
+      profinfo->interval_vals[arena->num_intervals - 1] = arena->tmp_accumulator;
+    }
+  }
+
+  unblock_signal(s);
+}
+
+#if 0
+void profile_one_interval(int s)
+{
+  float count_f, total;
+  long long count;
+  int num, i;
+  struct itimerspec it;
+
+  /* Stop the counter and read the value if it has been at least a second */
+  total = 0;
+  for(i = 0; i < profopts.num_events; i++) {
+    ioctl(prof.fds[i], PERF_EVENT_IOC_DISABLE, 0);
+    read(prof.fds[i], &count, sizeof(long long));
+    count_f = (float) count * 64 / 1024 / 1024;
+    total += count_f;
+
+    /* Start it back up again */
+    ioctl(prof.fds[i], PERF_EVENT_IOC_RESET, 0);
+    ioctl(prof.fds[i], PERF_EVENT_IOC_ENABLE, 0);
+  }
+
+  printf("%f MB/s\n", total);
+  
+  /* Calculate the running average */
+  prof.num_bandwidth_intervals++;
+  prof.running_avg = ((prof.running_avg * (prof.num_bandwidth_intervals - 1)) + total) / prof.num_bandwidth_intervals;
+
+  if(total > prof.max_bandwidth) {
+    prof.max_bandwidth = total;
+  }
+}
+#endif
+
+void profile_rss_interval(int s) {
+	size_t i, n, numpages;
+  uint64_t start, end;
+  arena_info *arena;
+  ssize_t num_read;
+
+  prof.profile_rss.tmp_intervals++;
+  if(prof.profile_rss.skip_intervals != prof.profile_rss.tmp_intervals) {
+    /* Here I would store the interval's value as some canary value, indicating
+     * that we've skipped this interval */
+    return;
+  }
+  prof.profile_rss.tmp_intervals = 0;
+
+  /* Grab the lock for the extents array */
+  //pthread_mutex_lock(&arena_lock);
+  pthread_rwlock_rdlock(&tracker.extents_lock);
+
+	/* Zero out the RSS values for each arena */
+	extent_arr_for(tracker.rss_extents, i) {
+    arena = (arena_info *)tracker.rss_extents->arr[i].arena;
+    if(!arena) continue;
+		arena->tmp_rss = 0;
+	}
+
+	/* Iterate over the chunks */
+	extent_arr_for(tracker.rss_extents, i) {
+		start = (uint64_t) tracker.rss_extents->arr[i].start;
+		end = (uint64_t) tracker.rss_extents->arr[i].end;
+		arena = (arena_info *) tracker.rss_extents->arr[i].arena;
+    if(!arena) continue;
+
+    numpages = (end - start) / prof.pagesize;
+		prof.pfndata = (union pfn_t *) realloc(prof.pfndata, numpages * prof.addrsize);
+
+		/* Seek to the starting of this chunk in the pagemap */
+		if(lseek64(prof.pagemap_fd, (start / prof.pagesize) * prof.addrsize, SEEK_SET) == ((__off64_t) - 1)) {
+			close(prof.pagemap_fd);
+			fprintf(stderr, "Failed to seek in the PageMap file. Aborting.\n");
+			exit(1);
+		}
+
+		/* Read in all of the pfns for this chunk */
+    num_read = read(prof.pagemap_fd, prof.pfndata, prof.addrsize * numpages);
+    if(num_read == -1) {
+      fprintf(stderr, "Failed to read from PageMap file. Aborting: %d, %s\n", errno, strerror(errno));
+      exit(1);
+		} else if(num_read < prof.addrsize * numpages) {
+      printf("WARNING: Read less bytes than expected.\n");
+      continue;
+    }
+
+		/* Iterate over them and check them, sum up RSS in arena->rss */
+		for(n = 0; n < numpages; n++) {
+			if(!(prof.pfndata[n].obj.present)) {
+				continue;
+		  }
+      arena->tmp_rss += prof.pagesize;
+		}
+
+		/* Maintain the peak for this arena */
+		if(arena->tmp_rss > arena->peak_rss) {
+			arena->peak_rss = arena->tmp_rss;
+		}
+	}
+
+  pthread_rwlock_unlock(&tracker.extents_lock);
+  //pthread_mutex_unlock(&arena_lock);
+}
+
+void profile_allocs_interval(int s) {
+}
+
+/* Uses libpfm to figure out the event we're going to use */
+void sh_get_event() {
+  int err;
+  size_t i;
+
+  pfm_initialize();
+  prof.pfm = malloc(sizeof(pfm_perf_encode_arg_t));
+
+  /* Make sure all of the events work. Initialize the pes. */
+  for(i = 0; i < profopts.num_events; i++) {
+    memset(prof.pes[i], 0, sizeof(struct perf_event_attr));
+    prof.pes[i]->size = sizeof(struct perf_event_attr);
+    memset(prof.pfm, 0, sizeof(pfm_perf_encode_arg_t));
+    prof.pfm->size = sizeof(pfm_perf_encode_arg_t);
+    prof.pfm->attr = prof.pes[i];
+
+    err = pfm_get_os_event_encoding(profopts.events[i], PFM_PLM2 | PFM_PLM3, PFM_OS_PERF_EVENT, prof.pfm);
+    if(err != PFM_SUCCESS) {
+      fprintf(stderr, "Failed to initialize event '%s'. Aborting.\n", profopts.events[i]);
+      exit(1);
+    }
+
+    /* If we're profiling all, set some additional options. */
+    if(profopts.should_profile_all) {
+      prof.pes[i]->sample_type = PERF_SAMPLE_ADDR;
+      prof.pes[i]->sample_period = profopts.sample_freq;
+      prof.pes[i]->mmap = 1;
+      prof.pes[i]->disabled = 1;
+      prof.pes[i]->exclude_kernel = 1;
+      prof.pes[i]->exclude_hv = 1;
+      prof.pes[i]->precise_ip = 2;
+      prof.pes[i]->task = 1;
+      prof.pes[i]->sample_period = profopts.sample_freq;
+    }
+  }
+}

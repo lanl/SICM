@@ -542,7 +542,7 @@ void sh_init() {
     /* Set the arena allocator's callback function */
     sicm_extent_alloc_callback = &sh_create_extent;
 
-    sh_start_profile_thread();
+    sh_start_profile_master_thread();
   }
   
   if (profopts.should_run_rdspy) {
