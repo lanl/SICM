@@ -189,6 +189,7 @@ void *profile_master(void *a) {
   pid_t tid;
   int master_signal;
 
+  global_signal = SIGRTMIN;
   if(profopts.should_profile_all) {
     setup_profile_thread(&profile_all, &profile_all_interval, 0);
   }
@@ -208,7 +209,6 @@ void *profile_master(void *a) {
   pthread_mutex_init(&prof.mtx, NULL);
   pthread_cond_init(&prof.cond, NULL);
   prof.cur_interval = 0;
-  global_signal = SIGRTMIN;
 
   /* Set up a signal handler for the master */
   sa.sa_flags = 0;
