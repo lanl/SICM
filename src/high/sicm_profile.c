@@ -7,13 +7,14 @@
 #include "sicm_high.h"
 
 profiler prof;
-static global_signal = SIGRTMIN;
+static global_signal;
 
 /* Function used by the profile threads to block/unblock
  * their own signal.
  */
 void block_signal(int signal) {
 	sigset_t mask;
+  struct timeval tv;
 
   /* Block the signal */
   sigemptyset(&mask);
@@ -32,6 +33,7 @@ void block_signal(int signal) {
 /* Unblocks a signal. Also notifies the Master thread. */
 void unblock_signal(int signal) {
 	sigset_t mask;
+  struct timeval tv;
 
   /* Signal the master thread that we're done */
   pthread_mutex_lock(&prof.mtx);
@@ -147,6 +149,7 @@ void *profile_master(void *a) {
   if(profopts.should_profile_all) {
     setup_profile_thread(&profile_all, &profile_all_interval, 0);
   }
+#if 0
   if(profopts.should_profile_rss) {
     setup_profile_thread(&profile_rss, &profile_rss_interval, 0);
   }
@@ -156,11 +159,13 @@ void *profile_master(void *a) {
   if(profopts.should_profile_allocs) {
     setup_profile_thread(&profile_allocs, &profile_allocs_interval, 0);
   }
+#endif
   
   /* Initialize synchronization primitives */
   pthread_mutex_init(&prof.mtx, NULL);
   pthread_cond_init(&prof.cond, NULL);
   prof.cur_interval = 0;
+  global_signal = SIGRTMIN;
 
   /* Set up a signal handler for the master */
   sa.sa_flags = 0;
@@ -260,6 +265,7 @@ void initialize_profiling() {
     }
   }
 
+#if 0
   if(profopts.should_profile_rss) {
     prof.pagemap_fd = open("/proc/self/pagemap", O_RDONLY);
     if (prof.pagemap_fd < 0) {
@@ -270,6 +276,7 @@ void initialize_profiling() {
     prof.addrsize = sizeof(uint64_t);
     prof.pagesize = (size_t) sysconf(_SC_PAGESIZE);
   }
+#endif
 }
 
 void sh_start_profile_master_thread() {
@@ -307,10 +314,12 @@ void print_profiling() {
       }
       printf("\n");
 
+#if 0
       /* Print the RSS of the arena */
       if(profopts.should_profile_rss) {
         printf("  Peak RSS: %zu\n", tracker.arenas[i]->peak_rss);
       }
+#endif
       printf("    Number of intervals: %zu\n", tracker.arenas[i]->num_intervals);
       printf("    First interval: %zu\n", tracker.arenas[i]->first_interval);
 
@@ -325,6 +334,7 @@ void print_profiling() {
     }
     printf("===== END PEBS RESULTS =====\n");
 
+#if 0
   /* MBI profiling */
   } else if(profopts.should_profile_one) {
     printf("===== MBI RESULTS FOR SITE %u =====\n", profopts.profile_one_site);
@@ -351,6 +361,7 @@ void print_profiling() {
     }
     printf("===== END RSS RESULTS =====\n");
   }
+#endif
 }
 
 void sh_stop_profile_master_thread() {

@@ -1,7 +1,3 @@
-void *profile_rss(void *a) {
-  while(1) { }
-}
-
 void *profile_all(void *a) {
   size_t i;
 
@@ -22,27 +18,6 @@ void *profile_all(void *a) {
   }
 
   /* Wait for signals */
-  while(1) { }
-}
-
-#if 0
-void *profile_one(void *a) {
-  int i;
-
-  /* Start the events sampling */
-  for(i = 0; i < profopts.num_events; i++) {
-    ioctl(prof.fds[i], PERF_EVENT_IOC_RESET, 0);
-    ioctl(prof.fds[i], PERF_EVENT_IOC_ENABLE, 0);
-  }
-  prof.num_bandwidth_intervals = 0;
-  prof.running_avg = 0;
-  prof.max_bandwidth = 0;
-
-  while(1) { }
-}
-#endif
-
-void *profile_allocs(void *a) {
   while(1) { }
 }
 
@@ -159,6 +134,30 @@ void profile_all_interval(int s) {
 }
 
 #if 0
+void *profile_rss(void *a) {
+  while(1) { }
+}
+
+void *profile_one(void *a) {
+  int i;
+
+  /* Start the events sampling */
+  for(i = 0; i < profopts.num_events; i++) {
+    ioctl(prof.fds[i], PERF_EVENT_IOC_RESET, 0);
+    ioctl(prof.fds[i], PERF_EVENT_IOC_ENABLE, 0);
+  }
+  prof.num_bandwidth_intervals = 0;
+  prof.running_avg = 0;
+  prof.max_bandwidth = 0;
+
+  while(1) { }
+}
+
+void *profile_allocs(void *a) {
+  while(1) { }
+}
+
+
 void profile_one_interval(int s)
 {
   float count_f, total;
@@ -189,7 +188,6 @@ void profile_one_interval(int s)
     prof.max_bandwidth = total;
   }
 }
-#endif
 
 void profile_rss_interval(int s) {
 	size_t i, n, numpages;
@@ -263,6 +261,7 @@ void profile_rss_interval(int s) {
 
 void profile_allocs_interval(int s) {
 }
+#endif
 
 /* Uses libpfm to figure out the event we're going to use */
 void sh_get_event() {

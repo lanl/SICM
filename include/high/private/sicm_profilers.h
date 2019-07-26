@@ -29,6 +29,7 @@ void profile_all_deinit();
 void *profile_all(void *a);
 void profile_all_interval(int s);
 
+#if 0
 /* RSS */
 union pfn_t {
   uint64_t raw;
@@ -48,7 +49,6 @@ typedef struct profile_rss_data {
 void *profile_rss(void *a);
 void profile_rss_interval(int s);
 
-#if 0
 /* ONE */
 typedef struct profile_one_data {
   /* For measuring bandwidth */
@@ -58,10 +58,10 @@ typedef struct profile_one_data {
 } profile_one_data;
 void *profile_one(void *a);
 void profile_one_interval(int s);
-#endif
 
 /* ALLOCS */
 typedef struct profile_allocs_data {
 } profile_allocs_data;
 void *profile_allocs(void *a);
 void profile_allocs_interval(int s);
+#endif
