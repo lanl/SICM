@@ -97,6 +97,16 @@ void profile_master_interval(int s) {
   printf("Master triggered at time %ld.%06ld\n", tv.tv_sec, tv.tv_usec);
   fflush(stdout);
 
+  for(i = 0; i <= tracker.max_index; i++) {
+    profinfo = prof.info[i];
+    if(!profinfo) continue;
+    if(profinfo->num_intervals == 0) {
+      /* This is the arena's first interval, make note */
+      profinfo->first_interval = prof.cur_interval;
+    }
+    profinfo->num_intervals++;
+  }
+
   /* Notify the threads */
   for(i = 0; i < prof.num_profile_threads; i++) {
     pthread_kill(prof.profile_threads[i].id, prof.profile_threads[i].signal);

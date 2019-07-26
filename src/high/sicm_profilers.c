@@ -101,16 +101,6 @@ void profile_all_interval(int s) {
 
   block_signal(s);
 
-  for(n = 0; n <= tracker.max_index; n++) {
-    profinfo = prof.info[n];
-    if(!profinfo) continue;
-    if(profinfo->num_intervals == 0) {
-      /* This is the arena's first interval, make note */
-      profinfo->first_interval = prof.cur_interval;
-    }
-    profinfo->num_intervals++;
-  }
-
   /* Outer loop loops over the events */
   for(i = 0; i < profopts.num_profile_all_events; i++) {
 
@@ -187,8 +177,6 @@ void profile_all_interval(int s) {
       profinfo = prof.info[n];
       per_event_profinfo = &(profinfo->profile_all.events[i]);
 
-      /* This check is necessary because an arena could have been created
-       * after we added one to the num_intervals up above. num_intervals can't be zero. */
       if((!arena) || (!profinfo) || (!profinfo->num_intervals)) continue;
 
       per_event_profinfo->total += profinfo->profile_all.tmp_accumulator;
