@@ -122,9 +122,11 @@ void sh_create_arena(int index, int id, sicm_device *device) {
   arena->num_alloc_sites = 1;
   arena->num_intervals = 0;
   arena->first_interval = 0;
+#if 0
   arena->rss = 0;
   arena->peak_rss = 0;
   arena->avg_rss = 0;
+#endif
   arena->profiles = calloc(profopts.num_events, sizeof(profile_info));
   for(i = 0; i < profopts.num_events; i++) {
     arena->profiles[i].total = 0;

@@ -36,6 +36,14 @@ typedef struct profiler {
   size_t cur_interval, threads_finished;
   pthread_mutex_t mtx;
   pthread_cond_t cond;
+
+  /* Data for each profile thread */
+  profile_all_data profile_all;
+#if 0
+  profile_rss_data profile_rss;
+  profile_one_data profile_one;
+  profile_allocs_data profile_allocs;
+#endif
 } profiler;
 
 extern profiling_options profopts;

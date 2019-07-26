@@ -1,20 +1,59 @@
-void *profile_all(void *a) {
+profile_all_init() {
   size_t i;
+  pid_t pid;
+  int cpu, group_fd;
+  unsigned long flags;
 
-  /* mmap the perf file descriptors */
-  prof.metadata = malloc(sizeof(struct perf_event_mmap_page *) * profopts.num_events);
+  prof.profile_all.pagesize = (size_t) sysconf(_SC_PAGESIZE);
+
+  /* Allocate perf structs */
+  prof.profile_all.pes = malloc(sizeof(struct perf_event_attr *) * profopts.num_events);
+  prof.profile_all.fds = malloc(sizeof(int) * profopts.num_events);
   for(i = 0; i < profopts.num_events; i++) {
-    prof.metadata[i] = mmap(NULL, prof.pagesize + (prof.pagesize * profopts.max_sample_pages), PROT_READ | PROT_WRITE, MAP_SHARED, prof.fds[i], 0);
-    if(prof.metadata[i] == MAP_FAILED) {
-      fprintf(stderr, "Failed to mmap room (%zu bytes) for perf samples. Aborting with:\n%s\n", prof.pagesize + (prof.pagesize * profopts.max_sample_pages), strerror(errno));
+    prof.profile_all.pes[i] = malloc(sizeof(struct perf_event_attr));
+    prof.profile_all.fds[i] = 0;
+  }
+
+  /* Use libpfm to fill the pe struct */
+  sh_get_event();
+
+  /* Open all perf file descriptors */
+	pid = 0;
+	cpu = -1;
+	group_fd = -1;
+	flags = 0;
+  for(i = 0; i < profopts.num_events; i++) {
+    prof.profile_all.fds[i] = syscall(__NR_perf_event_open, prof.profile_all.pes[i], pid, cpu, group_fd, flags);
+    if(prof.profile_all.fds[i] == -1) {
+      fprintf(stderr, "Error opening perf event %d (0x%llx): %s\n", i, prof.profile_all.pes[i]->config, strerror(errno));
       exit(1);
     }
   }
 
+  /* mmap the perf file descriptors */
+  prof.profile_all.metadata = malloc(sizeof(struct perf_event_mmap_page *) * profopts.num_events);
+  for(i = 0; i < profopts.num_events; i++) {
+    prof.profile_all.metadata[i] = mmap(NULL, 
+                                        prof.profile_all.pagesize + (prof.profile_all.pagesize * profopts.max_sample_pages), 
+                                        PROT_READ | PROT_WRITE, 
+                                        MAP_SHARED, 
+                                        prof.profile_all.fds[i], 
+                                        0);
+    if(prof.profile_all.metadata[i] == MAP_FAILED) {
+      fprintf(stderr, "Failed to mmap room (%zu bytes) for perf samples. Aborting with:\n%s\n", 
+              prof.profile_all.pagesize + (prof.profile_all.pagesize * profopts.max_sample_pages), strerror(errno));
+      exit(1);
+    }
+  }
+}
+
+void *profile_all(void *a) {
+  size_t i;
+
   /* Start the events sampling */
   for(i = 0; i < profopts.num_events; i++) {
-    ioctl(prof.fds[i], PERF_EVENT_IOC_RESET, 0);
-    ioctl(prof.fds[i], PERF_EVENT_IOC_ENABLE, 0);
+    ioctl(prof.profile_all.fds[i], PERF_EVENT_IOC_RESET, 0);
+    ioctl(prof.profile_all.fds[i], PERF_EVENT_IOC_ENABLE, 0);
   }
 
   /* Wait for signals */
@@ -134,8 +173,28 @@ void profile_all_interval(int s) {
 }
 
 #if 0
+
+void profile_rss_init() {
+    prof.pagemap_fd = open("/proc/self/pagemap", O_RDONLY);
+    if (prof.pagemap_fd < 0) {
+      fprintf(stderr, "Failed to open /proc/self/pagemap. Aborting.\n");
+      exit(1);
+    }
+    prof.pfndata = NULL;
+    prof.addrsize = sizeof(uint64_t);
+    prof.pagesize = (size_t) sysconf(_SC_PAGESIZE);
+}
+
 void *profile_rss(void *a) {
   while(1) { }
+}
+
+void profile_one_init() {
+
+    pid = -1;
+    cpu = 0;
+    group_fd = -1;
+    flags = 0;
 }
 
 void *profile_one(void *a) {

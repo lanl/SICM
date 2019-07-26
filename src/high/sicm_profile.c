@@ -185,10 +185,11 @@ void *profile_master(void *a) {
   }
 
   /* Create the timer */
+  tid = syscall(SYS_gettid);
   sev.sigev_notify = SIGEV_THREAD_ID;
   sev.sigev_signo = master_signal;
   sev.sigev_value.sival_ptr = &timerid;
-  sev._sigev_un._tid = *tid;
+  sev._sigev_un._tid = tid;
   if(timer_create(CLOCK_REALTIME, &sev, &timerid) == -1) {
     fprintf(stderr, "Error creating timer. Aborting.\n");
     exit(1);
@@ -217,16 +218,25 @@ void *profile_master(void *a) {
 
 
 void initialize_profiling() {
-  size_t i;
-  pid_t pid;
-  int cpu, group_fd;
-  unsigned long flags;
 
   /* All of this initialization HAS to happen in the main SICM thread.
    * If it's not, the `perf_event_open` system call won't profile
    * the current thread, but instead will only profile the thread that
    * it was run in.
    */
+
+  if(profopts.should_profile_all) {
+    profile_all_init();
+  }
+  if(profopts.should_profile_rss) {
+    profile_rss_init();
+  }
+  if(profopts.should_profile_one) {
+    profile_one_init();
+  }
+  if(profopts.should_profile_allocs) {
+    profile_allocs_init();
+  }
 
   prof.pagesize = (size_t) sysconf(_SC_PAGESIZE);
 

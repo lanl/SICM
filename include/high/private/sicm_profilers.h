@@ -12,6 +12,7 @@
 struct __attribute__ ((__packed__)) sample {
     uint64_t addr;
 };
+
 typedef struct profile_all_data {
   /* For perf */
   size_t size;
@@ -20,9 +21,12 @@ typedef struct profile_all_data {
   int *fds;
   struct pollfd pfd;
 
+  size_t pagesize;
+
   /* For libpfm */
   pfm_perf_encode_arg_t *pfm;
 } profile_all_data;
+
 void sh_get_event();
 void profile_all_init();
 void profile_all_deinit();
