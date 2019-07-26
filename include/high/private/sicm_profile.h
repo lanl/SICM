@@ -21,6 +21,18 @@
 #include "sicm_high_arenas.h"
 #include "sicm_profilers.h"
 
+/* Profiling information for one arena */
+typedef struct profile_info {
+  size_t first_interval, num_intervals;
+
+  profile_all_info profile_all;
+#if 0
+  profile_rss_info profile_rss;
+  profile_one_info profile_one;
+  profile_allocs_info profile_allocs;
+#endif
+} profile_info;
+
 typedef struct profile_thread {
   pthread_t id;
   int signal;
@@ -37,6 +49,9 @@ typedef struct profiler {
   size_t cur_interval, threads_finished;
   pthread_mutex_t mtx;
   pthread_cond_t cond;
+
+  /* Per-arena profiling information */
+  profile_info **info;
 
   /* Data for each profile thread */
   profile_all_data profile_all;
@@ -56,3 +71,5 @@ void sh_stop_profile_master_thread();
 
 void block_signal(int);
 void unblock_signal(int);
+
+void create_profile_arena(int index);

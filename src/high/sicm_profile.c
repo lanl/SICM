@@ -9,6 +9,27 @@
 profiler prof;
 static int global_signal;
 
+void create_profile_arena(int index) {
+  prof.info[index] = calloc(1, sizeof(profile_info));
+  prof.info[index]->num_intervals = 0;
+  prof.info[index]->first_interval = 0;
+
+  if(profopts.should_profile_all) {
+    profile_all_arena_init(&(prof.info[index]->profile_all));
+  }
+#if 0
+  if(profopts.should_profile_rss) {
+    profile_rss_arena_init(&(prof.info[index]->profile_rss));
+  }
+  if(profopts.should_profile_one) {
+    profile_one_arena_init(&(prof.info[index]->profile_one));
+  }
+  if(profopts.should_profile_allocs) {
+    profile_allocs_arena_init(&(prof.info[index]->profile_allocs));
+  }
+#endif
+}
+
 /* Function used by the profile threads to block/unblock
  * their own signal.
  */
@@ -216,18 +237,19 @@ void *profile_master(void *a) {
   while(1) {}
 }
 
-
 void initialize_profiling() {
+  /* Allocate room for the per-arena profiling information */
+  prof.info = calloc(profopts.max_arenas, sizeof(profile_info *));
 
   /* All of this initialization HAS to happen in the main SICM thread.
    * If it's not, the `perf_event_open` system call won't profile
    * the current thread, but instead will only profile the thread that
    * it was run in.
    */
-
   if(profopts.should_profile_all) {
     profile_all_init();
   }
+#if 0
   if(profopts.should_profile_rss) {
     profile_rss_init();
   }
@@ -237,6 +259,7 @@ void initialize_profiling() {
   if(profopts.should_profile_allocs) {
     profile_allocs_init();
   }
+#endif
 }
 
 void sh_start_profile_master_thread() {

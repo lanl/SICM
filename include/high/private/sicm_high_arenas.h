@@ -17,20 +17,11 @@ enum arena_layout {
   INVALID_LAYOUT
 };
 
-/* Profiling information for one event in a single arena */
-typedef struct profile_info {
-  size_t total, peak;
-  size_t *interval_vals; /* One for each interval */
-} profile_info;
-
 /* Keeps track of additional information about arenas */
 typedef struct arena_info {
-  size_t tmp_rss, tmp_accumulator, num_intervals, first_interval; /* Profiling info */
   int *alloc_sites, num_alloc_sites; /* Stores the allocation sites that are in this arena */
   unsigned index; /* Index into the arenas array */
   sicm_arena arena; /* SICM's low-level interface pointer */
-  profile_info *profiles; /* One for each event in num_events */
-  profile_info *rss_profiles; /* One only */
 } arena_info;
 
 /* A tree associating site IDs with device pointers.
@@ -137,10 +128,6 @@ typedef struct profiling_options {
   /* Array of strings of IMCs for the bandwidth profiling */
   char **imcs;
   int num_imcs, max_imc_len, max_event_len;
-
-  /* Set depending on which type of profiling we're doing */
-  size_t num_events;
-  char **events;
 } profiling_options;
 
 #ifdef __cplusplus

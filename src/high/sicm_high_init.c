@@ -169,9 +169,6 @@ void set_options() {
       fprintf(stderr, "No profiling events given. Can't profile with sampling.\n");
       exit(1);
     }
-
-    profopts.num_events = profopts.num_profile_all_events;
-    profopts.events = profopts.profile_all_events;
   }
 
   /* Should we keep track of when each allocation happened, in intervals? */
@@ -279,8 +276,6 @@ void set_options() {
     }
 
     profopts.num_profile_one_events *= profopts.num_imcs;
-    profopts.num_events = profopts.num_profile_one_events;
-    profopts.events = profopts.profile_one_events;
   }
 
   /* Should we get the RSS of each arena? */
@@ -495,20 +490,7 @@ void sh_init() {
      * If the arena layout isn't per-thread (`EXCLUSIVE_`), arenas_per_thread is just
      * the total number of arenas.
      */
-    switch(tracker.layout) {
-      case SHARED_ONE_ARENA:
-      case SHARED_DEVICE_ARENAS:
-      case SHARED_SITE_ARENAS:
-        tracker.arenas = (arena_info **) calloc(tracker.arenas_per_thread, sizeof(arena_info *));
-        break;
-      case EXCLUSIVE_SITE_ARENAS:
-      case EXCLUSIVE_ONE_ARENA:
-      case EXCLUSIVE_DEVICE_ARENAS:
-      case EXCLUSIVE_TWO_DEVICE_ARENAS:
-      case EXCLUSIVE_FOUR_DEVICE_ARENAS:
-        tracker.arenas = (arena_info **) calloc(tracker.max_threads * tracker.arenas_per_thread, sizeof(arena_info *));
-        break;
-    }
+    tracker.arenas = (arena_info **) calloc(tracker.max_arenas, sizeof(arena_info *));
 
     /* Initialize the extents array.
      * If we're just profiling one site, initialize a new array that has extents from just that site.

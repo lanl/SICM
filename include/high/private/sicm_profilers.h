@@ -12,18 +12,25 @@ struct __attribute__ ((__packed__)) sample {
     uint64_t addr;
 };
 
+/* profile_all info for each event */
+typedef struct per_event_profile_all_info {
+  size_t total, peak, *intervals;
+}
+
+/* profile_all info for each arena */
+typedef struct profile_all_info {
+  /* One for each event */
+  per_event_profile_all_info *events;
+} profile_all_info;
+
 typedef struct profile_all_data {
   /* For perf */
-  size_t size;
   struct perf_event_attr **pes; /* Array of pe structs, for multiple events */
   struct perf_event_mmap_page **metadata;
   int *fds;
   struct pollfd pfd;
 
   size_t pagesize;
-
-  /* For libpfm */
-  pfm_perf_encode_arg_t *pfm;
 } profile_all_data;
 
 void sh_get_event();

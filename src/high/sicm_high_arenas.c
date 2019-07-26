@@ -120,18 +120,6 @@ void sh_create_arena(int index, int id, sicm_device *device) {
   arena->alloc_sites = malloc(sizeof(int) * tracker.max_sites_per_arena);
   arena->alloc_sites[0] = id;
   arena->num_alloc_sites = 1;
-  arena->num_intervals = 0;
-  arena->first_interval = 0;
-#if 0
-  arena->rss = 0;
-  arena->peak_rss = 0;
-  arena->avg_rss = 0;
-#endif
-  arena->profiles = calloc(profopts.num_events, sizeof(profile_info));
-  for(i = 0; i < profopts.num_events; i++) {
-    arena->profiles[i].total = 0;
-    arena->profiles[i].interval_vals = NULL;
-  }
 
   /* Need to construct a sicm_device_list of one device */
   sicm_device_list dl;
@@ -140,6 +128,9 @@ void sh_create_arena(int index, int id, sicm_device *device) {
   dl.devices[0] = device;
   arena->arena = sicm_arena_create(0, SICM_ALLOC_RELAXED, &dl);
   free(dl.devices);
+
+  /* Tell the profiler that this arena has been created */
+  create_new_profile_arena(index);
 
   /* Now add the arena to the array of arenas */
   tracker.arenas[index] = arena;

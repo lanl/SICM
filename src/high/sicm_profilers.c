@@ -1,5 +1,14 @@
 #include "sicm_high.h"
 
+void profile_all_arena_init(profile_info *info) {
+  events = calloc(profopts.num_profile_all_events, sizeof(per_event_profile_all_info));
+  for(i = 0; i < profopts.num_profile_all_events; i++) {
+    events[i].total = 0;
+    events[i].peak = 0;
+    events[i].intervals = NULL;
+  }
+}
+
 void profile_all_init() {
   size_t i;
   pid_t pid;
@@ -9,9 +18,9 @@ void profile_all_init() {
   prof.profile_all.pagesize = (size_t) sysconf(_SC_PAGESIZE);
 
   /* Allocate perf structs */
-  prof.profile_all.pes = malloc(sizeof(struct perf_event_attr *) * profopts.num_events);
-  prof.profile_all.fds = malloc(sizeof(int) * profopts.num_events);
-  for(i = 0; i < profopts.num_events; i++) {
+  prof.profile_all.pes = malloc(sizeof(struct perf_event_attr *) * profopts.num_profile_all_events);
+  prof.profile_all.fds = malloc(sizeof(int) * profopts.num_profile_all_events);
+  for(i = 0; i < profopts.num_profile_all_events; i++) {
     prof.profile_all.pes[i] = malloc(sizeof(struct perf_event_attr));
     prof.profile_all.fds[i] = 0;
   }
@@ -24,7 +33,7 @@ void profile_all_init() {
 	cpu = -1;
 	group_fd = -1;
 	flags = 0;
-  for(i = 0; i < profopts.num_events; i++) {
+  for(i = 0; i < profopts.num_profile_all_events; i++) {
     prof.profile_all.fds[i] = syscall(__NR_perf_event_open, prof.profile_all.pes[i], pid, cpu, group_fd, flags);
     if(prof.profile_all.fds[i] == -1) {
       fprintf(stderr, "Error opening perf event %d (0x%llx): %s\n", i, prof.profile_all.pes[i]->config, strerror(errno));
@@ -33,8 +42,8 @@ void profile_all_init() {
   }
 
   /* mmap the perf file descriptors */
-  prof.profile_all.metadata = malloc(sizeof(struct perf_event_mmap_page *) * profopts.num_events);
-  for(i = 0; i < profopts.num_events; i++) {
+  prof.profile_all.metadata = malloc(sizeof(struct perf_event_mmap_page *) * profopts.num_profile_all_events);
+  for(i = 0; i < profopts.num_profile_all_events; i++) {
     prof.profile_all.metadata[i] = mmap(NULL, 
                                         prof.profile_all.pagesize + (prof.profile_all.pagesize * profopts.max_sample_pages), 
                                         PROT_READ | PROT_WRITE, 
@@ -53,7 +62,7 @@ void *profile_all(void *a) {
   size_t i;
 
   /* Start the events sampling */
-  for(i = 0; i < profopts.num_events; i++) {
+  for(i = 0; i < profopts.num_profile_all_events; i++) {
     ioctl(prof.profile_all.fds[i], PERF_EVENT_IOC_RESET, 0);
     ioctl(prof.profile_all.fds[i], PERF_EVENT_IOC_ENABLE, 0);
   }
@@ -88,7 +97,7 @@ void profile_all_interval(int s) {
   }
 
   /* Outer loop loops over the events */
-  for(i = 0; i < profopts.num_events; i++) {
+  for(i = 0; i < profopts.num_profile_all_events; i++) {
 
     /* Loops over the arenas */
     total_samples = 0;
@@ -328,19 +337,19 @@ void profile_allocs_interval(int s) {
 void sh_get_event() {
   int err;
   size_t i;
+  pfm_perf_encode_arg_t pfm;
 
   pfm_initialize();
-  prof.pfm = malloc(sizeof(pfm_perf_encode_arg_t));
 
   /* Make sure all of the events work. Initialize the pes. */
   for(i = 0; i < profopts.num_events; i++) {
     memset(prof.pes[i], 0, sizeof(struct perf_event_attr));
     prof.pes[i]->size = sizeof(struct perf_event_attr);
-    memset(prof.pfm, 0, sizeof(pfm_perf_encode_arg_t));
-    prof.pfm->size = sizeof(pfm_perf_encode_arg_t);
-    prof.pfm->attr = prof.pes[i];
+    memset(&pfm, 0, sizeof(pfm_perf_encode_arg_t));
+    pfm.size = sizeof(pfm_perf_encode_arg_t);
+    pfm.attr = prof.pes[i];
 
-    err = pfm_get_os_event_encoding(profopts.events[i], PFM_PLM2 | PFM_PLM3, PFM_OS_PERF_EVENT, prof.pfm);
+    err = pfm_get_os_event_encoding(profopts.events[i], PFM_PLM2 | PFM_PLM3, PFM_OS_PERF_EVENT, pfm);
     if(err != PFM_SUCCESS) {
       fprintf(stderr, "Failed to initialize event '%s'. Aborting.\n", profopts.events[i]);
       exit(1);
