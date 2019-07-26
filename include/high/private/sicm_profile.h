@@ -53,3 +53,6 @@ extern profiler prof;
 
 void sh_start_profile_master_thread();
 void sh_stop_profile_master_thread();
+
+void block_signal(int);
+void unblock_signal(int);

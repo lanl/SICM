@@ -113,12 +113,12 @@ void profile_all_interval(int s) {
 #endif
 
     /* Get ready to read */
-    head = prof.metadata[i]->data_head;
-    tail = prof.metadata[i]->data_tail;
-    buf_size = prof.pagesize * profopts.max_sample_pages;
+    head = prof.profile_all.metadata[i]->data_head;
+    tail = prof.profile_all.metadata[i]->data_tail;
+    buf_size = prof.profile_all.pagesize * profopts.max_sample_pages;
     asm volatile("" ::: "memory"); /* Block after reading data_head, per perf docs */
 
-    base = (char *)prof.metadata[i] + prof.pagesize;
+    base = (char *)prof.profile_all.metadata[i] + prof.profile_all.pagesize;
     begin = base + tail % buf_size;
     end = base + head % buf_size;
 
@@ -155,7 +155,7 @@ void profile_all_interval(int s) {
     pthread_rwlock_unlock(&tracker.extents_lock);
 
     /* Let perf know that we've read this far */
-    prof.metadata[i]->data_tail = head;
+    prof.profile_all.metadata[i]->data_tail = head;
     __sync_synchronize();
 
     for(n = 0; n <= tracker.max_index; n++) {

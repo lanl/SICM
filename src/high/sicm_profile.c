@@ -7,7 +7,7 @@
 #include "sicm_high.h"
 
 profiler prof;
-static global_signal;
+static int global_signal;
 
 /* Function used by the profile threads to block/unblock
  * their own signal.
@@ -237,56 +237,6 @@ void initialize_profiling() {
   if(profopts.should_profile_allocs) {
     profile_allocs_init();
   }
-
-  prof.pagesize = (size_t) sysconf(_SC_PAGESIZE);
-
-  /* Allocate perf structs */
-  prof.pes = malloc(sizeof(struct perf_event_attr *) * profopts.num_events);
-  prof.fds = malloc(sizeof(int) * profopts.num_events);
-  for(i = 0; i < profopts.num_events; i++) {
-    prof.pes[i] = malloc(sizeof(struct perf_event_attr));
-    prof.fds[i] = 0;
-  }
-
-  /* Use libpfm to fill the pe struct */
-  if(profopts.should_profile_all || profopts.should_profile_one) {
-    sh_get_event();
-  }
-
-  /* Open all perf file descriptors, different arguments for each type
-   * of profiling.
-   */
-  if(profopts.should_profile_all) {
-    pid = 0;
-    cpu = -1;
-    group_fd = -1;
-    flags = 0;
-  } else if(profopts.should_profile_one) {
-    pid = -1;
-    cpu = 0;
-    group_fd = -1;
-    flags = 0;
-  }
-  for(i = 0; i < profopts.num_events; i++) {
-    prof.fds[i] = syscall(__NR_perf_event_open, prof.pes[i], pid, cpu, group_fd, flags);
-    if(prof.fds[i] == -1) {
-      fprintf(stderr, "Error opening perf event %d (0x%llx): %s\n", i, prof.pes[i]->config, strerror(errno));
-      exit(1);
-    }
-  }
-
-#if 0
-  if(profopts.should_profile_rss) {
-    prof.pagemap_fd = open("/proc/self/pagemap", O_RDONLY);
-    if (prof.pagemap_fd < 0) {
-      fprintf(stderr, "Failed to open /proc/self/pagemap. Aborting.\n");
-      exit(1);
-    }
-    prof.pfndata = NULL;
-    prof.addrsize = sizeof(uint64_t);
-    prof.pagesize = (size_t) sysconf(_SC_PAGESIZE);
-  }
-#endif
 }
 
 void sh_start_profile_master_thread() {
