@@ -19,6 +19,7 @@
 #include <errno.h>
 #include <poll.h>
 #include "sicm_high_arenas.h"
+#include "sicm_profilers.h"
 
 typedef struct profile_thread {
   pthread_t id;

@@ -1,6 +1,5 @@
 #pragma once
 #define __USE_LARGEFILE64
-#include "sicm_profile.h"
 
 /* Each type of profiling gets an initialization and deinitialization
  * function, both of which get run in the main SICM thread. Each also
