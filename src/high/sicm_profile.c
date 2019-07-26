@@ -211,6 +211,7 @@ void *profile_master(void *a) {
   prof.cur_interval = 0;
 
   /* Set up a signal handler for the master */
+  master_signal = global_signal;
   sa.sa_flags = 0;
   sa.sa_handler = profile_master_interval;
   sigemptyset(&sa.sa_mask);
