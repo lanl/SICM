@@ -497,7 +497,7 @@ static void *sa_alloc(extent_hooks_t *h, void *new_addr, size_t size, size_t ali
 	}
 
 	if (sa->fd == -1)
-		mmflags = MAP_ANONYMOUS|MAP_PRIVATE;
+		mmflags = MAP_ANONYMOUS|MAP_PRIVATE|MAP_POPULATE;
 	else
 		mmflags = MAP_SHARED;
 
