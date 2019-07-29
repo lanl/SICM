@@ -192,22 +192,97 @@ void profile_all_interval(int s) {
   unblock_signal(s);
 }
 
-#if 0
+void profile_rss_arena_init(profile_rss_info *info) {
+  info->peak = 0;
+  info->intervals = NULL;
+}
+
+void profile_rss_deinit() {
+  close(prof.pagemap_fd);
+}
 
 void profile_rss_init() {
-    prof.pagemap_fd = open("/proc/self/pagemap", O_RDONLY);
-    if (prof.pagemap_fd < 0) {
-      fprintf(stderr, "Failed to open /proc/self/pagemap. Aborting.\n");
-      exit(1);
-    }
-    prof.pfndata = NULL;
-    prof.addrsize = sizeof(uint64_t);
-    prof.pagesize = (size_t) sysconf(_SC_PAGESIZE);
+  prof.profile_rss.pagemap_fd = open("/proc/self/pagemap", O_RDONLY);
+  if (prof.profile_rss.pagemap_fd < 0) {
+    fprintf(stderr, "Failed to open /proc/self/pagemap. Aborting.\n");
+    exit(1);
+  }
+  prof.profile_rss.pfndata = NULL;
+  prof.profile_rss.addrsize = sizeof(uint64_t);
+  prof.profile_rss.pagesize = (size_t) sysconf(_SC_PAGESIZE);
 }
 
 void *profile_rss(void *a) {
   while(1) { }
 }
+
+void profile_rss_interval(int s) {
+	size_t i, n, numpages;
+  uint64_t start, end;
+  arena_info *arena;
+  ssize_t num_read;
+  profile_info *profinfo;
+
+  /* Grab the lock for the extents array */
+  pthread_rwlock_rdlock(&tracker.extents_lock);
+
+  /* Zero out the accumulator for each arena */
+  for(n = 0; n <= tracker.max_index; n++) {
+    profinfo = prof.info[n];
+    if(!profinfo) continue;
+    profinfo->profile_rss.tmp_accumulator = 0;
+  }
+
+	/* Iterate over the chunks */
+	extent_arr_for(tracker.extents, i) {
+		start = (uint64_t) tracker.extents->arr[i].start;
+		end = (uint64_t) tracker.extents->arr[i].end;
+		arena = (arena_info *) tracker.extents->arr[i].arena;
+    profinfo = (profile_info *) tracker.extents->arr[i].arena->info
+    if(!arena) continue;
+
+    numpages = (end - start) / prof.profile_rss.pagesize;
+		prof.profile_rss.pfndata = (union pfn_t *) realloc(prof.profile_rss.pfndata, numpages * prof.profile_rss.addrsize);
+
+		/* Seek to the starting of this chunk in the pagemap */
+		if(lseek64(prof.profile_rss.pagemap_fd, (start / prof.profile_rss.pagesize) * prof.profile_rss.addrsize, SEEK_SET) == ((__off64_t) - 1)) {
+			close(prof.profile_rss.pagemap_fd);
+			fprintf(stderr, "Failed to seek in the PageMap file. Aborting.\n");
+			exit(1);
+		}
+
+		/* Read in all of the pfns for this chunk */
+    num_read = read(prof.profile_rss.pagemap_fd, prof.profile_rss.pfndata, prof.profile_rss.addrsize * numpages);
+    if(num_read == -1) {
+      fprintf(stderr, "Failed to read from PageMap file. Aborting: %d, %s\n", errno, strerror(errno));
+      exit(1);
+		} else if(num_read < prof.profile_rss.addrsize * numpages) {
+      printf("WARNING: Read less bytes than expected.\n");
+      continue;
+    }
+
+		/* Iterate over them and check them, sum up RSS in arena->rss */
+		for(n = 0; n < numpages; n++) {
+			if(!(prof.profile_rss.pfndata[n].obj.present)) {
+				continue;
+		  }
+      profinfo->tmp_accumulator += prof.profile_rss.pagesize;
+		}
+
+		/* Maintain the peak for this arena */
+		if(profinfo->profile_rss.tmp_accumulator > profinfo->profile_rss.peak) {
+		  profinfo->profile_rss.peak = profinfo->profile_rss.tmp_accumulator;
+		}
+
+    /* Store this interval's value */
+    profinfo->profile_rss.intervals = (size_t *)realloc(profinfo->profile_rss.intervals, profinfo->num_intervals * sizeof(size_t));
+    profinfo->profile_rss.intervals[profinfo->num_intervals - 1] = profinfo->profile_rss.tmp_accumulator;
+	}
+
+  pthread_rwlock_unlock(&tracker.extents_lock);
+}
+
+#if 0
 
 void profile_one_init() {
 
@@ -268,75 +343,6 @@ void profile_one_interval(int s)
   }
 }
 
-void profile_rss_interval(int s) {
-	size_t i, n, numpages;
-  uint64_t start, end;
-  arena_info *arena;
-  ssize_t num_read;
-
-  prof.profile_rss.tmp_intervals++;
-  if(prof.profile_rss.skip_intervals != prof.profile_rss.tmp_intervals) {
-    /* Here I would store the interval's value as some canary value, indicating
-     * that we've skipped this interval */
-    return;
-  }
-  prof.profile_rss.tmp_intervals = 0;
-
-  /* Grab the lock for the extents array */
-  //pthread_mutex_lock(&arena_lock);
-  pthread_rwlock_rdlock(&tracker.extents_lock);
-
-	/* Zero out the RSS values for each arena */
-	extent_arr_for(tracker.rss_extents, i) {
-    arena = (arena_info *)tracker.rss_extents->arr[i].arena;
-    if(!arena) continue;
-		arena->tmp_rss = 0;
-	}
-
-	/* Iterate over the chunks */
-	extent_arr_for(tracker.rss_extents, i) {
-		start = (uint64_t) tracker.rss_extents->arr[i].start;
-		end = (uint64_t) tracker.rss_extents->arr[i].end;
-		arena = (arena_info *) tracker.rss_extents->arr[i].arena;
-    if(!arena) continue;
-
-    numpages = (end - start) / prof.pagesize;
-		prof.pfndata = (union pfn_t *) realloc(prof.pfndata, numpages * prof.addrsize);
-
-		/* Seek to the starting of this chunk in the pagemap */
-		if(lseek64(prof.pagemap_fd, (start / prof.pagesize) * prof.addrsize, SEEK_SET) == ((__off64_t) - 1)) {
-			close(prof.pagemap_fd);
-			fprintf(stderr, "Failed to seek in the PageMap file. Aborting.\n");
-			exit(1);
-		}
-
-		/* Read in all of the pfns for this chunk */
-    num_read = read(prof.pagemap_fd, prof.pfndata, prof.addrsize * numpages);
-    if(num_read == -1) {
-      fprintf(stderr, "Failed to read from PageMap file. Aborting: %d, %s\n", errno, strerror(errno));
-      exit(1);
-		} else if(num_read < prof.addrsize * numpages) {
-      printf("WARNING: Read less bytes than expected.\n");
-      continue;
-    }
-
-		/* Iterate over them and check them, sum up RSS in arena->rss */
-		for(n = 0; n < numpages; n++) {
-			if(!(prof.pfndata[n].obj.present)) {
-				continue;
-		  }
-      arena->tmp_rss += prof.pagesize;
-		}
-
-		/* Maintain the peak for this arena */
-		if(arena->tmp_rss > arena->peak_rss) {
-			arena->peak_rss = arena->tmp_rss;
-		}
-	}
-
-  pthread_rwlock_unlock(&tracker.extents_lock);
-  //pthread_mutex_unlock(&arena_lock);
-}
 
 void profile_allocs_interval(int s) {
 }

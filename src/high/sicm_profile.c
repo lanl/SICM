@@ -341,16 +341,20 @@ void print_profiling() {
       }
       printf("\n");
 
-#if 0
-      /* Print the RSS of the arena */
-      if(profopts.should_profile_rss) {
-        printf("  Peak RSS: %zu\n", tracker.arenas[i]->peak_rss);
-      }
-#endif
+      /* General info */
       printf("    Number of intervals: %zu\n", profinfo->num_intervals);
       printf("    First interval: %zu\n", profinfo->first_interval);
 
-      /* Print information for each event */
+      /* RSS */
+      if(profopts.should_profile_rss) {
+        printf("  RSS:\n");
+        printf("    Peak: %zu\n", profinfo->profile_rss.peak);
+        for(x = 0; x < profinfo->num_intervals; x++) {
+          printf("    %zu\n", profinfo->profile_rss.intervals[x]);
+        }
+      }
+
+      /* profile_all events */
       for(n = 0; n < profopts.num_profile_all_events; n++) {
         printf("  Event: %s\n", profopts.profile_all_events[n]);
         printf("    Total: %zu\n", profinfo->profile_all.events[n].total);

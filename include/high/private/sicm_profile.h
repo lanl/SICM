@@ -26,8 +26,8 @@ typedef struct profile_info {
   size_t first_interval, num_intervals;
 
   profile_all_info profile_all;
-#if 0
   profile_rss_info profile_rss;
+#if 0
   profile_one_info profile_one;
   profile_allocs_info profile_allocs;
 #endif
@@ -62,8 +62,8 @@ typedef struct profiler {
 
   /* Data for each profile thread */
   profile_all_data profile_all;
-#if 0
   profile_rss_data profile_rss;
+#if 0
   profile_one_data profile_one;
   profile_allocs_data profile_allocs;
 #endif

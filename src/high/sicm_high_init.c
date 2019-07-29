@@ -520,16 +520,9 @@ void sh_init() {
     tracker.arenas = (arena_info **) calloc(tracker.max_arenas, sizeof(arena_info *));
 
     /* Initialize the extents array.
-     * If we're just profiling one site, initialize a new array that has extents from just that site.
      * If we're profiling all sites, rss_extents is just all extents.
      */
     tracker.extents = extent_arr_init();
-    if(profopts.should_profile_rss) {
-      tracker.rss_extents = tracker.extents;
-      if(profopts.should_profile_one) {
-        tracker.rss_extents = extent_arr_init();
-      }
-    }
 
     /* Stores the index into the `arenas` array for each thread */
     pthread_key_create(&tracker.thread_key, NULL);

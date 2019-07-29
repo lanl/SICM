@@ -128,10 +128,6 @@ void sh_create_extent(void *start, void *end) {
     fprintf(stderr, "Failed to acquire read/write lock. Aborting.\n");
     exit(1);
   }
-  if(profopts.should_profile_rss && profopts.should_profile_one && (get_alloc_site(tracker.arenas[arena_index], profopts.profile_one_site) != -1)) {
-    /* If we're profiling RSS and this is the site that we're isolating */
-    extent_arr_insert(tracker.rss_extents, start, end, tracker.arenas[arena_index]);
-  }
   extent_arr_insert(tracker.extents, start, end, tracker.arenas[arena_index]);
   if(pthread_rwlock_unlock(&tracker.extents_lock) != 0) {
     fprintf(stderr, "Failed to unlock read/write lock. Aborting.\n");
