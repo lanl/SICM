@@ -322,12 +322,16 @@ void deinitialize_profiling() {
 }
 
 void print_profiling() {
-#if 0
+  profile_info *profinfo;
+  arena_info *arena;
+
   /* PEBS profiling */
   if(profopts.should_profile_all) {
     printf("===== PEBS RESULTS =====\n");
     for(i = 0; i <= tracker.max_index; i++) {
-      if(!tracker.arenas[i]) continue;
+      profinfo = prof.info[i];
+      arena = tracker.arenas[i];
+      if(!profinfo) continue;
 
       /* Print the sites that are in this arena */
       printf("%d sites: ", tracker.arenas[i]->num_alloc_sites);
@@ -336,24 +340,28 @@ void print_profiling() {
       }
       printf("\n");
 
+#if 0
       /* Print the RSS of the arena */
       if(profopts.should_profile_rss) {
         printf("  Peak RSS: %zu\n", tracker.arenas[i]->peak_rss);
       }
-      printf("    Number of intervals: %zu\n", tracker.arenas[i]->num_intervals);
-      printf("    First interval: %zu\n", tracker.arenas[i]->first_interval);
+#endif
+      printf("    Number of intervals: %zu\n", profinfo->num_intervals);
+      printf("    First interval: %zu\n", profinfo->first_interval);
 
       /* Print information for each event */
-      for(n = 0; n < profopts.num_events; n++) {
-        printf("  Event: %s\n", profopts.events[n]);
-        printf("    Total: %zu\n", tracker.arenas[i]->profiles[n].total);
-        for(x = 0; x < tracker.arenas[i]->num_intervals; x++) {
-          printf("      %zu\n", tracker.arenas[i]->profiles[n].interval_vals[x]);
+      for(n = 0; n < profopts.num_profile_all_events; n++) {
+        printf("  Event: %s\n", profopts.profile_all_events[n]);
+        printf("    Total: %zu\n", profinfo->profile_all.events[n].total);
+        printf("    Peak: %zu\n", profinfo->profile_all.events[n].peak);
+        for(x = 0; x < profinfo->num_intervals; x++) {
+          printf("      %zu\n", profinfo->profile_all.events[n].intervals[x]);
         }
       }
     }
     printf("===== END PEBS RESULTS =====\n");
 
+#if 0
   /* MBI profiling */
   } else if(profopts.should_profile_one) {
     printf("===== MBI RESULTS FOR SITE %u =====\n", profopts.profile_one_site);
@@ -363,24 +371,8 @@ void print_profiling() {
       printf("Peak RSS: %zu\n", tracker.arenas[profopts.profile_one_site]->peak_rss);
     }
     printf("===== END MBI RESULTS =====\n");
-
-  /* RSS profiling */
-  } else if(profopts.should_profile_rss) {
-    printf("===== RSS RESULTS =====\n");
-    for(i = 0; i <= tracker.max_index; i++) {
-      if(!tracker.arenas[i]) continue;
-      printf("Sites: ");
-      for(n = 0; n < tracker.arenas[i]->num_alloc_sites; n++) {
-        printf("%d ", tracker.arenas[i]->alloc_sites[n]);
-      }
-      printf("\n");
-      if(profopts.should_profile_rss) {
-        printf("  Peak RSS: %zu\n", tracker.arenas[i]->peak_rss);
-      }
-    }
-    printf("===== END RSS RESULTS =====\n");
-  }
 #endif
+  }
 }
 
 void sh_stop_profile_master_thread() {
