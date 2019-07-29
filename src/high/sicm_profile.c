@@ -304,9 +304,9 @@ void sh_start_profile_master_thread() {
 
   /* Set up the signal that we'll use to stop the master thread */
   sa.sa_flags = 0;
-  sa.sa_handler = prof.stop_signal;
+  sa.sa_handler = profile_master_stop;
   sigemptyset(&sa.sa_mask);
-  if(sigaction(profile_master_stop, &sa, NULL) == -1) {
+  if(sigaction(prof.stop_signal, &sa, NULL) == -1) {
     fprintf(stderr, "Error creating master stop signal handler. Aborting.\n");
     exit(1);
   }
