@@ -23,10 +23,10 @@ void *create_profile_arena(int index) {
   if(profopts.should_profile_all) {
     profile_all_arena_init(&(prof.info[index]->profile_all));
   }
-#if 0
   if(profopts.should_profile_rss) {
     profile_rss_arena_init(&(prof.info[index]->profile_rss));
   }
+#if 0
   if(profopts.should_profile_one) {
     profile_one_arena_init(&(prof.info[index]->profile_one));
   }
@@ -197,10 +197,10 @@ void *profile_master(void *a) {
   if(profopts.should_profile_all) {
     setup_profile_thread(&profile_all, &profile_all_interval, 0);
   }
-#if 0
   if(profopts.should_profile_rss) {
     setup_profile_thread(&profile_rss, &profile_rss_interval, 0);
   }
+#if 0
   if(profopts.should_profile_one) {
     setup_profile_thread(&profile_one, &profile_one_interval, 0);
   }
@@ -281,10 +281,10 @@ void initialize_profiling() {
   if(profopts.should_profile_all) {
     profile_all_init();
   }
-#if 0
   if(profopts.should_profile_rss) {
     profile_rss_init();
   }
+#if 0
   if(profopts.should_profile_one) {
     profile_one_init();
   }
