@@ -1,3 +1,5 @@
+#include <sys/stat.h>
+#include <fcntl.h>
 #include "sicm_high.h"
 
 void profile_all_arena_init(profile_all_info *info) {
@@ -198,7 +200,7 @@ void profile_rss_arena_init(profile_rss_info *info) {
 }
 
 void profile_rss_deinit() {
-  close(prof.pagemap_fd);
+  close(prof.profile_rss.pagemap_fd);
 }
 
 void profile_rss_init() {
@@ -238,7 +240,7 @@ void profile_rss_interval(int s) {
 		start = (uint64_t) tracker.extents->arr[i].start;
 		end = (uint64_t) tracker.extents->arr[i].end;
 		arena = (arena_info *) tracker.extents->arr[i].arena;
-    profinfo = (profile_info *) tracker.extents->arr[i].arena->info
+    profinfo = (profile_info *) arena->info;
     if(!arena) continue;
 
     numpages = (end - start) / prof.profile_rss.pagesize;
@@ -266,7 +268,7 @@ void profile_rss_interval(int s) {
 			if(!(prof.profile_rss.pfndata[n].obj.present)) {
 				continue;
 		  }
-      profinfo->tmp_accumulator += prof.profile_rss.pagesize;
+      profinfo->profile_rss.tmp_accumulator += prof.profile_rss.pagesize;
 		}
 
 		/* Maintain the peak for this arena */
