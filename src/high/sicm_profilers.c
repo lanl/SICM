@@ -225,6 +225,8 @@ void profile_rss_interval(int s) {
   ssize_t num_read;
   profile_info *profinfo;
 
+  block_signal(s);
+
   /* Grab the lock for the extents array */
   pthread_rwlock_rdlock(&tracker.extents_lock);
 
@@ -282,6 +284,8 @@ void profile_rss_interval(int s) {
 	}
 
   pthread_rwlock_unlock(&tracker.extents_lock);
+
+  unblock_signal(s);
 }
 
 #if 0
