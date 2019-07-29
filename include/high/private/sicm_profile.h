@@ -52,6 +52,11 @@ typedef struct profiler {
   pthread_mutex_t mtx;
   pthread_cond_t cond;
 
+  /* For the main application thread to
+   * signal the master to stop
+   */
+  int stop_signal;
+
   /* Per-arena profiling information */
   profile_info **info;
 

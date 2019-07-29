@@ -144,6 +144,11 @@ void profile_master_interval(int s) {
   fflush(stdout);
 }
 
+/* Stops the master thread */
+void profile_master_stop(int s) {
+  pthread_exit(NULL);
+}
+
 void setup_profile_thread(void *(*main)(void *), /* Spinning loop function */
                           void (*interval)(int), /* Per-interval function */
                           unsigned long skip_intervals) {
@@ -189,7 +194,6 @@ void *profile_master(void *a) {
   pid_t tid;
   int master_signal;
 
-  global_signal = SIGRTMIN;
   if(profopts.should_profile_all) {
     setup_profile_thread(&profile_all, &profile_all_interval, 0);
   }
@@ -255,14 +259,19 @@ void *profile_master(void *a) {
     exit(1);
   }
 
-  /* Now we wait for the timer to signal us */
-  /* TODO: implement how to stop the master thread */
+  /* Wait for either the timer to signal us to start a new interval,
+   * or for the main thread to signal us to stop.
+   */
   while(1) {}
 }
 
 void initialize_profiling() {
   /* Allocate room for the per-arena profiling information */
   prof.info = calloc(tracker.max_arenas, sizeof(profile_info *));
+
+  global_signal = SIGRTMIN;
+  prof.stop_signal = global_signal;
+  global_signal++;
 
   /* All of this initialization HAS to happen in the main SICM thread.
    * If it's not, the `perf_event_open` system call won't profile
@@ -292,7 +301,16 @@ void sh_start_profile_master_thread() {
    */
   initialize_profiling();
 
-  /* All the main thread should do is start the master thread */
+  /* Set up the signal that we'll use to stop the master thread */
+  sa.sa_flags = 0;
+  sa.sa_handler = prof.stop_signal;
+  sigemptyset(&sa.sa_mask);
+  if(sigaction(profile_master_stop, &sa, NULL) == -1) {
+    fprintf(stderr, "Error creating master stop signal handler. Aborting.\n");
+    exit(1);
+  }
+
+  /* Start the master thread */
   pthread_create(&prof.master_id, NULL, &profile_master, NULL);
 }
 
@@ -365,6 +383,8 @@ void print_profiling() {
 }
 
 void sh_stop_profile_master_thread() {
+  /* Tell the master thread to stop */
+  pthread_kill(prof.master_id, prof.stop_signal);
   pthread_join(prof.master_id, NULL);
 
   print_profiling();
