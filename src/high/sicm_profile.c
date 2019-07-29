@@ -295,6 +295,7 @@ void initialize_profiling() {
 }
 
 void sh_start_profile_master_thread() {
+  struct sigaction sa;
 
   /* This initializes the values that the threads will need to do their profiling,
    * including perf events, file descriptors, etc.
