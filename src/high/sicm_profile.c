@@ -322,6 +322,7 @@ void deinitialize_profiling() {
 }
 
 void print_profiling() {
+  size_t i, n, x;
   profile_info *profinfo;
   arena_info *arena;
 
