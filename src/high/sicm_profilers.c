@@ -180,6 +180,9 @@ void profile_all_interval(int s) {
       if((!arena) || (!profinfo) || (!profinfo->num_intervals)) continue;
 
       per_event_profinfo->total += profinfo->profile_all.tmp_accumulator;
+      if(profinfo->profile_all.tmp_accumulator > per_event_profinfo->peak) {
+        per_event_profinfo->peak = profinfo->profile_all.tmp_accumulator;
+      }
       /* One size_t per interval for this one event */
       per_event_profinfo->intervals = (size_t *)realloc(per_event_profinfo->intervals, profinfo->num_intervals * sizeof(size_t));
       per_event_profinfo->intervals[profinfo->num_intervals - 1] = profinfo->profile_all.tmp_accumulator;
