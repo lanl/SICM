@@ -244,7 +244,7 @@ void profile_rss_interval(int s) {
 		arena = (arena_info *) tracker.extents->arr[i].arena;
     if(!arena) continue;
     profinfo = (profile_info *) arena->info;
-    if(!profinfo) continue;
+    if((!profinfo) || (!profinfo->num_intervals)) continue;
 
     numpages = (end - start) / prof.profile_rss.pagesize;
 		prof.profile_rss.pfndata = (union pfn_t *) realloc(prof.profile_rss.pfndata, numpages * prof.profile_rss.addrsize);
