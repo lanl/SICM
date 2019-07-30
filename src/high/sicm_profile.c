@@ -92,6 +92,7 @@ void profile_master_interval(int s) {
   size_t i;
   unsigned copy;
   profile_info *profinfo;
+  profile_thread *profthread;
   syscall(SYS_gettimeofday, &tv, NULL);
 
   printf("\n\n====================\n");
@@ -110,7 +111,14 @@ void profile_master_interval(int s) {
 
   /* Notify the threads */
   for(i = 0; i < prof.num_profile_threads; i++) {
-    pthread_kill(prof.profile_threads[i].id, prof.profile_threads[i].signal);
+    profthread = &prof.profile_threads[i];
+    /* If this profiling thread needs to skip this interval */
+    if(profthread->skipped_intervals == (profthread->skip_intervals - 1)) {
+      pthread_kill(prof.profile_threads[i].id, prof.profile_threads[i].signal);
+      profthread->skipped_intervals = 0;
+    } else {
+      profthread->skipped_intervals++;
+    }
   }
 
   /* Wait for the threads to do their bit */
@@ -173,6 +181,7 @@ void setup_profile_thread(void *(*main)(void *), /* Spinning loop function */
     exit(1);
   }
 
+  profthread->skipped_intervals = 0;
   profthread->skip_intervals = skip_intervals;
 
   /* Get ready for the next one */
@@ -195,10 +204,10 @@ void *profile_master(void *a) {
   int master_signal;
 
   if(profopts.should_profile_all) {
-    setup_profile_thread(&profile_all, &profile_all_interval, 0);
+    setup_profile_thread(&profile_all, &profile_all_interval, 1);
   }
   if(profopts.should_profile_rss) {
-    setup_profile_thread(&profile_rss, &profile_rss_interval, 0);
+    setup_profile_thread(&profile_rss, &profile_rss_interval, profopts.profile_rss_skip_intervals);
   }
 #if 0
   if(profopts.should_profile_one) {
