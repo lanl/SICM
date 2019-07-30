@@ -91,6 +91,7 @@ void *profile_all(void *a) {
 void profile_all_skip_interval(int s) {
   profile_info *profinfo;
   arena_info *arena;
+  per_event_profile_all_info *per_event_profinfo;
   size_t i, n;
 
   block_signal(s);
@@ -102,12 +103,12 @@ void profile_all_skip_interval(int s) {
       per_event_profinfo = &(profinfo->profile_all.events[i]);
       if((!arena) || (!profinfo) || (!profinfo->num_intervals)) continue;
 
-      profinfo->profile_all.intervals = (size_t *)realloc(profinfo->profile_all.intervals, profinfo->num_intervals * sizeof(size_t));
+      per_event_profinfo->intervals = (size_t *)realloc(per_event_profinfo->intervals, profinfo->num_intervals * sizeof(size_t));
       if(profinfo->num_intervals == 1) {
-        profinfo->profile_all.intervals[profinfo->num_intervals - 1] = 0;
+        per_event_profinfo->intervals[profinfo->num_intervals - 1] = 0;
       } else {
-        profinfo->profile_all.intervals[profinfo->num_intervals - 1] = profinfo->profile_all.intervals[profinfo->num_intervals - 2];
-        per_event_profinfo->total += profinfo->profile_all.intervals[profinfo->num_intervals - 1];
+        per_event_profinfo->intervals[profinfo->num_intervals - 1] = per_event_profinfo->intervals[profinfo->num_intervals - 2];
+        per_event_profinfo->total += per_event_profinfo->intervals[profinfo->num_intervals - 1];
       }
     }
   }
