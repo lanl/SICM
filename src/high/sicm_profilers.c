@@ -291,6 +291,7 @@ void profile_rss_interval(int s) {
   /* Zero out the accumulator for each arena */
 	extent_arr_for(tracker.extents, i) {
     arena = (arena_info *) tracker.extents->arr[i].arena;
+    if(!arena) continue;
     profinfo = (profile_info *) arena->info;
     if(!profinfo) continue;
     profinfo->profile_rss.tmp_accumulator = 0;
