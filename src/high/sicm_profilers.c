@@ -221,6 +221,7 @@ void *profile_rss(void *a) {
 /* Just copies the previous value */
 void profile_rss_skip_interval(int s) {
   profile_info *profinfo;
+  arena_info *arena;
   size_t i;
 
   pthread_rwlock_rdlock(&tracker.extents_lock);
