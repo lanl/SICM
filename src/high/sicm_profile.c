@@ -45,16 +45,7 @@ void *create_profile_arena(int index) {
  * their own signal.
  */
 void block_signal(int signal) {
-	sigset_t mask;
   struct timeval tv;
-
-  /* Block the signal */
-  sigemptyset(&mask);
-  sigaddset(&mask, signal);
-  if(sigprocmask(SIG_SETMASK, &mask, NULL) == -1) {
-    fprintf(stderr, "Error blocking signal %d. Aborting.\n", signal);
-    exit(1);
-  }
 
   /* Print out what time we were triggered */
   syscall(SYS_gettimeofday, &tv, NULL);
@@ -64,7 +55,6 @@ void block_signal(int signal) {
 
 /* Unblocks a signal. Also notifies the Master thread. */
 void unblock_signal(int signal) {
-	sigset_t mask;
   struct timeval tv;
 
   /* Signal the master thread that we're done */
@@ -75,13 +65,6 @@ void unblock_signal(int signal) {
   prof.threads_finished++;
   pthread_cond_signal(&prof.cond);
   pthread_mutex_unlock(&prof.mtx);
-
-  sigemptyset(&mask);
-  sigaddset(&mask, signal);
-  if(sigprocmask(SIG_UNBLOCK, &mask, NULL) == -1) {
-    fprintf(stderr, "Error unblocking signal. Aborting.\n");
-    exit(1);
-  }
 }
 
 /* This is the signal handler for the Master thread, so
