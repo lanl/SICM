@@ -89,7 +89,7 @@ void unblock_signal(int signal) {
  */
 void profile_master_interval(int s) {
 	struct timeval tv;
-  size_t i;
+  size_t i, num_profile_threads;
   unsigned copy;
   profile_info *profinfo;
   profile_thread *profthread;
@@ -110,12 +110,13 @@ void profile_master_interval(int s) {
   }
 
   /* Notify the threads */
+  num_profile_threads = 0;
   for(i = 0; i < prof.num_profile_threads; i++) {
     profthread = &prof.profile_threads[i];
-    /* If this profiling thread needs to skip this interval */
     if(profthread->skipped_intervals == (profthread->skip_intervals - 1)) {
       pthread_kill(prof.profile_threads[i].id, prof.profile_threads[i].signal);
       profthread->skipped_intervals = 0;
+      num_profile_threads++;
     } else {
       profthread->skipped_intervals++;
     }
@@ -128,7 +129,7 @@ void profile_master_interval(int s) {
       /* At least one thread is finished, check if it's all of them */
       copy = prof.threads_finished;
       pthread_mutex_unlock(&prof.mtx);
-      if(prof.threads_finished == prof.num_profile_threads) {
+      if(prof.threads_finished == num_profile_threads) {
         /* They're all done. */
         printf("Profiling threads are all done.\n");
         fflush(stdout);
