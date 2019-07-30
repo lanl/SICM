@@ -218,6 +218,40 @@ void *profile_rss(void *a) {
   while(1) { }
 }
 
+/* Just copies the previous value */
+void profile_rss_skip_interval(int s) {
+  profile_info *profinfo;
+  size_t i;
+
+  pthread_rwlock_rdlock(&tracker.extents_lock);
+
+  if(profinfo->num_intervals == 1) {
+    /* If this is the first interval, just use zero */
+    extent_arr_for(tracker.extents, i) {
+      arena = (arena_info *) tracker.extents->arr[i].arena;
+      if(!arena) continue;
+      profinfo = (profile_info *) arena->info;
+      if((!profinfo) || (!profinfo->num_intervals)) continue;
+
+      profinfo->profile_rss.intervals = (size_t *)realloc(profinfo->profile_rss.intervals, profinfo->num_intervals * sizeof(size_t));
+      profinfo->profile_rss.intervals[profinfo->num_intervals - 1] = 0;
+    }
+  } else {
+    /* Copy the previous values. profinfo->num_intervals must be at least 2. */
+    extent_arr_for(tracker.extents, i) {
+      arena = (arena_info *) tracker.extents->arr[i].arena;
+      if(!arena) continue;
+      profinfo = (profile_info *) arena->info;
+      if((!profinfo) || (!profinfo->num_intervals)) continue;
+
+      profinfo->profile_rss.intervals = (size_t *)realloc(profinfo->profile_rss.intervals, profinfo->num_intervals * sizeof(size_t));
+      profinfo->profile_rss.intervals[profinfo->num_intervals - 1] = profinfo->profile_rss.intervals[profinfo->num_intervals - 2];
+    }
+  }
+
+  pthread_rwlock_unlock(&tracker.extents_lock);
+}
+
 void profile_rss_interval(int s) {
 	size_t i, n, numpages;
   uint64_t start, end;
@@ -231,8 +265,9 @@ void profile_rss_interval(int s) {
   pthread_rwlock_rdlock(&tracker.extents_lock);
 
   /* Zero out the accumulator for each arena */
-  for(n = 0; n <= tracker.max_index; n++) {
-    profinfo = prof.info[n];
+	extent_arr_for(tracker.extents, i) {
+    arena = (arena_info *) tracker.extents->arr[i].arena;
+    profinfo = (profile_info *) arena->info;
     if(!profinfo) continue;
     profinfo->profile_rss.tmp_accumulator = 0;
   }
