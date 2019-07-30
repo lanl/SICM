@@ -62,10 +62,12 @@ void profile_all_init();
 void profile_all_deinit();
 void *profile_all(void *);
 void profile_all_interval(int);
+void profile_all_skip_interval(int);
 void profile_all_arena_init(profile_all_info *);
 
 void *profile_rss(void *a);
 void profile_rss_interval(int s);
+void profile_rss_skip_interval(int s);
 void profile_rss_init();
 void profile_rss_deinit();
 void profile_rss_arena_init(profile_rss_info *);
