@@ -89,7 +89,7 @@ void unblock_signal(int signal) {
  */
 void profile_master_interval(int s) {
 	struct timeval tv;
-  size_t i, num_profile_threads;
+  size_t i;
   unsigned copy;
   profile_info *profinfo;
   profile_thread *profthread;
@@ -110,14 +110,15 @@ void profile_master_interval(int s) {
   }
 
   /* Notify the threads */
-  num_profile_threads = 0;
   for(i = 0; i < prof.num_profile_threads; i++) {
     profthread = &prof.profile_threads[i];
     if(profthread->skipped_intervals == (profthread->skip_intervals - 1)) {
+      /* This thread doesn't get skipped */
       pthread_kill(prof.profile_threads[i].id, prof.profile_threads[i].signal);
       profthread->skipped_intervals = 0;
-      num_profile_threads++;
     } else {
+      /* This thread gets skipped */
+      pthread_kill(prof.profile_threads[i].id, prof.profile_threads[i].skip_signal);
       profthread->skipped_intervals++;
     }
   }
@@ -129,7 +130,7 @@ void profile_master_interval(int s) {
       /* At least one thread is finished, check if it's all of them */
       copy = prof.threads_finished;
       pthread_mutex_unlock(&prof.mtx);
-      if(prof.threads_finished == num_profile_threads) {
+      if(prof.threads_finished == prof.num_profile_threads) {
         /* They're all done. */
         printf("Profiling threads are all done.\n");
         fflush(stdout);
@@ -160,6 +161,7 @@ void profile_master_stop(int s) {
 
 void setup_profile_thread(void *(*main)(void *), /* Spinning loop function */
                           void (*interval)(int), /* Per-interval function */
+                          void (*skip_interval)(int), /* Per-interval skip function */
                           unsigned long skip_intervals) {
   struct sigaction sa;
   profile_thread *profthread;
@@ -181,12 +183,21 @@ void setup_profile_thread(void *(*main)(void *), /* Spinning loop function */
     fprintf(stderr, "Error creating signal handler for signal %d. Aborting: %s\n", profthread->signal, strerror(errno));
     exit(1);
   }
+  global_signal++;
+
+  /* Set up the signal handler for what gets called if we're skipping this interval */
+  profthread->skip_signal = global_signal;
+	sa.sa_flags = 0;
+  sa.sa_handler = skip_interval;
+  sigemptyset(&sa.sa_mask);
+  if(sigaction(profthread->skip_signal, &sa, NULL) == -1) {
+    fprintf(stderr, "Error creating signal handler for signal %d. Aborting: %s\n", profthread->skip_signal, strerror(errno));
+    exit(1);
+  }
+  global_signal++;
 
   profthread->skipped_intervals = 0;
   profthread->skip_intervals = skip_intervals;
-
-  /* Get ready for the next one */
-  global_signal++;
 }
 
 /* This is the Master thread, it keeps track of intervals
@@ -205,10 +216,10 @@ void *profile_master(void *a) {
   int master_signal;
 
   if(profopts.should_profile_all) {
-    setup_profile_thread(&profile_all, &profile_all_interval, 1);
+    setup_profile_thread(&profile_all, &profile_all_interval, &profile_all_skip_interval, 1);
   }
   if(profopts.should_profile_rss) {
-    setup_profile_thread(&profile_rss, &profile_rss_interval, profopts.profile_rss_skip_intervals);
+    setup_profile_thread(&profile_rss, &profile_rss_interval, &profile_rss_skip_interval, profopts.profile_rss_skip_intervals);
   }
 #if 0
   if(profopts.should_profile_one) {

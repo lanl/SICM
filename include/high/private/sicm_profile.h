@@ -35,7 +35,7 @@ typedef struct profile_info {
 
 typedef struct profile_thread {
   pthread_t id;
-  int signal;
+  int signal, skip_signal;
   unsigned long skip_intervals; /* Number of intervals we should skip */
   unsigned long skipped_intervals; /* Number of intervals we have skipped */
 } profile_thread;

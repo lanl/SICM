@@ -87,6 +87,34 @@ void *profile_all(void *a) {
   while(1) { }
 }
 
+/* Just copies the previous value */
+void profile_all_skip_interval(int s) {
+  profile_info *profinfo;
+  arena_info *arena;
+  size_t i, n;
+
+  block_signal(s);
+
+  for(i = 0; i < profopts.num_profile_all_events; i++) {
+    for(n = 0; n <= tracker.max_index; n++) {
+      arena = tracker.arenas[n];
+      profinfo = prof.info[n];
+      per_event_profinfo = &(profinfo->profile_all.events[i]);
+      if((!arena) || (!profinfo) || (!profinfo->num_intervals)) continue;
+
+      profinfo->profile_all.intervals = (size_t *)realloc(profinfo->profile_all.intervals, profinfo->num_intervals * sizeof(size_t));
+      if(profinfo->num_intervals == 1) {
+        profinfo->profile_all.intervals[profinfo->num_intervals - 1] = 0;
+      } else {
+        profinfo->profile_all.intervals[profinfo->num_intervals - 1] = profinfo->profile_all.intervals[profinfo->num_intervals - 2];
+        per_event_profinfo->total += profinfo->profile_all.intervals[profinfo->num_intervals - 1];
+      }
+    }
+  }
+
+  unblock_signal(s);
+}
+
 /* Adds up accesses to the arenas */
 void profile_all_interval(int s) {
   uint64_t head, tail, buf_size;
@@ -224,33 +252,27 @@ void profile_rss_skip_interval(int s) {
   arena_info *arena;
   size_t i;
 
+  block_signal(s);
+
   pthread_rwlock_rdlock(&tracker.extents_lock);
 
-  if(profinfo->num_intervals == 1) {
-    /* If this is the first interval, just use zero */
-    extent_arr_for(tracker.extents, i) {
-      arena = (arena_info *) tracker.extents->arr[i].arena;
-      if(!arena) continue;
-      profinfo = (profile_info *) arena->info;
-      if((!profinfo) || (!profinfo->num_intervals)) continue;
+  extent_arr_for(tracker.extents, i) {
+    arena = (arena_info *) tracker.extents->arr[i].arena;
+    if(!arena) continue;
+    profinfo = (profile_info *) arena->info;
+    if((!profinfo) || (!profinfo->num_intervals)) continue;
 
-      profinfo->profile_rss.intervals = (size_t *)realloc(profinfo->profile_rss.intervals, profinfo->num_intervals * sizeof(size_t));
+    profinfo->profile_rss.intervals = (size_t *)realloc(profinfo->profile_rss.intervals, profinfo->num_intervals * sizeof(size_t));
+    if(profinfo->num_intervals == 1) {
       profinfo->profile_rss.intervals[profinfo->num_intervals - 1] = 0;
-    }
-  } else {
-    /* Copy the previous values. profinfo->num_intervals must be at least 2. */
-    extent_arr_for(tracker.extents, i) {
-      arena = (arena_info *) tracker.extents->arr[i].arena;
-      if(!arena) continue;
-      profinfo = (profile_info *) arena->info;
-      if((!profinfo) || (!profinfo->num_intervals)) continue;
-
-      profinfo->profile_rss.intervals = (size_t *)realloc(profinfo->profile_rss.intervals, profinfo->num_intervals * sizeof(size_t));
+    } else {
       profinfo->profile_rss.intervals[profinfo->num_intervals - 1] = profinfo->profile_rss.intervals[profinfo->num_intervals - 2];
     }
   }
 
   pthread_rwlock_unlock(&tracker.extents_lock);
+
+  unblock_signal(s);
 }
 
 void profile_rss_interval(int s) {
