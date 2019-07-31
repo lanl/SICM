@@ -379,6 +379,7 @@ void profile_extent_size_interval(int s) {
     if(!arena) continue;
     profinfo = (profile_info *) arena->info;
     if((!profinfo) || (!profinfo->num_intervals)) continue;
+    if(profinfo->profile_extent_size.tmp_accumulator == -1) continue;
 
     start = (char *) tracker.extents->arr[i].start;
     end = (char *) tracker.extents->arr[i].end;
@@ -391,6 +392,7 @@ void profile_extent_size_interval(int s) {
     if(!arena) continue;
     profinfo = (profile_info *) arena->info;
     if((!profinfo) || (!profinfo->num_intervals)) continue;
+    if(profinfo->profile_extent_size.tmp_accumulator == -1) continue;
 
     /* Maintain peak */
     if(profinfo->profile_extent_size.tmp_accumulator > profinfo->profile_extent_size.peak) {
@@ -452,10 +454,7 @@ void profile_extent_size_deinit() {
 void profile_extent_size_arena_init(profile_extent_size_info *info) {
   info->peak = 0;
   info->intervals = NULL;
-  /* It's possible that an arena will be created after the accumulators
-   * have been zeroed out but before the loop that tallies up the extents
-   * has run, so zero this out to prevent uninitialized data */
-  info->tmp_accumulator = 0;
+  info->tmp_accumulator = -1;
 }
 
 #if 0
