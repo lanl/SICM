@@ -121,7 +121,7 @@ void profile_master_interval(int s) {
   syscall(SYS_gettimeofday, &end, NULL);
 
   /* Throw a warning if this interval took too long */
-  target.tv_sec = profopts.profile_rate_nseconds / 1000;
+  target.tv_sec = profopts.profile_rate_nseconds / 1000000000;
   target.tv_usec = profopts.profile_rate_nseconds % 1000;
   timersub(&end, &start, &actual);
   if(timercmp(&actual, &target, >)) {
