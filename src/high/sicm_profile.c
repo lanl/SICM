@@ -40,23 +40,12 @@ void *create_profile_arena(int index) {
  * their own signal.
  */
 void start_interval(int signal) {
-  struct timeval tv;
-
-  /* Print out what time we were triggered */
-  syscall(SYS_gettimeofday, &tv, NULL);
-  printf("Profiling thread %d triggered: %ld.%06ld\n", signal, tv.tv_sec, tv.tv_usec);
-  fflush(stdout);
 }
 
 /* Unblocks a signal. Also notifies the Master thread. */
 void end_interval(int signal) {
-  struct timeval tv;
-
   /* Signal the master thread that we're done */
   pthread_mutex_lock(&prof.mtx);
-  syscall(SYS_gettimeofday, &tv, NULL);
-  printf("Profiling thread %d done: %ld.%06ld\n", signal, tv.tv_sec, tv.tv_usec);
-  fflush(stdout);
   prof.threads_finished++;
   pthread_cond_signal(&prof.cond);
   pthread_mutex_unlock(&prof.mtx);

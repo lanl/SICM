@@ -452,6 +452,10 @@ void profile_extent_size_deinit() {
 void profile_extent_size_arena_init(profile_extent_size_info *info) {
   info->peak = 0;
   info->intervals = NULL;
+  /* It's possible that an arena will be created after the accumulators
+   * have been zeroed out but before the loop that tallies up the extents
+   * has run, so zero this out to prevent uninitialized data */
+  info->tmp_accumulator = 0;
 }
 
 #if 0
