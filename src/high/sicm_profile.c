@@ -10,6 +10,38 @@
 profiler prof;
 static int global_signal;
 
+/* Returns 0 if "a" is bigger, 1 if "b" is bigger */
+char timespec_cmp(timespec *a, timespec *b) {
+	if (a->tv_sec == b->tv_sec) {
+    if(a->tv_nsec > b->tv_nsec) {
+      return 0;
+    } else {
+      return 1;
+    }
+	} else if(a->tv_sec > b->tv_sec) {
+    return 0;
+	} else {
+    return 1;
+  }
+}
+
+/* Subtracts two timespec structs from each other. Assumes stop is
+ * larger than start.
+ */
+void timespec_diff(struct timespec *start, struct timespec *stop,                           
+                   struct timespec *result)
+{
+  if ((stop->tv_nsec - start->tv_nsec) < 0) {
+    result->tv_sec = stop->tv_sec - start->tv_sec - 1;                                      
+    result->tv_nsec = stop->tv_nsec - start->tv_nsec + 1000000000;                          
+  } else {
+    result->tv_sec = stop->tv_sec - start->tv_sec;                                          
+    result->tv_nsec = stop->tv_nsec - start->tv_nsec;                                       
+  }
+  return;
+}
+
+
 /* Allocates room for profiling information for this arena.
  * Returns a pointer to the profile_info struct as a void pointer
  * so that the arena can have a pointer to its profiling information.
@@ -57,7 +89,7 @@ void end_interval(int signal) {
  * it does this on every interval.
  */
 void profile_master_interval(int s) {
-	struct timeval start, end, target, actual;
+	struct timespec start, end, target, actual;
   size_t i;
   unsigned copy;
   profile_info *profinfo;
@@ -65,7 +97,7 @@ void profile_master_interval(int s) {
   profile_thread *profthread;
 
   /* Start time */
-  syscall(SYS_gettimeofday, &start, NULL);
+  clock_gettime(CLOCK_MONOTONIC, &start);
 
   /* Increment the interval */
   for(i = 0; i <= tracker.max_index; i++) {
@@ -118,20 +150,20 @@ void profile_master_interval(int s) {
   }
 
   /* End time */
-  syscall(SYS_gettimeofday, &end, NULL);
+  clock_gettime(CLOCK_MONOTONIC, &end);
 
   /* Throw a warning if this interval took too long */
   target.tv_sec = profopts.profile_rate_nseconds / 1000000000;
-  target.tv_usec = profopts.profile_rate_nseconds % 1000;
-  timersub(&end, &start, &actual);
-  if(timercmp(&actual, &target, >)) {
-    fprintf(stderr, "WARNING: Interval (%ld.%06ld) went over the time limit (%ld.%06ld).\n",
-            actual.tv_sec, actual.tv_usec,
-            target.tv_sec, target.tv_usec);
+  target.tv_nsec = profopts.profile_rate_nseconds % 1000000000;
+  timespec_diff(&start, &end, &actual);
+  if(timespec_cmp(&actual, &target)) {
+    fprintf(stderr, "WARNING: Interval (%ld.%09ld) went over the time limit (%ld.%09ld).\n",
+            actual.tv_sec, actual.tv_nsec,
+            target.tv_sec, target.tv_nsec);
   } else {
-    fprintf(stderr, "DEBUG: Interval (%ld.%06ld) was under the time limit (%ld.%06ld).\n",
-            actual.tv_sec, actual.tv_usec,
-            target.tv_sec, target.tv_usec);
+    fprintf(stderr, "DEBUG: Interval (%ld.%09ld) was under the time limit (%ld.%09ld).\n",
+            actual.tv_sec, actual.tv_nsec,
+            target.tv_sec, target.tv_nsec);
   }
 
   /* Finished handling this interval. Wait for another. */
