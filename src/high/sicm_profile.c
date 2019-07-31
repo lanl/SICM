@@ -18,8 +18,6 @@ static int global_signal;
  */
 void *create_profile_arena(int index) {
   prof.info[index] = calloc(1, sizeof(profile_info));
-  prof.info[index]->num_intervals = 0;
-  prof.info[index]->first_interval = 0;
 
   if(profopts.should_profile_all) {
     profile_all_arena_init(&(prof.info[index]->profile_all));
@@ -30,6 +28,9 @@ void *create_profile_arena(int index) {
   if(profopts.should_profile_extent_size) {
     profile_extent_size_arena_init(&(prof.info[index]->profile_extent_size));
   }
+
+  prof.info[index]->num_intervals = 0;
+  prof.info[index]->first_interval = 0;
 
   /* Return this so that the arena can have a pointer to its profiling
    * information
@@ -60,6 +61,7 @@ void profile_master_interval(int s) {
   size_t i;
   unsigned copy;
   profile_info *profinfo;
+  arena_info *arena;
   profile_thread *profthread;
 
   /* Start time */
@@ -68,7 +70,11 @@ void profile_master_interval(int s) {
   /* Increment the interval */
   for(i = 0; i <= tracker.max_index; i++) {
     profinfo = prof.info[i];
-    if(!profinfo) continue;
+    arena = tracker.arenas[i];
+
+    /* Make sure this arena is fully valid */
+    if(!arena || !profinfo) continue;
+
     if(profinfo->num_intervals == 0) {
       /* This is the arena's first interval, make note */
       profinfo->first_interval = prof.cur_interval;
@@ -120,6 +126,9 @@ void profile_master_interval(int s) {
   timersub(&start, &end, &actual);
   if(timercmp(&actual, &target, >)) {
     fprintf(stderr, "WARNING: Interval went over the time limit: %ld.%06ld\n",
+            actual.tv_sec, actual.tv_usec);
+  } else {
+    fprintf(stderr, "DEBUG: Interval was under the time limit: %ld.%06ld\n",
             actual.tv_sec, actual.tv_usec);
   }
 
