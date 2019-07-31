@@ -25,8 +25,7 @@ void (*sicm_extent_dalloc_callback)(void *start, void *end) = NULL;
 
 static void sarena_init() {
 	int err;
-  char boolean;
-	size_t miblen, max_background_threads, decay_ms;
+	size_t miblen;
 
 	pthread_key_create(&sa_default_key, NULL);
 	miblen = 2;
@@ -383,16 +382,7 @@ void *sicm_alloc_aligned(size_t sz, size_t align) {
 }
 
 void sicm_free(void *ptr) {
-  int err;
-	//je_free(ptr);
-  je_dallocx(ptr, MALLOCX_TCACHE_NONE);
-  /*
-	err = je_mallctl("arena.4096.purge", NULL, NULL, NULL, 0);
-  if(err != 0) {
-    printf("Failure: %d\n", err);
-    exit(1);
-  }
-  */
+	je_free(ptr);
 }
 
 void *sicm_realloc(void *ptr, size_t sz) {
@@ -443,7 +433,6 @@ sicm_arena sicm_arena_lookup(void *ptr) {
 
 static void *sa_alloc(extent_hooks_t *, void *, size_t, size_t, bool *, bool *, unsigned);
 static bool sa_dalloc(extent_hooks_t *, void *, size_t, bool, unsigned);
-static bool sa_purge(extent_hooks_t *, void *, size_t, size_t, size_t, unsigned);
 static void sa_destroy(extent_hooks_t *, void *, size_t, bool, unsigned);
 static bool sa_commit(extent_hooks_t *, void *, size_t, size_t, size_t, unsigned);
 static bool sa_decommit(extent_hooks_t *, void *, size_t, size_t, size_t, unsigned);
@@ -456,8 +445,8 @@ static extent_hooks_t sa_hooks = {
 	.destroy = sa_destroy,
 	.commit = sa_commit,
 	.decommit = sa_decommit,
-	.purge_lazy = sa_purge,
-	.purge_forced = sa_purge,
+	.purge_lazy = NULL,
+	.purge_forced = NULL,
 	.split = sa_split,
 	.merge = sa_merge,
 };
@@ -470,8 +459,6 @@ static void *sa_alloc(extent_hooks_t *h, void *new_addr, size_t size, size_t ali
 	int oldmode, mmflags;
 	void *ret;
 	struct bitmask *oldnodemask;
-  sicm_device_tag type;
-  char *template;
 
 	*commit = 0;
 	*zero = 0;
@@ -558,12 +545,13 @@ success:
 		goto restore_mempolicy;
 	}
 
+  /* Add the extent to the array of extents */
   extent_arr_insert(sa->extents, ret, (char *)ret + size, NULL);
 
-	/* Call the callback on this chunk if it's set */
-	if(sicm_extent_alloc_callback) {
-		(*sicm_extent_alloc_callback)(ret, (char *)ret + size);
-	}
+  /* Call the callback on this chunk if it's set */
+  if(sicm_extent_alloc_callback) {
+    (*sicm_extent_alloc_callback)(ret, (char *)ret + size);
+  }
 
 	if (sa->fd) {
 		sa->size += size;
@@ -609,14 +597,6 @@ static bool sa_dalloc(extent_hooks_t *h, void *addr, size_t size, bool committed
 	pthread_mutex_unlock(sa->mutex);
 	return ret;
 }
-
-
-static bool sa_purge(extent_hooks_t *extent_hooks, void *addr, size_t size, size_t offset, size_t length, unsigned arena_id) {
-  int err;
-  err = madvise(((char *)addr) + offset, length, MADV_DONTNEED);
-  return (err != 0);
-}
-
 
 static void sa_destroy(extent_hooks_t *h, void *addr, size_t size, bool committed, unsigned arena_ind) {
 	sa_dalloc(h, addr, size, committed, arena_ind);
