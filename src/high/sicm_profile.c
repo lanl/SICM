@@ -127,6 +127,9 @@ void profile_master_interval(int s) {
   if(timercmp(&actual, &target, >)) {
     fprintf(stderr, "WARNING: Interval went over the time limit: %ld.%06ld\n",
             actual.tv_sec, actual.tv_usec);
+  } else {
+    fprintf(stderr, "DEBUG: Interval was under the time limit: %ld.%06ld\n",
+            actual.tv_sec, actual.tv_usec);
   }
 
   /* Finished handling this interval. Wait for another. */
