@@ -449,7 +449,7 @@ void profile_extent_size_init() {
 void profile_extent_size_deinit() {
 }
 
-void profile_extent_size_arena_init(profile_extent_size_info *) {
+void profile_extent_size_arena_init(profile_extent_size_info *info) {
   info->peak = 0;
   info->intervals = NULL;
 }
