@@ -16,7 +16,6 @@
 #ifndef MAP_HUGE_SHIFT
 #include <linux/mman.h>
 #endif
-#include <mntent.h>
 #include "sicm_impl.h"
 
 #define X86_CPUID_MODEL_MASK        (0xf<<4)
@@ -82,41 +81,8 @@ struct sicm_device_list sicm_init() {
     if(entry->d_name[0] != '.') huge_page_size_count++;
   closedir(dir);
 
-  int pmem_devices_count = 0;
-#if 0
-  /* Need a way to see if the user is using a different, non-filesystem-supporting driver for PMEM */
-  FILE * mtab = NULL;
-  struct mntent * part = NULL;
-  char *devname;
-	char **dirnames = NULL;
-  dir = opendir("/dev/");
-  while((entry = readdir(dir)) != NULL) {
-    /* Only pmem devices */
-    if(strncmp(entry->d_name, "pmem", 4) != 0) continue;
-    devname = malloc(sizeof(char) * (strlen(entry->d_name) + 6));
-    strcpy(devname, "/dev/");
-    strcat(devname, entry->d_name);
-
-    /* Iterate over mtab entries */
-    if((mtab = setmntent("/etc/mtab", "r")) != NULL) {
-      while((part = getmntent(mtab)) != NULL) {
-        /* If it's mounted and has the same device name as the one we're looking at */
-        if((part->mnt_fsname != NULL) && (strcmp(part->mnt_fsname, devname)) == 0) {
-          pmem_devices_count++;
-					dirnames = realloc(dirnames, pmem_devices_count * sizeof(char *));
-          dirnames[pmem_devices_count - 1] = malloc((strlen(part->mnt_dir) + 1) * sizeof(char));
-          strcpy(dirnames[pmem_devices_count - 1], part->mnt_dir);
-        }
-      }
-    }
-    endmntent(mtab);
-  }
-  closedir(dir);
-#endif
-
   int node_count = numa_max_node() + 1, depth;
-  int device_count = node_count * (huge_page_size_count + 1) + pmem_devices_count;
-  printf("There are %d NUMA nodes and %d devices\n", node_count, device_count);
+  int device_count = node_count * (huge_page_size_count + 1);
 
   struct bitmask* non_dram_nodes = numa_bitmask_alloc(node_count);
 
