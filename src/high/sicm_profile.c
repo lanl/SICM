@@ -160,10 +160,6 @@ void profile_master_interval(int s) {
     fprintf(stderr, "WARNING: Interval (%ld.%09ld) went over the time limit (%ld.%09ld).\n",
             actual.tv_sec, actual.tv_nsec,
             target.tv_sec, target.tv_nsec);
-  } else {
-    fprintf(stderr, "DEBUG: Interval (%ld.%09ld) was under the time limit (%ld.%09ld).\n",
-            actual.tv_sec, actual.tv_nsec,
-            target.tv_sec, target.tv_nsec);
   }
 
   /* Finished handling this interval. Wait for another. */
