@@ -135,6 +135,10 @@ void sh_create_extent(void *start, void *end) {
   }
 }
 
+void sh_delete_extent(void *start, void *end) {
+  printf("Got an extent deallocation\n");
+}
+
 int get_site_arena(int id) {
   tree_it(int, int) it;
   int ret;
@@ -350,4 +354,3 @@ void sh_free(void* ptr) {
     sicm_free(ptr);
   }
 }
-

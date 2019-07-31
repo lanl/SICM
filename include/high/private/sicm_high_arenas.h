@@ -90,6 +90,7 @@ __attribute__((destructor))
 void sh_terminate();
 
 void sh_create_extent(void *begin, void *end);
+void sh_delete_extent(void *begin, void *end);
 int get_arena_index(int id);
 
 /* Options for if/when/how to profile. Initialized in src/high/sicm_high_init.c,

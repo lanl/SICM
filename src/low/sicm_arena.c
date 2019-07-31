@@ -21,6 +21,7 @@ static pthread_once_t sa_init = PTHREAD_ONCE_INIT;
 static pthread_key_t sa_default_key;
 static extent_hooks_t sa_hooks;
 void (*sicm_extent_alloc_callback)(void *start, void *end) = NULL;
+void (*sicm_extent_dalloc_callback)(void *start, void *end) = NULL;
 
 static void sarena_init() {
 	int err;
@@ -600,6 +601,11 @@ static bool sa_dalloc(extent_hooks_t *h, void *addr, size_t size, bool committed
 		ret = true;
 	}
 	sa->size -= size;
+
+	if((!ret) && sicm_extent_dalloc_callback) {
+		(*sicm_extent_dalloc_callback)(ret, (char *)ret + size);
+	}
+
 	pthread_mutex_unlock(sa->mutex);
 	return ret;
 }

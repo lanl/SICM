@@ -543,6 +543,7 @@ void sh_init() {
 
     /* Set the arena allocator's callback function */
     sicm_extent_alloc_callback = &sh_create_extent;
+    sicm_extent_dalloc_callback = &sh_delete_extent;
 
     sh_start_profile_master_thread();
   }

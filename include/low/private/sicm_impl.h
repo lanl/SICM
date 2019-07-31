@@ -103,7 +103,8 @@ struct sarena {
 extern sarena *sarena_ptr2sarena(void *ptr);
 extern int sicm_arena_init(void);
 
-/* Set by the user, called whenever an extent is allocated */
+/* Set by the user, called whenever an extent is (d)allocated */
 extern void (*sicm_extent_alloc_callback)(void *start, void *end);
+extern void (*sicm_extent_dalloc_callback)(void *start, void *end);
 
 #endif
