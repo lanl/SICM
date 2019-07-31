@@ -137,6 +137,7 @@ void sh_create_extent(void *start, void *end) {
 
 void sh_delete_extent(void *start, void *end) {
   printf("Got an extent deallocation\n");
+  extent_arr_delete(tracker.extents, start);
 }
 
 int get_site_arena(int id) {

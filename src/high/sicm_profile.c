@@ -26,14 +26,9 @@ void *create_profile_arena(int index) {
   if(profopts.should_profile_rss) {
     profile_rss_arena_init(&(prof.info[index]->profile_rss));
   }
-#if 0
-  if(profopts.should_profile_one) {
-    profile_one_arena_init(&(prof.info[index]->profile_one));
+  if(profopts.should_profile_extent_size) {
+    profile_extent_size_arena_init(&(prof.info[index]->profile_extent_size));
   }
-  if(profopts.should_profile_allocs) {
-    profile_allocs_arena_init(&(prof.info[index]->profile_allocs));
-  }
-#endif
 
   /* Return this so that the arena can have a pointer to its profiling
    * information
@@ -44,7 +39,7 @@ void *create_profile_arena(int index) {
 /* Function used by the profile threads to block/unblock
  * their own signal.
  */
-void block_signal(int signal) {
+void start_interval(int signal) {
   struct timeval tv;
 
   /* Print out what time we were triggered */
@@ -54,7 +49,7 @@ void block_signal(int signal) {
 }
 
 /* Unblocks a signal. Also notifies the Master thread. */
-void unblock_signal(int signal) {
+void end_interval(int signal) {
   struct timeval tv;
 
   /* Signal the master thread that we're done */
@@ -199,19 +194,23 @@ void *profile_master(void *a) {
   int master_signal;
 
   if(profopts.should_profile_all) {
-    setup_profile_thread(&profile_all, &profile_all_interval, &profile_all_skip_interval, 1);
+    setup_profile_thread(&profile_all, 
+                         &profile_all_interval, 
+                         &profile_all_skip_interval, 
+                         profopts.profile_all_skip_intervals);
   }
   if(profopts.should_profile_rss) {
-    setup_profile_thread(&profile_rss, &profile_rss_interval, &profile_rss_skip_interval, profopts.profile_rss_skip_intervals);
+    setup_profile_thread(&profile_rss, 
+                         &profile_rss_interval, 
+                         &profile_rss_skip_interval, 
+                         profopts.profile_rss_skip_intervals);
   }
-#if 0
-  if(profopts.should_profile_one) {
-    setup_profile_thread(&profile_one, &profile_one_interval, 0);
+  if(profopts.should_profile_extent_size) {
+    setup_profile_thread(&profile_extent_size, 
+                         &profile_extent_size_interval, 
+                         &profile_extent_size_skip_interval, 
+                         profopts.profile_extent_size_skip_intervals);
   }
-  if(profopts.should_profile_allocs) {
-    setup_profile_thread(&profile_allocs, &profile_allocs_interval, 0);
-  }
-#endif
   
   /* Initialize synchronization primitives */
   pthread_mutex_init(&prof.mtx, NULL);
@@ -288,14 +287,9 @@ void initialize_profiling() {
   if(profopts.should_profile_rss) {
     profile_rss_init();
   }
-#if 0
-  if(profopts.should_profile_one) {
-    profile_one_init();
+  if(profopts.should_profile_extent_size) {
+    profile_extent_size_init();
   }
-  if(profopts.should_profile_allocs) {
-    profile_allocs_init();
-  }
-#endif
 }
 
 void sh_start_profile_master_thread() {
@@ -355,6 +349,15 @@ void print_profiling() {
         printf("    Peak: %zu\n", profinfo->profile_rss.peak);
         for(x = 0; x < profinfo->num_intervals; x++) {
           printf("    %zu\n", profinfo->profile_rss.intervals[x]);
+        }
+      }
+
+      /* Extent size */
+      if(profopts.should_profile_extent_size) {
+        printf("  Extents size:\n");
+        printf("    Peak: %zu\n", profinfo->profile_extent_size.peak);
+        for(x = 0; x < profinfo->num_intervals; x++) {
+          printf("    %zu\n", profinfo->profile_extent_size.intervals[x]);
         }
       }
 

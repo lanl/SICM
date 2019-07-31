@@ -51,7 +51,6 @@ typedef struct tracker_struct {
 
   /* Keep track of all extents */
   extent_arr *extents;
-  extent_arr *rss_extents; /* The extents that we want to get the RSS of */
 
   /* Gets locked when we add a new extent */
   pthread_rwlock_t extents_lock;
@@ -98,17 +97,20 @@ int get_arena_index(int id);
  */
 typedef struct profiling_options {
   /* Should we do profiling? */
-  int should_profile_online;
-  int should_profile_all;
-  int should_profile_one;
-  int should_profile_rss;
-  int should_profile_allocs;
+  int should_profile_online,
+      should_profile_all,
+      should_profile_one,
+      should_profile_rss,
+      should_profile_extent_size,
+      should_profile_allocs;
   int profile_one_site;
   int should_run_rdspy;
 
   /* Sample rates */
   size_t profile_rate_nseconds;
-  unsigned long profile_rss_skip_intervals;
+  unsigned long profile_rss_skip_intervals,
+                profile_all_skip_intervals,
+                profile_extent_size_skip_intervals;
   int sample_freq;
   int max_sample_pages;
 

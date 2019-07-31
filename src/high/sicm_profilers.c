@@ -94,7 +94,7 @@ void profile_all_skip_interval(int s) {
   per_event_profile_all_info *per_event_profinfo;
   size_t i, n;
 
-  block_signal(s);
+  start_interval(s);
 
   for(i = 0; i < profopts.num_profile_all_events; i++) {
     for(n = 0; n <= tracker.max_index; n++) {
@@ -113,7 +113,7 @@ void profile_all_skip_interval(int s) {
     }
   }
 
-  unblock_signal(s);
+  end_interval(s);
 }
 
 /* Adds up accesses to the arenas */
@@ -130,7 +130,7 @@ void profile_all_interval(int s) {
   per_event_profile_all_info *per_event_profinfo;
   size_t total_samples;
 
-  block_signal(s);
+  start_interval(s);
 
   /* Outer loop loops over the events */
   for(i = 0; i < profopts.num_profile_all_events; i++) {
@@ -220,7 +220,7 @@ void profile_all_interval(int s) {
     }
   }
 
-  unblock_signal(s);
+  end_interval(s);
 }
 
 void profile_rss_arena_init(profile_rss_info *info) {
@@ -253,7 +253,7 @@ void profile_rss_skip_interval(int s) {
   arena_info *arena;
   size_t i;
 
-  block_signal(s);
+  start_interval(s);
 
   pthread_rwlock_rdlock(&tracker.extents_lock);
 
@@ -273,7 +273,7 @@ void profile_rss_skip_interval(int s) {
 
   pthread_rwlock_unlock(&tracker.extents_lock);
 
-  unblock_signal(s);
+  end_interval(s);
 }
 
 void profile_rss_interval(int s) {
@@ -283,7 +283,7 @@ void profile_rss_interval(int s) {
   ssize_t num_read;
   profile_info *profinfo;
 
-  block_signal(s);
+  start_interval(s);
 
   /* Grab the lock for the extents array */
   pthread_rwlock_rdlock(&tracker.extents_lock);
@@ -346,11 +346,115 @@ void profile_rss_interval(int s) {
 
   pthread_rwlock_unlock(&tracker.extents_lock);
 
-  unblock_signal(s);
+  end_interval(s);
+}
+
+void *profile_extent_size(void *a) {
+  while(1) { }
+}
+
+void profile_extent_size_interval(int s) {
+  profile_info *profinfo;
+  arena_info *arena;
+  size_t i;
+  char *start, *end;
+
+  start_interval(s);
+
+  pthread_rwlock_rdlock(&tracker.extents_lock);
+  
+  /* Zero out the accumulator for each arena */
+  extent_arr_for(tracker.extents, i) {
+    arena = (arena_info *) tracker.extents->arr[i].arena;
+    if(!arena) continue;
+    profinfo = (profile_info *) arena->info;
+    if(!profinfo) continue;
+
+    profinfo->profile_extent_size.tmp_accumulator = 0;
+  }
+
+  /* Iterate over the extents and add each of their size to the accumulator */
+  extent_arr_for(tracker.extents, i) {
+    arena = (arena_info *) tracker.extents->arr[i].arena;
+    if(!arena) continue;
+    profinfo = (profile_info *) arena->info;
+    if((!profinfo) || (!profinfo->num_intervals)) continue;
+
+    start = (char *) tracker.extents->arr[i].start;
+    end = (char *) tracker.extents->arr[i].end;
+    profinfo->profile_extent_size.tmp_accumulator += end - start;
+  }
+
+  /* Now go through each arena one last time */
+  extent_arr_for(tracker.extents, i) {
+    arena = (arena_info *) tracker.extents->arr[i].arena;
+    if(!arena) continue;
+    profinfo = (profile_info *) arena->info;
+    if((!profinfo) || (!profinfo->num_intervals)) continue;
+
+    /* Maintain peak */
+    if(profinfo->profile_extent_size.tmp_accumulator > profinfo->profile_extent_size.peak) {
+      profinfo->profile_extent_size.peak = profinfo->profile_extent_size.tmp_accumulator;
+    }
+    
+    /* Store this interval */
+    profinfo->profile_extent_size.intervals = 
+      (size_t *)realloc(profinfo->profile_extent_size.intervals, 
+                        profinfo->num_intervals * sizeof(size_t));
+    profinfo->profile_extent_size.intervals[profinfo->num_intervals - 1] = 
+      profinfo->profile_extent_size.tmp_accumulator;
+  }
+
+  pthread_rwlock_unlock(&tracker.extents_lock);
+
+  end_interval(s);
+}
+
+/* Just copies previous values along */
+void profile_extent_size_skip_interval(int s) {
+  profile_info *profinfo;
+  arena_info *arena;
+  size_t i;
+
+  start_interval(s);
+
+  pthread_rwlock_rdlock(&tracker.extents_lock);
+  
+  extent_arr_for(tracker.extents, i) {
+    arena = (arena_info *) tracker.extents->arr[i].arena;
+    if(!arena) continue;
+    profinfo = (profile_info *) arena->info;
+    if((!profinfo) || (!profinfo->num_intervals)) continue;
+
+    /* Store this interval */
+    profinfo->profile_extent_size.intervals = 
+      (size_t *)realloc(profinfo->profile_extent_size.intervals, 
+                        profinfo->num_intervals * sizeof(size_t));
+    if(profinfo->num_intervals == 1) {
+      profinfo->profile_extent_size.intervals[profinfo->num_intervals - 1] = 0;
+    } else {
+      profinfo->profile_extent_size.intervals[profinfo->num_intervals - 1] = 
+        profinfo->profile_extent_size.intervals[profinfo->num_intervals - 2];
+    }
+  }
+
+  pthread_rwlock_unlock(&tracker.extents_lock);
+
+  end_interval(s);
+}
+
+void profile_extent_size_init() {
+}
+
+void profile_extent_size_deinit() {
+}
+
+void profile_extent_size_arena_init(profile_extent_size_info *) {
+  info->peak = 0;
+  info->intervals = NULL;
 }
 
 #if 0
-
 void profile_one_init() {
 
     pid = -1;

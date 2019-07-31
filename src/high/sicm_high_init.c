@@ -196,6 +196,12 @@ void set_options() {
       fprintf(stderr, "No profiling events given. Can't profile with sampling.\n");
       exit(1);
     }
+
+    env = getenv("SH_PROFILE_ALL_SKIP_INTERVALS");
+    profopts.profile_all_skip_intervals = 1;
+    if(env) {
+      profopts.profile_all_skip_intervals = strtoul(env, NULL, 0);
+    }
   }
 
   /* Should we keep track of when each allocation happened, in intervals? */
@@ -320,6 +326,18 @@ void set_options() {
     profopts.profile_rss_skip_intervals = 1;
     if(env) {
       profopts.profile_rss_skip_intervals = strtoul(env, NULL, 0);
+    }
+  }
+
+  env = getenv("SH_PROFILE_EXTENT_SIZE");
+  profopts.should_profile_extent_size = 0;
+  if(env) {
+    profopts.should_profile_extent_size = 1;
+    
+    env = getenv("SH_PROFILE_EXTENT_SIZE_SKIP_INTERVALS");
+    profopts.profile_extent_size_skip_intervals = 1;
+    if(env) {
+      profopts.profile_extent_size_skip_intervals = strtoul(env, NULL, 0);
     }
   }
 
@@ -520,7 +538,6 @@ void sh_init() {
     tracker.arenas = (arena_info **) calloc(tracker.max_arenas, sizeof(arena_info *));
 
     /* Initialize the extents array.
-     * If we're profiling all sites, rss_extents is just all extents.
      */
     tracker.extents = extent_arr_init();
 

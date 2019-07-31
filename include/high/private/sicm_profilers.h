@@ -34,6 +34,10 @@ typedef struct profile_rss_info {
   /* profile_rss */
   size_t peak, *intervals, tmp_accumulator;
 } profile_rss_info;
+typedef struct profile_extent_size_info {
+  /* profile_extent_size */
+  size_t peak, *intervals, tmp_accumulator;
+} profile_extent_size_info;
 
 
 /********************
@@ -53,6 +57,9 @@ typedef struct profile_rss_data {
   union pfn_t *pfndata;
   size_t pagesize, addrsize;
 } profile_rss_data;
+typedef struct profile_extent_size_data {
+  /* For profile_extent_size */
+} profile_extent_size_data;
 
 
 /********************
@@ -71,6 +78,13 @@ void profile_rss_skip_interval(int s);
 void profile_rss_init();
 void profile_rss_deinit();
 void profile_rss_arena_init(profile_rss_info *);
+
+void *profile_extent_size(void *a);
+void profile_extent_size_interval(int s);
+void profile_extent_size_skip_interval(int s);
+void profile_extent_size_init();
+void profile_extent_size_deinit();
+void profile_extent_size_arena_init(profile_extent_size_info *);
 
 #if 0
 /* ONE */
