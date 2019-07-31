@@ -125,11 +125,13 @@ void profile_master_interval(int s) {
   target.tv_usec = profopts.profile_rate_nseconds % 1000;
   timersub(&end, &start, &actual);
   if(timercmp(&actual, &target, >)) {
-    fprintf(stderr, "WARNING: Interval went over the time limit: %ld.%06ld\n",
-            actual.tv_sec, actual.tv_usec);
+    fprintf(stderr, "WARNING: Interval (%ld.%06ld) went over the time limit (%ld.%06ld).\n",
+            actual.tv_sec, actual.tv_usec,
+            target.tv_sec, target.tv_usec);
   } else {
-    fprintf(stderr, "DEBUG: Interval was under the time limit: %ld.%06ld\n",
-            actual.tv_sec, actual.tv_usec);
+    fprintf(stderr, "DEBUG: Interval (%ld.%06ld) was under the time limit (%ld.%06ld).\n",
+            actual.tv_sec, actual.tv_usec,
+            target.tv_sec, target.tv_usec);
   }
 
   /* Finished handling this interval. Wait for another. */
