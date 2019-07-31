@@ -55,13 +55,16 @@ void end_interval(int signal) {
  * it does this on every interval.
  */
 void profile_master_interval(int s) {
-	struct timeval tv;
+	struct timeval start, end, target, actual;
   size_t i;
   unsigned copy;
   profile_info *profinfo;
   profile_thread *profthread;
-  syscall(SYS_gettimeofday, &tv, NULL);
 
+  /* Start time */
+  syscall(SYS_gettimeofday, &start, NULL);
+
+  /* Increment the interval */
   for(i = 0; i <= tracker.max_index; i++) {
     profinfo = prof.info[i];
     if(!profinfo) continue;
@@ -105,6 +108,18 @@ void profile_master_interval(int s) {
       /* Wait for at least one thread to signal us */
       pthread_cond_wait(&prof.cond, &prof.mtx);
     }
+  }
+
+  /* End time */
+  syscall(SYS_gettimeofday, &end, NULL);
+
+  /* Throw a warning if this interval took too long */
+  target.tv_sec = profopts.profile_rate_nseconds / 1000000000;
+  target.tv_nsec = profopts.profile_rate_nseconds % 1000000000;
+  timersub(&start, &end, &actual);
+  if(timercmp(&actual, &target, >)) {
+    fprintf(stderr, "WARNING: Interval went over the time limit: %ld.%06ld\n",
+            actual.tv_sec, actual.tv_usec);
   }
 
   /* Finished handling this interval. Wait for another. */
