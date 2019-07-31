@@ -62,10 +62,6 @@ void profile_master_interval(int s) {
   profile_thread *profthread;
   syscall(SYS_gettimeofday, &tv, NULL);
 
-  printf("\n\n====================\n");
-  printf("Master triggered at time %ld.%06ld\n", tv.tv_sec, tv.tv_usec);
-  fflush(stdout);
-
   for(i = 0; i <= tracker.max_index; i++) {
     profinfo = prof.info[i];
     if(!profinfo) continue;
@@ -99,8 +95,6 @@ void profile_master_interval(int s) {
       pthread_mutex_unlock(&prof.mtx);
       if(prof.threads_finished == prof.num_profile_threads) {
         /* They're all done. */
-        printf("Profiling threads are all done.\n");
-        fflush(stdout);
         pthread_mutex_lock(&prof.mtx);
         prof.threads_finished = 0;
         break;
@@ -116,9 +110,6 @@ void profile_master_interval(int s) {
   /* Finished handling this interval. Wait for another. */
   prof.cur_interval++;
   pthread_mutex_unlock(&prof.mtx);
-  printf("Exited the loop, we're now ready to receive another signal\n");
-  printf("====================\n");
-  fflush(stdout);
 }
 
 /* Stops the master thread */
