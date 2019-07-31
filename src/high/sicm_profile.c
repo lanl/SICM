@@ -11,7 +11,7 @@ profiler prof;
 static int global_signal;
 
 /* Returns 0 if "a" is bigger, 1 if "b" is bigger */
-char timespec_cmp(timespec *a, timespec *b) {
+char timespec_cmp(struct timespec *a, struct timespec *b) {
 	if (a->tv_sec == b->tv_sec) {
     if(a->tv_nsec > b->tv_nsec) {
       return 0;
