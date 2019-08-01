@@ -310,8 +310,10 @@ tree(int, siteptr) get_hotset(tree(int, siteptr) sites, size_t capacity) {
   tree_traverse(sites, it) {
     /* Only insert if the site has a weight */
     if(tree_it_val(it)->events[weight_index].peak) {
-      tree_insert(sorted_sites, tree_it_val(it), tree_it_key(it));
       printf("Inserting site %d into sorted_sites\n", tree_it_key(it));
+      fflush(stdout);
+      tree_insert(sorted_sites, tree_it_val(it), tree_it_key(it));
+      printf("Inserted site %d into sorted_sites\n", tree_it_key(it));
       fflush(stdout);
     } else {
       fprintf(stderr, "WARNING: Site %d doesn't have a weight.\n", tree_it_key(it));
