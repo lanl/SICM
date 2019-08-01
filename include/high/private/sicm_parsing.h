@@ -48,6 +48,8 @@ static inline app_info *sh_parse_site_info(FILE *file) {
 
   info = (app_info *)malloc(sizeof(app_info));
   info->sites = tree_make(int, siteptr);
+  info->num_events = 0;
+  info->events = NULL;
 
   if(!file) {
     fprintf(stderr, "Invalid file pointer. Aborting.\n");
