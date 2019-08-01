@@ -306,7 +306,7 @@ tree(int, siteptr) get_hotset(tree(int, siteptr) sites, size_t capacity) {
 
   printf("Running hotset\n");
 
-  sorted_sites = tree_make_c(siteptr, int, &int_val_cmp);
+  sorted_sites = tree_make_c(siteptr, int, &value_per_weight_cmp);
   tree_traverse(sites, it) {
     /* Only insert if the site has a weight */
     if(tree_it_val(it)->events[weight_index].peak) {
