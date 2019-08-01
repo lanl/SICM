@@ -97,6 +97,7 @@ void scale_sites(app_info *info, float scale) {
 
   /* Scale each site */
   printf("Scaling sites down by %f.\n", scale);
+  fflush(stdout);
   total = 0;
   tree_traverse(info->sites, it) {
     /* See how many multiples of the GCD the scaled version is */
@@ -303,15 +304,19 @@ tree(int, siteptr) get_hotset(tree(int, siteptr) sites, size_t capacity) {
 
   ret = tree_make(int, siteptr);
 
+  printf("Running hotset\n");
+
   sorted_sites = tree_make_c(siteptr, int, &int_val_cmp);
   tree_traverse(sites, it) {
     /* Only insert if the site has a weight */
     if(tree_it_val(it)->events[weight_index].peak) {
       tree_insert(sorted_sites, tree_it_val(it), tree_it_key(it));
+      printf("Inserting into sorted_sites\n");
     } else {
       fprintf(stderr, "WARNING: Site %d doesn't have a weight.\n", tree_it_key(it));
     }
   }
+  fflush(stdout);
 
   printf("Sorted sites:\n");
   tree_traverse(sorted_sites, sit) {
