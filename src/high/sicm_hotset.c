@@ -47,8 +47,8 @@ int value_per_weight_cmp(siteptr a, siteptr b) {
 
   if(a == b) return 0;
 
-  a_bpb = ((double)a->events[value_index]->total) / ((double)a->events[weight_index]->peak);
-  b_bpb = ((double)b->events[value_index]->total) / ((double)b->events[weight_index]->peak);
+  a_bpb = ((double)a->events[value_index].total) / ((double)a->events[weight_index].peak);
+  b_bpb = ((double)b->events[value_index].total) / ((double)b->events[weight_index].peak);
 
   return double_cmp(a_bpb, b_bpb);
 }
@@ -63,11 +63,11 @@ size_t get_gcd(tree(int, siteptr) sites) {
   size_t gcd, a, b, tmp;
 
   it = tree_begin(sites);
-  gcd = tree_it_val(it)->peak_rss;
+  gcd = tree_it_val(it)->events[weight_index].peak;
   tree_it_next(it);
   while(tree_it_good(it)) {
     /* Find the GCD of a and b */
-    a = tree_it_val(it)->peak_rss;
+    a = tree_it_val(it)->events[weight_index].peak;
     b = gcd;
     while(a != 0) {
       tmp = a;
@@ -95,14 +95,14 @@ void scale_sites(app_info *info, float scale) {
   printf("Scaling sites down by %f.\n", scale);
   total = 0;
   tree_traverse(info->sites, it) {
-    tree_it_val(it)->peak_rss *= scale;
+    tree_it_val(it)->events[weight_index].peak *= scale;
 
     /* Round down to the nearest multiple of the GCD */
-    multiples = tree_it_val(it)->peak_rss / gcd;
-    tree_it_val(it)->peak_rss = gcd * multiples;
-    total += tree_it_val(it)->peak_rss;
+    multiples = tree_it_val(it)->events[weight_index].peak / gcd;
+    tree_it_val(it)->events[weight_index].peak = gcd * multiples;
+    total += tree_it_val(it)->events[weight_index].peak;
   }
-  info->site_peak_rss = total;
+  info->events[weight_index].peak = total;
 }
 
 #if 0
@@ -298,7 +298,7 @@ tree(int, siteptr) get_hotset(tree(int, siteptr) sites, size_t capacity) {
   sorted_sites = tree_make_c(siteptr, int, &int_val_cmp);
   tree_traverse(sites, it) {
     /* Only insert if the site has a weight */
-    if(tree_it_val(it)->events[weight_index]->peak) {
+    if(tree_it_val(it)->events[weight_index].peak) {
       tree_insert(sorted_sites, tree_it_val(it), tree_it_key(it));
     } else {
       fprintf(stderr, "WARNING: Site %d doesn't have a weight.\n", tree_it_key(it));
@@ -308,16 +308,16 @@ tree(int, siteptr) get_hotset(tree(int, siteptr) sites, size_t capacity) {
   printf("Sorted sites:\n");
   tree_traverse(sorted_sites, sit) {
     printf("%d: %zu %zu %lf\n", tree_it_val(sit), 
-                                tree_it_key(sit)->events[value_index]->total, 
-                                tree_it_key(sit)->events[weight_index]->peak, 
-                                ((double)tree_it_key(sit)->events[value_index]->total) / ((double)tree_it_key(sit)->events[weight_index]->peak));
+                                tree_it_key(sit)->events[value_index].total,
+                                tree_it_key(sit)->events[weight_index].peak, 
+                                ((double)tree_it_key(sit)->events[value_index].total) / ((double)tree_it_key(sit)->events[weight_index].peak));
   }
 
   /* Now iterate over the sorted sites and add them until we overflow */
 	break_next_site = 0;
   packed_size = 0;
   tree_traverse(sorted_sites, sit) {
-		packed_size += tree_it_key(sit)->events[weight_index]->peak;
+		packed_size += tree_it_key(sit)->events[weight_index].peak;
 		tree_insert(ret, tree_it_val(sit), tree_it_key(sit));
 
 		/* If we're over capacity, break. We've already added the site,
@@ -515,9 +515,9 @@ int main(int argc, char **argv) {
   value_index = SIZE_MAX;
   weight_index = SIZE_MAX;
   for(i = 0; i < info->num_events; i++) {
-    if(strncmp(info->events[i]->name, value_event, 64) == 0) {
+    if(strncmp(info->events[i].name, value_event, 64) == 0) {
       value_index = i;
-    } else if(strncmp(info->events[i]->name, weight_event, 64) == 0) {
+    } else if(strncmp(info->events[i].name, weight_event, 64) == 0) {
       weight_index = i;
     }
   }
@@ -528,7 +528,7 @@ int main(int argc, char **argv) {
 
   if(captype == 0) {
     /* Figure out cap_bytes from the ratio */
-    cap_bytes = info->events[weight_index]->peak * cap_float;
+    cap_bytes = info->events[weight_index].peak * cap_float;
   }
 
   /* Scale the sites' peak RSS down according to the peak RSS of the whole run */
@@ -537,8 +537,8 @@ int main(int argc, char **argv) {
      * 1. The sum of all sites' peak RSS
      * 2. The actual peak RSS of the whole application
      */
-    printf("Scaling from a peak RSS of %zu to a peak RSS of %zu.\n", info->events[weight_index]->peak, tot_peak_rss);
-    scale = ((float)tot_peak_rss) / ((float) info->events[weight_index]->peak);
+    printf("Scaling from a peak RSS of %zu to a peak RSS of %zu.\n", info->events[weight_index].peak, tot_peak_rss);
+    scale = ((float)tot_peak_rss) / ((float) info->events[weight_index].peak);
     scale_sites(info, scale);
   }
 
@@ -546,8 +546,8 @@ int main(int argc, char **argv) {
   total_weight = 0;
   total_value.int_val = 0;
   tree_traverse(info->sites, it) {
-    total_weight += tree_it_val(it)->events[weight_index]->peak;
-    total_value.int_val += tree_it_val(it)->events[value_index]->total;
+    total_weight += tree_it_val(it)->events[weight_index].peak;
+    total_value.int_val += tree_it_val(it)->events[value_index].total;
   }
 
 #if 0
@@ -574,8 +574,8 @@ int main(int argc, char **argv) {
   chosen_weight = 0;
   chosen_value.int_val = 0;
   tree_traverse(chosen_sites, it) {
-    chosen_weight += tree_it_val(it)->events[weight_index]->peak;
-    chosen_value.int_val += tree_it_val(it)->events[value_index]->total;
+    chosen_weight += tree_it_val(it)->events[weight_index].peak;
+    chosen_value.int_val += tree_it_val(it)->events[value_index].total;
   }
 
   /* Print out the calculated results */
@@ -603,7 +603,7 @@ int main(int argc, char **argv) {
 #endif
   printf("Value: %zu/%zu\n", chosen_value.int_val, total_value.int_val);
   printf("Capacity: %zu bytes\n", cap_bytes);
-  printf("Peak RSS: %zu bytes\n", info->events[weight_index]->peak);
+  printf("Peak RSS: %zu bytes\n", info->events[weight_index].peak);
 
   /* Clean up */
   tree_traverse(info->sites, it) {
