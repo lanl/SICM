@@ -451,7 +451,8 @@ int main(int argc, char **argv) {
          chosen_weight, 
          total_weight, 
          tot_peak_rss, 
-         gcd;
+         gcd,
+         i;
   union metric chosen_value, 
                total_value;
   long long node;
@@ -564,7 +565,7 @@ int main(int argc, char **argv) {
 #endif
 
   if(algo == 1) {
-    chosen_sites = get_hotset(info, cap_bytes);
+    chosen_sites = get_hotset(info->sites, cap_bytes);
   } else{
     fprintf(stderr, "Packing algorithm not yet implemented. Aborting.\n");
     exit(1);
