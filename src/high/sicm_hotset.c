@@ -76,11 +76,14 @@ size_t get_gcd(tree(int, siteptr) sites) {
     }
     gcd = b;
 
+    printf("GCD is now %zu\n", gcd);
+
     /* Go on to the next pair of sizes */
     tree_it_next(it);
   }
 
-  printf("GCD of site sizes is %zu.\n", gcd);
+  printf("GCD of weights is %zu.\n", gcd);
+  fflush(stdout);
   return gcd;
 }
 
