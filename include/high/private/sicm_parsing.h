@@ -91,6 +91,7 @@ static inline void add_event_total(app_info *info, siteptr *cur_sites, size_t nu
 
   for(i = 0; i < num_sites; i++) {
     cur_site = cur_sites[i];
+    printf("Adding the value %zu to site %d\n", val, cur_site->id);
     if(tp == 0) {
       cur_site->events[cur_site->num_events - 1].total = val;
     } else {
