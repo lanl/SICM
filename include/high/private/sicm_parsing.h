@@ -161,11 +161,11 @@ static inline app_info *sh_parse_site_info(FILE *file) {
       /* If we find a new event */
       tok = NULL;
       if(strncmp(line, "  Event: ", 9) == 0) {
-        tok = malloc(sizeof(char) * 64);
+        tok = (char *) malloc(sizeof(char) * 64);
         num_tok = sscanf(line, "  Event: %s\n", tok);
       } else if(strncmp(line, "  Extents size:", 15) == 0) {
         const char *tmp = "extent_size";
-        tok = malloc(sizeof(char) * 64);
+        tok = (char *) malloc(sizeof(char) * 64);
         strcpy(tok, tmp);
       }
       if(tok) {
@@ -175,8 +175,8 @@ static inline app_info *sh_parse_site_info(FILE *file) {
 
         /* Store this event for the whole application */
         info->num_events++;
-        info->events = realloc(info->events,
-                               sizeof(event) * info->num_events);
+        info->events = (event *) realloc(info->events,
+                                         sizeof(event) * info->num_events);
         strcpy(info->events[info->num_events - 1].name, tok);
         info->events[info->num_events - 1].total = 0;
         info->events[info->num_events - 1].peak = 0;
@@ -185,8 +185,8 @@ static inline app_info *sh_parse_site_info(FILE *file) {
           /* Allocate room for the new event */
           cur_site = cur_sites[i];
           cur_site->num_events++;
-          cur_site->events = realloc(cur_site->events, 
-                                     sizeof(event) * cur_site->num_events);
+          cur_site->events = (event *) realloc(cur_site->events, 
+                                               sizeof(event) * cur_site->num_events);
           strcpy(cur_site->events[cur_site->num_events - 1].name, tok);
           cur_site->events[cur_site->num_events - 1].total = 0;
           cur_site->events[cur_site->num_events - 1].peak = 0;
