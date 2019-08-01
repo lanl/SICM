@@ -525,7 +525,11 @@ int main(int argc, char **argv) {
     }
   }
   if((value_index == SIZE_MAX) || (weight_index == SIZE_MAX)) {
-    fprintf(stderr, "Couldn't find even for either the value or the weight. Aborting.\n");
+    fprintf(stderr, "Couldn't find event for either the value or the weight. Aborting.\n");
+    fprintf(stderr, "Valid events:\n");
+    for(i = 0; i < info->num_events; i++) {
+      fprintf(stderr, "  %s\n", info->events[i].name);
+    }
     exit(1);
   }
 
