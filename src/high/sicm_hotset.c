@@ -319,11 +319,13 @@ tree(int, siteptr) get_hotset(tree(int, siteptr) sites, size_t capacity) {
   fflush(stdout);
 
   printf("Sorted sites:\n");
+  fflush(stdout);
   tree_traverse(sorted_sites, sit) {
     printf("%d: %zu %zu %lf\n", tree_it_val(sit), 
                                 tree_it_key(sit)->events[value_index].total,
                                 tree_it_key(sit)->events[weight_index].peak, 
                                 ((double)tree_it_key(sit)->events[value_index].total) / ((double)tree_it_key(sit)->events[weight_index].peak));
+    fflush(stdout);
   }
 
   /* Now iterate over the sorted sites and add them until we overflow */
