@@ -464,7 +464,7 @@ int main(int argc, char **argv) {
   app_info *info;
 
   /* Read in the arguments */
-  if(argc != 7) {
+  if(argc != 8) {
     fprintf(stderr, "USAGE: ./hotset value weight algo captype cap node\n");
     fprintf(stderr, "value: the event to use to determine value\n");
     fprintf(stderr, "weight: the event to use to determine weight\n");
