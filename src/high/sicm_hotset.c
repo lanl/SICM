@@ -90,7 +90,7 @@ size_t get_gcd(tree(int, siteptr) sites) {
 
 void scale_sites(app_info *info, float scale) {
   tree_it(int, siteptr) it;
-  size_t gcd, multiples, total;
+  size_t gcd, multiples, total, scaled;
 
   /* First get the GCD of the original sites, adhere to that so that knapsack will still work */
   gcd = get_gcd(info->sites);
@@ -99,11 +99,15 @@ void scale_sites(app_info *info, float scale) {
   printf("Scaling sites down by %f.\n", scale);
   total = 0;
   tree_traverse(info->sites, it) {
-    tree_it_val(it)->events[weight_index].peak *= scale;
-
-    /* Round down to the nearest multiple of the GCD */
-    multiples = tree_it_val(it)->events[weight_index].peak / gcd;
-    tree_it_val(it)->events[weight_index].peak = gcd * multiples;
+    /* See how many multiples of the GCD the scaled version is */
+    scaled = tree_it_val(it)->events[weight_index].peak * scale;
+    if(scaled > gcd) {
+      multiples = scaled / gcd;
+      tree_it_val(it)->events[weight_index].peak = gcd * multiples;
+    } else {
+      /* Minimum size of a site is the GCD */
+      tree_it_val(it)->events[weight_index].peak = gcd;
+    }
     total += tree_it_val(it)->events[weight_index].peak;
   }
   info->events[weight_index].peak = total;
