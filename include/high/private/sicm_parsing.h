@@ -188,6 +188,7 @@ static inline app_info *sh_parse_site_info(FILE *file) {
         info->events[info->num_events - 1].total = 0;
         info->events[info->num_events - 1].peak = 0;
 
+        fprintf(stderr, "Iterating over %d sites.\n", num_sites);
         for(i = 0; i < num_sites; i++) {
           /* Allocate room for the new event */
           cur_site = cur_sites[i];
