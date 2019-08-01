@@ -32,7 +32,7 @@ typedef struct app_info {
 
 /* Creates a new event and adds it to the app_info structure, as
  * well as the cur_sites sites */
-static inline void create_event(app_info *info, siteptr *cur_sites, size_t num_sites, char *event) {
+static inline void create_event(app_info *info, siteptr *cur_sites, size_t num_sites, char *eventstr) {
   size_t i;
   char seen;
   siteptr cur_site;
