@@ -175,10 +175,10 @@ static inline app_info *sh_parse_site_info(FILE *file) {
         in_event = 1;
         for(i = 0; i < num_sites; i++) {
           /* Allocate room for the new event */
-          cur_site = cur_sites[i];
+          cur_site = &cur_sites[i];
           cur_site->num_events++;
           cur_site->events = realloc(cur_site->events, 
-                                         sizeof(event) * cur_site->num_events);
+                                     sizeof(event) * cur_site->num_events);
           strcpy(cur_site->name, tok);
         }
         continue;
@@ -188,7 +188,7 @@ static inline app_info *sh_parse_site_info(FILE *file) {
         num_tok = sscanf(line, "  Total: %zu\n", &val);
         if(num_tok == 1) {
           for(i = 0; i < num_sites; i++) {
-            cur_site = cur_sites[i];
+            cur_site = &cur_sites[i];
             cur_site->events[cur_site->num_events - 1].total = val;
           }
           continue;
@@ -199,7 +199,7 @@ static inline app_info *sh_parse_site_info(FILE *file) {
         if(num_tok == 1) {
           /* This value applies to all sites in the arena */
           for(i = 0; i < num_sites; i++) {
-            cur_site = cur_sites[i];
+            cur_site = &cur_sites[i];
             cur_site->events[cur_site->num_events - 1].peak = val;
           }
           continue;
