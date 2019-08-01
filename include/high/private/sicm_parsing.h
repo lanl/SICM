@@ -40,7 +40,7 @@ static inline void create_event(app_info *info, siteptr *cur_sites, size_t num_s
   /* See if we've seen this event before */
   seen = 0;
   for(i = 0; i < info->num_events; i++) {
-    if(strncmp(info->events[i].name, event, 64) == 0) {
+    if(strncmp(info->events[i].name, eventstr, 64) == 0) {
       seen = 1;
     }
   }
@@ -51,7 +51,7 @@ static inline void create_event(app_info *info, siteptr *cur_sites, size_t num_s
     info->events = (event *) realloc(info->events,
                                      sizeof(event) * info->num_events);
     info->events[info->num_events - 1].name = (char *) malloc(sizeof(char) * 64);
-    strcpy(info->events[info->num_events - 1].name, event);
+    strcpy(info->events[info->num_events - 1].name, eventstr);
     info->events[info->num_events - 1].total = 0;
     info->events[info->num_events - 1].peak = 0;
   }
@@ -64,7 +64,7 @@ static inline void create_event(app_info *info, siteptr *cur_sites, size_t num_s
     cur_site->events = (event *) realloc(cur_site->events, 
                                          sizeof(event) * cur_site->num_events);
     cur_site->events[cur_site->num_events - 1].name = (char *) malloc(sizeof(char) * 64);
-    strcpy(cur_site->events[cur_site->num_events - 1].name, event);
+    strcpy(cur_site->events[cur_site->num_events - 1].name, eventstr);
     cur_site->events[cur_site->num_events - 1].total = 0;
     cur_site->events[cur_site->num_events - 1].peak = 0;
   }
