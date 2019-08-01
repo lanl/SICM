@@ -95,7 +95,7 @@ static inline void add_event_total(app_info *info, siteptr *cur_sites, size_t nu
     if(tp == 0) {
       cur_site->events[cur_site->num_events - 1].total = val;
     } else {
-      cur_site->events[cur_site->num_events - 1].total = val;
+      cur_site->events[cur_site->num_events - 1].peak = val;
     }
   }
 }
