@@ -35,7 +35,7 @@ typedef struct app_info {
  * and number of accesses (if applicable).
  */
 static inline app_info *sh_parse_site_info(FILE *file) {
-  char *line, in_block, *tok;
+  char *line, in_block, *tok, in_event;
   size_t len, val;
   double val_double;
   ssize_t read;
@@ -48,8 +48,6 @@ static inline app_info *sh_parse_site_info(FILE *file) {
 
   info = (app_info *)malloc(sizeof(app_info));
   info->sites = tree_make(int, siteptr);
-  info->num_pebs_sites = 0;
-  info->num_mbi_sites = 0;
 
   if(!file) {
     fprintf(stderr, "Invalid file pointer. Aborting.\n");
@@ -87,7 +85,6 @@ static inline app_info *sh_parse_site_info(FILE *file) {
           cur_sites[0]->acc_per_sample = 0.0;
           cur_sites[0]->events = NULL;
           tree_insert(info->sites, site_id, cur_sites[0]);
-          info->num_mbi_sites++;
         }
         continue;
       }
@@ -148,7 +145,6 @@ static inline app_info *sh_parse_site_info(FILE *file) {
               cur_sites[i]->events = NULL;
               cur_sites[i]->id = site_id;
               tree_insert(info->sites, site_id, cur_sites[i]);
-              info->num_pebs_sites++;
             }
           } else {
             break;
