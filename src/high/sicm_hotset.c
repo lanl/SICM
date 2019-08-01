@@ -69,6 +69,7 @@ size_t get_gcd(tree(int, siteptr) sites) {
     /* Find the GCD of a and b */
     a = tree_it_val(it)->events[weight_index].peak;
     b = gcd;
+    printf("GCD of %zu and %zu is: ", a, b);
     while(a != 0) {
       tmp = a;
       a = b % a;
@@ -76,7 +77,7 @@ size_t get_gcd(tree(int, siteptr) sites) {
     }
     gcd = b;
 
-    printf("GCD is now %zu\n", gcd);
+    printf("%zu\n", gcd);
 
     /* Go on to the next pair of sizes */
     tree_it_next(it);
