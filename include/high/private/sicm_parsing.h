@@ -8,19 +8,26 @@
 #include <stdio.h>
 #include "sicm_tree.h"
 
+/* Holds information about a single site and a single type of profiling */
+typedef struct event {
+  char *name;
+  size_t total, peak;
+} event;
+
 /* Holds information on a single site */
 typedef struct site {
-	float bandwidth;
-	size_t peak_rss, accesses;
+  float bandwidth;
   double acc_per_sample;
+  size_t num_events;
+  event *events;
+  int id;
 } site;
 typedef site * siteptr;
 
 /* Tree of sites */
 use_tree(int, siteptr);
 typedef struct app_info {
-	size_t num_pebs_sites, num_mbi_sites, site_peak_rss;
-	tree(int, siteptr) sites;
+  tree(int, siteptr) sites;
 } app_info;
 
 /* Reads in profiling information from the file pointer, returns
@@ -28,38 +35,41 @@ typedef struct app_info {
  * and number of accesses (if applicable).
  */
 static inline app_info *sh_parse_site_info(FILE *file) {
-	char *line, in_block, *tok;
-	size_t len, val;
+  char *line, in_block, *tok;
+  size_t len, val;
   double val_double;
   ssize_t read;
-	siteptr *cur_sites; /* An array of site pointers */
-	int site_id, num_tok, num_sites, i;
-	float bandwidth, seconds;
-	tree_it(int, siteptr) it;
-	app_info *info;
+  siteptr *cur_sites; /* An array of site pointers */
+  siteptr *cur_site;
+  int site_id, num_tok, num_sites, i;
+  float bandwidth, seconds;
+  tree_it(int, siteptr) it;
+  app_info *info;
 
-	info = (app_info *)malloc(sizeof(app_info));
-	info->sites = tree_make(int, siteptr);
-	info->num_pebs_sites = 0;
-	info->num_mbi_sites = 0;
+  info = (app_info *)malloc(sizeof(app_info));
+  info->sites = tree_make(int, siteptr);
+  info->num_pebs_sites = 0;
+  info->num_mbi_sites = 0;
 
-	if(!file) {
-		fprintf(stderr, "Invalid file pointer. Aborting.\n");
-		exit(1);
-	}
+  if(!file) {
+    fprintf(stderr, "Invalid file pointer. Aborting.\n");
+    exit(1);
+  }
 
-	/* Read in from stdin and fill in the tree with the sites */
+  /* Read in from stdin and fill in the tree with the sites */
   cur_sites = NULL;
   site_id = 0;
-	line = NULL;
-	len = 0;
+  line = NULL;
+  len = 0;
   in_block = 0; /* 0 if not in results block,
                    1 if in MBI results block,
                    2 if in PEBS results block */
+  in_event = 0;
 
-	while(read = getline(&line, &len, file) != -1) {
+  while(read = getline(&line, &len, file) != -1) {
 
     if(in_block == 0) {
+#if 0
       /* Try to find the beginning of some results */
       num_tok = sscanf(line,
                       "===== MBI RESULTS FOR SITE %d =====\n",
@@ -74,19 +84,21 @@ static inline app_info *sh_parse_site_info(FILE *file) {
         } else {
           cur_sites[0] = (siteptr) malloc(sizeof(site));
           cur_sites[0]->bandwidth = 0;
-          cur_sites[0]->peak_rss = 0;
-          cur_sites[0]->accesses = 0;
           cur_sites[0]->acc_per_sample = 0.0;
+          cur_sites[0]->events = NULL;
           tree_insert(info->sites, site_id, cur_sites[0]);
           info->num_mbi_sites++;
         }
         continue;
       }
+#endif
       if(strncmp(line, "===== PEBS RESULTS =====\n", 25) == 0) {
         /* Found some PEBS results */
         in_block = 2;
+        in_event = 0;
       }
     } else if(in_block == 1) {
+#if 0
       /* If we're in a block of MBI results */
       num_tok = sscanf(line, 
                       "Average bandwidth: %f MB/s\n",
@@ -94,20 +106,23 @@ static inline app_info *sh_parse_site_info(FILE *file) {
       if(num_tok == 1) {
         continue;
       }
+      /*
       num_tok = sscanf(line,
                       "Peak RSS: %zu\n",
                       &(cur_sites[0]->peak_rss));
       if(num_tok == 1) {
         continue;
       }
+      */
       if(strncmp(line, "===== END MBI RESULTS =====\n", 30) == 0) {
         in_block = 0;
         /* Deallocate the array, but not each element (those are in the tree). */
         free(cur_sites);
         continue;
       }
+#endif
     } else if(in_block == 2) {
-      /* We're in a block of PEBS results */
+      /* See if this is the start of a site's profiling */
       num_tok = sscanf(line,
                       "%d sites:",
                       &num_sites);
@@ -123,13 +138,15 @@ static inline app_info *sh_parse_site_info(FILE *file) {
           if(num_tok == 1) {
             it = tree_lookup(info->sites, site_id);
             if(tree_it_good(it)) {
+              /* We already created this site */
               cur_sites[i] = tree_it_val(it);
             } else {
+              /* Create the site */
               cur_sites[i] = (siteptr) malloc(sizeof(site));
               cur_sites[i]->bandwidth = 0;
-              cur_sites[i]->peak_rss = 0;
-              cur_sites[i]->accesses = 0;
               cur_sites[i]->acc_per_sample = 0.0;
+              cur_sites[i]->events = NULL;
+              cur_sites[i]->id = site_id;
               tree_insert(info->sites, site_id, cur_sites[i]);
               info->num_pebs_sites++;
             }
@@ -139,40 +156,75 @@ static inline app_info *sh_parse_site_info(FILE *file) {
           tok = strtok(NULL, " ");
           i++;
         }
-      }
-
-      /* Get number of PEBS accesses */
-      num_tok = sscanf(line, "  Accesses: %zu\n", &val);
-      if(num_tok == 1) {
-        /* This value applies to all sites in the arena */
+        fprintf(stderr, "Sites: ");
         for(i = 0; i < num_sites; i++) {
-          cur_sites[i]->accesses = val;
+          fprintf(stderr, "%d ", cur_sites[i]->id);
         }
+        continue;
       }
 
-      /* Get Peak RSS */
-      num_tok = sscanf(line, "  Peak RSS: %zu\n", &val);
-      if(num_tok == 1) {
-        /* This value applies to all sites in the arena */
+      /* If we find a new event */
+      tok = NULL;
+      if(strncmp(line, "  Event: ", 9) == 0) {
+        tok = malloc(sizeof(char) * 64);
+        num_tok = sscanf(line, "  Event: %s\n", tok);
+      } else if(strncmp(line, "  Extents size:", 15) == 0) {
+        const char *tmp = "extent_size";
+        tok = malloc(sizeof(char) * 64);
+        strcpy(tok, tmp);
+      }
+      if(tok) {
+        /* Triggered if we found a new event above, event name
+         * is stored in tok */
+        in_event = 1;
         for(i = 0; i < num_sites; i++) {
-          cur_sites[i]->peak_rss = val;
+          /* Allocate room for the new event */
+          cur_site = cur_sites[i];
+          cur_site->num_events++;
+          cur_site->events = realloc(cur_site->events, 
+                                         sizeof(event) * cur_site->num_events);
+          strcpy(cur_site->name, tok);
         }
-      }
+        continue;
 
-      /* If we're at the end of a block of PEBS results */
+      /* If we didn't find a new event above, then we're most likely in an event */
+      } else if(in_event) {
+        num_tok = sscanf(line, "  Total: %zu\n", &val);
+        if(num_tok == 1) {
+          for(i = 0; i < num_sites; i++) {
+            cur_site = cur_sites[i];
+            cur_site->events[cur_site->num_events - 1].total = val;
+          }
+          continue;
+        }
+
+        /* Get peak number that this event got to this arena */
+        num_tok = sscanf(line, "  Peak: %zu\n", &val);
+        if(num_tok == 1) {
+          /* This value applies to all sites in the arena */
+          for(i = 0; i < num_sites; i++) {
+            cur_site = cur_sites[i];
+            cur_site->events[cur_site->num_events - 1].peak = val;
+          }
+          continue;
+        }
+        continue;
+      }
+      
       if(strncmp(line, "===== END PEBS RESULTS =====\n", 32) == 0) {
         in_block = 0;
+        in_event = 0;
         free(cur_sites);
         continue;
       }
     }
-	}
-	free(line);
+  }
+  free(line);
 
   info->site_peak_rss = 0;
   tree_traverse(info->sites, it) {
     info->site_peak_rss += tree_it_val(it)->peak_rss;
   }
 
-	return info;
+  return info;
 }
