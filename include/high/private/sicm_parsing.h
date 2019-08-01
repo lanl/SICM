@@ -126,7 +126,8 @@ static inline app_info *sh_parse_site_info(FILE *file) {
                       "%d sites:",
                       &num_sites);
       if(num_tok == 1) {
-        fprintf(stderr, "Reading in %d sites\n", num_sites);
+        fprintf(stderr, "Reading in %d sites:\n", num_sites);
+        fprintf(stderr, "%s\n", line);
         cur_sites = (siteptr *) malloc(sizeof(siteptr) * num_sites);
         /* Iterate over the site IDs and read them in */
         tok = strtok(line, " ");
