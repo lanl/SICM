@@ -41,7 +41,7 @@ static inline app_info *sh_parse_site_info(FILE *file) {
   ssize_t read;
   siteptr *cur_sites; /* An array of site pointers */
   siteptr cur_site;
-  int site_id, num_tok, num_sites, i;
+  int site_id, num_tok, num_sites, i, n;
   float bandwidth, seconds;
   tree_it(int, siteptr) it;
   app_info *info;
@@ -124,9 +124,13 @@ static inline app_info *sh_parse_site_info(FILE *file) {
       /* See if this is the start of a site's profiling */
       num_tok = sscanf(line,
                       "%d sites: %d",
-                      &num_sites,
-                      &site_id);
+                      &i,
+                      &n);
       if(num_tok == 2) {
+        num_tok = sscanf(line,
+                        "%d sites: %d",
+                        &num_sites,
+                        &n);
         fprintf(stderr, "Reading in %d sites:\n", num_sites);
         fprintf(stderr, "%s\n", line);
         cur_sites = (siteptr *) malloc(sizeof(siteptr) * num_sites);
