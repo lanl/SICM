@@ -123,9 +123,10 @@ static inline app_info *sh_parse_site_info(FILE *file) {
     } else if(in_block == 2) {
       /* See if this is the start of a site's profiling */
       num_tok = sscanf(line,
-                      "%d sites:",
-                      &num_sites);
-      if(num_tok == 1) {
+                      "%d sites: %d",
+                      &num_sites,
+                      &site_id);
+      if(num_tok == 2) {
         fprintf(stderr, "Reading in %d sites:\n", num_sites);
         fprintf(stderr, "%s\n", line);
         cur_sites = (siteptr *) malloc(sizeof(siteptr) * num_sites);
