@@ -179,7 +179,7 @@ static inline app_info *sh_parse_site_info(FILE *file) {
         info->num_events++;
         info->events = (event *) realloc(info->events,
                                          sizeof(event) * info->num_events);
-        info->events[info->num_events - 1].name = malloc(sizeof(char) * 64);
+        info->events[info->num_events - 1].name = (char *) malloc(sizeof(char) * 64);
         strcpy(info->events[info->num_events - 1].name, tok);
         info->events[info->num_events - 1].total = 0;
         info->events[info->num_events - 1].peak = 0;
