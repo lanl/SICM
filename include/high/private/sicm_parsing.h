@@ -30,18 +30,86 @@ typedef struct app_info {
   size_t num_events;
 } app_info;
 
+/* Creates a new event and adds it to the app_info structure, as
+ * well as the cur_sites sites */
+static inline void create_event(app_info *info, siteptr *cur_sites, size_t num_sites, char *event;) {
+  size_t i;
+  char seen;
+  siteptr cur_site;
+
+  /* See if we've seen this event before */
+  seen = 0;
+  for(i = 0; i < info->num_events; i++) {
+    if(strncmp(info->events[i].name, event, 64) == 0) {
+      seen = 1;
+    }
+  }
+
+  if(seen) {
+    /* Store this event for the whole application */
+    info->num_events++;
+    info->events = (event *) realloc(info->events,
+                                     sizeof(event) * info->num_events);
+    info->events[info->num_events - 1].name = (char *) malloc(sizeof(char) * 64);
+    strcpy(info->events[info->num_events - 1].name, event);
+    info->events[info->num_events - 1].total = 0;
+    info->events[info->num_events - 1].peak = 0;
+  }
+
+  /* Iterate over the given sites */
+  for(i = 0; i < num_sites; i++) {
+    /* Allocate room for the new event */
+    cur_site = cur_sites[i];
+    cur_site->num_events++;
+    cur_site->events = (event *) realloc(cur_site->events, 
+                                         sizeof(event) * cur_site->num_events);
+    cur_site->events[cur_site->num_events - 1].name = (char *) malloc(sizeof(char) * 64);
+    strcpy(cur_site->events[cur_site->num_events - 1].name, event);
+    cur_site->events[cur_site->num_events - 1].total = 0;
+    cur_site->events[cur_site->num_events - 1].peak = 0;
+  }
+}
+
+/* "tp" is 0 for total, 1 for peak */
+static inline void add_event_total(app_info *info, siteptr *cur_sites, size_t num_sites, size_t val, char tp) {
+  size_t i;
+  siteptr cur_site;
+
+  /* Find this event in the app_info struct, add up the total */
+  cur_site = cur_sites[0];
+  for(i = 0; i < info->num_events; i++) {
+    if(strncmp(cur_site->events[cur_site->num_events].name, info->events[i].name, 64) == 0) {
+      if(tp == 0) {
+        info->events[i].total += val;
+      } else {
+        info->events[i].peak += val;
+      }
+      break;
+    }
+  }
+
+  for(i = 0; i < num_sites; i++) {
+    cur_site = cur_sites[i];
+    if(tp == 0) {
+      cur_site->events[cur_site->num_events - 1].total = val;
+    } else {
+      cur_site->events[cur_site->num_events - 1].total = val;
+    }
+  }
+}
+
 /* Reads in profiling information from the file pointer, returns
  * a tree containing all sites and their bandwidth, peak RSS,
  * and number of accesses (if applicable).
  */
 static inline app_info *sh_parse_site_info(FILE *file) {
   char *line, in_block, *tok, in_event;
-  size_t len, val;
+  size_t len, val, num_sites;
   double val_double;
   ssize_t read;
   siteptr *cur_sites; /* An array of site pointers */
   siteptr cur_site;
-  int site_id, num_tok, num_sites, i, n;
+  int site_id, num_tok, i, n;
   float bandwidth, seconds;
   tree_it(int, siteptr) it;
   app_info *info;
@@ -69,57 +137,14 @@ static inline app_info *sh_parse_site_info(FILE *file) {
   while(read = getline(&line, &len, file) != -1) {
 
     if(in_block == 0) {
-#if 0
-      /* Try to find the beginning of some results */
-      num_tok = sscanf(line,
-                      "===== MBI RESULTS FOR SITE %d =====\n",
-                      &site_id);
-      if(num_tok == 1) {
-        /* Found some MBI results */
-        in_block = 1;
-        it = tree_lookup(info->sites, site_id);
-        cur_sites = (siteptr *)malloc(sizeof(siteptr));
-        if(tree_it_good(it)) {
-          cur_sites[0] = tree_it_val(it);
-        } else {
-          cur_sites[0] = (siteptr) malloc(sizeof(site));
-          cur_sites[0]->bandwidth = 0;
-          cur_sites[0]->acc_per_sample = 0.0;
-          cur_sites[0]->events = NULL;
-          tree_insert(info->sites, site_id, cur_sites[0]);
-        }
-        continue;
-      }
-#endif
+      /* We're not in any results blocks, try to get into one */
+
       if(strncmp(line, "===== PEBS RESULTS =====\n", 25) == 0) {
         /* Found some PEBS results */
         in_block = 2;
         in_event = 0;
       }
     } else if(in_block == 1) {
-#if 0
-      /* If we're in a block of MBI results */
-      num_tok = sscanf(line, 
-                      "Average bandwidth: %f MB/s\n",
-                      &(cur_sites[0]->bandwidth));
-      if(num_tok == 1) {
-        continue;
-      }
-      /*
-      num_tok = sscanf(line,
-                      "Peak RSS: %zu\n",
-                      &(cur_sites[0]->peak_rss));
-      if(num_tok == 1) {
-        continue;
-      }
-      */
-      if(strncmp(line, "===== END MBI RESULTS =====\n", 30) == 0) {
-        in_block = 0;
-        /* Deallocate the array, but not each element (those are in the tree). */
-        free(cur_sites);
-        continue;
-      }
-#endif
     } else if(in_block == 2) {
       /* See if this is the start of a site's profiling */
       num_tok = sscanf(line,
@@ -168,7 +193,7 @@ static inline app_info *sh_parse_site_info(FILE *file) {
         continue;
       }
 
-      /* If we find a new event */
+      /* See if this line defines a new event */
       tok = NULL;
       if(strncmp(line, "  Event: ", 9) == 0) {
         tok = (char *) malloc(sizeof(char) * 64);
@@ -182,50 +207,22 @@ static inline app_info *sh_parse_site_info(FILE *file) {
         /* Triggered if we found a new event above, event name
          * is stored in tok */
         in_event = 1;
+        create_event(info, cur_sites, num_sites, tok);
 
-        /* Store this event for the whole application */
-        info->num_events++;
-        info->events = (event *) realloc(info->events,
-                                         sizeof(event) * info->num_events);
-        info->events[info->num_events - 1].name = (char *) malloc(sizeof(char) * 64);
-        strcpy(info->events[info->num_events - 1].name, tok);
-        info->events[info->num_events - 1].total = 0;
-        info->events[info->num_events - 1].peak = 0;
-
-        fprintf(stderr, "Iterating over %d sites.\n", num_sites);
-        for(i = 0; i < num_sites; i++) {
-          /* Allocate room for the new event */
-          cur_site = cur_sites[i];
-          cur_site->num_events++;
-          cur_site->events = (event *) realloc(cur_site->events, 
-                                               sizeof(event) * cur_site->num_events);
-          cur_site->events[cur_site->num_events - 1].name = (char *) malloc(sizeof(char) * 64);
-          strcpy(cur_site->events[cur_site->num_events - 1].name, tok);
-          cur_site->events[cur_site->num_events - 1].total = 0;
-          cur_site->events[cur_site->num_events - 1].peak = 0;
-        }
         continue;
 
       /* If we didn't find a new event above, then we're most likely in an event */
       } else if(in_event) {
         num_tok = sscanf(line, "  Total: %zu\n", &val);
         if(num_tok == 1) {
-          info->events[info->num_events - 1].total += val;
-          for(i = 0; i < num_sites; i++) {
-            cur_site = cur_sites[i];
-            cur_site->events[cur_site->num_events - 1].total = val;
-          }
+          add_event_total(info, cur_sites, num_sites, val, 0);
           continue;
         }
 
         /* Get peak number that this event got to this arena */
         num_tok = sscanf(line, "  Peak: %zu\n", &val);
         if(num_tok == 1) {
-          info->events[info->num_events - 1].peak += val;
-          for(i = 0; i < num_sites; i++) {
-            cur_site = cur_sites[i];
-            cur_site->events[cur_site->num_events - 1].peak = val;
-          }
+          add_event_total(info, cur_sites, num_sites, val, 1);
           continue;
         }
         continue;
