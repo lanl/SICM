@@ -476,6 +476,8 @@ int main(int argc, char **argv) {
     fprintf(stderr, "tot_peak_rss: the peak RSS of the run, to be used to scale the site RSS. Set to 0 for no scaling.\n");
     exit(1);
   }
+  value_event = (char *) malloc(sizeof(char) * 64);
+  weight_event = (char *) malloc(sizeof(char) * 64);
   strcpy(value_event, argv[1]);
   strcpy(weight_event, argv[2]);
   if(strcmp(argv[3], "knapsack") == 0) {
