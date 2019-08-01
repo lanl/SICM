@@ -79,7 +79,7 @@ static inline void add_event_total(app_info *info, siteptr *cur_sites, size_t nu
   /* Find this event in the app_info struct, add up the total */
   cur_site = cur_sites[0];
   for(i = 0; i < info->num_events; i++) {
-    if(strncmp(cur_site->events[cur_site->num_events].name, info->events[i].name, 64) == 0) {
+    if(strncmp(cur_site->events[cur_site->num_events - 1].name, info->events[i].name, 64) == 0) {
       if(tp == 0) {
         info->events[i].total += val;
       } else {
@@ -191,6 +191,7 @@ static inline app_info *sh_parse_site_info(FILE *file) {
         for(i = 0; i < num_sites; i++) {
           fprintf(stderr, "%d ", cur_sites[i]->id);
         }
+        fprintf(stderr, "\n");
         continue;
       }
 
