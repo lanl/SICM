@@ -540,6 +540,7 @@ int main(int argc, char **argv) {
   tree_traverse(info->sites, it) {
     printf("Index: %zu, Value: %zu\n", weight_index, tree_it_val(it)->events[weight_index].peak);
   }
+  fflush(stdout);
 
   if(captype == 0) {
     /* Figure out cap_bytes from the ratio */
