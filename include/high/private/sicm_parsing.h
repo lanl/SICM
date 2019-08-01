@@ -16,8 +16,6 @@ typedef struct event {
 
 /* Holds information on a single site */
 typedef struct site {
-  float bandwidth;
-  double acc_per_sample;
   size_t num_events;
   event *events;
   int id;
@@ -28,6 +26,8 @@ typedef site * siteptr;
 use_tree(int, siteptr);
 typedef struct app_info {
   tree(int, siteptr) sites;
+  event *events;
+  size_t num_events;
 } app_info;
 
 /* Reads in profiling information from the file pointer, returns
@@ -140,9 +140,8 @@ static inline app_info *sh_parse_site_info(FILE *file) {
             } else {
               /* Create the site */
               cur_sites[i] = (siteptr) malloc(sizeof(site));
-              cur_sites[i]->bandwidth = 0;
-              cur_sites[i]->acc_per_sample = 0.0;
               cur_sites[i]->events = NULL;
+              cur_sites[i]->num_events = 0;
               cur_sites[i]->id = site_id;
               tree_insert(info->sites, site_id, cur_sites[i]);
             }
@@ -173,13 +172,24 @@ static inline app_info *sh_parse_site_info(FILE *file) {
         /* Triggered if we found a new event above, event name
          * is stored in tok */
         in_event = 1;
+
+        /* Store this event for the whole application */
+        info->num_events++;
+        info->events = realloc(info->events,
+                               sizeof(event) * info->num_events);
+        strcpy(info->events[info->num_events - 1].name, tok);
+        info->events[info->num_events - 1].total = 0;
+        info->events[info->num_events - 1].peak = 0;
+
         for(i = 0; i < num_sites; i++) {
           /* Allocate room for the new event */
           cur_site = cur_sites[i];
           cur_site->num_events++;
           cur_site->events = realloc(cur_site->events, 
                                      sizeof(event) * cur_site->num_events);
-          strcpy(cur_site->name, tok);
+          strcpy(cur_site->events[cur_site->num_events - 1].name, tok);
+          cur_site->events[cur_site->num_events - 1].total = 0;
+          cur_site->events[cur_site->num_events - 1].peak = 0;
         }
         continue;
 
@@ -187,6 +197,7 @@ static inline app_info *sh_parse_site_info(FILE *file) {
       } else if(in_event) {
         num_tok = sscanf(line, "  Total: %zu\n", &val);
         if(num_tok == 1) {
+          info->events[info->num_events - 1].total += val;
           for(i = 0; i < num_sites; i++) {
             cur_site = cur_sites[i];
             cur_site->events[cur_site->num_events - 1].total = val;
@@ -197,7 +208,7 @@ static inline app_info *sh_parse_site_info(FILE *file) {
         /* Get peak number that this event got to this arena */
         num_tok = sscanf(line, "  Peak: %zu\n", &val);
         if(num_tok == 1) {
-          /* This value applies to all sites in the arena */
+          info->events[info->num_events - 1].peak += val;
           for(i = 0; i < num_sites; i++) {
             cur_site = cur_sites[i];
             cur_site->events[cur_site->num_events - 1].peak = val;
@@ -216,11 +227,6 @@ static inline app_info *sh_parse_site_info(FILE *file) {
     }
   }
   free(line);
-
-  info->site_peak_rss = 0;
-  tree_traverse(info->sites, it) {
-    info->site_peak_rss += tree_it_val(it)->peak_rss;
-  }
 
   return info;
 }
