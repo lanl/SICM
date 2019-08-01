@@ -45,7 +45,7 @@ static inline void create_event(app_info *info, siteptr *cur_sites, size_t num_s
     }
   }
 
-  if(seen) {
+  if(!seen) {
     /* Store this event for the whole application */
     info->num_events++;
     info->events = (event *) realloc(info->events,
@@ -54,6 +54,7 @@ static inline void create_event(app_info *info, siteptr *cur_sites, size_t num_s
     strcpy(info->events[info->num_events - 1].name, eventstr);
     info->events[info->num_events - 1].total = 0;
     info->events[info->num_events - 1].peak = 0;
+    fprintf(stderr, "Found a new event: %s\n", eventstr);
   }
 
   /* Iterate over the given sites */
