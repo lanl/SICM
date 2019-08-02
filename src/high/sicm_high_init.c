@@ -562,7 +562,14 @@ void sh_init() {
     sicm_extent_alloc_callback = &sh_create_extent;
     sicm_extent_dalloc_callback = &sh_delete_extent;
 
-    sh_start_profile_master_thread();
+    if(profopts.should_profile_all ||
+       profopts.should_profile_rss ||
+       profopts.should_profile_extent_size ||
+       profopts.should_profile_online ||
+       profopts.should_profile_allocs ||
+       profopts.should_profile_one) {
+      sh_start_profile_master_thread();
+    }
   }
   
   if (profopts.should_run_rdspy) {
