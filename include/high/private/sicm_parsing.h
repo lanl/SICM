@@ -73,6 +73,7 @@ static inline void create_event(app_info *info, siteptr *cur_sites, size_t num_s
     strcpy(info->events[info->num_events - 1].name, eventstr);
     info->events[info->num_events - 1].total = 0;
     info->events[info->num_events - 1].peak = 0;
+
     fprintf(stderr, "Found a new event: %s\n", eventstr);
   }
 
@@ -87,6 +88,8 @@ static inline void create_event(app_info *info, siteptr *cur_sites, size_t num_s
     strcpy(cur_site->events[cur_site->num_events - 1].name, eventstr);
     cur_site->events[cur_site->num_events - 1].total = 0;
     cur_site->events[cur_site->num_events - 1].peak = 0;
+
+    printf("Adding event %s for site %d\n", eventstr, cur_site->id);
   }
 }
 
