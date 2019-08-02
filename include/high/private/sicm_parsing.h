@@ -30,6 +30,25 @@ typedef struct app_info {
   size_t num_events;
 } app_info;
 
+static inline void print_info(app_info *info) {
+  size_t i;
+  tree_it(int, siteptr) it;
+
+  printf("Totals:\n");
+  for(i = 0; i < info->num_events; i++) {
+    printf("%s: %zu TOTAL, %zu PEAK\n", info->events[i].name, info->events[i].total, info->events[i].peak);
+  }
+  
+  tree_traverse(info->sites, it) {
+    printf("%d\n", tree_it_val(it)->id);
+    for(i = 0; i < tree_it_val(it)->num_events; i++) {
+      printf("  %s: %zu TOTAL %zu PEAK\n", tree_it_val(it)->events[i].name,
+                                           tree_it_val(it)->events[i].total,
+                                           tree_it_val(it)->events[i].peak);
+    }
+  }
+}
+
 /* Creates a new event and adds it to the app_info structure, as
  * well as the cur_sites sites */
 static inline void create_event(app_info *info, siteptr *cur_sites, size_t num_sites, char *eventstr) {
@@ -91,7 +110,6 @@ static inline void add_event_total(app_info *info, siteptr *cur_sites, size_t nu
 
   for(i = 0; i < num_sites; i++) {
     cur_site = cur_sites[i];
-    printf("Adding the value %zu to site %d\n", val, cur_site->id);
     if(tp == 0) {
       cur_site->events[cur_site->num_events - 1].total = val;
     } else {
@@ -241,5 +259,6 @@ static inline app_info *sh_parse_site_info(FILE *file) {
   }
   free(line);
 
+  print_info(info);
   return info;
 }
