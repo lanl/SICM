@@ -407,6 +407,7 @@ void print_profiling() {
       }
     }
     printf("===== END PEBS RESULTS =====\n");
+    fflush(stdout);
 
 #if 0
   /* MBI profiling */
