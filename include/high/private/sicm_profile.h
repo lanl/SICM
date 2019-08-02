@@ -38,7 +38,9 @@ typedef struct profile_thread {
 } profile_thread;
 
 typedef struct profiler {
+  /* For the master thread */
   pthread_t master_id;
+  timer_t timerid;
 
   /* One for each profiling thread */
   profile_thread *profile_threads;

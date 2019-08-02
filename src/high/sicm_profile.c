@@ -169,6 +169,7 @@ void profile_master_interval(int s) {
 
 /* Stops the master thread */
 void profile_master_stop(int s) {
+  timer_delete(prof.timerid);
   pthread_exit(NULL);
 }
 
@@ -219,7 +220,6 @@ void setup_profile_thread(void *(*main)(void *), /* Spinning loop function */
  * happens, it notifies the profiling threads.
  */
 void *profile_master(void *a) {
-  timer_t timerid;
   struct sigevent sev;
   struct sigaction sa;
   struct itimerspec its;
@@ -274,9 +274,9 @@ void *profile_master(void *a) {
   tid = syscall(SYS_gettid);
   sev.sigev_notify = SIGEV_THREAD_ID;
   sev.sigev_signo = master_signal;
-  sev.sigev_value.sival_ptr = &timerid;
+  sev.sigev_value.sival_ptr = &prof.timerid;
   sev._sigev_un._tid = tid;
-  if(timer_create(CLOCK_REALTIME, &sev, &timerid) == -1) {
+  if(timer_create(CLOCK_REALTIME, &sev, &prof.timerid) == -1) {
     fprintf(stderr, "Error creating timer. Aborting.\n");
     exit(1);
   }
@@ -286,7 +286,7 @@ void *profile_master(void *a) {
   its.it_value.tv_nsec = profopts.profile_rate_nseconds % 1000000000;
   its.it_interval.tv_sec = its.it_value.tv_sec;
   its.it_interval.tv_nsec = its.it_value.tv_nsec;
-  if(timer_settime(timerid, 0, &its, NULL) == -1) {
+  if(timer_settime(prof.timerid, 0, &its, NULL) == -1) {
     fprintf(stderr, "Error setting the timer. Aborting.\n");
     exit(1);
   }
