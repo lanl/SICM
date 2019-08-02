@@ -94,7 +94,9 @@ void sh_create_arena(int index, int id, sicm_device *device) {
   arena->alloc_sites = malloc(sizeof(int) * tracker.max_sites_per_arena);
   arena->alloc_sites[0] = id;
   arena->num_alloc_sites = 1;
-  arena->info = create_profile_arena(index);
+  if(profopts.should_profile) {
+    arena->info = create_profile_arena(index);
+  }
 
   /* Need to construct a sicm_device_list of one device */
   sicm_device_list dl;
