@@ -170,6 +170,7 @@ void profile_master_interval(int s) {
 /* Stops the master thread */
 void profile_master_stop(int s) {
   size_t i;
+  profile_thread *profthread;
 
   timer_delete(prof.timerid);
 
