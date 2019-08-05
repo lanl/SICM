@@ -72,6 +72,12 @@ target_link_libraries(sicm_compass ${LLVM_LIBRARIES})
 target_include_directories(sicm_rdspy PRIVATE ${LLVM_INCLUDE_DIR})
 target_link_libraries(sicm_rdspy ${LLVM_LIBRARIES})
 
+####################
+#        rt        #
+####################
+find_library(LIBRT rt)
+target_link_libraries(sicm-high ${LIBRT})
+
 install(TARGETS sicm_high sicm_compass sicm_rdspy sicm_memreserve sicm_hotset sicm_new_delete sicm_cstd
         LIBRARY DESTINATION lib
         RUNTIME DESTINATION bin)
