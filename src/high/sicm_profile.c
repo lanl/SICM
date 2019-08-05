@@ -169,7 +169,20 @@ void profile_master_interval(int s) {
 
 /* Stops the master thread */
 void profile_master_stop(int s) {
+  size_t i;
+
   timer_delete(prof.timerid);
+
+  /* Cancel all threads. Since threads can only be running while the master
+   * thread is in a different signal handler from this one, it's impossible that they're
+   * in an interval currently.
+   */
+  for(i = 0; i < prof.num_profile_threads; i++) {
+    profthread = &prof.profile_threads[i];
+    pthread_cancel(profthread->id);
+    pthread_join(profthread->id, NULL);
+  }
+
   pthread_exit(NULL);
 }
 
@@ -431,4 +444,3 @@ void sh_stop_profile_master_thread() {
   print_profiling();
   deinitialize_profiling();
 }
-
