@@ -54,7 +54,7 @@ typedef struct profiler {
   /* For the main application thread to
    * signal the master to stop
    */
-  int stop_signal;
+  int stop_signal, master_signal;
 
   /* Per-arena profiling information */
   profile_info **info;

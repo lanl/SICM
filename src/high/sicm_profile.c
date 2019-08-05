@@ -70,13 +70,9 @@ void *create_profile_arena(int index) {
   return (void *)prof.info[index];
 }
 
-/* Function used by the profile threads to block/unblock
- * their own signal.
- */
 void start_interval(int signal) {
 }
 
-/* Unblocks a signal. Also notifies the Master thread. */
 void end_interval(int signal) {
   /* Signal the master thread that we're done */
   pthread_mutex_lock(&prof.mtx);
@@ -240,7 +236,6 @@ void *profile_master(void *a) {
   long long frequency;
   sigset_t mask;
   pid_t tid;
-  int master_signal;
 
   if(profopts.should_profile_all) {
     setup_profile_thread(&profile_all, 
@@ -267,18 +262,18 @@ void *profile_master(void *a) {
   prof.cur_interval = 0;
 
   /* Set up a signal handler for the master */
-  master_signal = global_signal;
   sa.sa_flags = 0;
   sa.sa_handler = profile_master_interval;
   sigemptyset(&sa.sa_mask);
-  if(sigaction(master_signal, &sa, NULL) == -1) {
+  sigaddset(&sa.sa_mask, prof.stop_signal); /* Stop signal should block until an interval is finished */
+  if(sigaction(prof.master_signal, &sa, NULL) == -1) {
     fprintf(stderr, "Error creating signal handler. Aborting.\n");
     exit(1);
   }
 
   /* Block the signal for a bit */
   sigemptyset(&mask);
-  sigaddset(&mask, master_signal);
+  sigaddset(&mask, prof.master_signal);
   if(sigprocmask(SIG_SETMASK, &mask, NULL) == -1) {
     fprintf(stderr, "Error blocking signal. Aborting.\n");
     exit(1);
@@ -287,7 +282,7 @@ void *profile_master(void *a) {
   /* Create the timer */
   tid = syscall(SYS_gettid);
   sev.sigev_notify = SIGEV_THREAD_ID;
-  sev.sigev_signo = master_signal;
+  sev.sigev_signo = prof.master_signal;
   sev.sigev_value.sival_ptr = &prof.timerid;
   sev._sigev_un._tid = tid;
   if(timer_create(CLOCK_REALTIME, &sev, &prof.timerid) == -1) {
@@ -321,8 +316,14 @@ void initialize_profiling() {
   /* Allocate room for the per-arena profiling information */
   prof.info = calloc(tracker.max_arenas, sizeof(profile_info *));
 
+  /* The signal that will stop the master thread */
   global_signal = SIGRTMIN;
   prof.stop_signal = global_signal;
+  global_signal++;
+
+  /* The signal that the master thread will use to tell itself
+   * (via a timer) when the next interval should start */
+  prof.master_signal = global_signal;
   global_signal++;
 
   /* All of this initialization HAS to happen in the main SICM thread.
@@ -353,6 +354,7 @@ void sh_start_profile_master_thread() {
   sa.sa_flags = 0;
   sa.sa_handler = profile_master_stop;
   sigemptyset(&sa.sa_mask);
+  sigaddset(&sa.sa_mask, prof.master_signal); /* Block the interval signal while the stop signal handler is running */
   if(sigaction(prof.stop_signal, &sa, NULL) == -1) {
     fprintf(stderr, "Error creating master stop signal handler. Aborting.\n");
     exit(1);
