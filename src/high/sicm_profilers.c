@@ -205,26 +205,28 @@ void profile_all_interval(int s) {
     prof.profile_all.metadata[i]->data_tail = head;
     __sync_synchronize();
 
-#if 0
-    for(n = 0; n <= tracker.max_index; n++) {
-      arena = tracker.arenas[n];
-      profinfo = prof.info[n];
-      per_event_profinfo = &(profinfo->profile_all.events[i]);
-
-      if((!arena) || (!profinfo) || (!profinfo->num_intervals)) continue;
-
-      per_event_profinfo->total += profinfo->profile_all.tmp_accumulator;
-      if(profinfo->profile_all.tmp_accumulator > per_event_profinfo->peak) {
-        per_event_profinfo->peak = profinfo->profile_all.tmp_accumulator;
-      }
-      /* One size_t per interval for this one event */
-      per_event_profinfo->intervals = (size_t *)realloc(per_event_profinfo->intervals, profinfo->num_intervals * sizeof(size_t));
-      per_event_profinfo->intervals[profinfo->num_intervals - 1] = profinfo->profile_all.tmp_accumulator;
-    }
-#endif
   }
 
   end_interval(s);
+}
+
+void profile_all_post_interval(profile_info *info) {
+  per_event_profile_all_info *per_event_profinfo;
+  profile_all_info *profinfo;
+
+  profinfo = &(info->profile_all);
+
+  for(i = 0; i < profopts.num_profile_all_events; i++) {
+    per_event_profinfo = &(profinfo->events[i]);
+
+    per_event_profinfo->total += profinfo->tmp_accumulator;
+    if(profinfo->tmp_accumulator > per_event_profinfo->peak) {
+      per_event_profinfo->peak = profinfo->tmp_accumulator;
+    }
+    /* One size_t per interval for this one event */
+    per_event_profinfo->intervals = (size_t *)realloc(per_event_profinfo->intervals, info->num_intervals * sizeof(size_t));
+    per_event_profinfo->intervals[info->num_intervals - 1] = profinfo->tmp_accumulator;
+  }
 }
 
 void profile_rss_arena_init(profile_rss_info *info) {
@@ -340,6 +342,7 @@ void profile_rss_interval(int s) {
       profinfo->profile_rss.tmp_accumulator += prof.profile_rss.pagesize;
 		}
 
+#if 0
 		/* Maintain the peak for this arena */
 		if(profinfo->profile_rss.tmp_accumulator > profinfo->profile_rss.peak) {
 		  profinfo->profile_rss.peak = profinfo->profile_rss.tmp_accumulator;
@@ -348,11 +351,27 @@ void profile_rss_interval(int s) {
     /* Store this interval's value */
     profinfo->profile_rss.intervals = (size_t *)realloc(profinfo->profile_rss.intervals, profinfo->num_intervals * sizeof(size_t));
     profinfo->profile_rss.intervals[profinfo->num_intervals - 1] = profinfo->profile_rss.tmp_accumulator;
+#endif
 	}
 
   pthread_rwlock_unlock(&tracker.extents_lock);
 
   end_interval(s);
+}
+
+void profile_rss_post_interval(profile_info *info) {
+  profile_rss_info *profinfo;
+
+  profinfo = &(info->profile_rss);
+
+  /* Maintain the peak for this arena */
+  if(profinfo->tmp_accumulator > profinfo->peak) {
+    profinfo->peak = profinfo->tmp_accumulator;
+  }
+
+  /* Store this interval's value */
+  profinfo->intervals = (size_t *)realloc(profinfo->intervals, info->num_intervals * sizeof(size_t));
+  profinfo->intervals[info->num_intervals - 1] = profinfo->tmp_accumulator;
 }
 
 void *profile_extent_size(void *a) {
@@ -418,6 +437,22 @@ void profile_extent_size_interval(int s) {
   pthread_rwlock_unlock(&tracker.extents_lock);
 
   end_interval(s);
+}
+
+void profile_extent_size_post_interval(profile_info *info) {
+  profile_extent_size_info *profinfo;
+
+  profinfo = &(info->profile_extent_size);
+
+  /* Maintain peak */
+  if(profinfo->tmp_accumulator > profinfo->peak) {
+    profinfo->peak = profinfo->tmp_accumulator;
+  }
+
+  /* Store this interval */
+  profinfo->intervals = 
+    (size_t *)realloc(profinfo->intervals, info->num_intervals * sizeof(size_t));
+  profinfo->intervals[info->num_intervals - 1] = profinfo->tmp_accumulator;
 }
 
 /* Just copies previous values along */

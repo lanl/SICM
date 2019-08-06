@@ -88,6 +88,8 @@ void profile_master_interval(int s) {
 	struct timespec start, end, target, actual;
   size_t i;
   unsigned copy;
+
+  /* Convenience pointers */
   profile_info *profinfo;
   arena_info *arena;
   profile_thread *profthread;
@@ -157,6 +159,28 @@ void profile_master_interval(int s) {
             actual.tv_sec, actual.tv_nsec,
             target.tv_sec, target.tv_nsec);
   }
+
+  /* Keep track of this interval's profiling values.
+   * The profiling threads fill the value `tmp_accumulator`, and
+   * this loop maintains the peak, total, and per-interval value.
+   */
+  for(i = 0; i <= tracker.max_index; i++) {
+    arena = tracker.arenas[n];
+    profinfo = prof.info[n];
+
+    if((!arena) || (!profinfo) || (!profinfo->num_intervals)) continue;
+
+    if(profopts.should_profile_all) {
+      profile_all_post_interval(profinfo);
+    }
+    if(profopts.should_profile_rss) {
+      profile_rss_post_interval(profinfo);
+    }
+    if(profopts.should_profile_extent_size) {
+      profile_extent_size_post_interval(profinfo);
+    }
+  }
+
 
   /* Finished handling this interval. Wait for another. */
   prof.cur_interval++;
