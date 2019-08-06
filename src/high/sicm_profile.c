@@ -2,12 +2,45 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <time.h>
+#include <sys/time.h>
 #include <sys/syscall.h>
 #include <signal.h>
 #include "sicm_high.h"
 
 profiler prof;
 static int global_signal;
+
+/* Returns 0 if "a" is bigger, 1 if "b" is bigger */
+char timespec_cmp(struct timespec *a, struct timespec *b) {
+	if (a->tv_sec == b->tv_sec) {
+    if(a->tv_nsec > b->tv_nsec) {
+      return 0;
+    } else {
+      return 1;
+    }
+	} else if(a->tv_sec > b->tv_sec) {
+    return 0;
+	} else {
+    return 1;
+  }
+}
+
+/* Subtracts two timespec structs from each other. Assumes stop is
+ * larger than start.
+ */
+void timespec_diff(struct timespec *start, struct timespec *stop,                           
+                   struct timespec *result)
+{
+  if ((stop->tv_nsec - start->tv_nsec) < 0) {
+    result->tv_sec = stop->tv_sec - start->tv_sec - 1;                                      
+    result->tv_nsec = stop->tv_nsec - start->tv_nsec + 1000000000;                          
+  } else {
+    result->tv_sec = stop->tv_sec - start->tv_sec;                                          
+    result->tv_nsec = stop->tv_nsec - start->tv_nsec;                                       
+  }
+  return;
+}
+
 
 /* Allocates room for profiling information for this arena.
  * Returns a pointer to the profile_info struct as a void pointer
@@ -17,8 +50,6 @@ static int global_signal;
  */
 void *create_profile_arena(int index) {
   prof.info[index] = calloc(1, sizeof(profile_info));
-  prof.info[index]->num_intervals = 0;
-  prof.info[index]->first_interval = 0;
 
   if(profopts.should_profile_all) {
     profile_all_arena_init(&(prof.info[index]->profile_all));
@@ -30,33 +61,21 @@ void *create_profile_arena(int index) {
     profile_extent_size_arena_init(&(prof.info[index]->profile_extent_size));
   }
 
+  prof.info[index]->num_intervals = 0;
+  prof.info[index]->first_interval = 0;
+
   /* Return this so that the arena can have a pointer to its profiling
    * information
    */
   return (void *)prof.info[index];
 }
 
-/* Function used by the profile threads to block/unblock
- * their own signal.
- */
 void start_interval(int signal) {
-  struct timeval tv;
-
-  /* Print out what time we were triggered */
-  syscall(SYS_gettimeofday, &tv, NULL);
-  printf("Profiling thread %d triggered: %ld.%06ld\n", signal, tv.tv_sec, tv.tv_usec);
-  fflush(stdout);
 }
 
-/* Unblocks a signal. Also notifies the Master thread. */
 void end_interval(int signal) {
-  struct timeval tv;
-
   /* Signal the master thread that we're done */
   pthread_mutex_lock(&prof.mtx);
-  syscall(SYS_gettimeofday, &tv, NULL);
-  printf("Profiling thread %d done: %ld.%06ld\n", signal, tv.tv_sec, tv.tv_usec);
-  fflush(stdout);
   prof.threads_finished++;
   pthread_cond_signal(&prof.cond);
   pthread_mutex_unlock(&prof.mtx);
@@ -66,20 +85,24 @@ void end_interval(int signal) {
  * it does this on every interval.
  */
 void profile_master_interval(int s) {
-	struct timeval tv;
+	struct timespec start, end, target, actual;
   size_t i;
   unsigned copy;
   profile_info *profinfo;
+  arena_info *arena;
   profile_thread *profthread;
-  syscall(SYS_gettimeofday, &tv, NULL);
 
-  printf("\n\n====================\n");
-  printf("Master triggered at time %ld.%06ld\n", tv.tv_sec, tv.tv_usec);
-  fflush(stdout);
+  /* Start time */
+  clock_gettime(CLOCK_MONOTONIC, &start);
 
+  /* Increment the interval */
   for(i = 0; i <= tracker.max_index; i++) {
     profinfo = prof.info[i];
-    if(!profinfo) continue;
+    arena = tracker.arenas[i];
+
+    /* Make sure this arena is fully valid */
+    if(!arena || !profinfo) continue;
+
     if(profinfo->num_intervals == 0) {
       /* This is the arena's first interval, make note */
       profinfo->first_interval = prof.cur_interval;
@@ -110,8 +133,6 @@ void profile_master_interval(int s) {
       pthread_mutex_unlock(&prof.mtx);
       if(prof.threads_finished == prof.num_profile_threads) {
         /* They're all done. */
-        printf("Profiling threads are all done.\n");
-        fflush(stdout);
         pthread_mutex_lock(&prof.mtx);
         prof.threads_finished = 0;
         break;
@@ -124,16 +145,41 @@ void profile_master_interval(int s) {
     }
   }
 
+  /* End time */
+  clock_gettime(CLOCK_MONOTONIC, &end);
+
+  /* Throw a warning if this interval took too long */
+  target.tv_sec = profopts.profile_rate_nseconds / 1000000000;
+  target.tv_nsec = profopts.profile_rate_nseconds % 1000000000;
+  timespec_diff(&start, &end, &actual);
+  if(timespec_cmp(&target, &actual)) {
+    fprintf(stderr, "WARNING: Interval (%ld.%09ld) went over the time limit (%ld.%09ld).\n",
+            actual.tv_sec, actual.tv_nsec,
+            target.tv_sec, target.tv_nsec);
+  }
+
   /* Finished handling this interval. Wait for another. */
   prof.cur_interval++;
   pthread_mutex_unlock(&prof.mtx);
-  printf("Exited the loop, we're now ready to receive another signal\n");
-  printf("====================\n");
-  fflush(stdout);
 }
 
 /* Stops the master thread */
 void profile_master_stop(int s) {
+  size_t i;
+  profile_thread *profthread;
+
+  timer_delete(prof.timerid);
+
+  /* Cancel all threads. Since threads can only be running while the master
+   * thread is in a different signal handler from this one, it's impossible that they're
+   * in an interval currently.
+   */
+  for(i = 0; i < prof.num_profile_threads; i++) {
+    profthread = &prof.profile_threads[i];
+    pthread_cancel(profthread->id);
+    pthread_join(profthread->id, NULL);
+  }
+
   pthread_exit(NULL);
 }
 
@@ -184,14 +230,12 @@ void setup_profile_thread(void *(*main)(void *), /* Spinning loop function */
  * happens, it notifies the profiling threads.
  */
 void *profile_master(void *a) {
-  timer_t timerid;
   struct sigevent sev;
   struct sigaction sa;
   struct itimerspec its;
   long long frequency;
   sigset_t mask;
   pid_t tid;
-  int master_signal;
 
   if(profopts.should_profile_all) {
     setup_profile_thread(&profile_all, 
@@ -218,18 +262,18 @@ void *profile_master(void *a) {
   prof.cur_interval = 0;
 
   /* Set up a signal handler for the master */
-  master_signal = global_signal;
   sa.sa_flags = 0;
   sa.sa_handler = profile_master_interval;
   sigemptyset(&sa.sa_mask);
-  if(sigaction(master_signal, &sa, NULL) == -1) {
+  sigaddset(&sa.sa_mask, prof.stop_signal); /* Stop signal should block until an interval is finished */
+  if(sigaction(prof.master_signal, &sa, NULL) == -1) {
     fprintf(stderr, "Error creating signal handler. Aborting.\n");
     exit(1);
   }
 
   /* Block the signal for a bit */
   sigemptyset(&mask);
-  sigaddset(&mask, master_signal);
+  sigaddset(&mask, prof.master_signal);
   if(sigprocmask(SIG_SETMASK, &mask, NULL) == -1) {
     fprintf(stderr, "Error blocking signal. Aborting.\n");
     exit(1);
@@ -238,10 +282,10 @@ void *profile_master(void *a) {
   /* Create the timer */
   tid = syscall(SYS_gettid);
   sev.sigev_notify = SIGEV_THREAD_ID;
-  sev.sigev_signo = master_signal;
-  sev.sigev_value.sival_ptr = &timerid;
+  sev.sigev_signo = prof.master_signal;
+  sev.sigev_value.sival_ptr = &prof.timerid;
   sev._sigev_un._tid = tid;
-  if(timer_create(CLOCK_REALTIME, &sev, &timerid) == -1) {
+  if(timer_create(CLOCK_REALTIME, &sev, &prof.timerid) == -1) {
     fprintf(stderr, "Error creating timer. Aborting.\n");
     exit(1);
   }
@@ -251,7 +295,7 @@ void *profile_master(void *a) {
   its.it_value.tv_nsec = profopts.profile_rate_nseconds % 1000000000;
   its.it_interval.tv_sec = its.it_value.tv_sec;
   its.it_interval.tv_nsec = its.it_value.tv_nsec;
-  if(timer_settime(timerid, 0, &its, NULL) == -1) {
+  if(timer_settime(prof.timerid, 0, &its, NULL) == -1) {
     fprintf(stderr, "Error setting the timer. Aborting.\n");
     exit(1);
   }
@@ -272,8 +316,14 @@ void initialize_profiling() {
   /* Allocate room for the per-arena profiling information */
   prof.info = calloc(tracker.max_arenas, sizeof(profile_info *));
 
+  /* The signal that will stop the master thread */
   global_signal = SIGRTMIN;
   prof.stop_signal = global_signal;
+  global_signal++;
+
+  /* The signal that the master thread will use to tell itself
+   * (via a timer) when the next interval should start */
+  prof.master_signal = global_signal;
   global_signal++;
 
   /* All of this initialization HAS to happen in the main SICM thread.
@@ -304,6 +354,7 @@ void sh_start_profile_master_thread() {
   sa.sa_flags = 0;
   sa.sa_handler = profile_master_stop;
   sigemptyset(&sa.sa_mask);
+  sigaddset(&sa.sa_mask, prof.master_signal); /* Block the interval signal while the stop signal handler is running */
   if(sigaction(prof.stop_signal, &sa, NULL) == -1) {
     fprintf(stderr, "Error creating master stop signal handler. Aborting.\n");
     exit(1);
@@ -372,6 +423,7 @@ void print_profiling() {
       }
     }
     printf("===== END PEBS RESULTS =====\n");
+    fflush(stdout);
 
 #if 0
   /* MBI profiling */
@@ -395,4 +447,3 @@ void sh_stop_profile_master_thread() {
   print_profiling();
   deinitialize_profiling();
 }
-

@@ -77,6 +77,8 @@ void profile_all_init() {
 void *profile_all(void *a) {
   size_t i;
 
+  pthread_setcanceltype(PTHREAD_CANCEL_ASYNCHRONOUS, NULL);
+
   /* Start the events sampling */
   for(i = 0; i < profopts.num_profile_all_events; i++) {
     ioctl(prof.profile_all.fds[i], PERF_EVENT_IOC_RESET, 0);
@@ -244,6 +246,8 @@ void profile_rss_init() {
 }
 
 void *profile_rss(void *a) {
+  pthread_setcanceltype(PTHREAD_CANCEL_ASYNCHRONOUS, NULL);
+
   while(1) { }
 }
 
@@ -350,6 +354,8 @@ void profile_rss_interval(int s) {
 }
 
 void *profile_extent_size(void *a) {
+  pthread_setcanceltype(PTHREAD_CANCEL_ASYNCHRONOUS, NULL);
+
   while(1) { }
 }
 
@@ -396,7 +402,7 @@ void profile_extent_size_interval(int s) {
     if(profinfo->profile_extent_size.tmp_accumulator > profinfo->profile_extent_size.peak) {
       profinfo->profile_extent_size.peak = profinfo->profile_extent_size.tmp_accumulator;
     }
-    
+
     /* Store this interval */
     profinfo->profile_extent_size.intervals = 
       (size_t *)realloc(profinfo->profile_extent_size.intervals, 
@@ -452,6 +458,7 @@ void profile_extent_size_deinit() {
 void profile_extent_size_arena_init(profile_extent_size_info *info) {
   info->peak = 0;
   info->intervals = NULL;
+  info->tmp_accumulator = 0;
 }
 
 #if 0

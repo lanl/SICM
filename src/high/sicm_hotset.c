@@ -13,16 +13,13 @@
 #include "sicm_high.h"
 
 union metric {
-  float band;
-  size_t acc;
-  double acc_per_sample;
+  size_t int_val;
 };
-
 use_tree(siteptr, int);
+static size_t value_index, weight_index;
 
-static inline int sizet_cmp(size_t a, size_t b) {
+static inline int int_val_cmp(size_t a, size_t b) {
   int retval;
-  /* Maximize bandwidth/byte */
   if(a < b) {
     retval = 1;
   } else if(a > b) {
@@ -32,10 +29,8 @@ static inline int sizet_cmp(size_t a, size_t b) {
   }
   return retval;
 }
-
 static inline int double_cmp(double a, double b) {
   int retval;
-  /* Maximize bandwidth/byte */
   if(a < b) {
     retval = 1;
   } else if(a > b) {
@@ -46,49 +41,14 @@ static inline int double_cmp(double a, double b) {
   return retval;
 }
 
-/* A bunch of comparison functions, used to sort the trees by
- * different metrics. */
-int acc_per_sample_cmp(siteptr a, siteptr b) {
+int value_per_weight_cmp(siteptr a, siteptr b) {
   double a_bpb, b_bpb;
   int retval;
 
   if(a == b) return 0;
 
-  a_bpb = a->acc_per_sample / ((double)a->peak_rss);
-  b_bpb = b->acc_per_sample / ((double)b->peak_rss);
-
-  return double_cmp(a_bpb, b_bpb);
-}
-int accesses_cmp2(siteptr a, siteptr b) {
-  double a_bpb, b_bpb;
-  int retval;
-
-  if(a == b) return 0;
-
-  a_bpb = (double)a->accesses;
-  b_bpb = (double)b->accesses;
-
-  return sizet_cmp(a_bpb, b_bpb);
-}
-int bandwidth_cmp(siteptr a, siteptr b) {
-  double a_bpb, b_bpb;
-  int retval;
-
-  if(a == b) return 0;
-
-  a_bpb = ((double)a->bandwidth) / ((double)a->peak_rss);
-  b_bpb = ((double)b->bandwidth) / ((double)b->peak_rss);
-
-  return double_cmp(a_bpb, b_bpb);
-}
-int accesses_cmp(siteptr a, siteptr b) {
-  double a_bpb, b_bpb;
-  int retval;
-
-  if(a == b) return 0;
-
-  a_bpb = ((double)a->accesses) / ((double)a->peak_rss);
-  b_bpb = ((double)b->accesses) / ((double)b->peak_rss);
+  a_bpb = ((double)a->events[value_index].total) / ((double)a->events[weight_index].peak);
+  b_bpb = ((double)b->events[value_index].total) / ((double)b->events[weight_index].peak);
 
   return double_cmp(a_bpb, b_bpb);
 }
@@ -103,12 +63,13 @@ size_t get_gcd(tree(int, siteptr) sites) {
   size_t gcd, a, b, tmp;
 
   it = tree_begin(sites);
-  gcd = tree_it_val(it)->peak_rss;
+  gcd = tree_it_val(it)->events[weight_index].peak;
   tree_it_next(it);
   while(tree_it_good(it)) {
     /* Find the GCD of a and b */
-    a = tree_it_val(it)->peak_rss;
+    a = tree_it_val(it)->events[weight_index].peak;
     b = gcd;
+    printf("GCD of %zu and %zu is: ", a, b);
     while(a != 0) {
       tmp = a;
       a = b % a;
@@ -116,35 +77,44 @@ size_t get_gcd(tree(int, siteptr) sites) {
     }
     gcd = b;
 
+    printf("%zu\n", gcd);
+
     /* Go on to the next pair of sizes */
     tree_it_next(it);
   }
 
-  printf("GCD of site sizes is %zu.\n", gcd);
+  printf("GCD of weights is %zu.\n", gcd);
+  fflush(stdout);
   return gcd;
 }
 
 void scale_sites(app_info *info, float scale) {
   tree_it(int, siteptr) it;
-  size_t gcd, multiples, total;
+  size_t gcd, multiples, total, scaled;
 
   /* First get the GCD of the original sites, adhere to that so that knapsack will still work */
   gcd = get_gcd(info->sites);
 
   /* Scale each site */
   printf("Scaling sites down by %f.\n", scale);
+  fflush(stdout);
   total = 0;
   tree_traverse(info->sites, it) {
-    tree_it_val(it)->peak_rss *= scale;
-
-    /* Round down to the nearest multiple of the GCD */
-    multiples = tree_it_val(it)->peak_rss / gcd;
-    tree_it_val(it)->peak_rss = gcd * multiples;
-    total += tree_it_val(it)->peak_rss;
+    /* See how many multiples of the GCD the scaled version is */
+    scaled = tree_it_val(it)->events[weight_index].peak * scale;
+    if(scaled > gcd) {
+      multiples = scaled / gcd;
+      tree_it_val(it)->events[weight_index].peak = gcd * multiples;
+    } else {
+      /* Minimum size of a site is the GCD */
+      tree_it_val(it)->events[weight_index].peak = gcd;
+    }
+    total += tree_it_val(it)->events[weight_index].peak;
   }
-  info->site_peak_rss = total;
+  info->events[weight_index].peak = total;
 }
 
+#if 0
 /* Input is a tree of sites and the capacity (in bytes) that you want to fill
  * up to. Outputs the optimal knapsack. Uses dynamic programming combined with
  * an approximation optimization to limit the amount of memory and runtime it
@@ -319,11 +289,12 @@ tree(int, siteptr) get_filtered_hotset(tree(int, siteptr) sites, size_t capacity
 
 	return ret;
 }
+#endif
 
 /* Input is a tree of sites and the capacity (in bytes) that you want to fill
  * up to. Outputs a greedy hotset.
  */
-tree(int, siteptr) get_hotset(tree(int, siteptr) sites, size_t capacity, char proftype) {
+tree(int, siteptr) get_hotset(tree(int, siteptr) sites, size_t capacity) {
   tree(siteptr, int) sorted_sites;
   tree(int, siteptr) ret;
   tree_it(int, siteptr) it;
@@ -333,41 +304,38 @@ tree(int, siteptr) get_hotset(tree(int, siteptr) sites, size_t capacity, char pr
 
   ret = tree_make(int, siteptr);
 
-  /* Now sort the sites by accesses/byte or bandwidth/byte */
-  if(proftype == 0) {
-    /* bandwidth/byte */
-    sorted_sites = tree_make_c(siteptr, int, &bandwidth_cmp);
-  } else if(proftype == 1) {
-    /* accesses/byte */
-    sorted_sites = tree_make_c(siteptr, int, &accesses_cmp);
-  } else if(proftype == 2) {
-    sorted_sites = tree_make_c(siteptr, int, &acc_per_sample_cmp);
-  }
+  printf("Running hotset\n");
+
+  sorted_sites = tree_make_c(siteptr, int, &value_per_weight_cmp);
   tree_traverse(sites, it) {
-    /* Only insert if the site has a peak_rss value */
-    if(tree_it_val(it)->peak_rss) {
+    /* Only insert if the site has a weight */
+    if(tree_it_val(it)->events[weight_index].peak) {
+      printf("Inserting site %d into sorted_sites\n", tree_it_key(it));
+      fflush(stdout);
       tree_insert(sorted_sites, tree_it_val(it), tree_it_key(it));
+      printf("Inserted site %d into sorted_sites\n", tree_it_key(it));
+      fflush(stdout);
     } else {
-      fprintf(stderr, "WARNING: Site %d doesn't have a peak RSS.\n", tree_it_key(it));
+      fprintf(stderr, "WARNING: Site %d doesn't have a weight.\n", tree_it_key(it));
     }
   }
+  fflush(stdout);
 
   printf("Sorted sites:\n");
+  fflush(stdout);
   tree_traverse(sorted_sites, sit) {
-    if(proftype == 0) {
-      printf("%d: %f %zu %f\n", tree_it_val(sit), tree_it_key(sit)->bandwidth, tree_it_key(sit)->peak_rss, ((double)tree_it_key(sit)->bandwidth) / ((double)tree_it_key(sit)->peak_rss));
-    } else if(proftype == 1) {
-      printf("%d: %zu %zu %f\n", tree_it_val(sit), tree_it_key(sit)->accesses, tree_it_key(sit)->peak_rss, ((double)tree_it_key(sit)->accesses) / ((double)tree_it_key(sit)->peak_rss));
-    } else if(proftype == 2) {
-      printf("%d: %.10f %zu\n", tree_it_val(sit), tree_it_key(sit)->acc_per_sample, tree_it_key(sit)->peak_rss);
-    }
+    printf("%d: %zu %zu %lf\n", tree_it_val(sit), 
+                                tree_it_key(sit)->events[value_index].total,
+                                tree_it_key(sit)->events[weight_index].peak, 
+                                ((double)tree_it_key(sit)->events[value_index].total) / ((double)tree_it_key(sit)->events[weight_index].peak));
+    fflush(stdout);
   }
 
   /* Now iterate over the sorted sites and add them until we overflow */
 	break_next_site = 0;
   packed_size = 0;
   tree_traverse(sorted_sites, sit) {
-		packed_size += tree_it_key(sit)->peak_rss;
+		packed_size += tree_it_key(sit)->events[weight_index].peak;
 		tree_insert(ret, tree_it_val(sit), tree_it_key(sit));
 
 		/* If we're over capacity, break. We've already added the site,
@@ -380,6 +348,7 @@ tree(int, siteptr) get_hotset(tree(int, siteptr) sites, size_t capacity, char pr
 	return ret;
 }
 
+#if 0
 /* Returns a filled Thermos hotset given a tree of sites */
 tree(int, siteptr) get_thermos(tree(int, siteptr) sites, size_t capacity, char proftype) {
   tree(siteptr, int) sorted_sites;
@@ -485,24 +454,38 @@ tree(int, siteptr) get_thermos(tree(int, siteptr) sites, size_t capacity, char p
 
 	return ret;
 }
+#endif
 
 /* Reads in profiling information from stdin, then runs the packing algorithm
  * based on arguments. Prints the hotset to stdout.
  */
 int main(int argc, char **argv) {
-  char proftype, algo, captype, *endptr;
-  size_t cap_bytes, chosen_weight, total_weight, tot_peak_rss, gcd;
-  union metric chosen_value, total_value;
+  char *weight_event, 
+       *value_event, 
+       algo, 
+       captype, 
+       *endptr;
+  size_t cap_bytes, 
+         chosen_weight, 
+         total_weight, 
+         tot_peak_rss, 
+         gcd,
+         i;
+  union metric chosen_value, 
+               total_value;
   long long node;
-  float cap_float, scale;
-  tree(int, siteptr) sites, chosen_sites;
+  float cap_float, 
+        scale;
+  tree(int, siteptr) sites, 
+                     chosen_sites;
   tree_it(int, siteptr) it;
   app_info *info;
 
   /* Read in the arguments */
-  if(argc != 7) {
-    fprintf(stderr, "USAGE: ./hotset proftype algo captype cap node\n");
-    fprintf(stderr, "proftype: band, acc, or acc_per_sample, the type of profiling.\n");
+  if(argc != 8) {
+    fprintf(stderr, "USAGE: ./hotset value weight algo captype cap node\n");
+    fprintf(stderr, "value: the event to use to determine value\n");
+    fprintf(stderr, "weight: the event to use to determine weight\n");
     fprintf(stderr, "algo: knapsack, hotset, or thermos. The packing algorithm.\n");
     fprintf(stderr, "captype: ratio or constant. The type of capacity.\n");
     fprintf(stderr, "cap: the capacity. A float 0-1 if captype is 'ratio', or a\n");
@@ -511,53 +494,71 @@ int main(int argc, char **argv) {
     fprintf(stderr, "tot_peak_rss: the peak RSS of the run, to be used to scale the site RSS. Set to 0 for no scaling.\n");
     exit(1);
   }
-  if(strcmp(argv[1], "band") == 0) {
-    proftype = 0;
-  } else if(strcmp(argv[1], "acc") == 0) {
-    proftype = 1;
-  } else if(strcmp(argv[1], "acc_per_sample") == 0) {
-    proftype = 2;
-  } else {
-    fprintf(stderr, "Proftype not recognized. Aborting.\n");
-    exit(1);
-  }
-  if(strcmp(argv[2], "knapsack") == 0) {
+  value_event = (char *) malloc(sizeof(char) * 64);
+  weight_event = (char *) malloc(sizeof(char) * 64);
+  strcpy(value_event, argv[1]);
+  strcpy(weight_event, argv[2]);
+  if(strcmp(argv[3], "knapsack") == 0) {
     algo = 0;
-  } else if(strcmp(argv[2], "hotset") == 0) {
+  } else if(strcmp(argv[3], "hotset") == 0) {
     algo = 1;
-  } else if(strcmp(argv[2], "thermos") == 0) {
+  } else if(strcmp(argv[3], "thermos") == 0) {
     algo = 2;
-  } else if(strcmp(argv[2], "filtered_hotset") == 0) {
+  } else if(strcmp(argv[3], "filtered_hotset") == 0) {
     algo = 3;
   } else {
     fprintf(stderr, "Algo not recognized. Aborting.\n");
     exit(1);
   }
-  if(strcmp(argv[3], "ratio") == 0) {
+  if(strcmp(argv[4], "ratio") == 0) {
     captype = 0;
     endptr = NULL;
-    cap_float = strtof(argv[4], &endptr);
-  } else if(strcmp(argv[3], "constant") == 0) {
+    cap_float = strtof(argv[5], &endptr);
+  } else if(strcmp(argv[4], "constant") == 0) {
     captype = 1;
-    cap_bytes = strtoimax(argv[4], &endptr, 10);
+    cap_bytes = strtoimax(argv[5], &endptr, 10);
   } else {
     fprintf(stderr, "Captype not recognized. Aborting.\n");
     exit(1);
   }
   endptr = NULL;
-  node = strtoimax(argv[5], &endptr, 10);
+  node = strtoimax(argv[6], &endptr, 10);
   if(node > INT_MAX) {
     fprintf(stderr, "The node that you specified is greater than an integer can store. Aborting.\n");
     exit(1);
   }
   endptr = NULL;
-  tot_peak_rss = strtoumax(argv[6], &endptr, 10);
+  tot_peak_rss = strtoumax(argv[7], &endptr, 10);
 
   info = sh_parse_site_info(stdin);
 
+  /* Figure out the indices into the "events" array that the two events are */
+  value_index = SIZE_MAX;
+  weight_index = SIZE_MAX;
+  for(i = 0; i < info->num_events; i++) {
+    if(strncmp(info->events[i].name, value_event, 64) == 0) {
+      value_index = i;
+    } else if(strncmp(info->events[i].name, weight_event, 64) == 0) {
+      weight_index = i;
+    }
+  }
+  if((value_index == SIZE_MAX) || (weight_index == SIZE_MAX)) {
+    fprintf(stderr, "Couldn't find event for either the value or the weight. Aborting.\n");
+    fprintf(stderr, "Valid events:\n");
+    for(i = 0; i < info->num_events; i++) {
+      fprintf(stderr, "  %s\n", info->events[i].name);
+    }
+    exit(1);
+  }
+
+  tree_traverse(info->sites, it) {
+    printf("Index: %zu, Value: %zu\n", weight_index, tree_it_val(it)->events[weight_index].peak);
+  }
+  fflush(stdout);
+
   if(captype == 0) {
     /* Figure out cap_bytes from the ratio */
-    cap_bytes = info->site_peak_rss * cap_float;
+    cap_bytes = info->events[weight_index].peak * cap_float;
   }
 
   /* Scale the sites' peak RSS down according to the peak RSS of the whole run */
@@ -566,26 +567,20 @@ int main(int argc, char **argv) {
      * 1. The sum of all sites' peak RSS
      * 2. The actual peak RSS of the whole application
      */
-    printf("Scaling from a peak RSS of %zu to a peak RSS of %zu.\n", info->site_peak_rss, tot_peak_rss);
-    scale = ((float)tot_peak_rss) / ((float) info->site_peak_rss);
+    printf("Scaling from a peak RSS of %zu to a peak RSS of %zu.\n", info->events[weight_index].peak, tot_peak_rss);
+    scale = ((float)tot_peak_rss) / ((float) info->events[weight_index].peak);
     scale_sites(info, scale);
   }
 
   /* Calculate what we had to choose from */
   total_weight = 0;
-  total_value.acc = 0;
-  total_value.band = 0;
+  total_value.int_val = 0;
   tree_traverse(info->sites, it) {
-    total_weight += tree_it_val(it)->peak_rss;
-    if(proftype == 0) { 
-      total_value.band += tree_it_val(it)->bandwidth;
-    } else if(proftype == 1) {
-      total_value.acc += tree_it_val(it)->accesses;
-    } else if(proftype == 2) {
-      total_value.acc_per_sample += tree_it_val(it)->acc_per_sample;
-    }
+    total_weight += tree_it_val(it)->events[weight_index].peak;
+    total_value.int_val += tree_it_val(it)->events[value_index].total;
   }
 
+#if 0
   /* Now run the packing algorithm */
   if(algo == 0) {
     chosen_sites = get_knapsack(info->sites, cap_bytes, proftype);
@@ -596,26 +591,27 @@ int main(int argc, char **argv) {
   } else if(algo == 3) {
     chosen_sites = get_filtered_hotset(info->sites, cap_bytes, proftype, total_value);
   }
+#endif
+
+  if(algo == 1) {
+    chosen_sites = get_hotset(info->sites, cap_bytes);
+  } else{
+    fprintf(stderr, "Packing algorithm not yet implemented. Aborting.\n");
+    exit(1);
+  }
 
   /* Calculate what we chose */
   chosen_weight = 0;
-  chosen_value.acc = 0;
-  chosen_value.band = 0;
+  chosen_value.int_val = 0;
   tree_traverse(chosen_sites, it) {
-    chosen_weight += tree_it_val(it)->peak_rss;
-    if(proftype == 0) { 
-      chosen_value.band += tree_it_val(it)->bandwidth;
-    } else if(proftype == 1) {
-      chosen_value.acc += tree_it_val(it)->accesses;
-    } else if(proftype == 2) {
-      chosen_value.acc_per_sample += tree_it_val(it)->acc_per_sample;
-    }
+    chosen_weight += tree_it_val(it)->events[weight_index].peak;
+    chosen_value.int_val += tree_it_val(it)->events[value_index].total;
   }
 
   /* Print out the calculated results */
   printf("===== GUIDANCE =====\n");
   tree_traverse(chosen_sites, it) {
-    printf("%u %d\n", tree_it_key(it), (int) node);
+    printf("%d %d\n", tree_it_key(it), (int) node);
   }
   printf("===== END GUIDANCE =====\n");
   if(algo == 0) {
@@ -626,6 +622,7 @@ int main(int argc, char **argv) {
     printf("Strategy: Thermos\n");
   }
   printf("Used capacity: %zu/%zu bytes\n", chosen_weight, total_weight);
+#if 0
   if(proftype == 0) {
     printf("Value: %f/%f\n", chosen_value.band, total_value.band);
   } else if(proftype == 1) {
@@ -633,8 +630,10 @@ int main(int argc, char **argv) {
   } else if(proftype == 2) {
     printf("Value: %.10f/%.10f\n", chosen_value.acc_per_sample, total_value.acc_per_sample);
   }
+#endif
+  printf("Value: %zu/%zu\n", chosen_value.int_val, total_value.int_val);
   printf("Capacity: %zu bytes\n", cap_bytes);
-  printf("Peak RSS: %zu bytes\n", info->site_peak_rss);
+  printf("Peak RSS: %zu bytes\n", info->events[weight_index].peak);
 
   /* Clean up */
   tree_traverse(info->sites, it) {

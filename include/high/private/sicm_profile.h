@@ -38,7 +38,9 @@ typedef struct profile_thread {
 } profile_thread;
 
 typedef struct profiler {
+  /* For the master thread */
   pthread_t master_id;
+  timer_t timerid;
 
   /* One for each profiling thread */
   profile_thread *profile_threads;
@@ -52,7 +54,7 @@ typedef struct profiler {
   /* For the main application thread to
    * signal the master to stop
    */
-  int stop_signal;
+  int stop_signal, master_signal;
 
   /* Per-arena profiling information */
   profile_info **info;
