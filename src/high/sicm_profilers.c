@@ -402,7 +402,7 @@ void profile_extent_size_interval(int s) {
     if(profinfo->profile_extent_size.tmp_accumulator > profinfo->profile_extent_size.peak) {
       profinfo->profile_extent_size.peak = profinfo->profile_extent_size.tmp_accumulator;
     }
-    
+
     /* Store this interval */
     profinfo->profile_extent_size.intervals = 
       (size_t *)realloc(profinfo->profile_extent_size.intervals, 
