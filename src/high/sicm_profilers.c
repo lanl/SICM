@@ -213,6 +213,7 @@ void profile_all_interval(int s) {
 void profile_all_post_interval(profile_info *info) {
   per_event_profile_all_info *per_event_profinfo;
   profile_all_info *profinfo;
+  size_t i;
 
   profinfo = &(info->profile_all);
 

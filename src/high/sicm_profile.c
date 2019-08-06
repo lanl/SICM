@@ -165,10 +165,9 @@ void profile_master_interval(int s) {
    * this loop maintains the peak, total, and per-interval value.
    */
   for(i = 0; i <= tracker.max_index; i++) {
-    arena = tracker.arenas[n];
-    profinfo = prof.info[n];
+    profinfo = prof.info[i];
 
-    if((!arena) || (!profinfo) || (!profinfo->num_intervals)) continue;
+    if((!profinfo) || (!profinfo->num_intervals)) continue;
 
     if(profopts.should_profile_all) {
       profile_all_post_interval(profinfo);
