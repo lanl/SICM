@@ -205,6 +205,7 @@ void profile_all_interval(int s) {
     prof.profile_all.metadata[i]->data_tail = head;
     __sync_synchronize();
 
+#if 0
     for(n = 0; n <= tracker.max_index; n++) {
       arena = tracker.arenas[n];
       profinfo = prof.info[n];
@@ -220,6 +221,7 @@ void profile_all_interval(int s) {
       per_event_profinfo->intervals = (size_t *)realloc(per_event_profinfo->intervals, profinfo->num_intervals * sizeof(size_t));
       per_event_profinfo->intervals[profinfo->num_intervals - 1] = profinfo->profile_all.tmp_accumulator;
     }
+#endif
   }
 
   end_interval(s);
@@ -391,6 +393,7 @@ void profile_extent_size_interval(int s) {
     profinfo->profile_extent_size.tmp_accumulator += end - start;
   }
 
+#if 0
   /* Now go through each arena one last time */
   extent_arr_for(tracker.extents, i) {
     arena = (arena_info *) tracker.extents->arr[i].arena;
@@ -410,6 +413,7 @@ void profile_extent_size_interval(int s) {
     profinfo->profile_extent_size.intervals[profinfo->num_intervals - 1] = 
       profinfo->profile_extent_size.tmp_accumulator;
   }
+#endif
 
   pthread_rwlock_unlock(&tracker.extents_lock);
 
