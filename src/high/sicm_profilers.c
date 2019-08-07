@@ -520,8 +520,6 @@ void profile_allocs_interval(int s) {
   profile_info *profinfo;
   size_t i;
 
-  start_inteval(s);
-
   /* Iterate over the arenas and set their size to the tmp_accumulator */
   for(i = 0; i <= tracker.max_index; i++) {
     arena = tracker.arenas[i];
