@@ -535,7 +535,7 @@ void profile_allocs_interval(int s) {
 }
 
 void profile_allocs_init() {
-  tracker.profile_allocs_map = tree_make(addr_t, profile_allocs_ptr);
+  tracker.profile_allocs_map = tree_make(addr_t, alloc_info_ptr);
   pthread_rwlock_init(&tracker.profile_allocs_map_lock, NULL);
 }
 
