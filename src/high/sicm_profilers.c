@@ -568,7 +568,7 @@ void profile_allocs_post_interval(profile_info *info) {
   profinfo->intervals[info->num_intervals - 1] = profinfo->tmp_accumulator;
 }
 
-void profile_allocs_skip_intervals(int) {
+void profile_allocs_skip_interval(int) {
   /* TODO */
 }
 
