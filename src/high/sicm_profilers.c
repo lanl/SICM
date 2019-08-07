@@ -512,6 +512,8 @@ void profile_allocs_arena_init(profile_allocs_info *info) {
 }
 
 void *profile_allocs(void *a) {
+  pthread_setcanceltype(PTHREAD_CANCEL_ASYNCHRONOUS, NULL);
+
   while(1) { }
 }
 
