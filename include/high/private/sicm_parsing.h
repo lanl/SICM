@@ -175,8 +175,6 @@ static inline app_info *sh_parse_site_info(FILE *file) {
                         "%zu sites: %d",
                         &num_sites,
                         &n);
-        fprintf(stderr, "Reading in %d sites:\n", num_sites);
-        fprintf(stderr, "%s\n", line);
         cur_sites = (siteptr *) malloc(sizeof(siteptr) * num_sites);
         /* Iterate over the site IDs and read them in */
         tok = strtok(line, " ");
@@ -197,7 +195,6 @@ static inline app_info *sh_parse_site_info(FILE *file) {
               cur_sites[i]->num_events = 0;
               cur_sites[i]->id = site_id;
               tree_insert(info->sites, site_id, cur_sites[i]);
-              fprintf(stderr, "Creating site %d\n", site_id);
             }
           } else {
             break;
@@ -205,11 +202,6 @@ static inline app_info *sh_parse_site_info(FILE *file) {
           tok = strtok(NULL, " ");
           i++;
         }
-        fprintf(stderr, "Sites: ");
-        for(i = 0; i < num_sites; i++) {
-          fprintf(stderr, "%d ", cur_sites[i]->id);
-        }
-        fprintf(stderr, "\n");
         continue;
       }
 
