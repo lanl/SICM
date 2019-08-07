@@ -2,6 +2,10 @@
 #include <fcntl.h>
 #include "sicm_high.h"
 
+/*************************************************
+ *              PROFILE_ALL                      *
+ ************************************************/
+
 void profile_all_arena_init(profile_all_info *info) {
   size_t i;
 
@@ -230,6 +234,10 @@ void profile_all_post_interval(profile_info *info) {
   }
 }
 
+/*************************************************
+ *              PROFILE_RSS                      *
+ ************************************************/
+
 void profile_rss_arena_init(profile_rss_info *info) {
   info->peak = 0;
   info->intervals = NULL;
@@ -375,6 +383,10 @@ void profile_rss_post_interval(profile_info *info) {
   profinfo->intervals[info->num_intervals - 1] = profinfo->tmp_accumulator;
 }
 
+/*************************************************
+ *            PROFILE_EXTENT_SIZE                *
+ ************************************************/
+
 void *profile_extent_size(void *a) {
   pthread_setcanceltype(PTHREAD_CANCEL_ASYNCHRONOUS, NULL);
 
@@ -501,6 +513,65 @@ void profile_extent_size_arena_init(profile_extent_size_info *info) {
   info->tmp_accumulator = 0;
 }
 
+/*************************************************
+ *              PROFILE_ALLOCS                   *
+ ************************************************/
+
+void profile_allocs_arena_init(profile_allocs_info *info) {
+  info->peak = 0;
+  info->intervals = NULL;
+  info->tmp_accumulator = 0;
+}
+
+void *profile_allocs(void *a) {
+  while(1) { }
+}
+
+void profile_allocs_interval(int s) {
+  arena_info *arena;
+  profile_info *profinfo;
+  size_t i;
+
+  start_inteval(s);
+
+  /* Iterate over the arenas and set their size to the tmp_accumulator */
+  for(i = 0; i <= tracker.max_index; i++) {
+    arena = tracker.arenas[n];
+    profinfo = prof.info[n];
+    if((!arena) || (!profinfo) || (!profinfo->num_intervals)) continue;
+
+    profinfo->profile_allocs.tmp_accumulator = arena->size;
+  }
+
+  end_interval(s);
+}
+
+void profile_allocs_init() {
+}
+
+void profile_allocs_deinit() {
+}
+
+void profile_allocs_post_interval(profile_info *info) {
+  profile_allocs_info *profinfo;
+
+  profinfo = &(info->profile_allocs);
+
+  /* Maintain peak */
+  if(profinfo->tmp_accumulator > profinfo->peak) {
+    profinfo->peak = profinfo->tmp_accumulator;
+  }
+
+  /* Store this interval */
+  profinfo->intervals = 
+    (size_t *)realloc(profinfo->intervals, info->num_intervals * sizeof(size_t));
+  profinfo->intervals[info->num_intervals - 1] = profinfo->tmp_accumulator;
+}
+
+void profile_allocs_skip_intervals(int) {
+  /* TODO */
+}
+
 #if 0
 void profile_one_init() {
 
@@ -524,11 +595,6 @@ void *profile_one(void *a) {
 
   while(1) { }
 }
-
-void *profile_allocs(void *a) {
-  while(1) { }
-}
-
 
 void profile_one_interval(int s)
 {
@@ -559,10 +625,6 @@ void profile_one_interval(int s)
   if(total > prof.max_bandwidth) {
     prof.max_bandwidth = total;
   }
-}
-
-
-void profile_allocs_interval(int s) {
 }
 #endif
 

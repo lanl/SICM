@@ -28,6 +28,7 @@ typedef struct profile_info {
   profile_all_info profile_all;
   profile_rss_info profile_rss;
   profile_extent_size_info profile_extent_size;
+  profile_allocs_info profile_allocs;
 } profile_info;
 
 typedef struct profile_thread {
@@ -63,6 +64,7 @@ typedef struct profiler {
   profile_all_data profile_all;
   profile_rss_data profile_rss;
   profile_extent_size_data profile_extent_size;
+  profile_allocs_data profile_allocs;
 } profiler;
 
 extern profiling_options profopts;

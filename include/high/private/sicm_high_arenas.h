@@ -22,6 +22,7 @@ typedef struct arena_info {
   int *alloc_sites, num_alloc_sites; /* Stores the allocation sites that are in this arena */
   unsigned index; /* Index into the arenas array */
   sicm_arena arena; /* SICM's low-level interface pointer */
+  size_t size; /* The total size of the arena's allocations */
   void *info;
 } arena_info;
 

@@ -17,7 +17,7 @@ class SicmHigh(CMakePackage):
     version('develop', commit='HEAD')
 
     depends_on('llvm@flang-20180921')
-    depends_on('flang@20180921', patches=['0.patch', '1.patch', '2.patch', '3.patch'])
+    depends_on('flang-patched@20180921', patches=['0.patch', '1.patch', '2.patch', '3.patch'])
     #depends_on('jemalloc@5.1.0+je', patches=['jemalloc_maxarenas1.patch', 'jemalloc_maxarenas2.patch'])
     depends_on('jemalloc@5.2.0+je')
     #depends_on('jemalloc@5.1.0+je')

@@ -60,6 +60,9 @@ void *create_profile_arena(int index) {
   if(profopts.should_profile_extent_size) {
     profile_extent_size_arena_init(&(prof.info[index]->profile_extent_size));
   }
+  if(profopts.should_profile_allocs) {
+    profile_allocs_arena_init(&(prof.info[index]->profile_allocs));
+  }
 
   prof.info[index]->num_intervals = 0;
   prof.info[index]->first_interval = 0;
@@ -178,6 +181,9 @@ void profile_master_interval(int s) {
     if(profopts.should_profile_extent_size) {
       profile_extent_size_post_interval(profinfo);
     }
+    if(profopts.should_profile_allocs) {
+      profile_allocs_post_interval(profinfo);
+    }
   }
 
 
@@ -278,6 +284,12 @@ void *profile_master(void *a) {
                          &profile_extent_size_skip_interval, 
                          profopts.profile_extent_size_skip_intervals);
   }
+  if(profopts.should_profile_allocs) {
+    setup_profile_thread(&profile_allocs, 
+                         &profile_allocs_interval, 
+                         &profile_allocs_skip_interval, 
+                         profopts.profile_allocs_skip_intervals);
+  }
   
   /* Initialize synchronization primitives */
   pthread_mutex_init(&prof.mtx, NULL);
@@ -363,6 +375,9 @@ void initialize_profiling() {
   if(profopts.should_profile_extent_size) {
     profile_extent_size_init();
   }
+  if(profopts.should_profile_allocs) {
+    profile_allocs_init();
+  }
 }
 
 void sh_start_profile_master_thread() {
@@ -398,44 +413,52 @@ void print_profiling() {
   profile_info *profinfo;
   arena_info *arena;
 
-  /* PEBS profiling */
-  if(profopts.should_profile_all) {
-    printf("===== PEBS RESULTS =====\n");
-    for(i = 0; i <= tracker.max_index; i++) {
-      profinfo = prof.info[i];
-      arena = tracker.arenas[i];
-      if(!profinfo) continue;
+  printf("===== PROFILING INFORMATION =====\n");
+  for(i = 0; i <= tracker.max_index; i++) {
+    profinfo = prof.info[i];
+    arena = tracker.arenas[i];
+    if(!profinfo) continue;
 
-      /* Print the sites that are in this arena */
-      printf("%d sites: ", tracker.arenas[i]->num_alloc_sites);
-      for(n = 0; n < tracker.arenas[i]->num_alloc_sites; n++) {
-        printf("%d ", tracker.arenas[i]->alloc_sites[n]);
+    /* Print the sites that are in this arena */
+    printf("%d sites: ", tracker.arenas[i]->num_alloc_sites);
+    for(n = 0; n < tracker.arenas[i]->num_alloc_sites; n++) {
+      printf("%d ", tracker.arenas[i]->alloc_sites[n]);
+    }
+    printf("\n");
+
+    /* General info */
+    printf("    Number of intervals: %zu\n", profinfo->num_intervals);
+    printf("    First interval: %zu\n", profinfo->first_interval);
+
+    /* profile_rss */
+    if(profopts.should_profile_rss) {
+      printf("  RSS:\n");
+      printf("    Peak: %zu\n", profinfo->profile_rss.peak);
+      for(x = 0; x < profinfo->num_intervals; x++) {
+        printf("    %zu\n", profinfo->profile_rss.intervals[x]);
       }
-      printf("\n");
+    }
 
-      /* General info */
-      printf("    Number of intervals: %zu\n", profinfo->num_intervals);
-      printf("    First interval: %zu\n", profinfo->first_interval);
-
-      /* RSS */
-      if(profopts.should_profile_rss) {
-        printf("  RSS:\n");
-        printf("    Peak: %zu\n", profinfo->profile_rss.peak);
-        for(x = 0; x < profinfo->num_intervals; x++) {
-          printf("    %zu\n", profinfo->profile_rss.intervals[x]);
-        }
+    /* profile_extent_size */
+    if(profopts.should_profile_extent_size) {
+      printf("  Extents size:\n");
+      printf("    Peak: %zu\n", profinfo->profile_extent_size.peak);
+      for(x = 0; x < profinfo->num_intervals; x++) {
+        printf("    %zu\n", profinfo->profile_extent_size.intervals[x]);
       }
+    }
 
-      /* Extent size */
-      if(profopts.should_profile_extent_size) {
-        printf("  Extents size:\n");
-        printf("    Peak: %zu\n", profinfo->profile_extent_size.peak);
-        for(x = 0; x < profinfo->num_intervals; x++) {
-          printf("    %zu\n", profinfo->profile_extent_size.intervals[x]);
-        }
+    /* profile_allocs */
+    if(profopts.should_profile_allocs) {
+      printf("  Allocations size:\n");
+      printf("    Peak: %zu\n", profinfo->profile_allocs.peak);
+      for(x = 0; x < profinfo->num_intervals; x++) {
+        printf("    %zu\n", profinfo->profile_allocs.intervals[x]);
       }
+    }
 
-      /* profile_all events */
+    /* profile_all events */
+    if(profopts.should_profile_all) {
       for(n = 0; n < profopts.num_profile_all_events; n++) {
         printf("  Event: %s\n", profopts.profile_all_events[n]);
         printf("    Total: %zu\n", profinfo->profile_all.events[n].total);
@@ -445,8 +468,9 @@ void print_profiling() {
         }
       }
     }
-    printf("===== END PEBS RESULTS =====\n");
-    fflush(stdout);
+  }
+  printf("===== END PEBS RESULTS =====\n");
+  fflush(stdout);
 
 #if 0
   /* MBI profiling */
@@ -459,7 +483,6 @@ void print_profiling() {
     }
     printf("===== END MBI RESULTS =====\n");
 #endif
-  }
 }
 
 void sh_stop_profile_master_thread() {

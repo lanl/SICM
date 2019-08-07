@@ -73,6 +73,7 @@ sicm_device *get_device_from_numa_node(int id) {
      * looking for.
      */
     if(sicm_numa_id(device) == id) {
+
       retval = device;
       break;
     }
@@ -338,6 +339,18 @@ void set_options() {
     profopts.profile_extent_size_skip_intervals = 1;
     if(env) {
       profopts.profile_extent_size_skip_intervals = strtoul(env, NULL, 0);
+    }
+  }
+
+  env = getenv("SH_PROFILE_ALLOCS");
+  profopts.should_profile_allocs = 0;
+  if(env) {
+    profopts.should_profile_allocs = 1;
+    
+    env = getenv("SH_PROFILE_ALLOCS_SKIP_INTERVALS");
+    profopts.profile_allocs_skip_intervals = 1;
+    if(env) {
+      profopts.profile_allocs_skip_intervals = strtoul(env, NULL, 0);
     }
   }
 
