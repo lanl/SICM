@@ -214,6 +214,10 @@ static inline app_info *sh_parse_site_info(FILE *file) {
         const char *tmp = "extent_size";
         tok = (char *) malloc(sizeof(char) * 64);
         strcpy(tok, tmp);
+      } else if(strncmp(line, "  Allocations size:", 19) == 0) {
+        const char *tmp = "alloc_size";
+        tok = (char *) malloc(sizeof(char) * 64);
+        strcpy(tok, tmp);
       }
       if(tok) {
         /* Triggered if we found a new event above, event name
