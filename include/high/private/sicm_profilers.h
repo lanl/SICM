@@ -55,7 +55,6 @@ typedef struct profile_all_data {
   struct perf_event_attr **pes; /* Array of pe structs, for multiple events */
   struct perf_event_mmap_page **metadata;
   int *fds;
-  struct pollfd pfd;
   size_t pagesize;
 } profile_all_data;
 typedef struct profile_rss_data {

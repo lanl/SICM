@@ -133,6 +133,7 @@ void profile_all_interval(int s) {
   profile_info *profinfo;
   per_event_profile_all_info *per_event_profinfo;
   size_t total_samples;
+  struct pollfd pfd;
 
   /* Outer loop loops over the events */
   for(i = 0; i < profopts.num_profile_all_events; i++) {
@@ -145,19 +146,17 @@ void profile_all_interval(int s) {
       profinfo->profile_all.tmp_accumulator = 0;
     }
 
-#if 0
     /* Wait for the perf buffer to be ready */
-    prof.pfd.fd = prof.fds[i];
-    prof.pfd.events = POLLIN;
-    prof.pfd.revents = 0;
-    err = poll(&prof.pfd, 1, 0);
+    pfd.fd = prof.fds[i];
+    pfd.events = POLLIN;
+    pfd.revents = 0;
+    err = poll(&pfd, 1, 0);
     if(err == 0) {
       return;
     } else if(err == -1) {
       fprintf(stderr, "Error occurred polling. Aborting.\n");
       exit(1);
     }
-#endif
 
     /* Get ready to read */
     head = prof.profile_all.metadata[i]->data_head;

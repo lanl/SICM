@@ -167,7 +167,7 @@ void profile_master_interval(int s) {
   for(i = 0; i <= tracker.max_index; i++) {
     profinfo = prof.info[i];
 
-    if((!profinfo) || (!profinfo->num_intervals)) continue;
+    if(!profinfo) continue;
 
     if(profopts.should_profile_all) {
       profile_all_post_interval(profinfo);
