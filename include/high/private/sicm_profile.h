@@ -74,7 +74,6 @@ extern profiler prof;
 void sh_start_profile_master_thread();
 void sh_stop_profile_master_thread();
 
-void start_interval(int);
 void end_interval(int);
 
 void *create_profile_arena(int);

@@ -73,9 +73,6 @@ void *create_profile_arena(int index) {
   return (void *)prof.info[index];
 }
 
-void start_interval(int signal) {
-}
-
 void end_interval(int signal) {
   /* Signal the master thread that we're done */
   pthread_mutex_lock(&prof.mtx);

@@ -100,8 +100,6 @@ void profile_all_skip_interval(int s) {
   per_event_profile_all_info *per_event_profinfo;
   size_t i, n;
 
-  start_interval(s);
-
   for(i = 0; i < profopts.num_profile_all_events; i++) {
     for(n = 0; n <= tracker.max_index; n++) {
       arena = tracker.arenas[n];
@@ -135,8 +133,6 @@ void profile_all_interval(int s) {
   profile_info *profinfo;
   per_event_profile_all_info *per_event_profinfo;
   size_t total_samples;
-
-  start_interval(s);
 
   /* Outer loop loops over the events */
   for(i = 0; i < profopts.num_profile_all_events; i++) {
@@ -270,8 +266,6 @@ void profile_rss_skip_interval(int s) {
   arena_info *arena;
   size_t i;
 
-  start_interval(s);
-
   pthread_rwlock_rdlock(&tracker.extents_lock);
 
   extent_arr_for(tracker.extents, i) {
@@ -299,8 +293,6 @@ void profile_rss_interval(int s) {
   arena_info *arena;
   ssize_t num_read;
   profile_info *profinfo;
-
-  start_interval(s);
 
   /* Grab the lock for the extents array */
   pthread_rwlock_rdlock(&tracker.extents_lock);
@@ -399,8 +391,6 @@ void profile_extent_size_interval(int s) {
   size_t i;
   char *start, *end;
 
-  start_interval(s);
-
   pthread_rwlock_rdlock(&tracker.extents_lock);
   
   /* Zero out the accumulator for each arena */
@@ -473,8 +463,6 @@ void profile_extent_size_skip_interval(int s) {
   profile_info *profinfo;
   arena_info *arena;
   size_t i;
-
-  start_interval(s);
 
   pthread_rwlock_rdlock(&tracker.extents_lock);
   
