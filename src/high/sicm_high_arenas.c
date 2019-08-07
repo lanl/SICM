@@ -14,6 +14,8 @@
 #include "sicm_high.h"
 
 void profile_allocs_alloc(void *ptr, size_t size, int index) {
+  alloc_info_ptr aip;
+
   /* Add to this arena's size */
   tracker.arenas[index]->size += size;
 
@@ -29,6 +31,8 @@ void profile_allocs_alloc(void *ptr, size_t size, int index) {
 }
 
 void profile_allocs_realloc(void *ptr, size_t size, int index) {
+  alloc_info_ptr aip;
+
   /* Add to this arena's size */
   tracker.arenas[index]->size = size;
 
