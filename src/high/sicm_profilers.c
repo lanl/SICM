@@ -147,7 +147,7 @@ void profile_all_interval(int s) {
     }
 
     /* Wait for the perf buffer to be ready */
-    pfd.fd = prof.fds[i];
+    pfd.fd = prof.profile_all.fds[i];
     pfd.events = POLLIN;
     pfd.revents = 0;
     err = poll(&pfd, 1, 0);
