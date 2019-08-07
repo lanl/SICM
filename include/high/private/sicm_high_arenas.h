@@ -17,6 +17,14 @@ enum arena_layout {
   INVALID_LAYOUT
 };
 
+typedef void *addr_t;
+typedef struct alloc_info {
+  int index;
+  size_t size;
+} alloc_info;
+typedef alloc_info *alloc_info_ptr;
+use_tree(addr_t, alloc_info_ptr);
+
 /* Keeps track of additional information about arenas */
 typedef struct arena_info {
   int *alloc_sites, num_alloc_sites; /* Stores the allocation sites that are in this arena */
@@ -68,6 +76,13 @@ typedef struct tracker_struct {
    */
   tree(int, int) site_arenas;
   int arena_counter;
+
+  /* Only for profile_allocs. Stores allocated pointers as keys,
+   * their arenas as values. For looking up which arena a `free` call
+   * should go to.
+   */
+  tree(addr_t, alloc_info_ptr) profile_allocs_map;
+  pthread_rwlock_t profile_allocs_map_lock;
 
   /* Gets locked when we add an arena */
   pthread_mutex_t arena_lock;

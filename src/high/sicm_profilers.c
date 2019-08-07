@@ -535,6 +535,7 @@ void profile_allocs_interval(int s) {
 }
 
 void profile_allocs_init() {
+  pthread_rwlock_init(&tracker.profile_allocs_map_lock, NULL);
 }
 
 void profile_allocs_deinit() {

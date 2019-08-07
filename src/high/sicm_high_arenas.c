@@ -13,6 +13,60 @@
 
 #include "sicm_high.h"
 
+void profile_allocs_alloc(void *ptr, size_t size, int index) {
+  /* Add to this arena's size */
+  tracker.arenas[index]->size += size;
+
+  /* Construct the alloc_info struct */
+  aip = (alloc_info_ptr) malloc(sizeof(alloc_info));
+  aip->size = size;
+  aip->index = index;
+
+  /* Add it to the map */
+  pthread_rwlock_wrlock(&tracker.profile_allocs_map_lock);
+  tree_insert(tracker.profile_allocs_map, ptr, aip);
+  pthread_rwlock_unlock(&tracker.profile_allocs_map_lock);
+}
+
+void profile_allocs_realloc(void *ptr, size_t size, int index) {
+  /* Add to this arena's size */
+  tracker.arenas[index]->size = size;
+
+  /* Construct the struct that logs this allocation's arena
+   * index and size of the allocation */
+  aip = (alloc_info_ptr) malloc(sizeof(alloc_info));
+  aip->size = size;
+  aip->index = index;
+
+  /* Replace in the map */
+  pthread_rwlock_wrlock(&tracker.profile_allocs_map_lock);
+  tree_delete(tracker.profile_allocs_map, ptr);
+  tree_insert(tracker.profile_allocs_map, ptr, aip);
+  pthread_rwlock_unlock(&tracker.profile_allocs_map_lock);
+}
+
+void profile_allocs_free(void *ptr) {
+  tree_it(addr_t, alloc_info_ptr) it;
+  alloc_info_ptr aip;
+
+  /* Look up the pointer in the map */
+  pthread_rwlock_wrlock(&tracker.profile_allocs_map_lock);
+  it = tree_lookup(tracker.profile_allocs_map, ptr);
+  if(tree_it_good(it)) {
+    aip = tree_it_val(it);
+  } else {
+    fprintf(stderr, "WARNING: Couldn't find a pointer to free in the map of allocations.\n");
+    pthread_rwlock_unlock(&tracker.profile_allocs_map_lock);
+    return;
+  }
+
+  /* Subtract from the size of the arena */
+  tracker.arenas[aip->index]->size -= aip->size;
+
+  /* Remove the allocation from the map */
+  tree_delete(tracker.profile_allocs_map, ptr);
+  pthread_rwlock_unlock(&tracker.profile_allocs_map_lock);
+}
 
 /* Returns the index of an allocation site in an arena,
  * -1 if it's not there */
@@ -136,7 +190,6 @@ void sh_create_extent(void *start, void *end) {
 }
 
 void sh_delete_extent(void *start, void *end) {
-  printf("Got an extent deallocation\n");
   extent_arr_delete(tracker.extents, start);
 }
 
@@ -265,13 +318,17 @@ int get_arena_index(int id) {
 void* sh_realloc(int id, void *ptr, size_t sz) {
   int   index;
   void *ret;
+  alloc_info_ptr aip;
 
   if(tracker.layout == INVALID_LAYOUT) {
     ret = realloc(ptr, sz);
   } else {
     index = get_arena_index(id);
-    tracker.arenas[index]->size = sz;
     ret = sicm_arena_realloc(tracker.arenas[index]->arena, ptr, sz);
+
+    if(profopts.should_profile_allocs) {
+      profile_allocs_realloc(ptr, sz, index);
+    }
   }
 
   if (profopts.should_run_rdspy) {
@@ -285,13 +342,17 @@ void* sh_realloc(int id, void *ptr, size_t sz) {
 void* sh_alloc(int id, size_t sz) {
   int index;
   void *ret;
+  alloc_info_ptr aip;
 
   if((tracker.layout == INVALID_LAYOUT) || !sz) {
     ret = je_malloc(sz);
   } else {
     index = get_arena_index(id);
-    tracker.arenas[index]->size += sz;
     ret = sicm_arena_alloc(tracker.arenas[index]->arena, sz);
+
+    if(profopts.should_profile_allocs) {
+      profile_allocs_alloc(ret, sz, index);
+    }
   }
 
   if (profopts.should_run_rdspy) {
@@ -314,7 +375,9 @@ void* sh_aligned_alloc(int id, size_t alignment, size_t sz) {
     ret = je_aligned_alloc(alignment, sz);
   } else {
     index = get_arena_index(id);
-    tracker.arenas[index]->size += sz;
+    if(profopts.should_profile_allocs) {
+      tracker.arenas[index]->size += sz;
+    }
     ret = sicm_arena_alloc_aligned(tracker.arenas[index]->arena, sz, alignment);
   }
 
@@ -350,6 +413,10 @@ void sh_free(void* ptr) {
 
   if(!ptr) {
     return;
+  }
+
+  if(profopts.should_profile_allocs) {
+    profile_allocs_free(ptr);
   }
 
   if(tracker.layout == INVALID_LAYOUT) {
