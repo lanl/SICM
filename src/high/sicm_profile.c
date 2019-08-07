@@ -466,7 +466,7 @@ void print_profiling() {
       }
     }
   }
-  printf("===== END PEBS RESULTS =====\n");
+  printf("===== END PROFILING INFORMATION =====\n");
   fflush(stdout);
 
 #if 0

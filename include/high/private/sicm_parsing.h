@@ -159,7 +159,7 @@ static inline app_info *sh_parse_site_info(FILE *file) {
     if(in_block == 0) {
       /* We're not in any results blocks, try to get into one */
 
-      if(strncmp(line, "===== PEBS RESULTS =====\n", 25) == 0) {
+      if(strncmp(line, "===== PROFILING INFORMATION =====\n", 25) == 0) {
         /* Found some PEBS results */
         in_block = 2;
         in_event = 0;
@@ -245,7 +245,7 @@ static inline app_info *sh_parse_site_info(FILE *file) {
         continue;
       }
       
-      if(strncmp(line, "===== END PEBS RESULTS =====\n", 32) == 0) {
+      if(strncmp(line, "===== END PROFILING INFORMATION =====\n", 32) == 0) {
         in_block = 0;
         in_event = 0;
         free(cur_sites);
