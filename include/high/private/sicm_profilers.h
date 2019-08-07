@@ -113,7 +113,7 @@ void profile_allocs_deinit();
 void *profile_allocs(void *);
 void profile_allocs_interval(int);
 void profile_allocs_post_interval(profile_info *);
-void profile_allocs_skip_intervals(int);
+void profile_allocs_skip_interval(int);
 void profile_allocs_arena_init(profile_allocs_info *);
 
 #if 0
