@@ -1,6 +1,9 @@
 #pragma once
 #define __USE_LARGEFILE64
 
+/* Going to be defined by sicm_profile.h */
+typedef struct profile_info profile_info;
+
 /********************
  * Utilities
  ********************/
@@ -111,7 +114,7 @@ void *profile_allocs(void *);
 void profile_allocs_interval(int);
 void profile_allocs_post_interval(profile_info *);
 void profile_allocs_skip_intervals(int);
-void profile_all_arena_init(profile_allocs_info *);
+void profile_allocs_arena_init(profile_allocs_info *);
 
 #if 0
 /* ONE */
