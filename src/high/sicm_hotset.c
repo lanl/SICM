@@ -69,7 +69,6 @@ size_t get_gcd(tree(int, siteptr) sites) {
     /* Find the GCD of a and b */
     a = tree_it_val(it)->events[weight_index].peak;
     b = gcd;
-    printf("GCD of %zu and %zu is: ", a, b);
     while(a != 0) {
       tmp = a;
       a = b % a;
@@ -77,14 +76,10 @@ size_t get_gcd(tree(int, siteptr) sites) {
     }
     gcd = b;
 
-    printf("%zu\n", gcd);
-
     /* Go on to the next pair of sizes */
     tree_it_next(it);
   }
 
-  printf("GCD of weights is %zu.\n", gcd);
-  fflush(stdout);
   return gcd;
 }
 
@@ -270,7 +265,6 @@ tree(int, siteptr) get_filtered_hotset(tree(int, siteptr) sites, size_t capacity
       }
     } else if(proftype == 1) {
       if(tree_it_key(sit)->accesses / total_value.acc > 0.005) {
-        printf("Adding %d\n", tree_it_val(sit));
         packed_size += tree_it_key(sit)->peak_rss;
         tree_insert(ret, tree_it_val(sit), tree_it_key(sit));
       } else {
@@ -278,7 +272,6 @@ tree(int, siteptr) get_filtered_hotset(tree(int, siteptr) sites, size_t capacity
       }
     } else if(proftype == 2) {
       if(tree_it_key(sit)->acc_per_sample / total_value.acc_per_sample > 0.005) {
-        printf("Adding %d\n", tree_it_val(sit));
         packed_size += tree_it_key(sit)->peak_rss;
         tree_insert(ret, tree_it_val(sit), tree_it_key(sit));
       } else {
@@ -304,31 +297,22 @@ tree(int, siteptr) get_hotset(tree(int, siteptr) sites, size_t capacity) {
 
   ret = tree_make(int, siteptr);
 
-  printf("Running hotset\n");
-
   sorted_sites = tree_make_c(siteptr, int, &value_per_weight_cmp);
   tree_traverse(sites, it) {
     /* Only insert if the site has a weight */
     if(tree_it_val(it)->events[weight_index].peak) {
-      printf("Inserting site %d into sorted_sites\n", tree_it_key(it));
-      fflush(stdout);
       tree_insert(sorted_sites, tree_it_val(it), tree_it_key(it));
-      printf("Inserted site %d into sorted_sites\n", tree_it_key(it));
-      fflush(stdout);
     } else {
       fprintf(stderr, "WARNING: Site %d doesn't have a weight.\n", tree_it_key(it));
     }
   }
-  fflush(stdout);
 
   printf("Sorted sites:\n");
-  fflush(stdout);
   tree_traverse(sorted_sites, sit) {
     printf("%d: %zu %zu %lf\n", tree_it_val(sit), 
                                 tree_it_key(sit)->events[value_index].total,
                                 tree_it_key(sit)->events[weight_index].peak, 
                                 ((double)tree_it_key(sit)->events[value_index].total) / ((double)tree_it_key(sit)->events[weight_index].peak));
-    fflush(stdout);
   }
 
   /* Now iterate over the sorted sites and add them until we overflow */
@@ -550,11 +534,6 @@ int main(int argc, char **argv) {
     }
     exit(1);
   }
-
-  tree_traverse(info->sites, it) {
-    printf("Index: %zu, Value: %zu\n", weight_index, tree_it_val(it)->events[weight_index].peak);
-  }
-  fflush(stdout);
 
   if(captype == 0) {
     /* Figure out cap_bytes from the ratio */
