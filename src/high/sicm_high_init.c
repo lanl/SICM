@@ -73,7 +73,6 @@ sicm_device *get_device_from_numa_node(int id) {
      * looking for.
      */
     if(sicm_numa_id(device) == id) {
-
       retval = device;
       break;
     }
@@ -82,11 +81,12 @@ sicm_device *get_device_from_numa_node(int id) {
   /* If we don't find an appropriate device, it stays NULL
    * so that no allocation sites will be bound to it
    */
-  if(!retval) {
+  if(retval == NULL) {
     fprintf(stderr, "Couldn't find an appropriate device for NUMA node %d.\n", id);
+    exit(1);
   }
 
-  printf("NUMA node %d is device %d %s\n", retval->node, sicm_device_tag_str(retval->tag));
+  printf("NUMA node %d is device %d %s\n", id, retval->node, sicm_device_tag_str(retval->tag));
 
   return retval;
 }
