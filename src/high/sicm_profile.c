@@ -101,11 +101,12 @@ void profile_master_interval(int s) {
   arena_info *arena;
   profile_thread *profthread;
 
+  pthread_rwlock_wrlock(&prof.info_lock);
+
   /* Start time */
   clock_gettime(CLOCK_MONOTONIC, &start);
 
   /* Increment the interval */
-  pthread_rwlock_wrlock(&prof.info_lock);
   for(i = 0; i <= tracker.max_index; i++) {
     profinfo = prof.info[i];
     arena = tracker.arenas[i];
@@ -119,7 +120,6 @@ void profile_master_interval(int s) {
     }
     profinfo->num_intervals++;
   }
-  pthread_rwlock_unlock(&prof.info_lock);
 
   /* Notify the threads */
   for(i = 0; i < prof.num_profile_threads; i++) {
@@ -174,7 +174,6 @@ void profile_master_interval(int s) {
    * The profiling threads fill the value `tmp_accumulator`, and
    * this loop maintains the peak, total, and per-interval value.
    */
-  pthread_rwlock_wrlock(&prof.info_lock);
   for(i = 0; i <= tracker.max_index; i++) {
     profinfo = prof.info[i];
 
@@ -193,10 +192,11 @@ void profile_master_interval(int s) {
       profile_allocs_post_interval(profinfo);
     }
   }
-  pthread_rwlock_unlock(&prof.info_lock);
 
   /* Finished handling this interval. Wait for another. */
   prof.cur_interval++;
+
+  pthread_rwlock_unlock(&prof.info_lock);
 }
 
 /* Stops the master thread */

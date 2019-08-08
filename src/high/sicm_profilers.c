@@ -138,8 +138,6 @@ void profile_all_interval(int s) {
   size_t total_samples;
   struct pollfd pfd;
 
-  pthread_rwlock_rdlock(&prof.info_lock);
-
   /* Outer loop loops over the events */
   for(i = 0; i < profopts.num_profile_all_events; i++) {
 
@@ -159,7 +157,6 @@ void profile_all_interval(int s) {
     if(err == 0) {
       /* Finished with this interval, there are no ready perf buffers to
        * read from */
-      pthread_rwlock_unlock(&prof.info_lock);
       end_interval(s);
       return;
     } else if(err == -1) {
@@ -214,8 +211,6 @@ void profile_all_interval(int s) {
     __sync_synchronize();
 
   }
-
-  pthread_rwlock_unlock(&prof.info_lock);
 
   end_interval(s);
 }
