@@ -118,7 +118,7 @@ void profile_all_skip_interval(int s) {
     }
   }
 
-  end_interval(s);
+  end_interval();
 }
 
 /* Adds up accesses to the arenas */
@@ -155,7 +155,7 @@ void profile_all_interval(int s) {
     if(err == 0) {
       /* Finished with this interval, there are no ready perf buffers to
        * read from */
-      end_interval(s);
+      end_interval();
       return;
     } else if(err == -1) {
       fprintf(stderr, "Error occurred polling. Aborting.\n");
@@ -210,7 +210,7 @@ void profile_all_interval(int s) {
 
   }
 
-  end_interval(s);
+  end_interval();
 }
 
 void profile_all_post_interval(profile_info *info) {
@@ -287,7 +287,7 @@ void profile_rss_skip_interval(int s) {
 
   pthread_rwlock_unlock(&tracker.extents_lock);
 
-  end_interval(s);
+  end_interval();
 }
 
 void profile_rss_interval(int s) {
@@ -349,7 +349,7 @@ void profile_rss_interval(int s) {
 
   pthread_rwlock_unlock(&tracker.extents_lock);
 
-  end_interval(s);
+  end_interval();
 }
 
 void profile_rss_post_interval(profile_info *info) {
@@ -431,7 +431,7 @@ void profile_extent_size_interval(int s) {
 
   pthread_rwlock_unlock(&tracker.extents_lock);
 
-  end_interval(s);
+  end_interval();
 }
 
 void profile_extent_size_post_interval(profile_info *info) {
@@ -478,7 +478,7 @@ void profile_extent_size_skip_interval(int s) {
 
   pthread_rwlock_unlock(&tracker.extents_lock);
 
-  end_interval(s);
+  end_interval();
 }
 
 void profile_extent_size_init() {
@@ -523,7 +523,7 @@ void profile_allocs_interval(int s) {
     profinfo->profile_allocs.tmp_accumulator = arena->size;
   }
 
-  end_interval(s);
+  end_interval();
 }
 
 void profile_allocs_init() {

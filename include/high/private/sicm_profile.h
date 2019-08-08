@@ -48,9 +48,10 @@ typedef struct profiler {
   size_t num_profile_threads;
 
   /* Sync the threads */
-  size_t cur_interval, threads_finished;
+  size_t cur_interval;
   pthread_mutex_t mtx;
   pthread_cond_t cond;
+  char threads_finished;
 
   /* For the main application thread to
    * signal the master to stop
@@ -75,6 +76,6 @@ extern profiler prof;
 void sh_start_profile_master_thread();
 void sh_stop_profile_master_thread();
 
-void end_interval(int);
+void end_interval();
 
 void *create_profile_arena(int);

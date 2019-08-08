@@ -80,10 +80,9 @@ void *create_profile_arena(int index) {
   return (void *)prof.info[index];
 }
 
-void end_interval(char *finished) {
+void end_interval() {
   /* Signal the master thread that we're done */
   pthread_mutex_lock(&prof.mtx);
-  *(finished) = 1;
   prof.threads_finished++;
   pthread_cond_signal(&prof.cond);
   pthread_mutex_unlock(&prof.mtx);
@@ -95,7 +94,7 @@ void end_interval(char *finished) {
 void profile_master_interval(int s) {
 	struct timespec start, end, target, actual;
   size_t i;
-  unsigned copy;
+  char copy;
 
   /* Convenience pointers */
   profile_info *profinfo;
@@ -362,10 +361,6 @@ void initialize_profiling() {
   prof.info = calloc(tracker.max_arenas, sizeof(profile_info *));
 
   prof.threads_finished = 0;
-  prof.profile_all_finished = 0;
-  prof.profile_rss_finished = 0;
-  prof.profile_extent_size_finished = 0;
-  prof.profile_allocs_finished = 0;
 
   /* The signal that will stop the master thread */
   global_signal = SIGRTMIN;
