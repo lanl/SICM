@@ -156,6 +156,8 @@ void profile_all_interval(int s) {
     pfd.revents = 0;
     err = poll(&pfd, 1, 1);
     if(err == 0) {
+      /* Finished with this interval, there are no ready perf buffers to
+       * read from */
       return;
     } else if(err == -1) {
       fprintf(stderr, "Error occurred polling. Aborting.\n");
