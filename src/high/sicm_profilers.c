@@ -150,7 +150,7 @@ void profile_all_interval(int s) {
     pfd.fd = prof.profile_all.fds[i];
     pfd.events = POLLIN;
     pfd.revents = 0;
-    err = poll(&pfd, 1, 0);
+    err = poll(&pfd, 1, 1);
     if(err == 0) {
       return;
     } else if(err == -1) {
