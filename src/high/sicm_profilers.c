@@ -158,6 +158,7 @@ void profile_all_interval(int s) {
     if(err == 0) {
       /* Finished with this interval, there are no ready perf buffers to
        * read from */
+      pthread_rwlock_unlock(&prof.info_lock);
       return;
     } else if(err == -1) {
       fprintf(stderr, "Error occurred polling. Aborting.\n");
