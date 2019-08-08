@@ -101,7 +101,6 @@ void profile_master_interval(int s) {
   arena_info *arena;
   profile_thread *profthread;
 
-
   /* Start time */
   clock_gettime(CLOCK_MONOTONIC, &start);
 
@@ -143,7 +142,7 @@ void profile_master_interval(int s) {
       /* At least one thread is finished, check if it's all of them */
       copy = prof.threads_finished;
       pthread_mutex_unlock(&prof.mtx);
-      if(prof.threads_finished == prof.num_profile_threads) {
+      if(copy == prof.num_profile_threads) {
         /* They're all done. */
         pthread_mutex_lock(&prof.mtx);
         prof.threads_finished = 0;
