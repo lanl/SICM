@@ -76,18 +76,19 @@ void profile_all_init() {
       exit(1);
     }
   }
-}
-
-void *profile_all(void *a) {
-  size_t i;
-
-  pthread_setcanceltype(PTHREAD_CANCEL_ASYNCHRONOUS, NULL);
 
   /* Start the events sampling */
   for(i = 0; i < profopts.num_profile_all_events; i++) {
     ioctl(prof.profile_all.fds[i], PERF_EVENT_IOC_RESET, 0);
     ioctl(prof.profile_all.fds[i], PERF_EVENT_IOC_ENABLE, 0);
   }
+
+}
+
+void *profile_all(void *a) {
+  size_t i;
+
+  pthread_setcanceltype(PTHREAD_CANCEL_ASYNCHRONOUS, NULL);
 
   /* Wait for signals */
   while(1) { }
