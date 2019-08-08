@@ -86,8 +86,6 @@ sicm_device *get_device_from_numa_node(int id) {
     exit(1);
   }
 
-  printf("NUMA node %d is device %d %s\n", id, retval->node, sicm_device_tag_str(retval->tag));
-
   return retval;
 }
 
