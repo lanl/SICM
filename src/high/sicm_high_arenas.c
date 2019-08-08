@@ -226,11 +226,12 @@ sicm_device_list *get_site_device(int id) {
      * find if this device has already got an arena.
      */
     device = tree_it_val(it);
+    printf("Binding site %d to device %d.\n", id, device->node);
   } else {
     /* Site's not in the guidance file. Use the default device. */
     device = tracker.default_device;
   }
-  if(id == profopts.profile_one_site) {
+  if(profopts.should_profile_one && (id == profopts.profile_one_site)) {
     device = profopts.profile_one_device;
   }
 
