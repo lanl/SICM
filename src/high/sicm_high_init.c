@@ -605,7 +605,9 @@ void sh_terminate() {
   if(tracker.layout != INVALID_LAYOUT) {
 
     /* Clean up the profiler */
-    sh_stop_profile_master_thread();
+    if(profopts.should_profile) {
+      sh_stop_profile_master_thread();
+    }
 
     /* Clean up the arenas */
     for(i = 0; i <= tracker.max_index; i++) {
