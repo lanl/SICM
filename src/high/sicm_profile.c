@@ -101,7 +101,6 @@ void profile_master_interval(int s) {
   arena_info *arena;
   profile_thread *profthread;
 
-  pthread_mutex_lock(&prof.mtx);
 
   /* Start time */
   clock_gettime(CLOCK_MONOTONIC, &start);
@@ -138,6 +137,7 @@ void profile_master_interval(int s) {
   }
 
   /* Wait for the threads to do their bit */
+  pthread_mutex_lock(&prof.mtx);
   while(1) {
     if(prof.threads_finished) {
       /* At least one thread is finished, check if it's all of them */
@@ -156,6 +156,7 @@ void profile_master_interval(int s) {
       pthread_cond_wait(&prof.cond, &prof.mtx);
     }
   }
+  pthread_mutex_unlock(&prof.mtx);
 
   /* End time */
   clock_gettime(CLOCK_MONOTONIC, &end);
@@ -197,7 +198,6 @@ void profile_master_interval(int s) {
 
   /* Finished handling this interval. Wait for another. */
   prof.cur_interval++;
-  pthread_mutex_unlock(&prof.mtx);
 }
 
 /* Stops the master thread */
