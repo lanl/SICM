@@ -80,9 +80,10 @@ void *create_profile_arena(int index) {
   return (void *)prof.info[index];
 }
 
-void end_interval(int signal) {
+void end_interval(char *finished) {
   /* Signal the master thread that we're done */
   pthread_mutex_lock(&prof.mtx);
+  *(finished) = 1;
   prof.threads_finished++;
   pthread_cond_signal(&prof.cond);
   pthread_mutex_unlock(&prof.mtx);
@@ -177,7 +178,7 @@ void profile_master_interval(int s) {
   for(i = 0; i <= tracker.max_index; i++) {
     profinfo = prof.info[i];
 
-    if(!profinfo) continue;
+    if(!profinfo || !(profinfo->num_intervals)) continue;
 
     if(profopts.should_profile_all) {
       profile_all_post_interval(profinfo);
@@ -359,6 +360,12 @@ void initialize_profiling() {
 
   /* Allocate room for the per-arena profiling information */
   prof.info = calloc(tracker.max_arenas, sizeof(profile_info *));
+
+  prof.threads_finished = 0;
+  prof.profile_all_finished = 0;
+  prof.profile_rss_finished = 0;
+  prof.profile_extent_size_finished = 0;
+  prof.profile_allocs_finished = 0;
 
   /* The signal that will stop the master thread */
   global_signal = SIGRTMIN;

@@ -345,17 +345,6 @@ void profile_rss_interval(int s) {
 		  }
       profinfo->profile_rss.tmp_accumulator += prof.profile_rss.pagesize;
 		}
-
-#if 0
-		/* Maintain the peak for this arena */
-		if(profinfo->profile_rss.tmp_accumulator > profinfo->profile_rss.peak) {
-		  profinfo->profile_rss.peak = profinfo->profile_rss.tmp_accumulator;
-		}
-
-    /* Store this interval's value */
-    profinfo->profile_rss.intervals = (size_t *)realloc(profinfo->profile_rss.intervals, profinfo->num_intervals * sizeof(size_t));
-    profinfo->profile_rss.intervals[profinfo->num_intervals - 1] = profinfo->profile_rss.tmp_accumulator;
-#endif
 	}
 
   pthread_rwlock_unlock(&tracker.extents_lock);
