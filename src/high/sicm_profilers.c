@@ -101,7 +101,6 @@ void profile_all_skip_interval(int s) {
   per_event_profile_all_info *per_event_profinfo;
   size_t i, n;
 
-  pthread_rwlock_rdlock(&prof.info_lock);
   for(i = 0; i < profopts.num_profile_all_events; i++) {
     for(n = 0; n <= tracker.max_index; n++) {
       arena = tracker.arenas[n];
@@ -118,7 +117,6 @@ void profile_all_skip_interval(int s) {
       }
     }
   }
-  pthread_rwlock_unlock(&prof.info_lock);
 
   end_interval(s);
 }
