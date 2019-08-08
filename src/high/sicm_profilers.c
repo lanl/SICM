@@ -100,6 +100,7 @@ void profile_all_skip_interval(int s) {
   per_event_profile_all_info *per_event_profinfo;
   size_t i, n;
 
+  pthread_rwlock_rdlock(&prof.info_lock);
   for(i = 0; i < profopts.num_profile_all_events; i++) {
     for(n = 0; n <= tracker.max_index; n++) {
       arena = tracker.arenas[n];
@@ -116,6 +117,7 @@ void profile_all_skip_interval(int s) {
       }
     }
   }
+  pthread_rwlock_unlock(&prof.info_lock);
 
   end_interval(s);
 }
@@ -134,6 +136,8 @@ void profile_all_interval(int s) {
   per_event_profile_all_info *per_event_profinfo;
   size_t total_samples;
   struct pollfd pfd;
+
+  pthread_rwlock_rdlock(&prof.info_lock);
 
   /* Outer loop loops over the events */
   for(i = 0; i < profopts.num_profile_all_events; i++) {
@@ -208,6 +212,8 @@ void profile_all_interval(int s) {
 
   }
 
+  pthread_rwlock_unlock(&prof.info_lock);
+
   end_interval(s);
 }
 
@@ -215,6 +221,8 @@ void profile_all_post_interval(profile_info *info) {
   per_event_profile_all_info *per_event_profinfo;
   profile_all_info *profinfo;
   size_t i;
+
+  pthread_rwlock_rdlock(&prof.info_lock);
 
   profinfo = &(info->profile_all);
 
@@ -229,6 +237,8 @@ void profile_all_post_interval(profile_info *info) {
     per_event_profinfo->intervals = (size_t *)realloc(per_event_profinfo->intervals, info->num_intervals * sizeof(size_t));
     per_event_profinfo->intervals[info->num_intervals - 1] = profinfo->tmp_accumulator;
   }
+
+  pthread_rwlock_unlock(&prof.info_lock);
 }
 
 /*************************************************

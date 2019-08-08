@@ -50,6 +50,9 @@ void timespec_diff(struct timespec *start, struct timespec *stop,
  */
 void *create_profile_arena(int index) {
   profile_info *profinfo;
+
+  pthread_rwlock_wrlock(&prof.info_lock);
+
   profinfo = calloc(1, sizeof(profile_info));
 
   if(profopts.should_profile_all) {
@@ -68,6 +71,8 @@ void *create_profile_arena(int index) {
   profinfo->num_intervals = 0;
   profinfo->first_interval = 0;
   prof.info[index] = profinfo;
+
+  pthread_rwlock_unlock(&prof.info_lock);
 
   /* Return this so that the arena can have a pointer to its profiling
    * information
@@ -100,6 +105,7 @@ void profile_master_interval(int s) {
   clock_gettime(CLOCK_MONOTONIC, &start);
 
   /* Increment the interval */
+  pthread_rwlock_wrlock(&prof.info_lock);
   for(i = 0; i <= tracker.max_index; i++) {
     profinfo = prof.info[i];
     arena = tracker.arenas[i];
@@ -113,6 +119,7 @@ void profile_master_interval(int s) {
     }
     profinfo->num_intervals++;
   }
+  pthread_rwlock_unlock(&prof.info_lock);
 
   /* Notify the threads */
   for(i = 0; i < prof.num_profile_threads; i++) {
@@ -347,6 +354,8 @@ void *profile_master(void *a) {
 }
 
 void initialize_profiling() {
+  pthread_rwlock_init(&(prof.info_lock), NULL);
+
   /* Allocate room for the per-arena profiling information */
   prof.info = calloc(tracker.max_arenas, sizeof(profile_info *));
 

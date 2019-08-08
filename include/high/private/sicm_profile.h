@@ -59,6 +59,7 @@ typedef struct profiler {
 
   /* Per-arena profiling information */
   profile_info **info;
+  pthread_rwlock_t info_lock;
 
   /* Data for each profile thread */
   profile_all_data profile_all;
