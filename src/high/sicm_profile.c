@@ -101,6 +101,8 @@ void profile_master_interval(int s) {
   arena_info *arena;
   profile_thread *profthread;
 
+  pthread_mutex_lock(&prof.mtx);
+
   /* Start time */
   clock_gettime(CLOCK_MONOTONIC, &start);
 
@@ -136,7 +138,6 @@ void profile_master_interval(int s) {
   }
 
   /* Wait for the threads to do their bit */
-  pthread_mutex_lock(&prof.mtx);
   while(1) {
     if(prof.threads_finished) {
       /* At least one thread is finished, check if it's all of them */
@@ -173,6 +174,7 @@ void profile_master_interval(int s) {
    * The profiling threads fill the value `tmp_accumulator`, and
    * this loop maintains the peak, total, and per-interval value.
    */
+  pthread_rwlock_wrlock(&prof.info_lock);
   for(i = 0; i <= tracker.max_index; i++) {
     profinfo = prof.info[i];
 
@@ -191,7 +193,7 @@ void profile_master_interval(int s) {
       profile_allocs_post_interval(profinfo);
     }
   }
-
+  pthread_rwlock_unlock(&prof.info_lock);
 
   /* Finished handling this interval. Wait for another. */
   prof.cur_interval++;

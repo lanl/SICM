@@ -222,8 +222,6 @@ void profile_all_post_interval(profile_info *info) {
   profile_all_info *profinfo;
   size_t i;
 
-  pthread_rwlock_rdlock(&prof.info_lock);
-
   profinfo = &(info->profile_all);
 
   for(i = 0; i < profopts.num_profile_all_events; i++) {
@@ -237,8 +235,6 @@ void profile_all_post_interval(profile_info *info) {
     per_event_profinfo->intervals = (size_t *)realloc(per_event_profinfo->intervals, info->num_intervals * sizeof(size_t));
     per_event_profinfo->intervals[info->num_intervals - 1] = profinfo->tmp_accumulator;
   }
-
-  pthread_rwlock_unlock(&prof.info_lock);
 }
 
 /*************************************************
