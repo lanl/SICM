@@ -49,23 +49,25 @@ void timespec_diff(struct timespec *start, struct timespec *stop,
  * when all they have is a pointer to the arena.
  */
 void *create_profile_arena(int index) {
-  prof.info[index] = calloc(1, sizeof(profile_info));
+  profile_info *profinfo;
+  profinfo = calloc(1, sizeof(profile_info));
 
   if(profopts.should_profile_all) {
-    profile_all_arena_init(&(prof.info[index]->profile_all));
+    profile_all_arena_init(&(profinfo->profile_all));
   }
   if(profopts.should_profile_rss) {
-    profile_rss_arena_init(&(prof.info[index]->profile_rss));
+    profile_rss_arena_init(&(profinfo->profile_rss));
   }
   if(profopts.should_profile_extent_size) {
-    profile_extent_size_arena_init(&(prof.info[index]->profile_extent_size));
+    profile_extent_size_arena_init(&(profinfo->profile_extent_size));
   }
   if(profopts.should_profile_allocs) {
-    profile_allocs_arena_init(&(prof.info[index]->profile_allocs));
+    profile_allocs_arena_init(&(profinfo->profile_allocs));
   }
 
-  prof.info[index]->num_intervals = 0;
-  prof.info[index]->first_interval = 0;
+  profinfo->num_intervals = 0;
+  profinfo->first_interval = 0;
+  prof.info[index] = profinfo;
 
   /* Return this so that the arena can have a pointer to its profiling
    * information
