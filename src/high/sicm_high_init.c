@@ -86,7 +86,7 @@ sicm_device *get_device_from_numa_node(int id) {
     fprintf(stderr, "Couldn't find an appropriate device for NUMA node %d.\n", id);
   }
 
-  printf("NUMA node %d is device %d %s\n", retval->id, sicm_device_tag_str(retval->tag));
+  printf("NUMA node %d is device %d %s\n", retval->node, sicm_device_tag_str(retval->tag));
 
   return retval;
 }
