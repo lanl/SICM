@@ -86,6 +86,8 @@ sicm_device *get_device_from_numa_node(int id) {
     fprintf(stderr, "Couldn't find an appropriate device for NUMA node %d.\n", id);
   }
 
+  printf("NUMA node %d is device %d %s\n", retval->id, sicm_device_tag_str(retval->tag));
+
   return retval;
 }
 
@@ -394,19 +396,13 @@ void set_options() {
   if(env) {
     tmp_val = strtoimax(env, NULL, 10);
     tracker.default_device = get_device_from_numa_node((int) tmp_val);
-  }
-  env = getenv("SH_DEFAULT_DEVICE");
-  if(env) {
-    if(tracker.default_device != NULL) {
-      /* We've already set the default device with SH_DEFAULT_NODE */
-      fprintf(stderr, "SH_DEFAULT_NODE and SH_DEFAULT_DEVICE cannot coexist. Aborting.\n");
-      exit(1);
-    }
-    tmp_val = strtoimax(env, NULL, 10);
-    tracker.default_device = get_device_from_numa_node((int) tmp_val);
+    printf("Defaulting to NUMA node %lld.\n", tmp_val);
   }
   if(!tracker.default_device) {
     /* This assumes that the normal page size is the first one that it'll find */
+    if(env) {
+      fprintf(stderr, "WARNING: Defaulting to NUMA node 0.\n");
+    }
     tracker.default_device = get_device_from_numa_node(0);
   }
 
