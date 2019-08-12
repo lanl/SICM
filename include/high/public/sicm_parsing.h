@@ -30,6 +30,20 @@ typedef struct app_info {
   size_t num_events;
 } app_info;
 
+static inline void free_info(app_info *info) {
+  if(info->num_events) {
+    free(events);
+  }
+  tree_traverse(info->sites, it) {
+    if(tree_it_val(it)->num_events) {
+      free(tree_it_val(it)->events);
+    }
+    free(tree_it_val(it);
+  }
+  tree_free(info->sites);
+  free(info);
+}
+
 static inline void print_info(app_info *info) {
   size_t i;
   tree_it(int, siteptr) it;
@@ -123,7 +137,7 @@ static inline void add_event_total(app_info *info, siteptr *cur_sites, size_t nu
  * and number of accesses (if applicable).
  */
 static inline app_info *sh_parse_site_info(FILE *file) {
-  char *line, in_block, *tok, in_event;
+  char *line, in_block, *tok, in_event, *tmp_str;
   size_t len, val, num_sites;
   double val_double;
   ssize_t read;
@@ -209,22 +223,21 @@ static inline app_info *sh_parse_site_info(FILE *file) {
       /* See if this line defines a new event */
       tok = NULL;
       if(strncmp(line, "  Event: ", 9) == 0) {
-        tok = (char *) malloc(sizeof(char) * 64);
-        num_tok = sscanf(line, "  Event: %s\n", tok);
+        tmp_str = (char *) malloc(sizeof(char) * 64);
+        num_tok = sscanf(line, "  Event: %s\n", tmp_str);
       } else if(strncmp(line, "  Extents size:", 15) == 0) {
-        const char *tmp = "extent_size";
-        tok = (char *) malloc(sizeof(char) * 64);
-        strcpy(tok, tmp);
+        tmp_str = (char *) malloc(sizeof(char) * (strlen(tmp) + 1));
+        strcpy(tmp_str, "extent_size");
       } else if(strncmp(line, "  Allocations size:", 19) == 0) {
-        const char *tmp = "alloc_size";
-        tok = (char *) malloc(sizeof(char) * 64);
-        strcpy(tok, tmp);
+        tmp_str = (char *) malloc(sizeof(char) * (strlen(tmp) + 1));
+        strcpy(tmp_str, "alloc_size");
       }
-      if(tok) {
+      if(tmp_str) {
         /* Triggered if we found a new event above, event name
          * is stored in tok */
         in_event = 1;
-        create_event(info, cur_sites, num_sites, tok);
+        create_event(info, cur_sites, num_sites, tmp_str);
+        free(tmp_str);
 
         continue;
 
@@ -253,7 +266,7 @@ static inline app_info *sh_parse_site_info(FILE *file) {
       }
     }
   }
-  free(line);
 
+  free(line);
   return info;
 }
