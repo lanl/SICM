@@ -31,8 +31,10 @@ typedef struct app_info {
 } app_info;
 
 static inline void free_info(app_info *info) {
+  tree_it(int, siteptr) it;
+
   if(info->num_events) {
-    free(events);
+    free(info->events);
   }
   tree_traverse(info->sites, it) {
     if(tree_it_val(it)->num_events) {
@@ -226,10 +228,10 @@ static inline app_info *sh_parse_site_info(FILE *file) {
         tmp_str = (char *) malloc(sizeof(char) * 64);
         num_tok = sscanf(line, "  Event: %s\n", tmp_str);
       } else if(strncmp(line, "  Extents size:", 15) == 0) {
-        tmp_str = (char *) malloc(sizeof(char) * (strlen(tmp) + 1));
+        tmp_str = (char *) malloc(sizeof(char) * 12);
         strcpy(tmp_str, "extent_size");
       } else if(strncmp(line, "  Allocations size:", 19) == 0) {
-        tmp_str = (char *) malloc(sizeof(char) * (strlen(tmp) + 1));
+        tmp_str = (char *) malloc(sizeof(char) * 11);
         strcpy(tmp_str, "alloc_size");
       }
       if(tmp_str) {
