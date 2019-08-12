@@ -198,6 +198,7 @@ static inline app_info *sh_parse_site_info(FILE *file) {
                         "%zu sites: %d",
                         &num_sites,
                         &n);
+        if(cur_sites) free(cur_sites);
         cur_sites = (siteptr *) malloc(sizeof(siteptr) * num_sites);
         /* Iterate over the site IDs and read them in */
         tok = strtok(line, " ");
