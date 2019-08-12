@@ -255,6 +255,5 @@ static inline app_info *sh_parse_site_info(FILE *file) {
   }
   free(line);
 
-  print_info(info);
   return info;
 }
