@@ -40,7 +40,7 @@ static inline void free_info(app_info *info) {
     if(tree_it_val(it)->num_events) {
       free(tree_it_val(it)->events);
     }
-    free(tree_it_val(it);
+    free(tree_it_val(it));
   }
   tree_free(info->sites);
   free(info);
