@@ -32,12 +32,19 @@ typedef struct app_info {
 
 static inline void free_info(app_info *info) {
   tree_it(int, siteptr) it;
+  size_t i;
 
   if(info->num_events) {
+    for(i = 0; i < info->num_events; i++) {
+      free(info->events[i].name);
+    }
     free(info->events);
   }
   tree_traverse(info->sites, it) {
     if(tree_it_val(it)->num_events) {
+      for(i = 0; i < info->num_events; i++) {
+        free(tree_it_val(it)->events[i].name);
+      }
       free(tree_it_val(it)->events);
     }
     free(tree_it_val(it));
@@ -85,11 +92,10 @@ static inline void create_event(app_info *info, siteptr *cur_sites, size_t num_s
     info->num_events++;
     info->events = (event *) realloc(info->events,
                                      sizeof(event) * info->num_events);
-    info->events[info->num_events - 1].name = (char *) malloc(sizeof(char) * 64);
+    info->events[info->num_events - 1].name = (char *) malloc(sizeof(char) * (strlen(eventstr) + 1));
     strcpy(info->events[info->num_events - 1].name, eventstr);
     info->events[info->num_events - 1].total = 0;
     info->events[info->num_events - 1].peak = 0;
-    fprintf(stderr, "Found new event: %s\n", eventstr);
   }
 
   /* Iterate over the given sites */
@@ -99,7 +105,7 @@ static inline void create_event(app_info *info, siteptr *cur_sites, size_t num_s
     cur_site->num_events++;
     cur_site->events = (event *) realloc(cur_site->events, 
                                          sizeof(event) * cur_site->num_events);
-    cur_site->events[cur_site->num_events - 1].name = (char *) malloc(sizeof(char) * 64);
+    cur_site->events[cur_site->num_events - 1].name = (char *) malloc(sizeof(char) * (strlen(eventstr) + 1));
     strcpy(cur_site->events[cur_site->num_events - 1].name, eventstr);
     cur_site->events[cur_site->num_events - 1].total = 0;
     cur_site->events[cur_site->num_events - 1].peak = 0;
