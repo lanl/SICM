@@ -223,7 +223,7 @@ static inline app_info *sh_parse_site_info(FILE *file) {
       }
 
       /* See if this line defines a new event */
-      tok = NULL;
+      tmp_str = NULL;
       if(strncmp(line, "  Event: ", 9) == 0) {
         tmp_str = (char *) malloc(sizeof(char) * 64);
         num_tok = sscanf(line, "  Event: %s\n", tmp_str);
@@ -235,8 +235,7 @@ static inline app_info *sh_parse_site_info(FILE *file) {
         strcpy(tmp_str, "alloc_size");
       }
       if(tmp_str) {
-        /* Triggered if we found a new event above, event name
-         * is stored in tok */
+        /* Triggered if we found a new event above */
         in_event = 1;
         create_event(info, cur_sites, num_sites, tmp_str);
         free(tmp_str);
