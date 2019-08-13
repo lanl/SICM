@@ -226,6 +226,7 @@ sicm_device_list *get_site_device(int id) {
      * find if this device has already got an arena.
      */
     device = tree_it_val(it);
+    printf("Site %d goes to node %d\n", id, device->node);
   } else {
     /* Site's not in the guidance file. Use the default device. */
     device = tracker.default_device;
