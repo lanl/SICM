@@ -240,6 +240,9 @@ static inline app_info *sh_parse_site_info(FILE *file) {
       } else if(strncmp(line, "  Allocations size:", 19) == 0) {
         tmp_str = (char *) malloc(sizeof(char) * 11);
         strcpy(tmp_str, "alloc_size");
+      } else if(strncmp(line, "  RSS:", 6) == 0) {
+        tmp_str = (char *) malloc(sizeof(char) * 4);
+        strcpy(tmp_str, "rss");
       }
       if(tmp_str) {
         /* Triggered if we found a new event above */
