@@ -313,7 +313,6 @@ int get_arena_index(int id) {
   }
 
   pthread_mutex_lock(&tracker.arena_lock);
-  printf("pending_indices[%d] = %d\n", thread_index, ret);
   tracker.pending_indices[thread_index] = ret;
   sh_create_arena(ret, id, device);
   pthread_mutex_unlock(&tracker.arena_lock);
