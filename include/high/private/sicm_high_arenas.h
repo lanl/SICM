@@ -88,6 +88,7 @@ typedef struct tracker_struct {
   pthread_mutex_t arena_lock;
 
   /* Associates a thread with an index (starting at 0) into the `arenas` array */
+  pthread_mutex_t thread_lock;
   pthread_key_t thread_key;
   int *thread_indices, *orig_thread_indices, *max_thread_indices, max_threads;
   int num_static_sites;
