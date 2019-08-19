@@ -7,6 +7,12 @@
 # compiles them to *actual* object files, then it links them using
 # the arguments that it's given.
 
+PIDFILE="/tmp/sicm-lock"
+exec 200>$PIDFILE
+flock 200
+pid=$$
+echo $pid 1>&200
+
 # Gets the location of the script to find Compass
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null && pwd )"
 LIB_DIR="$DIR/../lib"
