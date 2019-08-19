@@ -590,7 +590,7 @@ static bool sa_dalloc(extent_hooks_t *h, void *addr, size_t size, bool committed
 	sa->size -= size;
 
 	if((!ret) && sicm_extent_dalloc_callback) {
-		(*sicm_extent_dalloc_callback)(addr, (char *)addr + size);
+		(*sicm_extent_dalloc_callback)(sa, addr, (char *)addr + size);
 	}
 
 	pthread_mutex_unlock(sa->mutex);
