@@ -180,7 +180,6 @@ void sh_create_extent(sarena *arena, void *start, void *end) {
 
   /* A extent allocation is happening without an sh_alloc... */
   if(arena_index == -1) {
-    tracker.pending_indices[INT_MAX] = 0;
     fprintf(stderr, "Unknown extent allocation to thread_index %d. Aborting.\n", thread_index);
     exit(1);
   }
