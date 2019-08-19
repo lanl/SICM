@@ -94,6 +94,7 @@ int get_thread_index() {
 
   /* If nonexistent, increment the counter and set it */
   if(val == NULL) {
+    pthread_mutex_lock(&tracker.thread_lock);
     if(tracker.thread_indices + 1 >= tracker.max_thread_indices) {
       fprintf(stderr, "Maximum number of threads reached. Aborting.\n");
       exit(1);
@@ -101,6 +102,7 @@ int get_thread_index() {
     pthread_setspecific(tracker.thread_key, (void *) tracker.thread_indices);
     val = tracker.thread_indices;
     tracker.thread_indices++;
+    pthread_mutex_unlock(&tracker.thread_lock);
   }
 
   return *val;

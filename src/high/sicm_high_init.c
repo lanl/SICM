@@ -519,6 +519,7 @@ void sh_init() {
   tracker.device_list = sicm_init();
   pthread_rwlock_init(&tracker.extents_lock, NULL);
   pthread_mutex_init(&tracker.arena_lock, NULL);
+  pthread_mutex_init(&tracker.thread_lock, NULL);
 
   /* Get the number of NUMA nodes with memory, since we ignore huge pages with
    * the DEVICE arena layouts */
