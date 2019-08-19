@@ -377,7 +377,7 @@ void* sh_aligned_alloc(int id, size_t alignment, size_t sz) {
     return NULL;
   }
 
-  if((tracker.layout == INVALID_LAYOUT) || !sz) {
+  if(tracker.layout == INVALID_LAYOUT) {
     ret = je_aligned_alloc(alignment, sz);
   } else {
     index = get_arena_index(id);
