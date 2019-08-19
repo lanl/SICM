@@ -101,7 +101,7 @@ if [[ $NO_TRANSFORM = " " ]]; then
   COMMANDS=""
   if [ -z ${SH_RDSPY+x} ]; then
       for file in "${FILES_ARR[@]}"; do
-        COMMANDS+="${LLVMPATH}${OPT} -load ${LIB_DIR}/libsicm_compass.so -compass-detail -compass-mode=transform -compass -compass-depth=3 ${file}.bc -o ${file}.bc"
+        COMMANDS+="${LLVMPATH}${LLVMOPT} -load ${LIB_DIR}/libsicm_compass.so -compass-detail -compass-mode=transform -compass -compass-depth=3 ${file}.bc -o ${file}.bc"
         COMMANDS+=$'\n'
       done
   else

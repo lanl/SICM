@@ -15,23 +15,23 @@ ARGS=("$@")
 OBJECTFILES=""
 
 if [[ ! ${ARGS[1]} =~ (.*)\.a$ ]]; then
-	echo "The AR wrapper didn't get a '.a' file as its output argument. Aborting."
-	exit 1
+  echo "The AR wrapper didn't get a '.a' file as its output argument. Aborting."
+  exit 1
 fi
 
 AR_FILE="${ARGS[1]}"
 
 echo -n "" > $AR_FILE
 for word in ${ARGS[@]:2}; do
-	if [[ "$word" =~ (.*)\.o$ ]]; then
-		# Found an object file. Grab its .bc and .args files and archive them, too.
-		FILE=${BASH_REMATCH[1]}
+  if [[ "$word" =~ (.*)\.o$ ]]; then
+    # Found an object file. Grab its .bc and .args files and archive them, too.
+    FILE=${BASH_REMATCH[1]}
 
-		# Just output the filename to the .a file. The ld wrapper will then read
-		# in this list of files and get the .o, .bc, and .args files that *should*
-		# have gone in the archive. This way, we don't have to construct the archive,
-		# only to immediately extract all of the files from it.
-		# We're removing the .o extension here, so it's just the filename.
-		echo "`readlink -f $FILE`" >> $AR_FILE
-	fi
+    # Just output the filename to the .a file. The ld wrapper will then read
+    # in this list of files and get the .o, .bc, and .args files that *should*
+    # have gone in the archive. This way, we don't have to construct the archive,
+    # only to immediately extract all of the files from it.
+    # We're removing the .o extension here, so it's just the filename.
+    echo "`readlink -f $FILE`" >> $AR_FILE
+  fi
 done
