@@ -169,7 +169,7 @@ void sh_create_arena(int index, int id, sicm_device *device) {
 }
 
 /* Adds an extent to the `extents` array. */
-void sh_create_extent(void *start, void *end) {
+void sh_create_extent(sarena *arena, void *start, void *end) {
   int thread_index, arena_index;
 
   /* Get this thread's current arena index from `pending_indices` */
@@ -178,6 +178,7 @@ void sh_create_extent(void *start, void *end) {
 
   /* A extent allocation is happening without an sh_alloc... */
   if(arena_index == -1) {
+    tracker.pending_indices[INT_MAX] = 0;
     fprintf(stderr, "Unknown extent allocation to thread_index %d. Aborting.\n", thread_index);
     exit(1);
   }
@@ -193,7 +194,7 @@ void sh_create_extent(void *start, void *end) {
   }
 }
 
-void sh_delete_extent(void *start, void *end) {
+void sh_delete_extent(sarena *arena, void *start, void *end) {
   extent_arr_delete(tracker.extents, start);
 }
 

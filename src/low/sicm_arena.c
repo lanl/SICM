@@ -19,8 +19,8 @@ static size_t sa_lookup_mib[2];
 static pthread_once_t sa_init = PTHREAD_ONCE_INIT;
 static pthread_key_t sa_default_key;
 static extent_hooks_t sa_hooks;
-void (*sicm_extent_alloc_callback)(void *start, void *end) = NULL;
-void (*sicm_extent_dalloc_callback)(void *start, void *end) = NULL;
+void (*sicm_extent_alloc_callback)(sarena *arena, void *start, void *end) = NULL;
+void (*sicm_extent_dalloc_callback)(sarena *arena, void *start, void *end) = NULL;
 
 static void sarena_init() {
 	int err;
@@ -549,7 +549,7 @@ success:
 
   /* Call the callback on this chunk if it's set */
   if(sicm_extent_alloc_callback) {
-    (*sicm_extent_alloc_callback)(ret, (char *)ret + size);
+    (*sicm_extent_alloc_callback)(sa, ret, (char *)ret + size);
   }
 
 	if (sa->fd) {
