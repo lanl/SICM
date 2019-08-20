@@ -31,13 +31,20 @@ EXTENSIONS=() # Store extensions separately
 ONLY_COMPILE=false # `-c`
 ONLY_LINK=false # No input files, but at least one object file
 OUTPUT_FILE="" # `-o`
-GEN_DEPS=false
+DEFAULT_COMPILER=false
+LANGUAGE_SPECIFIED=false
+LANGUAGE_SPECIFIED_LAST=false
 
 # Iterate over all arguments
 PREV=""
 for word in $ARGS; do
 
-  if [[ "$word" =~ ^\-o$ ]]; then
+  # FLAGS BEGINNING WITH '-'
+  if [[ "$word" = "-" ]]; then
+    # Reading from stdin, this is unsupported, so call the normal compiler
+    # and exit
+    DEFAULT_COMPILER=true
+  elif [[ "$word" =~ ^\-o$ ]]; then
     # Remove "-o [outputfile]" from the arguments
     PREV="$word"
   elif [[ "$PREV" =~ ^\-o$ ]]; then
@@ -49,10 +56,29 @@ for word in $ARGS; do
     ONLY_COMPILE=true
   elif [[ "$word" =~ ^\-M ]]; then
     # The user is trying to preprocess or generate deps
-    GEN_DEPS=true
+    DEFAULT_COMPILER=true
+  elif [[ "$word" =~ ^\-x$ ]]; then
+    # The user is telling us the input will be a certain language.
+    # This information is particularly useful if we're reading from
+    # stdin. Set the compiler.
+    # TODO: use this to override other compiler choices
+    LANGUAGE_SPECIFIED_LAST=true
   elif [[ "$word" =~ ^\-.* ]]; then
     # So that all arguments that begin with '-' aren't input files or input files
     EXTRA_ARGS="$EXTRA_ARGS $word"
+
+  # FLAGS WITH A REQUIRED ARGUMENT
+  elif [[ "$LANGUAGE_SPECIFIED_LAST" = true ]]; then
+    # The last argument was "-x". Get the language that the user specified.
+    if [[ "$word" = "c++" ]]; then
+      COMPILER="$CXX_COMPILER"
+    elif [[ "$word" = "c" ]]; then
+      COMPILER="$C_COMPILER"
+    fi
+    LANGUAGE_SPECIFIED_LAST=false
+    LANGUAGE_SPECIFIED=true
+
+  # DETECT INPUT AND OUTPUT FILES
   elif [[ $(file --mime-type -b $(readlink -f "$word")) == "application/x-object" ]]; then
     OBJECT_FILES="${OBJECT_FILES} $word"
   elif [[ $(file --mime-type -b $(readlink -f "$word")) == "application/x-sharedlib" ]]; then
@@ -82,7 +108,7 @@ for word in $ARGS; do
 
 done
 
-if [[ "$GEN_DEPS" = true ]]; then
+if [[ "$DEFAULT_COMPILER" = true ]]; then
   # The user is generating deps or preprocessing, just let
   # the compiler do this.
   ${LLVMPATH}${COMPILER} $ARGS
