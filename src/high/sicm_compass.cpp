@@ -473,6 +473,10 @@ struct compass : public ModulePass {
             fclone->setName(name);
         }
 
+        if (fn->hasComdat()) {
+            fclone->setComdat(fn->getComdat());
+        }
+
         return fclone;
     }
     ////////////////////////////////////////////////////////////////////////////////
