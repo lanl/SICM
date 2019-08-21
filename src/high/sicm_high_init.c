@@ -624,7 +624,7 @@ void sh_init() {
     sh_rdspy_init(tracker.max_threads, tracker.num_static_sites);
   }
 
-  tracker.finished_initializing = true;
+  tracker.finished_initializing = 1;
 }
 
 __attribute__((destructor))
