@@ -327,7 +327,7 @@ void* sh_realloc(int id, void *ptr, size_t sz) {
   void *ret;
   alloc_info_ptr aip;
 
-  if(tracker.layout == INVALID_LAYOUT) {
+  if((tracker.layout == INVALID_LAYOUT) || !profopts.finished_initializing) {
     ret = realloc(ptr, sz);
   } else {
     index = get_arena_index(id);
@@ -351,7 +351,7 @@ void* sh_alloc(int id, size_t sz) {
   void *ret;
   alloc_info_ptr aip;
 
-  if((tracker.layout == INVALID_LAYOUT) || !sz) {
+  if((tracker.layout == INVALID_LAYOUT) || !sz || !tracker.finished_initializing) {
     ret = je_malloc(sz);
   } else {
     index = get_arena_index(id);
