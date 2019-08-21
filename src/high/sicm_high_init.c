@@ -100,6 +100,18 @@ void set_options() {
   ssize_t len;
   tree_it(int, deviceptr) it;
 
+  /* Output the chosen options to this file */
+  env = getenv("SH_LOG_FILE");
+  tracker.log_file = NULL;
+  if(env) {
+    tracker.log_file = fopen(env, "w");
+    if(!tracker.log_file) {
+      fprintf(stderr, "Failed to open the specified logfile: '%s'. Aborting.\n", env);
+      exit(1);
+    }
+    fprintf(tracker.log_file, "===== OPTIONS =====\n");
+  }
+
   /* Do we want to use the online approach, moving arenas around devices automatically? */
   env = getenv("SH_ONLINE_PROFILING");
   profopts.should_profile_online = 0;
@@ -108,6 +120,9 @@ void set_options() {
     tmp_val = strtoimax(env, NULL, 10);
     profopts.online_device = get_device_from_numa_node((int) tmp_val);
     profopts.online_device_cap = sicm_avail(profopts.online_device) * 1024; /* sicm_avail() returns kilobytes */
+  }
+  if(tracker.log_file) {
+    fprintf(tracker.log_file, "SH_ONLINE_PROFILING: %d\n", profopts.should_profile_online);
   }
 
   /* Get the arena layout */
@@ -119,6 +134,9 @@ void set_options() {
   }
   if(profopts.should_profile_online) {
     tracker.layout = SHARED_SITE_ARENAS;
+  }
+  if(tracker.log_file) {
+    fprintf(tracker.log_file, "SH_ARENA_LAYOUT: %s\n", env);
   }
 
   /* Get max_threads */
@@ -132,6 +150,9 @@ void set_options() {
     } else {
       tracker.max_threads = (int) tmp_val;
     }
+  }
+  if(tracker.log_file) {
+    fprintf(tracker.log_file, "SH_MAX_THREADS: %d\n", tracker.max_threads);
   }
 
   /* Get max_arenas.
@@ -149,6 +170,9 @@ void set_options() {
       tracker.max_arenas = (int) tmp_val;
     }
   }
+  if(tracker.log_file) {
+    fprintf(tracker.log_file, "SH_MAX_ARENAS: %d\n", tracker.max_arenas);
+  }
 
   /* Get max_sites_per_arena.
    * This is the maximum amount of allocation sites that a single arena can hold.
@@ -164,12 +188,18 @@ void set_options() {
       tracker.max_sites_per_arena = (int) tmp_val;
     }
   }
+  if(tracker.log_file) {
+    fprintf(tracker.log_file, "SH_MAX_SITES_PER_ARENA: %d\n", tracker.max_sites_per_arena);
+  }
 
   /* Controls the profiling rate of all profiling types */
   profopts.profile_rate_nseconds = 0;
   env = getenv("SH_PROFILE_RATE_NSECONDS");
   if(env) {
     profopts.profile_rate_nseconds = strtoimax(env, NULL, 10);
+  }
+  if(tracker.log_file) {
+    fprintf(tracker.log_file, "SH_PROFILE_RATE_NSECONDS: %zu\n", profopts.profile_rate_nseconds);
   }
 
   /* Should we profile all allocation sites using sampling-based profiling? */
