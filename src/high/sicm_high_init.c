@@ -111,6 +111,9 @@ void set_options() {
     }
     printf("Outputting to '%s'.\n", env);
     fprintf(tracker.log_file, "===== OPTIONS =====\n");
+  } else {
+    printf("Not outputting to a logfile.\n");
+    fflush(stdout);
   }
 
   /* Do we want to use the online approach, moving arenas around devices automatically? */
