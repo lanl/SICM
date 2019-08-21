@@ -109,6 +109,7 @@ void set_options() {
       fprintf(stderr, "Failed to open the specified logfile: '%s'. Aborting.\n", env);
       exit(1);
     }
+    printf("Outputting to '%s'.\n", env);
     fprintf(tracker.log_file, "===== OPTIONS =====\n");
   }
 
