@@ -328,7 +328,7 @@ void* sh_realloc(int id, void *ptr, size_t sz) {
   alloc_info_ptr aip;
 
   if((tracker.layout == INVALID_LAYOUT) || !tracker.finished_initializing || (id == INT_MAX)) {
-    ret = realloc(ptr, sz);
+    ret = je_realloc(ptr, sz);
   } else {
     index = get_arena_index(id);
     ret = sicm_arena_realloc(tracker.arenas[index]->arena, ptr, sz);
