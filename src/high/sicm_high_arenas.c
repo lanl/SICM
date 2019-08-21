@@ -327,7 +327,7 @@ void* sh_realloc(int id, void *ptr, size_t sz) {
   void *ret;
   alloc_info_ptr aip;
 
-  if((tracker.layout == INVALID_LAYOUT) || !profopts.finished_initializing) {
+  if((tracker.layout == INVALID_LAYOUT) || !tracker.finished_initializing) {
     ret = realloc(ptr, sz);
   } else {
     index = get_arena_index(id);

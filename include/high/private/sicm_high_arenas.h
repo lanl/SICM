@@ -98,6 +98,9 @@ typedef struct tracker_struct {
 
   /* Passes an arena index to the extent hooks */
   int *pending_indices;
+
+  /* Ensures that nothing happens before initialization */
+  char finished_initializing;
 } tracker_struct;
 
 #define DEFAULT_ARENA_LAYOUT INVALID_LAYOUT
@@ -126,9 +129,6 @@ typedef struct profiling_options {
       should_profile;
   int profile_one_site;
   int should_run_rdspy;
-
-  /* Ensures that nothing happens before initialization */
-  char finished_initializing;
 
   /* Sample rates */
   size_t profile_rate_nseconds;
