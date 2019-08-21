@@ -80,11 +80,11 @@ if [[ $OUTPUT_FILE == "" ]]; then
   OUTPUT_FILE="a.out"
   LINKARGS="$LINKARGS -o $OUTPUT_FILE"
 fi
-LINKARGS="$LINKARGS -L${LIB_DIR} -lsicm_high -lsicm_new_delete -lsicm_cstd -Wl,-rpath,${LIB_DIR}"
+LINKARGS="$LINKARGS -L${LIB_DIR} -lsicm_high -lsicm_new_delete -Wl,-rpath,${LIB_DIR}"
 
 # If we're going to skip going to IR
 if [[ $NO_IR != " " ]]; then
-  ${LLVMPATH}${LD_LINKER} $ARGS -L${LIB_DIR} -lsicm_high -lsicm_new_delete -lsicm_cstd -Wl,-rpath,${LIB_DIR}
+  ${LLVMPATH}${LD_LINKER} $ARGS -L${LIB_DIR} -lsicm_high -lsicm_new_delete -Wl,-rpath,${LIB_DIR}
   exit $?
 fi
 
