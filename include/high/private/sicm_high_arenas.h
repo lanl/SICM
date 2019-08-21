@@ -46,6 +46,9 @@ use_tree(int, int);
 
 /* Keeps track of all allocated data: arenas, extents, threads, etc. */
 typedef struct tracker_struct {
+  /* File to output log to */
+  FILE *log_file;
+
   /* Stores all machine devices and device
    * we should bind to by default */
   struct sicm_device_list device_list;
