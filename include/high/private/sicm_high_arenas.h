@@ -127,6 +127,9 @@ typedef struct profiling_options {
   int profile_one_site;
   int should_run_rdspy;
 
+  /* Ensures that nothing happens before initialization */
+  char finished_initializing;
+
   /* Sample rates */
   size_t profile_rate_nseconds;
   unsigned long profile_rss_skip_intervals,
