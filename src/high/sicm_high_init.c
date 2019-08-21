@@ -647,7 +647,11 @@ void sh_terminate() {
     extent_arr_free(tracker.extents);
   }
 
-  if (profopts.should_run_rdspy) {
-      sh_rdspy_terminate();
+  if(profopts.should_run_rdspy) {
+    sh_rdspy_terminate();
+  }
+
+  if(tracker.log_file) {
+    fclose(tracker.log_file);
   }
 }
