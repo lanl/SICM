@@ -110,6 +110,7 @@ void set_options() {
       exit(1);
     }
     printf("Outputting to '%s'.\n", env);
+    fflush(stdout);
     fprintf(tracker.log_file, "===== OPTIONS =====\n");
   } else {
     printf("Not outputting to a logfile.\n");
