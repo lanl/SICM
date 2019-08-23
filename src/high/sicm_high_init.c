@@ -624,6 +624,9 @@ void sh_init() {
     sh_rdspy_init(tracker.max_threads, tracker.num_static_sites);
   }
 
+  if(tracker.log_file) {
+    fclose(tracker.log_file);
+  }
   tracker.finished_initializing = 1;
 }
 
@@ -658,7 +661,4 @@ void sh_terminate() {
     sh_rdspy_terminate();
   }
 
-  if(tracker.log_file) {
-    fclose(tracker.log_file);
-  }
 }
