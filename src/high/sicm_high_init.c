@@ -625,6 +625,7 @@ void sh_init() {
   }
 
   if(tracker.log_file) {
+    fprintf(tracker.log_file, "===== END OPTIONS =====\n");
     fclose(tracker.log_file);
   }
   tracker.finished_initializing = 1;
