@@ -7,6 +7,7 @@
 typedef struct profile_info profile_info;
 
 /* Going to be defined by sicm_runtime.h */
+typedef struct profiling_options profiling_options;
 extern profiling_options profopts;
 
 /********************
