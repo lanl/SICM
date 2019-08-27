@@ -10,8 +10,8 @@
 #include <inttypes.h>
 #include <pthread.h>
 #include <jemalloc/jemalloc.h>
-
-#include "sicm_high.h"
+#include "sicm_runtime.h"
+#include "sicm_rdspy.h"
 
 void profile_allocs_alloc(void *ptr, size_t size, int index) {
   alloc_info_ptr aip;

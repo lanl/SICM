@@ -18,7 +18,7 @@
 #include <pthread.h>
 #include <errno.h>
 #include <poll.h>
-#include "sicm_high_arenas.h"
+#include "sicm_runtime.h"
 #include "sicm_profilers.h"
 
 /* Profiling information for one arena */

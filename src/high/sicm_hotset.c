@@ -10,7 +10,6 @@
 #include <string.h>
 #include <inttypes.h>
 #include <limits.h>
-#include "sicm_high.h"
 
 union metric {
   size_t int_val;

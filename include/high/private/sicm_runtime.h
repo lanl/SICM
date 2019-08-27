@@ -124,7 +124,7 @@ void sh_create_extent(sarena *arena, void *begin, void *end);
 void sh_delete_extent(sarena *arena, void *begin, void *end);
 int get_arena_index(int id);
 
-/* Options for if/when/how to profile. Initialized in src/high/sicm_high_init.c,
+/* Options for if/when/how to profile. Initialized in src/high/sicm_runtime_init.c,
  * used by src/high/sicm_profile.c.
  */
 typedef struct profiling_options {

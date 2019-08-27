@@ -10,7 +10,6 @@
 #include <numa.h>
 #include <numaif.h>
 #include <pthread.h>
-#include "sicm_high.h"
 
 void *fill_pages(void *arg)
 {

@@ -5,7 +5,7 @@
 #include <sys/time.h>
 #include <sys/syscall.h>
 #include <signal.h>
-#include "sicm_high.h"
+#include "sicm_profile.h"
 
 profiler prof;
 static int global_signal;

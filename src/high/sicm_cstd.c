@@ -2,7 +2,6 @@
 #define OP_NEW_DEL
 
 #include <string.h>
-#include "sicm_high.h"
 
 /* Just define `malloc`, `calloc`, `realloc`, and `free`. We want
  * all allocations to come through us no matter what, else we'll have edge cases
