@@ -64,7 +64,7 @@ void SiteReadsAgg_finish(SiteReadsAgg * sra) {
 
     fclose(f);
 
-    free(sra->histograms);
+    __libc_free(sra->histograms);
 }
 
 void SiteReadsAgg_give_histogram(SiteReadsAgg * sra, ThreadReadsInfo * tri) {
@@ -96,9 +96,9 @@ void ThreadReadsInfo_finish(ThreadReadsInfo * tri) {
             SiteReadsAgg_give_histogram(&agg_hist, tri);
             pthread_mutex_unlock(&sra_lock);
 
-            free(tri->list);
-            free(tri->histograms);
-            free(tri);
+            __libc_free(tri->list);
+            __libc_free(tri->histograms);
+            __libc_free(tri);
             tris[i] = NULL;
             return;
         }

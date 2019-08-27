@@ -649,12 +649,12 @@ void sh_terminate() {
     for(i = 0; i <= tracker.max_index; i++) {
       if(!tracker.arenas[i]) continue;
       sicm_arena_destroy(tracker.arenas[i]->arena);
-      free(tracker.arenas[i]);
+      __libc_free(tracker.arenas[i]);
     }
-    free(tracker.arenas);
+    __libc_free(tracker.arenas);
 
-    free(tracker.pending_indices);
-    free(tracker.orig_thread_indices);
+    __libc_free(tracker.pending_indices);
+    __libc_free(tracker.orig_thread_indices);
     extent_arr_free(tracker.extents);
   }
 
