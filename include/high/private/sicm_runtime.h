@@ -112,10 +112,6 @@ typedef struct tracker_struct {
   char finished_initializing;
 } tracker_struct;
 
-/* Symbols that both sicm_runtime.c and sicm_profile.c need */
-extern tracker_struct tracker;
-extern profiling_options profopts;
-
 #define DEFAULT_ARENA_LAYOUT INVALID_LAYOUT
 
 __attribute__((constructor))
@@ -171,6 +167,10 @@ typedef struct profiling_options {
   char **imcs;
   int num_imcs, max_imc_len, max_event_len;
 } profiling_options;
+
+/* Symbols that both sicm_runtime.c and sicm_profile.c need */
+extern tracker_struct tracker;
+extern profiling_options profopts;
 
 #ifdef __cplusplus
 extern "C" {
