@@ -20,7 +20,7 @@ void profile_allocs_alloc(void *ptr, size_t size, int index) {
   tracker.arenas[index]->size += size;
 
   /* Construct the alloc_info struct */
-  aip = (alloc_info_ptr) __libc_malloc(sizeof(alloc_info));
+  aip = (alloc_info_ptr) __builtin_malloc(sizeof(alloc_info));
   aip->size = size;
   aip->index = index;
 
@@ -38,7 +38,7 @@ void profile_allocs_realloc(void *ptr, size_t size, int index) {
 
   /* Construct the struct that logs this allocation's arena
    * index and size of the allocation */
-  aip = (alloc_info_ptr) __libc_malloc(sizeof(alloc_info));
+  aip = (alloc_info_ptr) __builtin_malloc(sizeof(alloc_info));
   aip->size = size;
   aip->index = index;
 
@@ -149,9 +149,9 @@ void sh_create_arena(int index, int id, sicm_device *device) {
   }
 
   /* Create the arena if it doesn't exist */
-  arena = __libc_calloc(1, sizeof(arena_info));
+  arena = __builtin_calloc(1, sizeof(arena_info));
   arena->index = index;
-  arena->alloc_sites = __libc_malloc(sizeof(int) * tracker.max_sites_per_arena);
+  arena->alloc_sites = __builtin_malloc(sizeof(int) * tracker.max_sites_per_arena);
   arena->alloc_sites[0] = id;
   arena->num_alloc_sites = 1;
   if(profopts.should_profile) {
@@ -161,10 +161,10 @@ void sh_create_arena(int index, int id, sicm_device *device) {
   /* Need to construct a sicm_device_list of one device */
   sicm_device_list dl;
   dl.count = 1;
-  dl.devices = __libc_malloc(sizeof(sicm_device *) * 1);
+  dl.devices = __builtin_malloc(sizeof(sicm_device *) * 1);
   dl.devices[0] = device;
   arena->arena = sicm_arena_create(0, SICM_ALLOC_RELAXED, &dl);
-  __libc_free(dl.devices);
+  __builtin_free(dl.devices);
 
   /* Now add the arena to the array of arenas */
   tracker.arenas[index] = arena;

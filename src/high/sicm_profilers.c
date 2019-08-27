@@ -9,7 +9,7 @@
 void profile_all_arena_init(profile_all_info *info) {
   size_t i;
 
-  info->events = __libc_calloc(profopts.num_profile_all_events, sizeof(per_event_profile_all_info));
+  info->events = __builtin_calloc(profopts.num_profile_all_events, sizeof(per_event_profile_all_info));
   for(i = 0; i < profopts.num_profile_all_events; i++) {
     info->events[i].total = 0;
     info->events[i].peak = 0;
@@ -38,10 +38,10 @@ void profile_all_init() {
   prof.profile_all.pagesize = (size_t) sysconf(_SC_PAGESIZE);
 
   /* Allocate perf structs */
-  prof.profile_all.pes = __libc_malloc(sizeof(struct perf_event_attr *) * profopts.num_profile_all_events);
-  prof.profile_all.fds = __libc_malloc(sizeof(int) * profopts.num_profile_all_events);
+  prof.profile_all.pes = __builtin_malloc(sizeof(struct perf_event_attr *) * profopts.num_profile_all_events);
+  prof.profile_all.fds = __builtin_malloc(sizeof(int) * profopts.num_profile_all_events);
   for(i = 0; i < profopts.num_profile_all_events; i++) {
-    prof.profile_all.pes[i] = __libc_malloc(sizeof(struct perf_event_attr));
+    prof.profile_all.pes[i] = __builtin_malloc(sizeof(struct perf_event_attr));
     prof.profile_all.fds[i] = 0;
   }
 
@@ -62,7 +62,7 @@ void profile_all_init() {
   }
 
   /* mmap the perf file descriptors */
-  prof.profile_all.metadata = __libc_malloc(sizeof(struct perf_event_mmap_page *) * profopts.num_profile_all_events);
+  prof.profile_all.metadata = __builtin_malloc(sizeof(struct perf_event_mmap_page *) * profopts.num_profile_all_events);
   for(i = 0; i < profopts.num_profile_all_events; i++) {
     prof.profile_all.metadata[i] = mmap(NULL, 
                                         prof.profile_all.pagesize + (prof.profile_all.pagesize * profopts.max_sample_pages), 
@@ -108,7 +108,7 @@ void profile_all_skip_interval(int s) {
       per_event_profinfo = &(profinfo->profile_all.events[i]);
       if((!arena) || (!profinfo) || (!profinfo->num_intervals)) continue;
 
-      per_event_profinfo->intervals = (size_t *)__libc_realloc(per_event_profinfo->intervals, profinfo->num_intervals * sizeof(size_t));
+      per_event_profinfo->intervals = (size_t *)__builtin_realloc(per_event_profinfo->intervals, profinfo->num_intervals * sizeof(size_t));
       if(profinfo->num_intervals == 1) {
         per_event_profinfo->intervals[profinfo->num_intervals - 1] = 0;
       } else {
@@ -228,7 +228,7 @@ void profile_all_post_interval(profile_info *info) {
       per_event_profinfo->peak = profinfo->tmp_accumulator;
     }
     /* One size_t per interval for this one event */
-    per_event_profinfo->intervals = (size_t *)__libc_realloc(per_event_profinfo->intervals, info->num_intervals * sizeof(size_t));
+    per_event_profinfo->intervals = (size_t *)__builtin_realloc(per_event_profinfo->intervals, info->num_intervals * sizeof(size_t));
     per_event_profinfo->intervals[info->num_intervals - 1] = profinfo->tmp_accumulator;
   }
 }
@@ -277,7 +277,7 @@ void profile_rss_skip_interval(int s) {
     profinfo = (profile_info *) arena->info;
     if((!profinfo) || (!profinfo->num_intervals)) continue;
 
-    profinfo->profile_rss.intervals = (size_t *)__libc_realloc(profinfo->profile_rss.intervals, profinfo->num_intervals * sizeof(size_t));
+    profinfo->profile_rss.intervals = (size_t *)__builtin_realloc(profinfo->profile_rss.intervals, profinfo->num_intervals * sizeof(size_t));
     if(profinfo->num_intervals == 1) {
       profinfo->profile_rss.intervals[profinfo->num_intervals - 1] = 0;
     } else {
@@ -319,7 +319,7 @@ void profile_rss_interval(int s) {
     if((!profinfo) || (!profinfo->num_intervals)) continue;
 
     numpages = (end - start) / prof.profile_rss.pagesize;
-		prof.profile_rss.pfndata = (union pfn_t *) __libc_realloc(prof.profile_rss.pfndata, numpages * prof.profile_rss.addrsize);
+		prof.profile_rss.pfndata = (union pfn_t *) __builtin_realloc(prof.profile_rss.pfndata, numpages * prof.profile_rss.addrsize);
 
 		/* Seek to the starting of this chunk in the pagemap */
 		if(lseek64(prof.profile_rss.pagemap_fd, (start / prof.profile_rss.pagesize) * prof.profile_rss.addrsize, SEEK_SET) == ((__off64_t) - 1)) {
@@ -363,7 +363,7 @@ void profile_rss_post_interval(profile_info *info) {
   }
 
   /* Store this interval's value */
-  profinfo->intervals = (size_t *)__libc_realloc(profinfo->intervals, info->num_intervals * sizeof(size_t));
+  profinfo->intervals = (size_t *)__builtin_realloc(profinfo->intervals, info->num_intervals * sizeof(size_t));
   profinfo->intervals[info->num_intervals - 1] = profinfo->tmp_accumulator;
 }
 
@@ -424,7 +424,7 @@ void profile_extent_size_post_interval(profile_info *info) {
 
   /* Store this interval */
   profinfo->intervals = 
-    (size_t *)__libc_realloc(profinfo->intervals, info->num_intervals * sizeof(size_t));
+    (size_t *)__builtin_realloc(profinfo->intervals, info->num_intervals * sizeof(size_t));
   profinfo->intervals[info->num_intervals - 1] = profinfo->tmp_accumulator;
 }
 
@@ -444,7 +444,7 @@ void profile_extent_size_skip_interval(int s) {
 
     /* Store this interval */
     profinfo->profile_extent_size.intervals = 
-      (size_t *)__libc_realloc(profinfo->profile_extent_size.intervals, 
+      (size_t *)__builtin_realloc(profinfo->profile_extent_size.intervals, 
                         profinfo->num_intervals * sizeof(size_t));
     if(profinfo->num_intervals == 1) {
       profinfo->profile_extent_size.intervals[profinfo->num_intervals - 1] = 0;
@@ -524,7 +524,7 @@ void profile_allocs_post_interval(profile_info *info) {
 
   /* Store this interval */
   profinfo->intervals = 
-    (size_t *)__libc_realloc(profinfo->intervals, info->num_intervals * sizeof(size_t));
+    (size_t *)__builtin_realloc(profinfo->intervals, info->num_intervals * sizeof(size_t));
   profinfo->intervals[info->num_intervals - 1] = profinfo->tmp_accumulator;
 }
 
