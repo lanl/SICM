@@ -9,6 +9,7 @@
 #include <pthread.h>
 #include <stdio.h>
 #include "sicm_tree.h"
+#include "sicm_malloc_free.h"
 
 int get_thread_index();
 

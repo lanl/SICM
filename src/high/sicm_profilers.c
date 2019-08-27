@@ -1,6 +1,7 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include "sicm_profilers.h"
+#include "sicm_malloc_free.h"
 
 /*************************************************
  *              PROFILE_ALL                      *
