@@ -18,13 +18,8 @@
 #include <pthread.h>
 #include <errno.h>
 #include <poll.h>
+#include "sicm_runtime.h"
 #include "sicm_profilers.h"
-
-/* Going to get these definitions from sicm_runtime.h */
-typedef struct profiling_options profiling_options;
-extern profiling_options profopts;
-typedef struct tracker_struct tracker_struct;
-extern tracker_struct tracker;
 
 /* Profiling information for one arena */
 typedef struct profile_info {

@@ -1,5 +1,4 @@
 #include "sicm_runtime.h"
-#include "sicm_profile.h"
 #include "sicm_malloc_free.h"
 
 /* Options for profiling */

@@ -167,6 +167,10 @@ typedef struct profiling_options {
 extern tracker_struct tracker;
 extern profiling_options profopts;
 
+/* Defined by sicm_profile.c, need a declaration here for sicm_runtime_init.c */
+void sh_start_profile_master_thread();
+void sh_stop_profile_master_thread();
+
 #ifdef __cplusplus
 extern "C" {
 #endif
