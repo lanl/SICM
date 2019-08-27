@@ -222,8 +222,8 @@ void set_options() {
       /* Parse out the events into an array */
       while((str = strtok(env, ",")) != NULL) {
         profopts.num_profile_all_events++;
-        profopts.profile_all_events = realloc(profopts.profile_all_events, sizeof(char *) * profopts.num_profile_all_events);
-        profopts.profile_all_events[profopts.num_profile_all_events - 1] = malloc(sizeof(char) * (strlen(str) + 1));
+        profopts.profile_all_events = __libc_realloc(profopts.profile_all_events, sizeof(char *) * profopts.num_profile_all_events);
+        profopts.profile_all_events[profopts.num_profile_all_events - 1] = __libc_malloc(sizeof(char) * (strlen(str) + 1));
         strcpy(profopts.profile_all_events[profopts.num_profile_all_events - 1], str);
         env = NULL;
       }
@@ -299,7 +299,7 @@ void set_options() {
       /* Parse out the IMCs into an array */
       while((str = strtok(env, ",")) != NULL) {
         profopts.num_imcs++;
-        profopts.imcs = realloc(profopts.imcs, sizeof(char *) * profopts.num_imcs);
+        profopts.imcs = __libc_realloc(profopts.imcs, sizeof(char *) * profopts.num_imcs);
         profopts.imcs[profopts.num_imcs - 1] = str;
         if(strlen(str) > profopts.max_imc_len) {
           profopts.max_imc_len = strlen(str);
@@ -321,7 +321,7 @@ void set_options() {
       /* Parse out the events into an array */
       while((str = strtok(env, ",")) != NULL) {
         profopts.num_profile_one_events++;
-        tmp_profile_one_events = realloc(tmp_profile_one_events, sizeof(char *) * profopts.num_profile_one_events);
+        tmp_profile_one_events = __libc_realloc(tmp_profile_one_events, sizeof(char *) * profopts.num_profile_one_events);
         tmp_profile_one_events[profopts.num_profile_one_events - 1] = str;
         env = NULL;
       }
@@ -333,12 +333,12 @@ void set_options() {
 
     /* Prepend each IMC name to each event string, because that's what libpfm4 expects */
     size_t index;
-    profopts.profile_one_events = calloc(profopts.num_profile_one_events * profopts.num_imcs, sizeof(char *));
+    profopts.profile_one_events = __libc_calloc(profopts.num_profile_one_events * profopts.num_imcs, sizeof(char *));
     for(i = 0; i < profopts.num_profile_one_events; i++) {
       for(n = 0; n < profopts.num_imcs; n++) {
         index = (i * profopts.num_imcs) + n;
         /* Allocate enough room for the IMC name, the event name, two colons, and a terminator. */
-        profopts.profile_one_events[index] = malloc(sizeof(char) * 
+        profopts.profile_one_events[index] = __libc_malloc(sizeof(char) * 
                                     (strlen(tmp_profile_one_events[i]) + strlen(profopts.imcs[n]) + 3));
         sprintf(profopts.profile_one_events[index], "%s::%s", profopts.imcs[n], tmp_profile_one_events[i]);
       }
@@ -578,7 +578,7 @@ void sh_init() {
      * If the arena layout isn't per-thread (`EXCLUSIVE_`), arenas_per_thread is just
      * the total number of arenas.
      */
-    tracker.arenas = (arena_info **) calloc(tracker.max_arenas, sizeof(arena_info *));
+    tracker.arenas = (arena_info **) __libc_calloc(tracker.max_arenas, sizeof(arena_info *));
 
     /* Initialize the extents array.
      */
@@ -586,7 +586,7 @@ void sh_init() {
 
     /* Stores the index into the `arenas` array for each thread */
     pthread_key_create(&tracker.thread_key, NULL);
-    tracker.thread_indices = (int *) malloc(tracker.max_threads * sizeof(int));
+    tracker.thread_indices = (int *) __libc_malloc(tracker.max_threads * sizeof(int));
     tracker.orig_thread_indices = tracker.thread_indices;
     tracker.max_thread_indices = tracker.orig_thread_indices + tracker.max_threads;
     for(i = 0; i < tracker.max_threads; i++) {
@@ -596,7 +596,7 @@ void sh_init() {
     tracker.thread_indices++;
 
     /* Stores an index into `arenas` for the extent hooks */
-    tracker.pending_indices = (int *) malloc(tracker.max_threads * sizeof(int));
+    tracker.pending_indices = (int *) __libc_malloc(tracker.max_threads * sizeof(int));
     for(i = 0; i < tracker.max_threads; i++) {
       tracker.pending_indices[i] = -1;
     }
