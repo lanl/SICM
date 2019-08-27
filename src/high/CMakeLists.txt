@@ -9,14 +9,8 @@ target_include_directories(sicm_runtime PRIVATE ${CMAKE_SOURCE_DIR}/include/high
 target_include_directories(sicm_runtime PUBLIC ${CMAKE_SOURCE_DIR}/include/high/public)
 target_include_directories(sicm_runtime PRIVATE ${CMAKE_SOURCE_DIR}/include/low/private)
 target_include_directories(sicm_runtime PUBLIC ${CMAKE_SOURCE_DIR}/include/low/public)
-target_include_directories(sicm_memreserve PRIVATE ${CMAKE_SOURCE_DIR}/include/high/private)
 target_include_directories(sicm_memreserve PUBLIC ${CMAKE_SOURCE_DIR}/include/high/public)
-target_include_directories(sicm_memreserve PRIVATE ${CMAKE_SOURCE_DIR}/include/low/private)
-target_include_directories(sicm_memreserve PUBLIC ${CMAKE_SOURCE_DIR}/include/low/public)
-target_include_directories(sicm_hotset PRIVATE ${CMAKE_SOURCE_DIR}/include/high/private)
 target_include_directories(sicm_hotset PUBLIC ${CMAKE_SOURCE_DIR}/include/high/public)
-target_include_directories(sicm_hotset PRIVATE ${CMAKE_SOURCE_DIR}/include/low/private)
-target_include_directories(sicm_hotset PUBLIC ${CMAKE_SOURCE_DIR}/include/low/public)
 
 target_link_libraries(sicm_runtime sicm)
 
