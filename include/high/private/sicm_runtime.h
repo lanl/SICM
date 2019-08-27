@@ -111,7 +111,10 @@ typedef struct tracker_struct {
   /* Ensures that nothing happens before initialization */
   char finished_initializing;
 } tracker_struct;
+
+/* Symbols that both sicm_runtime.c and sicm_profile.c need */
 extern tracker_struct tracker;
+extern profiling_options profopts;
 
 #define DEFAULT_ARENA_LAYOUT INVALID_LAYOUT
 

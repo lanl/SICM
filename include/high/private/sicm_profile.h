@@ -69,7 +69,6 @@ typedef struct profiler {
   profile_allocs_data profile_allocs;
 } profiler;
 
-extern profiling_options profopts;
 extern profiler prof;
 
 void sh_start_profile_master_thread();
