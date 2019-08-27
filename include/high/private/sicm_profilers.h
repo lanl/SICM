@@ -5,6 +5,7 @@
 
 /* Going to be defined by sicm_profile.h */
 typedef struct profile_info profile_info;
+typedef struct profiling_options profopts;
 
 /********************
  * Utilities
