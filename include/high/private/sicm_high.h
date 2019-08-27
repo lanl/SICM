@@ -1,6 +1,5 @@
 #pragma once
 
-#define _GNU_SOURCE
 #include "sicm_high_arenas.h"
 #include "sicm_profile.h"
 #include "sicm_profilers.h"

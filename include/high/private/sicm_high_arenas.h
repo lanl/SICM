@@ -1,5 +1,7 @@
 #pragma once
 
+#define _GNU_SOURCE
+#include <dlfcn.h>
 #include <inttypes.h>
 #include "sicm_low.h"
 #include "sicm_impl.h"
