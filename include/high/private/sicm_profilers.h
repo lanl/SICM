@@ -1,6 +1,7 @@
 #pragma once
 #define __USE_LARGEFILE64
-#include <stdint.h>
+#include <stdint.h> /* For uint64_t, etc. */
+#include <stdlib.h> /* For size_t */
 
 /* Going to be defined by sicm_profile.h */
 typedef struct profile_info profile_info;
