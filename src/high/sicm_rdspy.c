@@ -8,6 +8,7 @@
 #include <assert.h>
 #include <pthread.h>
 #include <stdio.h>
+#include "sicm_tree.h"
 
 int get_thread_index();
 

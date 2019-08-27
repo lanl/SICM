@@ -111,6 +111,7 @@ typedef struct tracker_struct {
   /* Ensures that nothing happens before initialization */
   char finished_initializing;
 } tracker_struct;
+extern tracker_struct tracker;
 
 #define DEFAULT_ARENA_LAYOUT INVALID_LAYOUT
 

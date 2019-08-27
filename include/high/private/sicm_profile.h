@@ -70,7 +70,6 @@ typedef struct profiler {
 } profiler;
 
 extern profiling_options profopts;
-extern tracker_struct tracker;
 extern profiler prof;
 
 void sh_start_profile_master_thread();
