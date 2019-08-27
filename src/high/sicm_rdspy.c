@@ -8,6 +8,7 @@
 #include <assert.h>
 #include <pthread.h>
 #include <stdio.h>
+#include "sicm_rdspy.h"
 #include "sicm_tree.h"
 #include "sicm_malloc_free.h"
 

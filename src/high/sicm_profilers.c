@@ -4,6 +4,7 @@
 #include <unistd.h>
 #include <sys/syscall.h>
 #include <errno.h>
+#include <sys/types.h>
 #include "sicm_runtime.h"
 #include "sicm_profilers.h"
 #include "sicm_malloc_free.h"
