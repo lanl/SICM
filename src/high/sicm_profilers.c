@@ -1,5 +1,6 @@
 #include <sys/stat.h>
 #include <fcntl.h>
+#include "sicm_profilers.h"
 
 /*************************************************
  *              PROFILE_ALL                      *
