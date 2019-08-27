@@ -5,6 +5,13 @@
 #include "sicm_impl.h"
 #include "sicm_tree.h"
 
+/* So that we can allocate/deallocate things in this library without recursively calling
+ * our own definitions */
+void (*libc_free)(void*);
+void *(*libc_malloc)(size_t);
+void *(*libc_calloc)(size_t, size_t);
+void *(*libc_realloc)(void *, size_t);
+
 enum arena_layout {
   SHARED_ONE_ARENA, /* One arena between all threads */
   EXCLUSIVE_ONE_ARENA, /* One arena per thread */

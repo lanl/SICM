@@ -31,12 +31,12 @@ static inline extent_arr *extent_arr_init() {
   extent_arr *a;
   size_t i;
 
-  a = (extent_arr *) __builtin_malloc(sizeof(extent_arr));
+  a = (extent_arr *) malloc(sizeof(extent_arr));
   a->max_extents = 2;
   a->index = 0;
   a->deleted = 0;
   pthread_mutex_init(&a->mutex, NULL);
-  a->arr = (extent_info *) __builtin_malloc(sizeof(extent_info) * a->max_extents);
+  a->arr = (extent_info *) malloc(sizeof(extent_info) * a->max_extents);
   extent_arr_for(a, i) {
     a->arr[i].start = NULL;
     a->arr[i].end = NULL;

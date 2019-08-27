@@ -53,7 +53,7 @@ void *create_profile_arena(int index) {
 
   pthread_rwlock_wrlock(&prof.info_lock);
 
-  profinfo = __builtin_calloc(1, sizeof(profile_info));
+  profinfo = libc_calloc(1, sizeof(profile_info));
 
   if(profopts.should_profile_all) {
     profile_all_arena_init(&(profinfo->profile_all));
@@ -228,7 +228,7 @@ void setup_profile_thread(void *(*main)(void *), /* Spinning loop function */
 
   /* Add a new profile_thread struct for it */
   prof.num_profile_threads++;
-  prof.profile_threads = __builtin_realloc(prof.profile_threads, sizeof(profile_thread) * prof.num_profile_threads);
+  prof.profile_threads = libc_realloc(prof.profile_threads, sizeof(profile_thread) * prof.num_profile_threads);
   profthread = &(prof.profile_threads[prof.num_profile_threads - 1]);
 
   /* Start the thread */
@@ -358,7 +358,7 @@ void initialize_profiling() {
   pthread_rwlock_init(&(prof.info_lock), NULL);
 
   /* Allocate room for the per-arena profiling information */
-  prof.info = __builtin_calloc(tracker.max_arenas, sizeof(profile_info *));
+  prof.info = libc_calloc(tracker.max_arenas, sizeof(profile_info *));
 
   prof.threads_finished = 0;
 
