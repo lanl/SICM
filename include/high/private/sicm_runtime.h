@@ -1,5 +1,7 @@
 #pragma once
 
+#define SICM_RUNTIME 1
+
 /* Required for dlsym */
 #define _GNU_SOURCE
 #include <dlfcn.h>
