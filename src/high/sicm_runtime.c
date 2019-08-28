@@ -10,13 +10,18 @@
 #include <inttypes.h>
 #include <pthread.h>
 #include <jemalloc/jemalloc.h>
+
+/* Required for dlsym */
+#define _GNU_SOURCE
+#include <dlfcn.h>
+
 #include "sicm_runtime.h"
 #include "sicm_rdspy.h"
 
 static void *(*orig_malloc_ptr)(size_t) = NULL;
 static void *(*orig_calloc_ptr)(size_t, size_t) = NULL;
 static void *(*orig_realloc_ptr)(void *, size_t) = NULL;
-static void (orig_free_ptr)(void *) = NULL;
+static void (*orig_free_ptr)(void *) = NULL;
 
 void *__attribute__ ((noinline)) orig_malloc(size_t size) {
   if(!orig_malloc_ptr) {

@@ -2,10 +2,6 @@
 
 #define SICM_RUNTIME 1
 
-/* Required for dlsym */
-#define _GNU_SOURCE
-#include <dlfcn.h>
-
 #include <inttypes.h>
 #include "sicm_malloc_free.h"
 #include "sicm_low.h"
