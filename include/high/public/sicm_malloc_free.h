@@ -1,4 +1,5 @@
 #pragma once
+#include <stdlib.h> /* For size_t */
 
 #if 0
 #ifdef SICM_RUNTIME
