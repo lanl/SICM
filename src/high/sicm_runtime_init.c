@@ -551,7 +551,10 @@ void sh_init() {
   int i;
   long size;
 
-  sh_malloc_free_initialized = 1;
+  if(sh_initialized) {
+    /* We already initialized, don't do it again. */
+    return;
+  }
 
   tracker.device_list = sicm_init();
   pthread_rwlock_init(&tracker.extents_lock, NULL);
