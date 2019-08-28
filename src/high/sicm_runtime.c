@@ -1,3 +1,4 @@
+#define _GNU_SOURCE
 #include <fcntl.h>
 #include <numa.h>
 #include <numaif.h>
@@ -12,7 +13,6 @@
 #include <jemalloc/jemalloc.h>
 
 /* Required for dlsym */
-#define _GNU_SOURCE
 #include <dlfcn.h>
 
 #include "sicm_runtime.h"
