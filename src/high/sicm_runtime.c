@@ -328,6 +328,10 @@ void* sh_realloc(int id, void *ptr, size_t sz) {
   void *ret;
   alloc_info_ptr aip;
 
+  if(!sh_initialized) {
+    return __libc_realloc(ptr, sz);
+  }
+
   if((tracker.layout == INVALID_LAYOUT) || !tracker.finished_initializing || (id == 0)) {
     ret = je_realloc(ptr, sz);
   } else {
@@ -351,6 +355,10 @@ void* sh_alloc(int id, size_t sz) {
   int index;
   void *ret;
   alloc_info_ptr aip;
+
+  if(!sh_initialized) {
+    return __libc_malloc(sz);
+  }
 
   if((tracker.layout == INVALID_LAYOUT) || !sz || !tracker.finished_initializing || (id == 0)) {
     ret = je_malloc(sz);
@@ -409,18 +417,27 @@ void* sh_calloc(int id, size_t num, size_t sz) {
   void *ptr;
   size_t i;
 
+  if(!sh_initialized) {
+    return __libc_calloc(num, sz);
+  }
+
   ptr = sh_alloc(id, num * sz);
   memset(ptr, 0, num * sz);
   return ptr;
 }
 
 void sh_free(void* ptr) {
-  if (profopts.should_run_rdspy) {
-      sh_rdspy_free(ptr);
+  if(!sh_initialized) {
+    __libc_free(ptr);
+    return;
   }
 
   if(!ptr) {
     return;
+  }
+
+  if (profopts.should_run_rdspy) {
+      sh_rdspy_free(ptr);
   }
 
   if(profopts.should_profile_allocs) {

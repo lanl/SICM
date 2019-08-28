@@ -634,6 +634,7 @@ void sh_init() {
     fclose(tracker.log_file);
   }
   tracker.finished_initializing = 1;
+  sh_initialized = 1;
 }
 
 __attribute__((destructor))
