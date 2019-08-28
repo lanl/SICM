@@ -328,9 +328,7 @@ void* sh_realloc(int id, void *ptr, size_t sz) {
   void *ret;
   alloc_info_ptr aip;
 
-  if(!sh_initialized) {
-    return __libc_realloc(ptr, sz);
-  }
+  return NULL;
 
   if((tracker.layout == INVALID_LAYOUT) || !tracker.finished_initializing || (id == 0)) {
     ret = je_realloc(ptr, sz);
@@ -357,7 +355,7 @@ void* sh_alloc(int id, size_t sz) {
   alloc_info_ptr aip;
 
   if(!sh_initialized) {
-    return je_malloc(sz);
+    return __libc_malloc(sz);
   }
 
   if((tracker.layout == INVALID_LAYOUT) || !sz || !tracker.finished_initializing || (id == 0)) {
@@ -420,9 +418,7 @@ void* sh_calloc(int id, size_t num, size_t sz) {
   size_t i;
 
   if(!sh_initialized) {
-    ptr = je_malloc(num * sz);
-    memset(ptr, 0, num * sz);
-    return ptr;
+    return __libc_calloc(num, sz);
   }
 
   ptr = sh_alloc(id, num * sz);
@@ -432,7 +428,7 @@ void* sh_calloc(int id, size_t num, size_t sz) {
 
 void sh_free(void* ptr) {
   if(!sh_initialized) {
-    sicm_free(ptr);
+    __libc_free(ptr);
     return;
   }
 
