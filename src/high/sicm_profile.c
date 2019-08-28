@@ -6,7 +6,6 @@
 #include <sys/syscall.h>
 #include <signal.h>
 #include "sicm_profile.h"
-#include "sicm_malloc_free.h"
 
 profiler prof;
 static int global_signal;

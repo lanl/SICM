@@ -7,7 +7,6 @@
 #include <sys/types.h>
 #include "sicm_runtime.h"
 #include "sicm_profilers.h"
-#include "sicm_malloc_free.h"
 #include "sicm_profile.h"
 
 /*************************************************

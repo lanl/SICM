@@ -7,6 +7,7 @@
 #include <dlfcn.h>
 
 #include <inttypes.h>
+#include "sicm_malloc_free.h"
 #include "sicm_low.h"
 #include "sicm_impl.h"
 #include "sicm_tree.h"

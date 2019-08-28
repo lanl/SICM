@@ -16,6 +16,7 @@
 
 #include <stdint.h>
 #include <stdlib.h>
+#include "sicm_malloc_free.h"
 
 typedef unsigned long long hist_t[READ_TIMES_NBUCKETS];
 
