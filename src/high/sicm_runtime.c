@@ -13,19 +13,19 @@
 #include "sicm_runtime.h"
 #include "sicm_rdspy.h"
 
-static void *__attribute__ ((noinline)) orig_malloc(size_t size) {
+void *__attribute__ ((noinline)) orig_malloc(size_t size) {
   return NULL;
 }
 
-static void *__attribute__ ((noinline)) orig_calloc(size_t num, size_t size) {
+void *__attribute__ ((noinline)) orig_calloc(size_t num, size_t size) {
   return NULL;
 }
 
-static void *__attribute__ ((noinline)) orig_realloc(void *ptr, size_t size) {
+void *__attribute__ ((noinline)) orig_realloc(void *ptr, size_t size) {
   return NULL;
 }
 
-static void __attribute__ ((noinline)) orig_free(void *ptr) {
+void __attribute__ ((noinline)) orig_free(void *ptr) {
   return;
 }
 
