@@ -430,7 +430,7 @@ void* sh_calloc(int id, size_t num, size_t sz) {
 
 void sh_free(void* ptr) {
   if(!sh_initialized) {
-    __libc_free(ptr);
+    sicm_free(ptr);
     return;
   }
 
