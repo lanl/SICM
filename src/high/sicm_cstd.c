@@ -1,7 +1,9 @@
 #ifndef OP_NEW_DEL
 #define OP_NEW_DEL
 
+#include <stdlib.h> /* For exit() */
 #include <string.h>
+#include "sicm_runtime.h" /* For sh_initialized */
 
 /* Just define `malloc`, `calloc`, `realloc`, and `free`. We want
  * all allocations to come through us no matter what, else we'll have edge cases
@@ -10,18 +12,30 @@
  * and an inlined `free` call which gets transformed by our compiler wrappers.
  */
 void *malloc(size_t size) {
+  if(!sh_initialized) {
+    exit(122);
+  }
   return sh_alloc(0, size);
 }
 
 void *calloc(size_t num, size_t size) {
+  if(!sh_initialized) {
+    exit(122);
+  }
   return sh_calloc(0, num, size);
 }
 
 void *realloc(void *ptr, size_t new_size) {
+  if(!sh_initialized) {
+    exit(122);
+  }
   return sh_realloc(0, ptr, new_size);
 }
 
 void free(void *ptr) {
+  if(!sh_initialized) {
+    exit(122);
+  }
   sh_free(ptr);
 }
 
