@@ -383,6 +383,8 @@ void* sh_aligned_alloc(int id, size_t alignment, size_t sz) {
   int index;
   void *ret;
 
+  return NULL;
+
   if(!sz) {
     return NULL;
   }
