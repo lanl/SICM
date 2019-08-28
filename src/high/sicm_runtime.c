@@ -357,7 +357,7 @@ void* sh_alloc(int id, size_t sz) {
   alloc_info_ptr aip;
 
   if(!sh_initialized) {
-    return __libc_malloc(sz);
+    return je_malloc(sz);
   }
 
   if((tracker.layout == INVALID_LAYOUT) || !sz || !tracker.finished_initializing || (id == 0)) {
@@ -420,7 +420,9 @@ void* sh_calloc(int id, size_t num, size_t sz) {
   size_t i;
 
   if(!sh_initialized) {
-    return __libc_calloc(num, sz);
+    ptr = je_malloc(num * sz);
+    memset(ptr, 0, num * sz);
+    return ptr;
   }
 
   ptr = sh_alloc(id, num * sz);
