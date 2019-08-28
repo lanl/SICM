@@ -13,6 +13,22 @@
 #include "sicm_runtime.h"
 #include "sicm_rdspy.h"
 
+void *__attribute__ ((noinline)) orig_malloc(size_t size) {
+  return NULL;
+}
+
+void *__attribute__ ((noinline)) orig_calloc(size_t num, size_t size) {
+  return NULL;
+}
+
+void *__attribute__ ((noinline)) orig_realloc(void *ptr, size_t size) {
+  return NULL;
+}
+
+void __attribute__ ((noinline)) orig_free(void *ptr) {
+  return;
+}
+
 void profile_allocs_alloc(void *ptr, size_t size, int index) {
   alloc_info_ptr aip;
 
