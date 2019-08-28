@@ -367,9 +367,7 @@ void* sh_realloc(int id, void *ptr, size_t sz) {
   void *ret;
   alloc_info_ptr aip;
 
-  return NULL;
-
-  if((tracker.layout == INVALID_LAYOUT) || !tracker.finished_initializing || (id == 0)) {
+  if((tracker.layout == INVALID_LAYOUT) || !tracker.finished_initializing || (id == 0) || (!sh_initialized)) {
     ret = je_realloc(ptr, sz);
   } else {
     index = get_arena_index(id);
@@ -393,7 +391,7 @@ void* sh_alloc(int id, size_t sz) {
   void *ret;
   alloc_info_ptr aip;
 
-  if((tracker.layout == INVALID_LAYOUT) || !sz || !tracker.finished_initializing || (id == 0)) {
+  if((tracker.layout == INVALID_LAYOUT) || !sz || !tracker.finished_initializing || (id == 0) || (!sh_initialized)) {
     ret = je_malloc(sz);
   } else {
     index = get_arena_index(id);
@@ -416,7 +414,9 @@ void* sh_aligned_alloc(int id, size_t alignment, size_t sz) {
   int index;
   void *ret;
 
-  return NULL;
+  if(!sh_initialized) {
+    return je_aligned_alloc(alignment, sz);
+  }
 
   if(!sz) {
     return NULL;
@@ -452,7 +452,6 @@ void* sh_calloc(int id, size_t num, size_t sz) {
   void *ptr;
   size_t i;
 
-
   ptr = sh_alloc(id, num * sz);
   memset(ptr, 0, num * sz);
   return ptr;
@@ -460,6 +459,11 @@ void* sh_calloc(int id, size_t num, size_t sz) {
 
 void sh_free(void* ptr) {
   if(!ptr) {
+    return;
+  }
+
+  if(!sh_initialized) {
+    je_free(ptr);
     return;
   }
 
