@@ -1,5 +1,6 @@
 #pragma once
 
+#if 0
 #ifdef SICM_RUNTIME
   /* So that we can allocate/deallocate things in this library without recursively calling
    * our own definitions. If this is included from SICM's runtime library, these will be defined
@@ -16,3 +17,20 @@
   #define libc_calloc calloc
   #define libc_realloc realloc
 #endif
+#endif
+
+void *__attribute__ ((noinline)) orig_malloc(size_t size) {
+  return NULL;
+}
+
+void *__attribute__ ((noinline)) orig_calloc(size_t num, size_t size) {
+  return NULL;
+}
+
+void *__attribute__ ((noinline)) orig_realloc(void *ptr, size_t size) {
+  return NULL;
+}
+
+void __attribute__ ((noinline)) orig_free(void *ptr) {
+  return;
+}
