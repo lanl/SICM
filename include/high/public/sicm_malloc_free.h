@@ -20,10 +20,18 @@
 #endif
 #endif
 
-void *__attribute__ ((noinline)) orig_malloc(size_t size);
+static void *__attribute__ ((noinline)) orig_malloc(size_t size) {
+  return (void *) 0;
+}
 
-void *__attribute__ ((noinline)) orig_calloc(size_t num, size_t size);
+static void *__attribute__ ((noinline)) orig_calloc(size_t num, size_t size) {
+  return (void *) 0;
+}
 
-void *__attribute__ ((noinline)) orig_realloc(void *ptr, size_t size);
+static void *__attribute__ ((noinline)) orig_realloc(void *ptr, size_t size) {
+  return (void *) 0;
+}
 
-void __attribute__ ((noinline)) orig_free(void *ptr);
+static void __attribute__ ((noinline)) orig_free(void *ptr) {
+  return;
+}
