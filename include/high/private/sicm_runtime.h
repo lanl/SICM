@@ -13,6 +13,7 @@
 #include "sicm_tree.h"
 
 static char sh_initialized = 0;
+static char sh_malloc_free_initialized = 0;
 
 enum arena_layout {
   SHARED_ONE_ARENA, /* One arena between all threads */

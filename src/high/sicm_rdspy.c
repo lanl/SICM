@@ -37,7 +37,7 @@ static tree(addr_t, unsigned) site_map;
 static pthread_rwlock_t       site_map_lock;
 
 void SiteReadsAgg_init(SiteReadsAgg * sra) {
-    sra->histograms = libc_calloc(num_static_sites + 1, sizeof(hist_t));
+    sra->histograms = orig_calloc(num_static_sites + 1, sizeof(hist_t));
 }
 
 void SiteReadsAgg_finish(SiteReadsAgg * sra) {
@@ -65,7 +65,7 @@ void SiteReadsAgg_finish(SiteReadsAgg * sra) {
 
     fclose(f);
 
-    libc_free(sra->histograms);
+    orig_free(sra->histograms);
 }
 
 void SiteReadsAgg_give_histogram(SiteReadsAgg * sra, ThreadReadsInfo * tri) {
@@ -80,8 +80,8 @@ void SiteReadsAgg_give_histogram(SiteReadsAgg * sra, ThreadReadsInfo * tri) {
 }
 
 void ThreadReadsInfo_init(ThreadReadsInfo * tri) {
-    tri->top = tri->list = libc_malloc(sizeof(AddrTicks) * list_flush_limit);
-    tri->histograms      = libc_calloc(num_static_sites + 1, sizeof(hist_t));
+    tri->top = tri->list = orig_malloc(sizeof(AddrTicks) * list_flush_limit);
+    tri->histograms      = orig_calloc(num_static_sites + 1, sizeof(hist_t));
 }
 
 void ThreadReadsInfo_finish(ThreadReadsInfo * tri) {
@@ -97,9 +97,9 @@ void ThreadReadsInfo_finish(ThreadReadsInfo * tri) {
             SiteReadsAgg_give_histogram(&agg_hist, tri);
             pthread_mutex_unlock(&sra_lock);
 
-            libc_free(tri->list);
-            libc_free(tri->histograms);
-            libc_free(tri);
+            orig_free(tri->list);
+            orig_free(tri->histograms);
+            orig_free(tri);
             tris[i] = NULL;
             return;
         }
@@ -167,7 +167,7 @@ static ThreadReadsInfo * get_tri() {
     if (tri == NULL) {
         pthread_mutex_lock(&tri_lock);
         idx = n_tris++;
-        tri = (ThreadReadsInfo*)libc_malloc(sizeof(ThreadReadsInfo));
+        tri = (ThreadReadsInfo*)orig_malloc(sizeof(ThreadReadsInfo));
         pthread_setspecific(tri_key, tri);
         ThreadReadsInfo_init(tri);
         tris[idx] = tri;
@@ -244,7 +244,7 @@ void sh_rdspy_init(int _max_threads, int _num_static_sites) {
 
     site_map  = tree_make(addr_t, unsigned);
     SiteReadsAgg_init(&agg_hist);
-    tris = libc_malloc(sizeof(ThreadReadsInfo*) * max_threads);
+    tris = orig_malloc(sizeof(ThreadReadsInfo*) * max_threads);
     memset(tris, 0, sizeof(ThreadReadsInfo*) * max_threads);
 
     pthread_rwlock_init(&chunks_end_lock, NULL);
