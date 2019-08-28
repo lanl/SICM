@@ -9,6 +9,7 @@
  * pass. In some cases this results in a `malloc` call in a shared library (which uses `libc`'s `malloc`),
  * and an inlined `free` call which gets transformed by our compiler wrappers.
  */
+#if 0
 void *malloc(size_t size) {
   return sh_alloc(0, size);
 }
@@ -24,6 +25,7 @@ void *realloc(void *ptr, size_t new_size) {
 void free(void *ptr) {
   sh_free(ptr);
 }
+#endif
 
 /* I'm commenting these out because external libraries (such as libpfm4) will
  * use these function to allocate memory, then use `libc`'s `free` to free up the

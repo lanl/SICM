@@ -2,7 +2,7 @@ add_library(sicm_runtime SHARED sicm_runtime.c sicm_runtime_init.c sicm_profile.
 add_library(sicm_compass SHARED sicm_compass.cpp)
 add_library(sicm_rdspy SHARED sicm_rdspy.cpp)
 add_executable(sicm_memreserve sicm_memreserve.c)
-add_executable(sicm_hotset sicm_hotset.c)
+add_executable(sicm_hotset sicm_hotset.c sicm_orig_malloc_free.c)
 
 # Public and private headers for each library
 target_include_directories(sicm_runtime PRIVATE ${CMAKE_SOURCE_DIR}/include/high/private)
