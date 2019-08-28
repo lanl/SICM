@@ -13,19 +13,37 @@
 #include "sicm_runtime.h"
 #include "sicm_rdspy.h"
 
+static void *(*orig_malloc_ptr)(size_t) = NULL;
+static void *(*orig_calloc_ptr)(size_t, size_t) = NULL;
+static void *(*orig_realloc_ptr)(void *, size_t) = NULL;
+static void (orig_free_ptr)(void *) = NULL;
+
 void *__attribute__ ((noinline)) orig_malloc(size_t size) {
-  return NULL;
+  if(!orig_malloc_ptr) {
+    orig_malloc_ptr = dlsym(RTLD_NEXT, "malloc");
+  }
+  return (*orig_malloc_ptr)(size);
 }
 
 void *__attribute__ ((noinline)) orig_calloc(size_t num, size_t size) {
-  return NULL;
+  if(!orig_calloc_ptr) {
+    orig_calloc_ptr = dlsym(RTLD_NEXT, "calloc");
+  }
+  return (*orig_calloc_ptr)(num, size);
 }
 
 void *__attribute__ ((noinline)) orig_realloc(void *ptr, size_t size) {
-  return NULL;
+  if(!orig_realloc_ptr) {
+    orig_realloc_ptr = dlsym(RTLD_NEXT, "realloc");
+  }
+  return (*orig_realloc_ptr)(ptr, size);
 }
 
 void __attribute__ ((noinline)) orig_free(void *ptr) {
+  if(!orig_free_ptr) {
+    orig_free_ptr = dlsym(RTLD_NEXT, "free");
+  }
+  (*orig_free_ptr)(ptr);
   return;
 }
 
