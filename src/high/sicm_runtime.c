@@ -393,6 +393,8 @@ void* sh_alloc(int id, size_t sz) {
   void *ret;
   alloc_info_ptr aip;
 
+  printf("Calling sh_alloc(%d, %zu) with init %d\n", id, sz, sh_initialized);
+
   if((tracker.layout == INVALID_LAYOUT) || !sz || (id == 0) || (!sh_initialized)) {
     ret = je_malloc(sz);
   } else {
