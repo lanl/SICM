@@ -396,6 +396,7 @@ void* sh_alloc(int id, size_t sz) {
   if((tracker.layout == INVALID_LAYOUT) || !sz || (id == 0) || (!sh_initialized)) {
     ret = je_malloc(sz);
   } else {
+    printf("Calling sh_alloc(%d, %zu)\n", id, sz);
     index = get_arena_index(id);
     ret = sicm_arena_alloc(tracker.arenas[index]->arena, sz);
 
