@@ -237,7 +237,15 @@ void sh_create_extent(sarena *arena, void *start, void *end) {
 }
 
 void sh_delete_extent(sarena *arena, void *start, void *end) {
+  if(pthread_rwlock_wrlock(&tracker.extents_lock) != 0) {
+    fprintf(stderr, "Failed to acquire read/write lock. Aborting.\n");
+    exit(1);
+  }
   extent_arr_delete(tracker.extents, start);
+  if(pthread_rwlock_unlock(&tracker.extents_lock) != 0) {
+    fprintf(stderr, "Failed to unlock read/write lock. Aborting.\n");
+    exit(1);
+  }
 }
 
 int get_site_arena(int id) {
@@ -469,8 +477,8 @@ void sh_free(void* ptr) {
     return;
   }
 
-  if (profopts.should_run_rdspy) {
-      sh_rdspy_free(ptr);
+  if(profopts.should_run_rdspy) {
+    sh_rdspy_free(ptr);
   }
 
   if(profopts.should_profile_allocs) {
