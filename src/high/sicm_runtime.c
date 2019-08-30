@@ -18,7 +18,7 @@
 #include "sicm_runtime.h"
 #include "sicm_rdspy.h"
 
-static char sh_initialized = 0;
+char sh_initialized = 0;
 
 static void *(*orig_malloc_ptr)(size_t) = NULL;
 static void *(*orig_calloc_ptr)(size_t, size_t) = NULL;
