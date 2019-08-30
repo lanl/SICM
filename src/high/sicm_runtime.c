@@ -369,7 +369,7 @@ void* sh_realloc(int id, void *ptr, size_t sz) {
   void *ret;
   alloc_info_ptr aip;
 
-  if((tracker.layout == INVALID_LAYOUT) || !tracker.finished_initializing || (id == 0) || (!sh_initialized)) {
+  if((tracker.layout == INVALID_LAYOUT) || (id == 0) || (!sh_initialized)) {
     ret = je_realloc(ptr, sz);
   } else {
     index = get_arena_index(id);
@@ -393,7 +393,7 @@ void* sh_alloc(int id, size_t sz) {
   void *ret;
   alloc_info_ptr aip;
 
-  if((tracker.layout == INVALID_LAYOUT) || !sz || !tracker.finished_initializing || (id == 0) || (!sh_initialized)) {
+  if((tracker.layout == INVALID_LAYOUT) || !sz || (id == 0) || (!sh_initialized)) {
     ret = je_malloc(sz);
   } else {
     index = get_arena_index(id);

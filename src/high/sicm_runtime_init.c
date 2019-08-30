@@ -642,8 +642,8 @@ void sh_init() {
     fprintf(tracker.log_file, "===== END OPTIONS =====\n");
     fclose(tracker.log_file);
   }
-  tracker.finished_initializing = 1;
   sh_initialized = 1;
+  printf("Finished initialization.\n");
 }
 
 __attribute__((destructor))
