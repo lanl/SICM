@@ -143,8 +143,6 @@ void profile_all_interval(int s) {
   size_t total_samples;
   struct pollfd pfd;
 
-  printf("PROFILE_ALL interval\n");
-
   /* Outer loop loops over the events */
   for(i = 0; i < profopts.num_profile_all_events; i++) {
 
@@ -170,6 +168,8 @@ void profile_all_interval(int s) {
       fprintf(stderr, "Error occurred polling. Aborting.\n");
       exit(1);
     }
+
+    printf("PROFILE_ALL interval\n");
 
     /* Get ready to read */
     head = prof.profile_all.metadata[i]->data_head;
