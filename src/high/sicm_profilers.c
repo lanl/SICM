@@ -220,6 +220,8 @@ void profile_all_interval(int s) {
 
   }
 
+  printf("Samples: %zu\n", total_samples);
+
   end_interval();
 }
 
