@@ -143,6 +143,8 @@ void profile_all_interval(int s) {
   size_t total_samples;
   struct pollfd pfd;
 
+  printf("PROFILE_ALL interval\n");
+
   /* Outer loop loops over the events */
   for(i = 0; i < profopts.num_profile_all_events; i++) {
 
