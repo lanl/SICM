@@ -396,7 +396,7 @@ void profile_extent_size_interval(int s) {
   extent_arr_for(tracker.extents, i) {
     arena = (arena_info *) tracker.extents->arr[i].arena;
     if(!arena) continue;
-    profinfo = (profile_info *) arena->info;
+    profinfo = (profile_info *) prof.info[arena->index];
     if(!profinfo) continue;
 
     profinfo->profile_extent_size.tmp_accumulator = 0;
@@ -406,7 +406,7 @@ void profile_extent_size_interval(int s) {
   extent_arr_for(tracker.extents, i) {
     arena = (arena_info *) tracker.extents->arr[i].arena;
     if(!arena) continue;
-    profinfo = (profile_info *) arena->info;
+    profinfo = (profile_info *) prof.info[arena->index];
     if((!profinfo) || (!profinfo->num_intervals)) continue;
 
     start = (char *) tracker.extents->arr[i].start;
