@@ -255,6 +255,9 @@ void set_options() {
   if(env) {
     profopts.should_profile_allocs = 1;
   }
+  if(tracker.log_file) {
+    fprintf(tracker.log_file, "SH_PROFILE_ALLOCS: %d\n", profopts.should_profile_allocs);
+  }
 
   /* Should we profile (by isolating) a single allocation site onto a NUMA node
    * and getting the memory bandwidth on that node?
@@ -263,6 +266,9 @@ void set_options() {
   profopts.should_profile_one = 0;
   if(env) {
     profopts.should_profile_one = 1;
+  }
+  if(tracker.log_file) {
+    fprintf(tracker.log_file, "SH_PROFILE_ONE: %d\n", profopts.should_profile_one);
   }
 
   if(profopts.should_profile_one) {
@@ -438,7 +444,6 @@ void set_options() {
   if(env) {
     tmp_val = strtoimax(env, NULL, 10);
     tracker.default_device = get_device_from_numa_node((int) tmp_val);
-    printf("Defaulting to NUMA node %lld.\n", tmp_val);
   }
   if(!tracker.default_device) {
     /* This assumes that the normal page size is the first one that it'll find */

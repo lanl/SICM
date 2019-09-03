@@ -196,7 +196,7 @@ void profile_all_interval(int s) {
           if(!tracker.extents->arr[n].start && !tracker.extents->arr[n].end) continue;
           arena = (arena_info *)tracker.extents->arr[n].arena;
           if((addr >= tracker.extents->arr[n].start) && (addr <= tracker.extents->arr[n].end) && arena) {
-            ((profile_info *)arena->info)->profile_all.tmp_accumulator++;
+            prof.info[arena->index]->profile_all.tmp_accumulator++;
             total_samples++;
           }
         }
@@ -281,7 +281,7 @@ void profile_rss_skip_interval(int s) {
   extent_arr_for(tracker.extents, i) {
     arena = (arena_info *) tracker.extents->arr[i].arena;
     if(!arena) continue;
-    profinfo = (profile_info *) arena->info;
+    profinfo = prof.info[arena->index];
     if((!profinfo) || (!profinfo->num_intervals)) continue;
 
     profinfo->profile_rss.intervals = (size_t *)orig_realloc(profinfo->profile_rss.intervals, profinfo->num_intervals * sizeof(size_t));
@@ -311,7 +311,7 @@ void profile_rss_interval(int s) {
 	extent_arr_for(tracker.extents, i) {
     arena = (arena_info *) tracker.extents->arr[i].arena;
     if(!arena) continue;
-    profinfo = (profile_info *) arena->info;
+    profinfo = prof.info[arena->index];
     if(!profinfo) continue;
     profinfo->profile_rss.tmp_accumulator = 0;
   }
@@ -322,7 +322,7 @@ void profile_rss_interval(int s) {
 		end = (uint64_t) tracker.extents->arr[i].end;
 		arena = (arena_info *) tracker.extents->arr[i].arena;
     if(!arena) continue;
-    profinfo = (profile_info *) arena->info;
+    profinfo = prof.info[arena->index];
     if((!profinfo) || (!profinfo->num_intervals)) continue;
 
     numpages = (end - start) / prof.profile_rss.pagesize;
@@ -446,7 +446,7 @@ void profile_extent_size_skip_interval(int s) {
   extent_arr_for(tracker.extents, i) {
     arena = (arena_info *) tracker.extents->arr[i].arena;
     if(!arena) continue;
-    profinfo = (profile_info *) arena->info;
+    profinfo = prof.info[arena->index];
     if((!profinfo) || (!profinfo->num_intervals)) continue;
 
     /* Store this interval */
