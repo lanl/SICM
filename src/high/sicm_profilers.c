@@ -169,8 +169,6 @@ void profile_all_interval(int s) {
       exit(1);
     }
 
-    printf("PROFILE_ALL interval\n");
-
     /* Get ready to read */
     head = prof.profile_all.metadata[i]->data_head;
     tail = prof.profile_all.metadata[i]->data_tail;
@@ -193,7 +191,6 @@ void profile_all_interval(int s) {
       addr = (void *) (sample->addr);
 
       if(addr) {
-        printf("%p\n", addr);
         /* Search for which extent it goes into */
         extent_arr_for(tracker.extents, n) {
           if(!tracker.extents->arr[n].start && !tracker.extents->arr[n].end) continue;
@@ -219,8 +216,6 @@ void profile_all_interval(int s) {
     __sync_synchronize();
 
   }
-
-  printf("Samples: %zu\n", total_samples);
 
   end_interval();
 }
