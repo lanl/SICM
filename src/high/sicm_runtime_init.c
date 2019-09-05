@@ -102,7 +102,6 @@ void set_options() {
   int node, site;
   FILE *guidance_file;
   ssize_t len;
-  tree_it(int, deviceptr) it;
 
   /* Output the chosen options to this file */
   env = getenv("SH_LOG_FILE");
@@ -580,7 +579,7 @@ void sh_init() {
   pthread_mutex_init(&tracker.arena_lock, NULL);
   pthread_mutex_init(&tracker.thread_lock, NULL);
   pthread_rwlock_init(&tracker.device_arenas_lock, NULL);
-  pthread_rwlock_init(&sites_lock, NULL);
+  pthread_rwlock_init(&tracker.sites_lock, NULL);
 
   /* Get the number of NUMA nodes with memory, since we ignore huge pages with
    * the DEVICE arena layouts */
