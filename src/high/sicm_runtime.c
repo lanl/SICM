@@ -312,7 +312,7 @@ int get_arena_index(int id, size_t sz) {
       pthread_rwlock_unlock(&site->lock); /* get_site_arena grabs the lock */
       if(site->big) {
         ret = get_site_arena(id);
-        ret += thread_index + tracker.max_threads; /* per-site arenas come after per-thread ones */
+        ret += tracker.max_threads; /* per-site arenas come after per-thread ones */
       } else {
         /* Just use the per-thread arena */
         ret = thread_index;
