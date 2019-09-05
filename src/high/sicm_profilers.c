@@ -599,10 +599,6 @@ void profile_one_interval(int s)
 }
 #endif
 
-/*************************************************
- *                PROFILE_ONE                    *
- ************************************************/
-
 /* Uses libpfm to figure out the event we're going to use */
 void sh_get_event() {
   int err;

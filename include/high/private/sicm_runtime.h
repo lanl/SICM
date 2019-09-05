@@ -19,9 +19,11 @@ enum arena_layout {
   EXCLUSIVE_SITE_ARENAS, /* One arena per allocation site per thread */
   EXCLUSIVE_TWO_DEVICE_ARENAS, /* Two arenas per device per thread */
   EXCLUSIVE_FOUR_DEVICE_ARENAS, /* Four arenas per device per thread */
+  BIG_SMALL_ARENAS, /* Per-thread arenas for small allocations, shared site ones for larger sites */
   INVALID_LAYOUT
 };
 
+/* Information about a single allocation */
 typedef void *addr_t;
 typedef struct alloc_info {
   int index;
@@ -30,7 +32,7 @@ typedef struct alloc_info {
 typedef alloc_info *alloc_info_ptr;
 use_tree(addr_t, alloc_info_ptr);
 
-/* Keeps track of additional information about arenas */
+/* Information about a single arena */
 typedef struct arena_info {
   int *alloc_sites, num_alloc_sites; /* Stores the allocation sites that are in this arena */
   unsigned index; /* Index into the arenas array */
@@ -39,15 +41,19 @@ typedef struct arena_info {
   void *info;
 } arena_info;
 
-/* A tree associating site IDs with device pointers.
- * Sites should be bound to the device that they're associated with.
- * Filled with guidance from an offline profiling run or with
- * online profiling.
- */
+/* Information about a single site */
 typedef sicm_device * deviceptr;
-use_tree(int, deviceptr);
+typedef struct site_info {
+  pthread_rwlock_t lock;
+  deviceptr device;
+  int arena;
+  size_t size;
+} site_info;
+typedef site_info * siteinfo_ptr;
+
+/* Declare the trees */
 use_tree(deviceptr, int);
-use_tree(int, int);
+use_tree(int, siteinfo_ptr);
 
 /* Keeps track of all allocated data: arenas, extents, threads, etc. */
 typedef struct tracker_struct {
@@ -60,17 +66,18 @@ typedef struct tracker_struct {
   int num_numa_nodes;
   deviceptr default_device;
 
-  /* Allocation site ID -> device */
-  tree(int, deviceptr) site_nodes;
   /* Stores arenas associated with a device,
    * for the per-device arena layouts only. */
+  pthread_rwlock_t device_arenas_lock;
   tree(deviceptr, int) device_arenas;
 
   /* Keep track of all extents */
+  pthread_rwlock_t extents_lock;
   extent_arr *extents;
 
-  /* Gets locked when we add a new extent */
-  pthread_rwlock_t extents_lock;
+  /* Keeps track of sites */
+  pthread_rwlock_t sites_lock;
+  tree(int, siteinfo_ptr) sites;
 
   /* Keeps track of arenas */
   arena_info **arenas;
@@ -78,11 +85,8 @@ typedef struct tracker_struct {
   int max_arenas, arenas_per_thread, max_sites_per_arena;
   int max_index;
 
-  /* Stores which arena an allocation site goes into. Only for
-   * the `*_SITE_ARENAS` layouts, where there is an arena for
-   * each allocation site.
-   */
-  tree(int, int) site_arenas;
+  /* Incremented atomically to keep track of which arena indices are
+   * taken or not */
   int arena_counter;
 
   /* Only for profile_allocs. Stores allocated pointers as keys,
@@ -118,7 +122,7 @@ void sh_terminate();
 
 void sh_create_extent(sarena *arena, void *begin, void *end);
 void sh_delete_extent(sarena *arena, void *begin, void *end);
-int get_arena_index(int id);
+int get_arena_index(int id, size_t sz);
 
 /* Options for if/when/how to profile. Initialized in src/high/sicm_runtime_init.c,
  * used by src/high/sicm_profile.c.

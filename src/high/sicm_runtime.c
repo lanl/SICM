@@ -20,32 +20,34 @@
 
 char sh_initialized = 0;
 
+/*************************************************
+ *               ORIG_MALLOC                     *
+ *************************************************
+ *  Used for allocating data structures in SICM
+ *  after the malloc wrappers have been defined.
+ */
 static void *(*orig_malloc_ptr)(size_t) = NULL;
 static void *(*orig_calloc_ptr)(size_t, size_t) = NULL;
 static void *(*orig_realloc_ptr)(void *, size_t) = NULL;
 static void (*orig_free_ptr)(void *) = NULL;
-
 void *__attribute__ ((noinline)) orig_malloc(size_t size) {
   if(!orig_malloc_ptr) {
     orig_malloc_ptr = dlsym(RTLD_NEXT, "malloc");
   }
   return (*orig_malloc_ptr)(size);
 }
-
 void *__attribute__ ((noinline)) orig_calloc(size_t num, size_t size) {
   if(!orig_calloc_ptr) {
     orig_calloc_ptr = dlsym(RTLD_NEXT, "calloc");
   }
   return (*orig_calloc_ptr)(num, size);
 }
-
 void *__attribute__ ((noinline)) orig_realloc(void *ptr, size_t size) {
   if(!orig_realloc_ptr) {
     orig_realloc_ptr = dlsym(RTLD_NEXT, "realloc");
   }
   return (*orig_realloc_ptr)(ptr, size);
 }
-
 void __attribute__ ((noinline)) orig_free(void *ptr) {
   if(!orig_free_ptr) {
     orig_free_ptr = dlsym(RTLD_NEXT, "free");
@@ -54,6 +56,12 @@ void __attribute__ ((noinline)) orig_free(void *ptr) {
   return;
 }
 
+/*************************************************
+ *            PROFILE_ALLOCS                     *
+ *************************************************
+ *  Used to record each allocation. Enable with
+ *  'should_profile_allocs'.
+ */
 void profile_allocs_alloc(void *ptr, size_t size, int index) {
   alloc_info_ptr aip;
 
@@ -70,7 +78,6 @@ void profile_allocs_alloc(void *ptr, size_t size, int index) {
   tree_insert(tracker.profile_allocs_map, ptr, aip);
   pthread_rwlock_unlock(&tracker.profile_allocs_map_lock);
 }
-
 void profile_allocs_realloc(void *ptr, size_t size, int index) {
   alloc_info_ptr aip;
 
@@ -89,7 +96,6 @@ void profile_allocs_realloc(void *ptr, size_t size, int index) {
   tree_insert(tracker.profile_allocs_map, ptr, aip);
   pthread_rwlock_unlock(&tracker.profile_allocs_map_lock);
 }
-
 void profile_allocs_free(void *ptr) {
   tree_it(addr_t, alloc_info_ptr) it;
   alloc_info_ptr aip;
@@ -113,6 +119,12 @@ void profile_allocs_free(void *ptr) {
   pthread_rwlock_unlock(&tracker.profile_allocs_map_lock);
 }
 
+/*************************************************
+ *            UTILITY FUNCTIONS                  *
+ *************************************************
+ *  Miscellaneous utility functions for allocation.
+ */
+
 /* Returns the index of an allocation site in an arena,
  * -1 if it's not there */
 int get_alloc_site(arena_info *arena, int id) {
@@ -126,7 +138,9 @@ int get_alloc_site(arena_info *arena, int id) {
   return -1;
 }
 
-
+/* Gets a unique index for a thread. Used especially
+ * in per-thread arena layouts.
+ */
 int get_thread_index() {
   int *val;
 
@@ -149,17 +163,181 @@ int get_thread_index() {
   return *val;
 }
 
+/* Gets a pointer to the site_info struct that corresponds to this site */
+site_info *get_site(int id) {
+  tree_it(int, siteinfo_ptr) it;
+  site_info *ret;
+
+  it = tree_lookup(tracker.sites, id);
+  if(tree_it_good(it)) {
+    pthread_rwlock_rdlock(&tracker.sites_lock);
+    ret = tree_it_val(it);
+  } else {
+    pthread_rwlock_wrlock(&tracker.sites_lock);
+    ret = orig_malloc(sizeof(site_info));
+    pthread_rwlock_init(&ret->lock, NULL);
+    ret->device = NULL;
+    ret->arena = -1;
+    ret->size = 0;
+    tree_insert(tracker.sites, id, ret);
+  }
+  pthread_rwlock_unlock(&tracker.sites_lock);
+
+  return ret;
+}
+
+/* Gets which arena index a site is allocated to. */
+int get_site_arena(int id) {
+  int ret;
+  site_info *site;
+
+  site = get_site(id);
+  ret = site->arena;
+  if(ret == -1) {
+    /* We need to create an arena for this site. Grab the next
+     * available arena and increment.
+     */
+    ret = __sync_fetch_and_add(&tracker.arena_counter, 1);
+    pthread_rwlock_wrlock(&site->lock);
+    site->arena = ret;
+    pthread_rwlock_unlock(&site->lock);
+  }
+
+  return ret;
+}
+
+/* Gets the device that this site has been assigned to. Returns
+ * NULL if it's unset.
+ */
+sicm_device *get_site_device(int id) {
+  deviceptr device;
+
+  device = get_site(id)->device;
+  if(!device) {
+    device = tracker.default_device;
+  }
+
+#if 0
+  if(profopts.should_profile_one && (id == profopts.profile_one_site)) {
+    device = profopts.profile_one_device;
+  }
+#endif
+
+  return device;
+}
+
+/* Chooses an arena for the per-device arena layouts. */
+int get_device_arena(int id, deviceptr *device) {
+  tree_it(deviceptr, int) devit;
+  int ret;
+
+  *device = get_site_device(id);
+
+  pthread_rwlock_rdlock(&tracker.device_arenas_lock);
+  devit = tree_lookup(tracker.device_arenas, *device);
+  if(tree_it_good(devit)) {
+    /* This device already has an arena associated with it. Return the
+     * index of that arena.
+     */
+    ret = tree_it_val(devit);
+  } else {
+    /* Choose an arena index for this device.  We're going to assume here
+     * that we never get a device that didn't exist on initialization.
+     * Remember our choice. We need to grab the write lock for this one.
+     */
+    pthread_rwlock_unlock(&tracker.device_arenas_lock);
+    pthread_rwlock_wrlock(&tracker.device_arenas_lock);
+    ret = tracker.max_index + 1;
+    tree_insert(tracker.device_arenas, *device, ret);
+  }
+  pthread_rwlock_unlock(&tracker.device_arenas_lock);
+
+  return ret;
+}
+
+/* Gets the index that the allocation site should go into */
+int get_arena_index(int id, size_t sz) {
+  int ret, thread_index;
+  deviceptr device;
+
+  thread_index = get_thread_index();
+
+  ret = 0;
+  device = NULL;
+  switch(tracker.layout) {
+    case SHARED_ONE_ARENA:
+      ret = 0;
+      break;
+    case EXCLUSIVE_ONE_ARENA:
+      ret = thread_index + 1;
+      break;
+    case SHARED_DEVICE_ARENAS:
+      ret = get_device_arena(id, &device);
+      break;
+    case EXCLUSIVE_DEVICE_ARENAS:
+      /* Same as SHARED_DEVICE_ARENAS, except per thread */
+      ret = get_device_arena(id, &device);
+      ret = (thread_index * tracker.arenas_per_thread) + ret;
+      break;
+    case SHARED_SITE_ARENAS:
+      ret = get_site_arena(id);
+      device = get_site_device(id);
+      break;
+    case EXCLUSIVE_SITE_ARENAS:
+      ret = (thread_index * tracker.arenas_per_thread) + id;
+      break;
+    case EXCLUSIVE_TWO_DEVICE_ARENAS:
+      ret = get_device_arena(id, &device);
+      ret = (thread_index * tracker.arenas_per_thread) + ret;
+      break;
+    case EXCLUSIVE_FOUR_DEVICE_ARENAS:
+      ret = get_device_arena(id, &device);
+      ret = (thread_index * tracker.arenas_per_thread) + ret;
+      break;
+    case BIG_SMALL_ARENAS:
+      /* Determine if it's a big or small site */
+      break;
+    default:
+      fprintf(stderr, "Invalid arena layout. Aborting.\n");
+      exit(1);
+      break;
+  };
+
+  if(ret > tracker.max_arenas) {
+    /* Fit the index to the maximum number of arenas */
+    fprintf(stderr, "WARNING: Overflowing maximum arenas.\n");
+    ret = ret % tracker.max_arenas;
+  }
+
+  pthread_mutex_lock(&tracker.arena_lock);
+  tracker.pending_indices[thread_index] = ret;
+  sh_create_arena(ret, id, device);
+  pthread_mutex_unlock(&tracker.arena_lock);
+
+  return ret;
+}
+
+/*************************************************
+ *             ARENA AND EXTENT ALLOC            *
+ *************************************************
+ *  Functions for creating arenas and extents.
+ */
+
 /* Adds an arena to the `arenas` array. */
 void sh_create_arena(int index, int id, sicm_device *device) {
   size_t i;
   arena_info *arena;
+  siteinfo_ptr site;
 
   if((tracker.arenas[index] != NULL) && (get_alloc_site(tracker.arenas[index], id) != -1)) {
     return;
   }
 
   /* Keep track of which arena we chose for this site */
-  tree_insert(tracker.site_arenas, id, index);
+  site = get_site(id);
+  pthread_rwlock_wrlock(&site->lock);
+  site->arena = index;
+  pthread_rwlock_unlock(&site->lock);
 
   /* If we've already created this arena */
   if(tracker.arenas[index] != NULL) {
@@ -248,129 +426,12 @@ void sh_delete_extent(sarena *arena, void *start, void *end) {
   }
 }
 
-int get_site_arena(int id) {
-  tree_it(int, int) it;
-  int ret;
-
-  it = tree_lookup(tracker.site_arenas, id);
-  if(tree_it_good(it)) {
-    /* We've already got an arena for this site, use it */
-    ret = tree_it_val(it);
-  } else {
-    /* We need to create an arena for this site. Grab the next
-     * available arena and increment.
-     */
-    ret = __sync_fetch_and_add(&tracker.arena_counter, 1);
-  }
-
-  return ret;
-}
-
-/* Gets the device that this site should go onto from the site_nodes tree */
-sicm_device_list *get_site_device(int id) {
-  deviceptr device;
-  tree_it(int, deviceptr) it;
-
-  it = tree_lookup(tracker.site_nodes, id);
-  if(tree_it_good(it)) {
-    /* This site was found in the guidance file.  Use its device pointer to
-     * find if this device has already got an arena.
-     */
-    device = tree_it_val(it);
-    printf("Site %d goes to node %d\n", id, device->node);
-  } else {
-    /* Site's not in the guidance file. Use the default device. */
-    device = tracker.default_device;
-  }
-  if(profopts.should_profile_one && (id == profopts.profile_one_site)) {
-    device = profopts.profile_one_device;
-  }
-
-  return device;
-}
-
-/* Chooses an arena for the per-device arena layouts. */
-int get_device_arena(int id, deviceptr *device) {
-  tree_it(deviceptr, int) devit;
-  int ret;
-
-  *device = get_site_device(id);
-  devit = tree_lookup(tracker.device_arenas, *device);
-  if(tree_it_good(devit)) {
-    /* This device already has an arena associated with it. Return the
-     * index of that arena.
-     */
-    ret = tree_it_val(devit);
-  } else {
-    /* Choose an arena index for this device.  We're going to assume here
-     * that we never get a device that didn't exist on initialization.
-     * Remember our choice.
-     */
-    ret = tracker.max_index + 1;
-    tree_insert(tracker.device_arenas, *device, ret);
-  }
-
-  return ret;
-}
-
-/* Gets the index that the allocation site should go into */
-int get_arena_index(int id) {
-  int ret, thread_index;
-  deviceptr device;
-  tree_it(int, int) it;
-
-  thread_index = get_thread_index();
-
-  ret = 0;
-  device = NULL;
-  switch(tracker.layout) {
-    case SHARED_ONE_ARENA:
-      ret = 0;
-      break;
-    case EXCLUSIVE_ONE_ARENA:
-      ret = thread_index + 1;
-      break;
-    case SHARED_DEVICE_ARENAS:
-      ret = get_device_arena(id, &device);
-      break;
-    case EXCLUSIVE_DEVICE_ARENAS:
-      /* Same as SHARED_DEVICE_ARENAS, except per thread */
-      ret = get_device_arena(id, &device);
-      ret = (thread_index * tracker.arenas_per_thread) + ret;
-      break;
-    case SHARED_SITE_ARENAS:
-      ret = get_site_arena(id);
-      device = get_site_device(id);
-      break;
-    case EXCLUSIVE_SITE_ARENAS:
-      ret = (thread_index * tracker.arenas_per_thread) + id;
-      break;
-    case EXCLUSIVE_TWO_DEVICE_ARENAS:
-      ret = get_device_arena(id, &device);
-      ret = (thread_index * tracker.arenas_per_thread) + ret;
-    case EXCLUSIVE_FOUR_DEVICE_ARENAS:
-      ret = get_device_arena(id, &device);
-      ret = (thread_index * tracker.arenas_per_thread) + ret;
-      break;
-    default:
-      fprintf(stderr, "Invalid arena layout. Aborting.\n");
-      exit(1);
-      break;
-  };
-
-  if(ret > tracker.max_arenas) {
-    /* Fit the index to the maximum number of arenas */
-    fprintf(stderr, "WARNING: Overflowing maximum arenas.\n");
-    ret = ret % tracker.max_arenas;
-  }
-
-  pthread_mutex_lock(&tracker.arena_lock);
-  tracker.pending_indices[thread_index] = ret;
-  sh_create_arena(ret, id, device);
-  pthread_mutex_unlock(&tracker.arena_lock);
-
-  return ret;
-}
+/*************************************************
+ *              SH_ALLOC                         *
+ *************************************************
+ *  The primary interface. Allocation and deallocation
+ *  functions that the compiler pass creates calls to.
+ */
 
 void* sh_realloc(int id, void *ptr, size_t sz) {
   int   index;
@@ -380,7 +441,7 @@ void* sh_realloc(int id, void *ptr, size_t sz) {
   if((tracker.layout == INVALID_LAYOUT) || (id == 0) || (!sh_initialized)) {
     ret = je_realloc(ptr, sz);
   } else {
-    index = get_arena_index(id);
+    index = get_arena_index(id, sz);
     ret = sicm_arena_realloc(tracker.arenas[index]->arena, ptr, sz);
 
     if(profopts.should_profile_allocs) {
@@ -404,7 +465,7 @@ void* sh_alloc(int id, size_t sz) {
   if((tracker.layout == INVALID_LAYOUT) || !sz || (id == 0) || (!sh_initialized)) {
     ret = je_malloc(sz);
   } else {
-    index = get_arena_index(id);
+    index = get_arena_index(id, sz);
     ret = sicm_arena_alloc(tracker.arenas[index]->arena, sz);
 
     if(profopts.should_profile_allocs) {
@@ -435,7 +496,7 @@ void* sh_aligned_alloc(int id, size_t alignment, size_t sz) {
   if(tracker.layout == INVALID_LAYOUT) {
     ret = je_aligned_alloc(alignment, sz);
   } else {
-    index = get_arena_index(id);
+    index = get_arena_index(id, sz);
     if(profopts.should_profile_allocs) {
       tracker.arenas[index]->size += sz;
     }

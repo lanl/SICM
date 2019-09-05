@@ -28,7 +28,9 @@ enum arena_layout parse_layout(char *env) {
 		return EXCLUSIVE_TWO_DEVICE_ARENAS;
 	} else if(strncmp(env, "EXCLUSIVE_FOUR_DEVICE_ARENAS", max_chars) == 0) {
 		return EXCLUSIVE_FOUR_DEVICE_ARENAS;
-	}
+	} else if(strncmp(env, "BIG_SMALL_ARENAS", max_chars) == 0) {
+    return BIG_SMALL_ARENAS;
+  }
 
   return INVALID_LAYOUT;
 }
@@ -52,6 +54,8 @@ char *layout_str(enum arena_layout layout) {
       return "EXCLUSIVE_TWO_DEVICE_ARENAS";
     case EXCLUSIVE_FOUR_DEVICE_ARENAS:
       return "EXCLUSIVE_FOUR_DEVICE_ARENAS";
+    case BIG_SMALL_ARENAS:
+      return "BIG_SMALL_ARENAS";
     default:
       break;
   }
@@ -140,9 +144,6 @@ void set_options() {
     tracker.layout = parse_layout(env);
   } else {
     tracker.layout = DEFAULT_ARENA_LAYOUT;
-  }
-  if(profopts.should_profile_online) {
-    tracker.layout = SHARED_SITE_ARENAS;
   }
   if(tracker.log_file) {
     fprintf(tracker.log_file, "SH_ARENA_LAYOUT: %s\n", env);
@@ -370,12 +371,7 @@ void set_options() {
   env = getenv("SH_PROFILE_RSS");
   profopts.should_profile_rss = 0;
   if(env) {
-    if(tracker.layout == SHARED_SITE_ARENAS) {
-      profopts.should_profile_rss = 1;
-    } else {
-      fprintf(stderr, "Can't profile RSS, because we're using the wrong arena layout.\n");
-      exit(1);
-    }
+    profopts.should_profile_rss = 1;
 
     env = getenv("SH_PROFILE_RSS_SKIP_INTERVALS");
     profopts.profile_rss_skip_intervals = 1;
@@ -522,7 +518,10 @@ void set_options() {
           exit(1);
         }
         sscanf(str, "%d", &node);
-        tree_insert(tracker.site_nodes, site, get_device_from_numa_node(node));
+
+        /* Construct a site_info struct to store in the tree */
+        
+        tree_insert(tracker.sites, site, get_device_from_numa_node(node));
       } else {
         if(!str) continue;
         /* Find the "===== GUIDANCE" tokens */
@@ -575,9 +574,13 @@ void sh_init() {
   }
 
   tracker.device_list = sicm_init();
+
+  /* Initialize all of the locks */
   pthread_rwlock_init(&tracker.extents_lock, NULL);
   pthread_mutex_init(&tracker.arena_lock, NULL);
   pthread_mutex_init(&tracker.thread_lock, NULL);
+  pthread_rwlock_init(&tracker.device_arenas_lock, NULL);
+  pthread_rwlock_init(&sites_lock, NULL);
 
   /* Get the number of NUMA nodes with memory, since we ignore huge pages with
    * the DEVICE arena layouts */
@@ -590,17 +593,11 @@ void sh_init() {
   }
 
   tracker.arena_counter = 0;
-  tracker.site_arenas = tree_make(int, int);
-  tracker.site_nodes = tree_make(int, deviceptr);
+  tracker.sites = tree_make(int, siteinfo_ptr);
   tracker.device_arenas = tree_make(deviceptr, int);
   set_options();
   
   if(tracker.layout != INVALID_LAYOUT) {
-    /* `arenas` is a pseudo-two-dimensional array, first dimension is per-thread.
-     * Second dimension is one for each arena that each thread will have.
-     * If the arena layout isn't per-thread (`EXCLUSIVE_`), arenas_per_thread is just
-     * the total number of arenas.
-     */
     tracker.arenas = (arena_info **) orig_calloc(tracker.max_arenas, sizeof(arena_info *));
 
     /* Initialize the extents array.
