@@ -85,6 +85,7 @@ typedef struct tracker_struct {
   enum arena_layout layout;
   int max_arenas, arenas_per_thread, max_sites_per_arena;
   int max_index;
+  size_t big_small_threshold;
 
   /* Incremented atomically to keep track of which arena indices are
    * taken or not */

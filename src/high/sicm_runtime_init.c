@@ -150,10 +150,10 @@ void set_options() {
   if(tracker.layout == BIG_SMALL_ARENAS) {
     env = getenv("SH_BIG_SMALL_THRESHOLD");
     if(env) {
-      profopts.big_small_threshold = strtoul(env, NULL, 0);
+      tracker.big_small_threshold = strtoul(env, NULL, 0);
     }
     if(tracker.log_file) {
-      fprintf(tracker.log_file, "SH_BIG_SMALL_THRESHOLD: %lu\n", profopts.big_small_threshold);
+      fprintf(tracker.log_file, "SH_BIG_SMALL_THRESHOLD: %lu\n", tracker.big_small_threshold);
     }
   }
 

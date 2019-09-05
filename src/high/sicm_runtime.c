@@ -305,7 +305,7 @@ int get_arena_index(int id, size_t sz) {
        */
       site = get_site(id);
       pthread_rwlock_rdlock(&site->lock);
-      if(!(site->big) && ((size > profopts.big_small_threshold) || (site->size > profopts.big_small_threshold))) {
+      if(!(site->big) && ((sz > tracker.big_small_threshold) || (site->size > tracker.big_small_threshold))) {
         /* Mark the site as big if it hasn't already been */
         printf("Site %d is now big.\n", id);
         site->big = 1;
