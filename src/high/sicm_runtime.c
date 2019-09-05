@@ -313,10 +313,12 @@ int get_arena_index(int id, size_t sz) {
       if(site->big) {
         ret = get_site_arena(id);
         ret += tracker.max_threads; /* per-site arenas come after per-thread ones */
+        printf("BIG %d: %d\n", id, ret);
       } else {
         /* Just use the per-thread arena */
         ret = thread_index;
         device = tracker.upper_device;
+        printf("SMALL %d: %d\n", id, ret);
       }
       break;
     default:
@@ -359,7 +361,6 @@ void sh_create_arena(int index, int id, sicm_device *device) {
   site = get_site(id);
   pthread_rwlock_wrlock(&site->lock);
   site->arena = index;
-  printf("BIG %d: %d\n", id, index);
   pthread_rwlock_unlock(&site->lock);
 
   /* If we've already created this arena */
