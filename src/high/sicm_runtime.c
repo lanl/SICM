@@ -106,7 +106,6 @@ void profile_allocs_free(void *ptr) {
   if(tree_it_good(it)) {
     aip = tree_it_val(it);
   } else {
-    fprintf(stderr, "WARNING: Couldn't find a pointer to free in the map of allocations.\n");
     pthread_rwlock_unlock(&tracker.profile_allocs_map_lock);
     return;
   }
