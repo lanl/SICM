@@ -167,12 +167,11 @@ site_info *get_site(int id) {
   tree_it(int, siteinfo_ptr) it;
   site_info *ret;
 
+  pthread_rwlock_wrlock(&tracker.sites_lock);
   it = tree_lookup(tracker.sites, id);
   if(tree_it_good(it)) {
-    pthread_rwlock_rdlock(&tracker.sites_lock);
     ret = tree_it_val(it);
   } else {
-    pthread_rwlock_wrlock(&tracker.sites_lock);
     ret = orig_malloc(sizeof(site_info));
     pthread_rwlock_init(&ret->lock, NULL);
     ret->device = NULL;
@@ -310,7 +309,7 @@ int get_arena_index(int id, size_t sz) {
         printf("Site %d is now big.\n", id);
         site->big = 1;
       }
-      pthread_rwlock_unlock(&site->lock); /* get_site_arena grabs the lock */
+      pthread_rwlock_unlock(&site->lock);
       if(site->big) {
         ret = get_site_arena(id);
         ret += tracker.max_threads; /* per-site arenas come after per-thread ones */
