@@ -309,6 +309,7 @@ int get_arena_index(int id, size_t sz) {
         printf("Site %d is now big.\n", id);
         site->big = 1;
       }
+      pthread_rwlock_unlock(&site->lock); /* get_site_arena grabs the lock */
       if(site->big) {
         ret = get_site_arena(id);
         ret += thread_index + tracker.max_threads; /* per-site arenas come after per-thread ones */
@@ -317,7 +318,6 @@ int get_arena_index(int id, size_t sz) {
         ret = thread_index;
         device = tracker.upper_device;
       }
-      pthread_rwlock_unlock(&site->lock);
       break;
     default:
       fprintf(stderr, "Invalid arena layout. Aborting.\n");
