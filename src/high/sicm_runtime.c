@@ -197,9 +197,10 @@ int get_site_arena(int id) {
     /* We need to create an arena for this site. Grab the next
      * available arena and increment.
      */
-    ret = __sync_fetch_and_add(&tracker.arena_counter, 1);
     pthread_rwlock_wrlock(&site->lock);
+    ret = __sync_fetch_and_add(&tracker.arena_counter, 1);
     site->arena = ret;
+    printf("Site %d gets arena %d.\n", id, ret);
     pthread_rwlock_unlock(&site->lock);
   }
 
