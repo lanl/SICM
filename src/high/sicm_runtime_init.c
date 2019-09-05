@@ -82,9 +82,7 @@ sicm_device *get_device_from_numa_node(int id) {
     }
     device++;
   }
-  /* If we don't find an appropriate device, it stays NULL
-   * so that no allocation sites will be bound to it
-   */
+
   if(retval == NULL) {
     fprintf(stderr, "Couldn't find an appropriate device for NUMA node %d.\n", id);
     exit(1);
@@ -146,6 +144,17 @@ void set_options() {
   }
   if(tracker.log_file) {
     fprintf(tracker.log_file, "SH_ARENA_LAYOUT: %s\n", env);
+  }
+
+  /* Get the threshold for a "big" or "small" arena, in bytes */
+  if(tracker.layout == BIG_SMALL_ARENAS) {
+    env = getenv("SH_BIG_SMALL_THRESHOLD");
+    if(env) {
+      profopts.big_small_threshold = strtoul(env, NULL, 0);
+    }
+    if(tracker.log_file) {
+      fprintf(tracker.log_file, "SH_BIG_SMALL_THRESHOLD: %lu\n", profopts.big_small_threshold);
+    }
   }
 
   /* Get max_threads */
@@ -437,7 +446,27 @@ void set_options() {
     }
   }
 
-  /* Get default_device_tag */
+  /* Get the devices */
+  env = getenv("SH_UPPER_NODE");
+  tracker.upper_device = NULL;
+  if(env) {
+    tmp_val = strtoimax(env, NULL, 10);
+    tracker.upper_device = get_device_from_numa_node((int) tmp_val);
+  }
+  if(!tracker.upper_device) {
+    fprintf(stderr, "WARNING: Upper device defaulting to NUMA node 0.\n");
+    tracker.upper_device = get_device_from_numa_node(0);
+  }
+  env = getenv("SH_LOWER_NODE");
+  tracker.lower_device = NULL;
+  if(env) {
+    tmp_val = strtoimax(env, NULL, 10);
+    tracker.lower_device = get_device_from_numa_node((int) tmp_val);
+  }
+  if(!tracker.lower_device) {
+    fprintf(stderr, "WARNING: Lower device defaulting to NUMA node 0.\n");
+    tracker.lower_device = get_device_from_numa_node(0);
+  }
   env = getenv("SH_DEFAULT_NODE");
   tracker.default_device = NULL;
   if(env) {
@@ -445,11 +474,12 @@ void set_options() {
     tracker.default_device = get_device_from_numa_node((int) tmp_val);
   }
   if(!tracker.default_device) {
-    /* This assumes that the normal page size is the first one that it'll find */
-    if(env) {
-      fprintf(stderr, "WARNING: Defaulting to NUMA node 0.\n");
-    }
-    tracker.default_device = get_device_from_numa_node(0);
+    tracker.default_device = tracker.lower_device;
+  }
+  if(tracker.log_file) {
+    fprintf(tracker.log_file, "SH_DEFAULT_NODE: %d\n", sicm_numa_id(tracker.default_device));
+    fprintf(tracker.log_file, "SH_UPPER_NODE: %d\n", sicm_numa_id(tracker.upper_device));
+    fprintf(tracker.log_file, "SH_LOWER_NODE: %d\n", sicm_numa_id(tracker.lower_device));
   }
 
   /* Get arenas_per_thread */
@@ -472,6 +502,8 @@ void set_options() {
     case EXCLUSIVE_FOUR_DEVICE_ARENAS:
       tracker.arenas_per_thread = 4 * tracker.num_numa_nodes; //((int) device_list.count);
       break;
+    case BIG_SMALL_ARENAS:
+      tracker.arenas_per_thread = 1;
     default:
       tracker.arenas_per_thread = 1;
       break;

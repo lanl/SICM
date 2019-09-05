@@ -48,6 +48,7 @@ typedef struct site_info {
   deviceptr device;
   int arena;
   size_t size;
+  char big;
 } site_info;
 typedef site_info * siteinfo_ptr;
 
@@ -64,7 +65,7 @@ typedef struct tracker_struct {
    * we should bind to by default */
   struct sicm_device_list device_list;
   int num_numa_nodes;
-  deviceptr default_device;
+  deviceptr lower_device, upper_device, default_device;
 
   /* Stores arenas associated with a device,
    * for the per-device arena layouts only. */

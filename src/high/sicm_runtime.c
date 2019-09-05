@@ -179,6 +179,7 @@ site_info *get_site(int id) {
     ret->device = NULL;
     ret->arena = -1;
     ret->size = 0;
+    ret->big = 0;
     tree_insert(tracker.sites, id, ret);
   }
   pthread_rwlock_unlock(&tracker.sites_lock);
@@ -259,6 +260,7 @@ int get_device_arena(int id, deviceptr *device) {
 int get_arena_index(int id, size_t sz) {
   int ret, thread_index;
   deviceptr device;
+  siteinfo_ptr site;
 
   thread_index = get_thread_index();
 
@@ -295,7 +297,28 @@ int get_arena_index(int id, size_t sz) {
       ret = (thread_index * tracker.arenas_per_thread) + ret;
       break;
     case BIG_SMALL_ARENAS:
-      /* Determine if it's a big or small site */
+      /* Uses the first 'tracker.max_threads' indices to have one per-thread arena for "small" allocations.
+       * Once a site reaches a size threshold, it is given its own arena, which is shared among the threads.
+       * Because we don't know the size of the site without offline profiling, we're not able to move earlier
+       * allocations to that site out of the per-thread arenas, so a site that gets its own arena will have some
+       * of its allocations in the per-thread arenas and the rest of its allocations in its own arena.
+       */
+      site = get_site(id);
+      pthread_rwlock_rdlock(&site->lock);
+      if(!(site->big) && ((size > profopts.big_small_threshold) || (site->size > profopts.big_small_threshold))) {
+        /* Mark the site as big if it hasn't already been */
+        printf("Site %d is now big.\n", id);
+        site->big = 1;
+      }
+      if(site->big) {
+        ret = get_site_arena(id);
+        ret += thread_index + tracker.max_threads; /* per-site arenas come after per-thread ones */
+      } else {
+        /* Just use the per-thread arena */
+        ret = thread_index;
+        device = tracker.upper_device;
+      }
+      pthread_rwlock_unlock(&site->lock);
       break;
     default:
       fprintf(stderr, "Invalid arena layout. Aborting.\n");
@@ -333,10 +356,11 @@ void sh_create_arena(int index, int id, sicm_device *device) {
     return;
   }
 
-  /* Keep track of which arena we chose for this site */
+  /* Keep track of which arena we chose for this site. */
   site = get_site(id);
   pthread_rwlock_wrlock(&site->lock);
   site->arena = index;
+  printf("BIG %d: %d\n", id, index);
   pthread_rwlock_unlock(&site->lock);
 
   /* If we've already created this arena */
