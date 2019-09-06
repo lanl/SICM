@@ -1,0 +1,39 @@
+/* Example architectural description of Ecuador, an Ivy Bridge server machine
+with two NUMA nodes. All units in GB, GB/s, or ns. */
+
+/* Memory on node 0 */
+node mem mem0 {
+  numa 0;
+  capacity 32;
+};
+
+/* Memory on node 1 */
+node mem mem1 {
+  numa 1;
+  capacity 32;
+};
+
+/* Node 1 CPU */
+node compute cpu1 {
+  numa 1;
+  /* Local DRAM */
+  edge mem1 {
+    bandwidth 30;
+    latency 74;
+  };
+};
+
+/* Node 0 CPU */
+node compute cpu0 {
+  numa 0;
+  /* Local DRAM */
+  edge mem0 {
+    bandwidth 30;
+    latency 74;
+  };
+  /* QPI link */
+  edge cpu1 {
+    bandwidth 20;
+    latency 144;
+  };
+};
