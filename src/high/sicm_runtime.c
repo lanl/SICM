@@ -357,12 +357,6 @@ void sh_create_arena(int index, int id, sicm_device *device) {
     return;
   }
 
-  /* Keep track of which arena we chose for this site. */
-  site = get_site(id);
-  pthread_rwlock_wrlock(&site->lock);
-  site->arena = index;
-  pthread_rwlock_unlock(&site->lock);
-
   /* If we've already created this arena */
   if(tracker.arenas[index] != NULL) {
 
