@@ -201,6 +201,8 @@ int get_site_arena(int id) {
     site->arena = ret;
     printf("Site %d gets arena %d.\n", id, ret);
     pthread_rwlock_unlock(&site->lock);
+  } else {
+    printf("Site %d already assigned arena %d.\n", id, ret);
   }
 
   return ret;
