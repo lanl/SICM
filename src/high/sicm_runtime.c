@@ -199,7 +199,6 @@ int get_site_arena(int id) {
      */
     ret = __sync_fetch_and_add(&tracker.arena_counter, 1);
     site->arena = ret;
-    printf("Site %d gets arena %d.\n", id, ret);
   }
   pthread_rwlock_unlock(&site->lock);
 
@@ -306,19 +305,16 @@ int get_arena_index(int id, size_t sz) {
       pthread_rwlock_rdlock(&site->lock);
       if(!(site->big) && ((sz > tracker.big_small_threshold) || (site->size > tracker.big_small_threshold))) {
         /* Mark the site as big if it hasn't already been */
-        printf("Site %d is now big.\n", id);
         site->big = 1;
       }
       pthread_rwlock_unlock(&site->lock);
       if(site->big) {
         ret = get_site_arena(id);
         ret += tracker.max_threads; /* per-site arenas come after per-thread ones */
-        printf("BIG %d: %d\n", id, ret);
       } else {
         /* Just use the per-thread arena */
         ret = thread_index;
         device = tracker.upper_device;
-        printf("SMALL %d: %d\n", id, ret);
       }
       break;
     default:
