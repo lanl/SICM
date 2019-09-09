@@ -1,0 +1,3 @@
+[submodule "contrib/memory_characterization/kmeans"]
+	path = contrib/memory_characterization/kmeans
+	url = https://github.com/pramsey/kmeans.git
