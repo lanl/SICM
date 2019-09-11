@@ -25,7 +25,7 @@ static void parse_layout_file(const char *layout_file) {
      * @incomplete
      */
 
-    layout.is_valid = true;
+    layout.is_valid = 1;
 }
 
 void sicm_layout_init(const char *layout_file) {
@@ -46,7 +46,7 @@ void sicm_layout_fini(void) {
     while (tree_len(layout.nodes) > 0) {
         it  = tree_begin(layout.nodes);
         key = tree_it_key(it);
-        tree_delete(key);
+        tree_delete(layout.nodes, key);
         free(key);
     }
 
