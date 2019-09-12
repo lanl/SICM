@@ -266,7 +266,9 @@ static void parse_layout_file(const char *layout_file) {
     layout.nodes = tree_make_c(str, sicm_layout_node_ptr, strcmp);
 
     trim_whitespace_and_comments(&info);
-   
+  
+    LOG("HERE\n");
+
     expect_keyword(&info, "layout");
     expect_word(&info, &layout.name);
 
