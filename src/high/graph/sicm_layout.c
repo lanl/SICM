@@ -63,18 +63,21 @@ static void expect_keyword(parse_info *info, const char *s) {
 /* END Parsing functions */
 
 static void parse_layout_file(const char *layout_file) {
-    FILE *f;
+    parse_info info;
 
-    f = fopen(layout_file, "r");
+    info.f            = fopen(layout_file, "r");
+    info.path         = layout_file;
+    inro.current_line = 1;
 
-    LOG("using layout file '%s'\n", layout_file);
+    LOG("using layout file '%s'\n", info.path);
 
-    if (f == NULL) {
-        ERR("Could not open layout file '%s'.\n", layout_file);
+    if (info.f == NULL) {
+        ERR("Could not open layout file '%s'.\n", info.path);
     }
 
     layout.nodes = tree_make(str, sicm_layout_node_t);
 
+    expect_keyword(info, "layout");
     /*
      * @incomplete
      */
