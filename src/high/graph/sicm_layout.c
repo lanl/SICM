@@ -40,7 +40,11 @@ static parse_info parse_info_make(const char *path) {
      * Get the size of the file and allocate the buffer.
      */
     fseek(f, 0, SEEK_END);
-    buff_size = ftell(f) + 1;
+    buff_size = ftell(f);
+
+    LOG("layout file: '%s' -- %lu bytes\n", path, buff_size);
+
+    buff_size += 1;
 
     info.cursor = info.buff = malloc(buff_size);
 
@@ -146,7 +150,7 @@ static void parse_layout_file(const char *layout_file) {
     layout.nodes = tree_make(str, sicm_layout_node_t);
 
 
-/*     trim_whitespace_and_comments(&info); */
+    trim_whitespace_and_comments(&info);
 
 
     parse_info_free(&info);
