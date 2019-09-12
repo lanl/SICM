@@ -270,9 +270,9 @@ static int parse_attr(parse_info *info, sicm_layout_node_ptr current_node, const
     int line;
 
     if ((line = optional_keyword(&info, attr))) {
-        if (!current_node) {
-            parse_error_l(&info, line, "can't set '%s' for unspecified node\n", attr);
-        }
+/*         if (!current_node) { */
+/*             parse_error_l(&info, line, "can't set '%s' for unspecified node\n", attr); */
+/*         } */
     }
 
     return line;
