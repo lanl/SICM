@@ -313,6 +313,31 @@ static void parse_layout_file(const char *layout_file) {
             }
             expect_int(&info, &integer);
             current_node->capacity = integer;
+        } else if ((line = optional_keyword(&info, "near_nic"))) {
+            if (!current_node) {
+                parse_error_l(&info, line, "can't set 'near_nic' for unspecified node\n");
+            }
+            current_node->attrs |= NODE_NEAR_NIC;
+        } else if ((line = optional_keyword(&info, "low_lat"))) {
+            if (!current_node) {
+                parse_error_l(&info, line, "can't set 'low_lat' for unspecified node\n");
+            }
+            current_node->attrs |= NODE_LOW_LAT;
+        } else if ((line = optional_keyword(&info, "hbm"))) {
+            if (!current_node) {
+                parse_error_l(&info, line, "can't set 'hbm' for unspecified node\n");
+            }
+            current_node->attrs |= NODE_HBM;
+        } else if ((line = optional_keyword(&info, "persist"))) {
+            if (!current_node) {
+                parse_error_l(&info, line, "can't set 'persist' for unspecified node\n");
+            }
+            current_node->attrs |= NODE_PERSIST;
+        } else if ((line = optional_keyword(&info, "gpu"))) {
+            if (!current_node) {
+                parse_error_l(&info, line, "can't set 'gpu' for unspecified node\n");
+            }
+            current_node->attrs |= NODE_ON_GPU;
         } else {
             if (optional_word(&info, &buff)) {
                 parse_error(&info, "did not expect '%s' here\n", buff);
