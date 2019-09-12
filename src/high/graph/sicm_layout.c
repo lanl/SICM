@@ -6,6 +6,10 @@
 #include <ctype.h>
 #include <stdarg.h>
 
+
+#define WORD_MAX (256)
+
+
 #define ERR(...) do {                                     \
     fprintf(stderr, "[sicm-layout] ERROR: " __VA_ARGS__); \
     exit(1);                                              \
@@ -117,7 +121,7 @@ static void parse_error(parse_info *info, const char *fmt, ...) {
 
 static int optional_word(parse_info *info, const char **out) {
     char        c;
-    char        word_buff[256];
+    char        word_buff[WORD_MAX];
     char       *buff_p;
     int         len;
     
@@ -128,7 +132,7 @@ static int optional_word(parse_info *info, const char **out) {
         info->cursor += 1;
         len          += 1;
 
-        if (len == 255) {
+        if (len == WORD_MAX - 1) {
             ERR("word too long to parse on line %d\n", info->current_line);
         }
     }
@@ -181,7 +185,7 @@ static int optional_keyword(parse_info *info, const char* s) {
 
 static long int optional_int(parse_info *info, long int *out) {
     long int i;
-    char     buff[256];
+    char     buff[WORD_MAX];
 
     if (sscanf(info->cursor, "%ld", &i) == 0) {
         return 0;
@@ -248,14 +252,17 @@ static sicm_layout_node_ptr * get_or_create_node(const char *name) {
 static void parse_layout_file(const char *layout_file) {
     parse_info           info;
     sicm_layout_node_ptr current_node;
-    char                 buff[256];
+    char                 _buff[WORD_MAX];
+    const char          *buff;
     long int             integer;
 
     info         = parse_info_make(layout_file);
     current_node = NULL;
+    buff         = _buff;
 
     LOG("using layout file '%s'\n", info.path);
 
+    layout.name  = malloc(WORD_MAX);
     layout.nodes = tree_make_c(str, sicm_layout_node_ptr, strcmp);
 
     trim_whitespace_and_comments(&info);
