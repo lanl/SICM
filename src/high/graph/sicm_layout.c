@@ -59,10 +59,34 @@ static void parse_info_free(parse_info *info) {
     free(info->buff);
 }
 
+static void trim_comment(parse_info *info) {
+    char c;
+
+    c = *info->cursor;
+
+    if (c != '#')    { return; }
+
+    while ((c = *(++info->cursor))) {
+        if (c == '\n') {
+            break;
+        }
+    }
+}
+
 static void trim_whitespace_and_comments(parse_info *info) {
     char c;
 
-    while ((c = *info->cursor) && isspace(c)) {
+    while ((c = *info->cursor)) {
+        if (isspace(c)) {
+            if (c == '\n') {
+                info->current_line += 1;
+            }
+        } else if (c == '#') {
+            trim_comment(info);
+        } else {
+            break;
+        }
+
         info->cursor += 1;
     }
 }
