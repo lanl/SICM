@@ -42,6 +42,7 @@ static parse_info parse_info_make(const char *path) {
      */
     fseek(f, 0, SEEK_END);
     buff_size = ftell(f);
+    rewind(f);
 
     LOG("layout file: '%s' -- %lu bytes\n", path, buff_size);
 
@@ -50,8 +51,9 @@ static parse_info parse_info_make(const char *path) {
     info.cursor = info.buff = malloc(buff_size);
 
     n_read = fread(info.buff, 1, buff_size - 1, f);
+
     if (n_read != (buff_size - 1)) {
-        ERR("encountered a problem attempting to read the contents of '%s' -- only read %llu bytes\n", path, n_read);
+        ERR("encountered a problem attempting to read the contents of '%s' -- read %llu of %llu bytes\n", path, n_read, buff_size);
     }
 
     info.buff[buff_size - 1] = 0;
