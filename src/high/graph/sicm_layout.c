@@ -139,9 +139,9 @@ static int optional_word(parse_info *info, const char *out) {
     }
 
     
-    LOG("HERE1\n");
     *buff_p = 0;
 
+    LOG("HERE1\n");
     if (out && len) {
         memcpy(out, word_buff, len + 1);
     }
