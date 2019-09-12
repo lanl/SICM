@@ -2,6 +2,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <ctype.h>
 
 #define ERR(...) do {                                     \
     fprintf(stderr, "[sicm-layout] ERROR: " __VA_ARGS__); \
@@ -61,7 +62,7 @@ static void parse_info_free(parse_info *info) {
 static void trim_whitespace_and_comments(parse_info *info) {
     char c;
 
-
+    while ((c = *info->cursor) && isspace(c));
 }
 
 static int optional_int(parse_info *info, int *out) {
