@@ -6,7 +6,11 @@
 #define ERR(...) do {                                    \
     fprintf(stderr,"[sicm-layout] ERROR: " __VA_ARGS__); \
     exit(1);                                             \
-} while (0);
+} while (0)
+
+#define LOG(...) do {                               \
+    fprintf(stderr, "[sicm-layout]: " __VA_ARGS__); \
+} while (0)
 
 static sicm_layout_t layout;
 
@@ -14,6 +18,8 @@ static void parse_layout_file(const char *layout_file) {
     FILE *f;
 
     f = fopen(layout_file, "w");
+
+    LOG("using layout file '%s'", layout_file);
 
     if (f == NULL) {
         ERR("Could not open layout file '%s'.\n", layout_file);
