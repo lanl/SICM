@@ -107,7 +107,7 @@ static void trim_whitespace_and_comments(parse_info *info) {
     }
 }
 
-static void vparse_error_l(parse_info *info, int line, const char *fmt, va_list arg) {
+static void vparse_error_l(parse_info *info, int line, const char *fmt, va_list args) {
     fprintf(stderr, "[sicm-layout]: PARSE ERROR in '%s' :: line %d\n"
                     "               ", info->path, line);
     vfprintf(stderr, fmt, args);
