@@ -28,5 +28,7 @@ target_link_libraries(sicm_graph ${LIBRT})
 
 install(TARGETS sicm_graph
         LIBRARY DESTINATION lib)
+install(TARGETS sicm_layout
+        LIBRARY DESTINATION lib)
 install(DIRECTORY ${CMAKE_SOURCE_DIR}/include/high/public/
         DESTINATION include/)
