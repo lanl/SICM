@@ -17,7 +17,7 @@ static sicm_layout_t layout;
 static void parse_layout_file(const char *layout_file) {
     FILE *f;
 
-    f = fopen(layout_file, "w");
+    f = fopen(layout_file, "r");
 
     LOG("using layout file '%s'\n", layout_file);
 
