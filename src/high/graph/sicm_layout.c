@@ -123,7 +123,7 @@ static int optional_keyword(parse_info *info, const char* s) {
         len += 1;
     }
 
-    if (len != strlen(s)) {S
+    if (len != strlen(s)) {
         info->cursor = cursor_save;
         return 0;
     }
