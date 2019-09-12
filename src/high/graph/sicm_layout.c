@@ -109,6 +109,8 @@ static void parse_error(parse_info *info, const char *fmt, ...) {
     fprintf(stderr, "[sicm-layout] PARSE ERROR %s::%d\n"
                     "             ", info->path, info->current_line);
     vfprintf(stderr, fmt, args);
+    va_end(args);
+
     exit(1);
 }
 
@@ -201,7 +203,7 @@ static void expect_word(parse_info *info, int *out) {
     const char *result;
 
     if (!optional_word(info, &result)) {
-        parse_error("expected a word\n");
+        parse_error(info, "expected a word\n");
     }
 
     if (out)    { *out = result; }
@@ -209,7 +211,7 @@ static void expect_word(parse_info *info, int *out) {
 
 static void expect_keyword(parse_info *info, const char *s) {
     if (!optional_keyword(info, s)) {
-        parse_error("expected keyword '%s'\n", s);
+        parse_error(info, "expected keyword '%s'\n", s);
     }
 }
 
@@ -217,7 +219,7 @@ static void expect_int(parse_info *info, long int *out) {
     long int result;
 
     if (!optional_int(info, &result)) {
-        parse_error("expected an integer\n");
+        parse_error(info, "expected an integer\n");
     }
 
     if (out)    { *out = result; }
@@ -248,9 +250,9 @@ static void parse_layout_file(const char *layout_file) {
 
         } else {
             if (optional_word(&info, &word)) {
-                parse_error("did not expect '%d' here\n", word);
+                parse_error(&nfo, "did not expect '%d' here\n", word);
             } else {
-                parse_error("did not expect the end of the file\n");
+                parse_error(&info, "did not expect the end of the file\n");
             }
         }
     }
