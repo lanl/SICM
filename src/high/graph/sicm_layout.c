@@ -125,6 +125,8 @@ static int optional_word(parse_info *info, const char *out) {
     char       *buff_p;
     int         len;
     
+    LOG("HERE1\n");
+
     buff_p = word_buff;
 
     while ((c = *info->cursor) && !isspace(c)) {
@@ -146,6 +148,8 @@ static int optional_word(parse_info *info, const char *out) {
     if (len) {
         trim_whitespace_and_comments(info);
     }
+    
+    LOG("HERE2\n");
 
     return len;
 }
@@ -263,10 +267,7 @@ static void parse_layout_file(const char *layout_file) {
 
     while (*info.cursor) {
         if (optional_keyword(&info, "node")) {
-            LOG("HERE1\n");
-
             expect_word(&info, buff);
-            LOG("HERE2\n");
             current_node = get_or_create_node(buff);
         } else {
             if (optional_word(&info, &buff)) {
