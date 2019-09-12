@@ -109,7 +109,7 @@ static int optional_int(parse_info *info, int *out) {
 static int optional_word(parse_info *info, const char **out) {
     char        c;
     char        word_buff[256];
-    const char *buff_p;
+    char       *buff_p;
     int         len;
     
     buff_p = word_buff;
