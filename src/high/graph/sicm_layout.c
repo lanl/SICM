@@ -126,7 +126,9 @@ static int optional_keyword(parse_info *info, const char* s) {
         info->cursor += 1;
     }
 
-    if (info->cursor && !isspace(*info->cursor)) {
+    if (info->cursor &&
+        !isspace(*info->cursor) && *info->cursor != '#') {
+
         info->cursor = cursor_save;
         return 0;
     }
