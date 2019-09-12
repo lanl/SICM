@@ -258,11 +258,11 @@ static void parse_layout_file(const char *layout_file) {
     trim_whitespace_and_comments(&info);
   
     expect_keyword(&info, "layout");
-    expect_word(&info, &layout.name);
+    expect_word(&info, layout.name);
 
     while (*info.cursor) {
         if (optional_keyword(&info, "node")) {
-            expect_word(&info, &buff);
+            expect_word(&info, buff);
             current_node = get_or_create_node(buff);
         } else {
             if (optional_word(&info, &buff)) {
