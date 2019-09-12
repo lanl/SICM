@@ -111,17 +111,23 @@ static int optional_word(parse_info *info, const char **out) {
 }
 
 static int optional_keyword(parse_info *info, const char* s) {
-    char c;
-    int  len;
+    char        c;
+    int         len;
+    const char *cursor_save;
 
-    len = 0;
+    len         = 0;
+    cursor_save = info->cursor;
 
     while (info->cursor && s &&
           (*(s++) == *(info->cursor++))) {
         len += 1;
     }
 
-    return (len == strlen(s));
+    if (len != strlen(s)) {S
+        info->cursor = cursor_save;
+        return 0;
+    }
+    return 1;
 }
 
 static void expect_int(parse_info *info, int *out) {
