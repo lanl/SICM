@@ -102,10 +102,6 @@ static void trim_whitespace_and_comments(parse_info *info) {
     }
 }
 
-static int optional_int(parse_info *info, int *out) {
-    return 0;
-}
-
 static int optional_word(parse_info *info, const char **out) {
     char        c;
     char        word_buff[256];
@@ -172,14 +168,25 @@ static int optional_keyword(parse_info *info, const char* s) {
     return 1;
 }
 
-static void expect_int(parse_info *info, int *out) {
-    int result;
+static long int optional_int(parse_info *info, long int *out) {
+    long int i;
+    char     buff[256];
 
-    if (!optional_int(info, &result)) {
-        ERR("invalid layout file '%s' -- expected int on line %d\n", info->path, info->current_line);
+    if (sscanf(info->cursor, "%ld", &i) == 0) {
+        return 0;
     }
 
-    if (out)    { *out = result; }
+    sprintf(buff, "%ld", i);
+
+    info->cursor += strlen(buff);
+
+    if (out) {
+        *out = i;
+    }
+
+    trim_whitespace_and_comments(info);
+
+    return 0;
 }
 
 static void expect_word(parse_info *info, int *out) {
@@ -198,6 +205,16 @@ static void expect_keyword(parse_info *info, const char *s) {
     }
 }
 
+static void expect_int(parse_info *info, long int *out) {
+    long int result;
+
+    if (!optional_int(info, &result)) {
+        ERR("invalid layout file '%s' -- expected int on line %d\n", info->path, info->current_line);
+    }
+
+    if (out)    { *out = result; }
+}
+
 /* END Parsing functions */
 
 static void parse_layout_file(const char *layout_file) {
@@ -211,6 +228,7 @@ static void parse_layout_file(const char *layout_file) {
     layout.nodes = tree_make(str, sicm_layout_node_t);
 
     trim_whitespace_and_comments(&info);
+    expect_int(&info, NULL);
     expect_keyword(&info, "layout");
 
     expect_word(&info, &layout_name);
