@@ -267,9 +267,8 @@ static void parse_layout_file(const char *layout_file) {
 
     trim_whitespace_and_comments(&info);
   
-    LOG("HERE\n");
-
     expect_keyword(&info, "layout");
+    LOG("HERE\n");
     expect_word(&info, &layout.name);
 
     while (*info.cursor) {
