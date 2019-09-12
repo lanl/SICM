@@ -1,6 +1,7 @@
 #include "sicm_layout.h"
 
 #include <stdio.h>
+#include <string.h>
 #include <stdlib.h>
 #include <ctype.h>
 
@@ -110,7 +111,17 @@ static int optional_word(parse_info *info, const char **out) {
 }
 
 static int optional_keyword(parse_info *info, const char* s) {
-    return 0;
+    char c;
+    int  len;
+
+    len = 0;
+
+    while (info->cursor && s &&
+          (*(s++) == *(info->cursor++))) {
+        len += 1;
+    }
+
+    return (len == strlen(s));
 }
 
 static void expect_int(parse_info *info, int *out) {
