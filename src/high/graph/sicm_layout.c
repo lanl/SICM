@@ -62,7 +62,9 @@ static void parse_info_free(parse_info *info) {
 static void trim_whitespace_and_comments(parse_info *info) {
     char c;
 
-    while ((c = *info->cursor) && isspace(c));
+    while ((c = *info->cursor) && isspace(c)) {
+        info->cursor += 1;
+    }
 }
 
 static int optional_int(parse_info *info, int *out) {
