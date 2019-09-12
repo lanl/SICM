@@ -226,6 +226,7 @@ static sicm_layout_node_ptr * get_or_create_node(const char *name) {
     tree_it(str, sicm_layout_node_ptr) it;
     sicm_layout_node_ptr               node;
 
+    LOG("HERE\n");
     it = tree_lookup(layout.nodes, name);
 
     if (tree_it_good(it)) {
@@ -236,7 +237,7 @@ static sicm_layout_node_ptr * get_or_create_node(const char *name) {
         node->name = strdup(name);
 
         tree_insert(layout.nodes, node->name, node);
-        LOG("new node '%s'\n", node->name);
+        LOG("new node '%s'\n", name);
     }
 
     return node;
