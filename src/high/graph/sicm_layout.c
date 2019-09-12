@@ -38,7 +38,7 @@ static void expect_int(parse_info *info, int *out) {
     int result;
 
     if (!optional_int(info, &result)) {
-        ERR("invalid layout file '%s' -- expected int on line %d\n", info.path, current_line);
+        ERR("invalid layout file '%s' -- expected int on line %d\n", info->path, info->current_line);
     }
 
     if (out)    { *out = result; }
@@ -48,7 +48,7 @@ static void expect_word(parse_info *info, int *out) {
     const char *result;
 
     if (!optional_word(info, &result)) {
-        ERR("invalid layout file '%s' -- expected word on line %d\n", info.path, current_line);
+        ERR("invalid layout file '%s' -- expected word on line %d\n", info->path, info->current_line);
     }
 
     if (out)    { *out = result; }
@@ -56,7 +56,7 @@ static void expect_word(parse_info *info, int *out) {
 
 static void expect_keyword(parse_info *info, const char *s) {
     if (!optional_keyword(info, s)) {
-        ERR("invalid layout file '%s' -- expected keyword '%s' on line %d\n", info.path, s, current_line);
+        ERR("invalid layout file '%s' -- expected keyword '%s' on line %d\n", info->path, s, info->current_line);
     }
 }
 
