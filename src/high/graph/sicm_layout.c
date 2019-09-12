@@ -87,7 +87,7 @@ static void trim_whitespace_and_comments(parse_info *info) {
                 info->current_line += 1;
             }
         } else if (c == '#') {
-            trim_comment(info);
+/*             trim_comment(info); */
         } else {
             break;
         }
