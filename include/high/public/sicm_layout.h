@@ -4,10 +4,8 @@
 
 
 /* Node Kinds */
-#define NODE_COMPUTE     (0x0)
-#define NODE_MEM_DDR     (0x1)
-#define NODE_MEM_HBM     (0x2)
-#define NODE_MEM_PERSIST (0x3)
+#define NODE_MEM     (0x0)
+#define NODE_COMPUTE (0x1)
 
 /* Node Attributes */
 #define NODE_NEAR_NIC    (0x0)

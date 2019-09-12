@@ -267,6 +267,17 @@ static void parse_layout_file(const char *layout_file) {
         if (optional_keyword(&info, "node")) {
             expect_word(&info, buff);
             current_node = get_or_create_node(buff);
+        } else if (optional_keyword(&info, "kind")) {
+            if (!current_node) {
+                parse_error(&info, "can't set 'kind' for unspecified node\n");
+            }
+            if (optional_keyword(&info, "mem")) {
+                current_node->kind = NODE_MEM;
+            } else if (optional_keyword(&info, "compute")) {
+                current_node->kind = NODE_COMPUTE;
+            } else {
+                parse_error(&info, "expected either 'mem' or 'compute'\n");
+            }
         } else {
             if (optional_word(&info, &buff)) {
                 parse_error(&info, "did not expect '%s' here\n", buff);
