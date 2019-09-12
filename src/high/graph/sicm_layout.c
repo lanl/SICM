@@ -303,6 +303,7 @@ static void parse_layout_file(const char *layout_file) {
                 parse_error_l(&info, line, "can't set 'numa' for unspecified node\n");
             }
             expect_int(&info, &integer);
+            LOG("%ld\n", integer);
             current_node->numa_node_id = integer;
         } else {
             if (optional_word(&info, &buff)) {
