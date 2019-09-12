@@ -104,7 +104,6 @@ static void parse_layout_file(const char *layout_file) {
 
     layout.nodes = tree_make(str, sicm_layout_node_t);
 
-    expect_keyword(&info, "layout");
     /*
      * @incomplete
      */
