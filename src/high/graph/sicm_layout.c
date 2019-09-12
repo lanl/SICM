@@ -124,8 +124,8 @@ static int optional_word(parse_info *info, const char *out) {
     char        word_buff[WORD_MAX];
     char       *buff_p;
     int         len;
-    
-
+   
+    len    = 0;
     buff_p = word_buff;
 
     while ((c = *info->cursor) && !isspace(c)) {
@@ -141,7 +141,6 @@ static int optional_word(parse_info *info, const char *out) {
     
     *buff_p = 0;
 
-    LOG("%p %d\n", out, len);
     if (out && len) {
         memcpy(out, word_buff, len + 1);
     }
@@ -149,7 +148,6 @@ static int optional_word(parse_info *info, const char *out) {
     if (len) {
         trim_whitespace_and_comments(info);
     }
-    
 
     return len;
 }
