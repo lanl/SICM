@@ -21,7 +21,7 @@ typedef struct {
 } sicm_layout_node_t;
 
 typedef sicm_layout_node_t *sicm_layout_node_ptr;
-typedef char *str;
+typedef const char *str;
 use_tree(str, sicm_layout_node_ptr);
 
 typedef struct {

@@ -239,7 +239,7 @@ static sicm_layout_node_ptr * get_or_create_node(const char *name) {
         memset(node, 0, sizeof(*node));
         node->name = strdup(name);
 
-        tree_insert(node->name, node);
+        tree_insert(layout.nodes, node->name, node);
     }
 
     return node;
