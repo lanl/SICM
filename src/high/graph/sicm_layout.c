@@ -41,9 +41,13 @@ static parse_info parse_info_make(const char *path) {
     fseek(f, 0, SEEK_END);
     buff_size = ftell(f) + 1;
 
-    fclose(f);
-
     info.cursor = info.buff = malloc(buff_size);
+
+    fread(f, buff_size - 1, info.buff);
+
+    info.buff[buff_size - 1] = 0;
+    
+    fclose(f);
 
     return info;
 }
@@ -53,7 +57,9 @@ static void parse_info_free(parse_info *info) {
 }
 
 static void trim_whitespace_and_comments(parse_info *info) {
-    
+    char c;
+
+
 }
 
 static int optional_int(parse_info *info, int *out) {
