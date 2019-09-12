@@ -286,7 +286,7 @@ static int parse_int_value(parse_info *info, sicm_layout_node_ptr current_node, 
 
     line = optional_keyword(&info, kwd);
 
-    LOG("!!!2 %s\n", kwd);
+    LOG("!!!2 %s line %ld\n", kwd, line);
     if (line) {
 
 /*     if ((line = optional_keyword(&info, kwd))) { */
