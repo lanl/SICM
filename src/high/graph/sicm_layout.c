@@ -288,9 +288,9 @@ static int parse_int_value(parse_info *info, sicm_layout_node_ptr current_node, 
         if (!current_node) {
             parse_error_l(&info, line, "can't set '%s' for unspecified node\n", kwd);
         }
-        expect_int(&info, integer);
     
         LOG("!!! %s -- %p\n", kwd, integer);
+        expect_int(&info, integer);
 
         return 1;
     }
