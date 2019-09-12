@@ -199,7 +199,7 @@ static long int optional_int(parse_info *info, long int *out) {
     return 1;
 }
 
-static void expect_word(parse_info *info, const char *out) {
+static void expect_word(parse_info *info, const char **out) {
     const char *result;
 
     if (!optional_word(info, &result)) {
