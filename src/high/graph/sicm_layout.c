@@ -293,6 +293,7 @@ static int parse_int_value(parse_info *info, sicm_layout_node_ptr current_node, 
 }
 
 static int parse_kind(parse_info *info, sicm_layout_node_ptr current_node, long int *kind) {
+    int line;
 
     if ((line = optional_keyword(info, "kind"))) {
         if (!current_node) {
