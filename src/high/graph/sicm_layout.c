@@ -250,6 +250,7 @@ static void parse_layout_file(const char *layout_file) {
         if (optional_keyword(&info, "node")) {
 
         } else {
+            LOG("line %d\n", info.current_line);
             if (optional_word(&info, &word)) {
                 parse_error(&info, "did not expect '%s' here\n", word);
             } else {
