@@ -67,7 +67,7 @@ static void parse_layout_file(const char *layout_file) {
 
     info.f            = fopen(layout_file, "r");
     info.path         = layout_file;
-    inro.current_line = 1;
+    info.current_line = 1;
 
     LOG("using layout file '%s'\n", info.path);
 
