@@ -157,14 +157,15 @@ static int optional_word(parse_info *info, const char *out) {
         memcpy(out, word_buff, len + 1);
     }
 
-    line = info->current_line;
-    LOG("%d\n", line);
-
-    if (len) {
-        trim_whitespace_and_comments(info);
+    if (!len) {
+        return 0;
     }
+    
+    line = info->current_line;
 
-    return len ? line : 0;
+    trim_whitespace_and_comments(info);
+
+    return line;
 }
 
 static int optional_keyword(parse_info *info, const char* s) {
@@ -172,6 +173,7 @@ static int optional_keyword(parse_info *info, const char* s) {
     int         len;
     const char *s_p,
                *cursor_save;
+    int         line;
 
     len         = 0;
     s_p         = s;
@@ -195,9 +197,11 @@ static int optional_keyword(parse_info *info, const char* s) {
         return 0;
     }
 
+    line = info->current_line;
+
     trim_whitespace_and_comments(info);
 
-    return 1;
+    return line;
 }
 
 static long int optional_int(parse_info *info, long int *out) {
