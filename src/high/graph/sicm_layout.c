@@ -113,18 +113,19 @@ static int optional_word(parse_info *info, const char **out) {
 static int optional_keyword(parse_info *info, const char* s) {
     char        c;
     int         len;
-    const char *cursor_save;
+    const char *s_p,
+               *cursor_save;
 
     len         = 0;
+    s_p         = s;
     cursor_save = info->cursor;
 
-    while (info->cursor && s &&
-          (*(s++) == *(info->cursor++))) {
+    while (info->cursor && s_p &&
+          (*(s_p++) == *(info->cursor++))) {
         len += 1;
     }
 
     if (len != strlen(s)) {
-        LOG("%d vs %d\n", len, strlen(s));
         info->cursor = cursor_save;
         return 0;
     }
