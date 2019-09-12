@@ -53,7 +53,6 @@ static void parse_info_free(parse_info *info) {
 }
 
 static void trim_whitespace_and_comments(parse_info *info) {
-    while
 }
 
 static int optional_int(parse_info *info, int *out) {
