@@ -292,6 +292,27 @@ static int parse_int_value(parse_info *info, sicm_layout_node_ptr current_node, 
     return line;
 }
 
+static int parse_kind(parse_info *info, sicm_layout_node_ptr current_node, const char *kwd, long int *kind) {
+
+    if ((line = optional_keyword(info, "kind"))) {
+        if (!current_node) {
+            parse_error_l(info, line, "can't set 'kind' for unspecified node\n");
+        }
+        if (optional_keyword(info, "mem")) {
+            *kind = NODE_MEM;
+            current_node->kind = NODE_MEM;
+        } else if (optional_keyword(&info, "compute")) {
+            *kind = NODE_COMPUTE;
+        } else {
+            parse_error(info, "expected either 'mem' or 'compute'\n");
+        }
+
+        return 1;
+    }
+
+    return 0;
+}
+
 static void parse_layout_file(const char *layout_file) {
     parse_info           info;
     sicm_layout_node_ptr current_node;
@@ -316,17 +337,8 @@ static void parse_layout_file(const char *layout_file) {
         if (optional_keyword(&info, "node")) {
             expect_word(&info, buff);
             current_node = get_or_create_node(buff);
-        } else if ((line = optional_keyword(&info, "kind"))) {
-            if (!current_node) {
-                parse_error_l(&info, line, "can't set 'kind' for unspecified node\n");
-            }
-            if (optional_keyword(&info, "mem")) {
-                current_node->kind = NODE_MEM;
-            } else if (optional_keyword(&info, "compute")) {
-                current_node->kind = NODE_COMPUTE;
-            } else {
-                parse_error(&info, "expected either 'mem' or 'compute'\n");
-            }
+        } else if (parse_kind(&info, &integer)) {
+            current_node->kind = integer; 
         } else if (parse_int_value(&info, current_node, "numa", &integer)) {
             current_node->numa_node_id = integer;
         } else if (parse_int_value(&info, current_node, "capacity", &integer)) {

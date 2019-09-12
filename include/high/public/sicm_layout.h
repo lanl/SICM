@@ -4,8 +4,9 @@
 
 
 /* Node Kinds */
-#define NODE_MEM     (0x0)
-#define NODE_COMPUTE (0x1)
+#define NODE_UNKNOWN (0x0)
+#define NODE_MEM     (0x1)
+#define NODE_COMPUTE (0x2)
 
 /* Node Attributes */
 #define NODE_NEAR_NIC    (0x0)
