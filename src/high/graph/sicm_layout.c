@@ -269,12 +269,12 @@ static sicm_layout_node_ptr * get_or_create_node(const char *name) {
 static int parse_attr(parse_info *info, sicm_layout_node_ptr current_node, const char *attr) {
     int line;
 
-    if ((line = optional_keyword(&info, attr))) {
-        if (!current_node) {
-            parse_error_l(&info, line, "can't set '%s' for unspecified node\n", attr);
-        }
-        return 1;
-    }
+/*     if ((line = optional_keyword(&info, attr))) { */
+/*         if (!current_node) { */
+/*             parse_error_l(&info, line, "can't set '%s' for unspecified node\n", attr); */
+/*         } */
+/*         return 1; */
+/*     } */
 
     return 0;
 }
