@@ -90,7 +90,7 @@ static void trim_whitespace_and_comments(parse_info *info) {
 
     while ((c = *info->cursor)) {
         if (isspace(c)) {
-            if (c == '\n') {
+            if (c == '\n' && *(info->cursor + 1)) {
                 info->current_line += 1;
             }
         } else if (c == '#') {
@@ -107,8 +107,8 @@ static void parse_error(parse_info *info, const char *fmt, ...) {
     va_list args;
 
     va_start(args, fmt);
-    fprintf(stderr, "[sicm-layout] PARSE ERROR %s::%d\n"
-                    "              ", info->path, info->current_line);
+    fprintf(stderr, "[sicm-layout]: PARSE ERROR %s::%d\n"
+                    "               ", info->path, info->current_line);
     vfprintf(stderr, fmt, args);
     va_end(args);
 
@@ -250,7 +250,6 @@ static void parse_layout_file(const char *layout_file) {
         if (optional_keyword(&info, "node")) {
 
         } else {
-            LOG("line %d\n", info.current_line);
             if (optional_word(&info, &word)) {
                 parse_error(&info, "did not expect '%s' here\n", word);
             } else {
