@@ -102,6 +102,16 @@ static void trim_whitespace_and_comments(parse_info *info) {
     }
 }
 
+static void parse_error(parse_info *info, const char *fmt, ...) {
+    va_list args;
+
+    va_start(args, fmt);
+    fprintf(stderr, "[sicm-layout] PARSE ERROR %s::%d\n"
+                    "             ", info->path, info->current_line);
+    vfprintf(stderr, fmt, args);
+    exit(1);
+}
+
 static int optional_word(parse_info *info, const char **out) {
     char        c;
     char        word_buff[256];
@@ -172,8 +182,6 @@ static long int optional_int(parse_info *info, long int *out) {
     long int i;
     char     buff[256];
 
-    LOG("from cursor: '%s'\n", info->cursor);
-
     if (sscanf(info->cursor, "%ld", &i) == 0) {
         return 0;
     }
@@ -182,11 +190,7 @@ static long int optional_int(parse_info *info, long int *out) {
 
     info->cursor += strlen(buff);
 
-    if (out) {
-        *out = i;
-    }
-
-    LOG("parsed int %ld\n", i);
+    if (out)    { *out = i; }
 
     trim_whitespace_and_comments(info);
 
@@ -197,7 +201,7 @@ static void expect_word(parse_info *info, int *out) {
     const char *result;
 
     if (!optional_word(info, &result)) {
-        ERR("invalid layout file '%s' -- expected word on line %d\n", info->path, info->current_line);
+        parse_error("expected a word\n");
     }
 
     if (out)    { *out = result; }
@@ -205,7 +209,7 @@ static void expect_word(parse_info *info, int *out) {
 
 static void expect_keyword(parse_info *info, const char *s) {
     if (!optional_keyword(info, s)) {
-        ERR("invalid layout file '%s' -- expected keyword '%s' on line %d\n", info->path, s, info->current_line);
+        parse_error("expected keyword '%s'\n", s);
     }
 }
 
@@ -213,7 +217,7 @@ static void expect_int(parse_info *info, long int *out) {
     long int result;
 
     if (!optional_int(info, &result)) {
-        ERR("invalid layout file '%s' -- expected int on line %d\n", info->path, info->current_line);
+        parse_error("expected an integer\n");
     }
 
     if (out)    { *out = result; }
@@ -222,20 +226,34 @@ static void expect_int(parse_info *info, long int *out) {
 /* END Parsing functions */
 
 static void parse_layout_file(const char *layout_file) {
-    parse_info info;
-    const char *layout_name;
+    parse_info  info;
+    const char *current_node;
+    const char *word;
+    long int    integer;
 
-    info = parse_info_make(layout_file);
+    info         = parse_info_make(layout_file);
+    current_node = NULL;
 
     LOG("using layout file '%s'\n", info.path);
 
     layout.nodes = tree_make(str, sicm_layout_node_t);
 
     trim_whitespace_and_comments(&info);
-    
+   
     expect_keyword(&info, "layout");
-    expect_int(&info, NULL);
-    expect_word(&info, &layout_name);
+    expect_word(&info, &layout.name);
+
+    while (*info.cursor) {
+        if (optional_keyword(&info, "node")) {
+
+        } else {
+            if (optional_word(&info, &word)) {
+                parse_error("did not expect '%d' here\n", word);
+            } else {
+                parse_error("did not expect the end of the file\n");
+            }
+        }
+    }
 
     parse_info_free(&info);
 
@@ -257,6 +275,8 @@ void sicm_layout_fini(void) {
     tree_it(str, sicm_layout_node_t)  it;
     const char                       *key;
 
+    free(layout.name);
+
     while (tree_len(layout.nodes) > 0) {
         it  = tree_begin(layout.nodes);
         key = tree_it_key(it);
@@ -265,6 +285,8 @@ void sicm_layout_fini(void) {
     }
 
     tree_free(layout.nodes);
+
+    LOG("Goodbye.\n");
 }
 
 void * sicm_node_alloc(size_t size, const char *node_name) {
