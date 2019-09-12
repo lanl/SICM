@@ -302,7 +302,7 @@ static int parse_kind(parse_info *info, sicm_layout_node_ptr current_node, long 
         if (optional_keyword(info, "mem")) {
             *kind = NODE_MEM;
             current_node->kind = NODE_MEM;
-        } else if (optional_keyword(&info, "compute")) {
+        } else if (optional_keyword(info, "compute")) {
             *kind = NODE_COMPUTE;
         } else {
             parse_error(info, "expected either 'mem' or 'compute'\n");
