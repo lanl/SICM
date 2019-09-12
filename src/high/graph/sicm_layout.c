@@ -48,7 +48,7 @@ static parse_info parse_info_make(const char *path) {
 
     info.cursor = info.buff = malloc(buff_size);
 
-    if (fread(f, 1, buff_size - 1, info.buff) != (buff_size - 1)) {
+    if (fread(info.buff, 1, buff_size - 1, f) != (buff_size - 1)) {
         ERR("encountered a problem attempting to read the contents of '%s'\n", path);
     }
 
