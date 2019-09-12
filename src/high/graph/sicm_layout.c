@@ -226,7 +226,6 @@ static sicm_layout_node_ptr * get_or_create_node(const char *name) {
     tree_it(str, sicm_layout_node_ptr) it;
     sicm_layout_node_ptr               node;
 
-    LOG("HERE\n");
     it = tree_lookup(layout.nodes, name);
 
     if (tree_it_good(it)) {
@@ -261,6 +260,8 @@ static void parse_layout_file(const char *layout_file) {
   
     expect_keyword(&info, "layout");
     expect_word(&info, layout.name);
+
+    LOG("HERE\n");
 
     while (*info.cursor) {
         if (optional_keyword(&info, "node")) {
