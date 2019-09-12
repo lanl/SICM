@@ -329,9 +329,9 @@ static void parse_layout_file(const char *layout_file) {
             } else {
                 parse_error(&info, "expected either 'mem' or 'compute'\n");
             }
-        } else if (parse_int_value(&info, "numa", &integer)) {
+        } else if (parse_int_value(&info, current_node, "numa", &integer)) {
             current_node->numa_node_id = integer;
-        } else if (parse_int_value(&info, "capacity", &integer)) {
+        } else if (parse_int_value(&info, current_node, "capacity", &integer)) {
             current_node->capacity = integer;
         } else if (parse_attr(&info, current_node, "near_nic")) {
             current_node->attrs |= NODE_NEAR_NIC;
