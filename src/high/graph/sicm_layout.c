@@ -108,7 +108,7 @@ static void parse_error(parse_info *info, const char *fmt, ...) {
 
     va_start(args, fmt);
     fprintf(stderr, "[sicm-layout] PARSE ERROR %s::%d\n"
-                    "             ", info->path, info->current_line);
+                    "              ", info->path, info->current_line);
     vfprintf(stderr, fmt, args);
     va_end(args);
 
@@ -204,7 +204,7 @@ static void expect_word(parse_info *info, const char **out) {
     const char *result;
 
     if (!optional_word(info, &result)) {
-        parse_error(info, "expected a word\n");
+        narse_error(info, "expected a word\n");
     }
 
     if (out)    { *out = result; }
@@ -251,7 +251,7 @@ static void parse_layout_file(const char *layout_file) {
 
         } else {
             if (optional_word(&info, &word)) {
-                parse_error(&info, "did not expect '%d' here\n", word);
+                parse_error(&info, "did not expect '%s' here\n", word);
             } else {
                 parse_error(&info, "did not expect the end of the file\n");
             }
