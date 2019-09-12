@@ -19,7 +19,7 @@ static void parse_layout_file(const char *layout_file) {
 
     f = fopen(layout_file, "w");
 
-    LOG("using layout file '%s'", layout_file);
+    LOG("using layout file '%s'\n", layout_file);
 
     if (f == NULL) {
         ERR("Could not open layout file '%s'.\n", layout_file);
