@@ -119,7 +119,7 @@ static void parse_error(parse_info *info, const char *fmt, ...) {
     exit(1);
 }
 
-static int optional_word(parse_info *info, const char **out) {
+static int optional_word(parse_info *info, const char *out) {
     char        c;
     char        word_buff[WORD_MAX];
     char       *buff_p;
@@ -140,7 +140,7 @@ static int optional_word(parse_info *info, const char **out) {
     *buff_p = 0;
 
     if (out && len) {
-        memcpy(*out, word_buff, len + 1);
+        memcpy(out, word_buff, len + 1);
     }
 
     if (len) {
@@ -202,14 +202,10 @@ static long int optional_int(parse_info *info, long int *out) {
     return 1;
 }
 
-static void expect_word(parse_info *info, const char **out) {
-    const result[WORD_MAX];
-
-    if (!optional_word(info, &result)) {
+static void expect_word(parse_info *info, const char *out) {
+    if (!optional_word(info, out)) {
         parse_error(info, "expected a word\n");
     }
-
-    if (out)    { *out = result; }
 }
 
 static void expect_keyword(parse_info *info, const char *s) {
@@ -219,13 +215,9 @@ static void expect_keyword(parse_info *info, const char *s) {
 }
 
 static void expect_int(parse_info *info, long int *out) {
-    long int result;
-
-    if (!optional_int(info, &result)) {
+    if (!optional_int(info, out)) {
         parse_error(info, "expected an integer\n");
     }
-
-    if (out)    { *out = result; }
 }
 
 /* END Parsing functions */
@@ -252,13 +244,11 @@ static sicm_layout_node_ptr * get_or_create_node(const char *name) {
 static void parse_layout_file(const char *layout_file) {
     parse_info           info;
     sicm_layout_node_ptr current_node;
-    char                 _buff[WORD_MAX];
-    const char          *buff;
+    char                 buff[WORD_MAX];
     long int             integer;
 
     info         = parse_info_make(layout_file);
     current_node = NULL;
-    buff         = _buff;
 
     LOG("using layout file '%s'\n", info.path);
 
