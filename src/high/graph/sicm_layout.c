@@ -184,9 +184,11 @@ static long int optional_int(parse_info *info, long int *out) {
         *out = i;
     }
 
+    LOG("parsed int %ld\n", i);
+
     trim_whitespace_and_comments(info);
 
-    return 0;
+    return 1;
 }
 
 static void expect_word(parse_info *info, int *out) {
