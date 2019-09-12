@@ -107,16 +107,27 @@ static void trim_whitespace_and_comments(parse_info *info) {
     }
 }
 
+static void vparse_error_l(parse_info *info, int line, const char *fmt, va_list arg) {
+    fprintf(stderr, "[sicm-layout]: PARSE ERROR in '%s' :: line %d\n"
+                    "               ", info->path, line);
+    vfprintf(stderr, fmt, args);
+    exit(1);
+}
+
+static void parse_error_l(parse_info *info, int line, const char *fmt, ...) {
+    va_list args;
+
+    va_start(args, fmt);
+    vparse_error_l(info, line, fmt, args);
+    va_end(args);
+}
+
 static void parse_error(parse_info *info, const char *fmt, ...) {
     va_list args;
 
     va_start(args, fmt);
-    fprintf(stderr, "[sicm-layout]: PARSE ERROR in '%s' :: line %d\n"
-                    "               ", info->path, info->current_line);
-    vfprintf(stderr, fmt, args);
+    vparse_error_l(info, info->current_line, fmt, args);
     va_end(args);
-
-    exit(1);
 }
 
 static int optional_word(parse_info *info, const char *out) {
@@ -124,6 +135,7 @@ static int optional_word(parse_info *info, const char *out) {
     char        word_buff[WORD_MAX];
     char       *buff_p;
     int         len;
+    int         line;
    
     len    = 0;
     buff_p = word_buff;
@@ -145,11 +157,13 @@ static int optional_word(parse_info *info, const char *out) {
         memcpy(out, word_buff, len + 1);
     }
 
+    line = info->current_line;
+
     if (len) {
         trim_whitespace_and_comments(info);
     }
 
-    return len;
+    return len ? line : 0;
 }
 
 static int optional_keyword(parse_info *info, const char* s) {
@@ -249,6 +263,7 @@ static void parse_layout_file(const char *layout_file) {
     sicm_layout_node_ptr current_node;
     char                 buff[WORD_MAX];
     long int             integer;
+    int                  line;
 
     info         = parse_info_make(layout_file);
     current_node = NULL;
@@ -267,9 +282,9 @@ static void parse_layout_file(const char *layout_file) {
         if (optional_keyword(&info, "node")) {
             expect_word(&info, buff);
             current_node = get_or_create_node(buff);
-        } else if (optional_keyword(&info, "kind")) {
+        } else if ((line = optional_keyword(&info, "kind"))) {
             if (!current_node) {
-                parse_error(&info, "can't set 'kind' for unspecified node\n");
+                parse_error_l(&info, line, "can't set 'kind' for unspecified node\n");
             }
             if (optional_keyword(&info, "mem")) {
                 current_node->kind = NODE_MEM;
