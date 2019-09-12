@@ -124,6 +124,7 @@ static int optional_keyword(parse_info *info, const char* s) {
     }
 
     if (len != strlen(s)) {
+        LOG("%d vs %d\n", len, strlen(s));
         info->cursor = cursor_save;
         return 0;
     }
