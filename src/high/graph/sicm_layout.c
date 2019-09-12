@@ -139,6 +139,8 @@ static int optional_word(parse_info *info, const char *out) {
         }
     }
 
+    LOG("HERE2\n");
+    
     *buff_p = 0;
 
     if (out && len) {
@@ -149,7 +151,6 @@ static int optional_word(parse_info *info, const char *out) {
         trim_whitespace_and_comments(info);
     }
     
-    LOG("HERE2\n");
 
     return len;
 }
