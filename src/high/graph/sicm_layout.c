@@ -141,12 +141,11 @@ static int optional_word(parse_info *info, const char *out) {
     
     *buff_p = 0;
 
-    LOG("HERE1\n");
+    LOG("%p %d\n", out, len);
     if (out && len) {
         memcpy(out, word_buff, len + 1);
     }
 
-    LOG("HERE2\n");
     if (len) {
         trim_whitespace_and_comments(info);
     }
