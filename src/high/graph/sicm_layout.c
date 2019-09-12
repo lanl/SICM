@@ -107,7 +107,35 @@ static int optional_int(parse_info *info, int *out) {
 }
 
 static int optional_word(parse_info *info, const char **out) {
-    return 0;
+    char        c;
+    char        word_buff[256];
+    const char *buff_p;
+    int         len;
+    
+    buff_p = word_buff;
+
+    while ((c = *info->cursor) && !isspace(c)) {
+        *(buff_p++)   = c;
+        info->cursor += 1;
+        len          += 1;
+
+        if (len == 255) {
+            ERR("word too long to parse on line %d\n", info->current_line);
+        }
+    }
+
+    buff_p[len] = 0;
+
+    if (out && len) {
+        *out = malloc(len + 1);
+        memcpy(*out, word_buff, len + 1);
+    }
+
+    if (len) {
+        LOG("parsed word '%s'\n", word_buff);
+    }
+
+    return len;
 }
 
 static int optional_keyword(parse_info *info, const char* s) {
@@ -170,6 +198,7 @@ static void expect_keyword(parse_info *info, const char *s) {
 
 static void parse_layout_file(const char *layout_file) {
     parse_info info;
+    const char *layout_name;
 
     info = parse_info_make(layout_file);
 
@@ -180,6 +209,7 @@ static void parse_layout_file(const char *layout_file) {
     trim_whitespace_and_comments(&info);
     expect_keyword(&info, "layout");
 
+    expect_word(&info, &layout_name);
 
     parse_info_free(&info);
 
