@@ -275,7 +275,7 @@ static int parse_attr(parse_info *info, sicm_layout_node_ptr current_node, const
         }
     }
 
-    return 0;
+    return line;
 }
 
 static int parse_int_value(parse_info *info, sicm_layout_node_ptr current_node, const char *kwd, long int *integer) {
