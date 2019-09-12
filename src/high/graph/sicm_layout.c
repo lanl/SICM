@@ -282,6 +282,8 @@ static int parse_attr(parse_info *info, sicm_layout_node_ptr current_node, const
 static int parse_int_value(parse_info *info, sicm_layout_node_ptr current_node, const char *kwd, long int *integer) {
     int line;
 
+    LOG("!!! %s\n", kwd);
+
     if ((line = optional_keyword(&info, kwd))) {
         if (!current_node) {
             parse_error_l(&info, line, "can't set '%s' for unspecified node\n", kwd);
