@@ -203,7 +203,7 @@ static long int optional_int(parse_info *info, long int *out) {
 }
 
 static void expect_word(parse_info *info, const char **out) {
-    const char *result;
+    const result[WORD_MAX];
 
     if (!optional_word(info, &result)) {
         parse_error(info, "expected a word\n");
@@ -269,7 +269,6 @@ static void parse_layout_file(const char *layout_file) {
   
     expect_keyword(&info, "layout");
     expect_word(&info, &layout.name);
-    LOG("HERE\n");
 
     while (*info.cursor) {
         if (optional_keyword(&info, "node")) {
