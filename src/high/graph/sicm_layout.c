@@ -43,7 +43,7 @@ static parse_info parse_info_make(const char *path) {
 
     info.cursor = info.buff = malloc(buff_size);
 
-    fread(f, buff_size - 1, info.buff);
+    fread(f, 1, buff_size - 1, info.buff);
 
     info.buff[buff_size - 1] = 0;
     
