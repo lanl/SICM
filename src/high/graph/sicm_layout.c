@@ -203,7 +203,7 @@ static void expect_word(parse_info *info, const char **out) {
     const char *result;
 
     if (!optional_word(info, &result)) {
-        narse_error(info, "expected a word\n");
+        parse_error(info, "expected a word\n");
     }
 
     if (out)    { *out = result; }
