@@ -44,18 +44,19 @@ static parse_info parse_info_make(const char *path) {
     buff_size = ftell(f);
     rewind(f);
 
-    LOG("layout file: '%s' -- %lu bytes\n", path, buff_size);
-
-    buff_size += 1;
-
+    buff_size  += 1;
     info.cursor = info.buff = malloc(buff_size);
 
-    n_read = fread(info.buff, 1, buff_size - 1, f);
+    n_read      = fread(info.buff, 1, buff_size - 1, f);
 
     if (n_read != (buff_size - 1)) {
-        ERR("encountered a problem attempting to read the contents of '%s' -- read %llu of %llu bytes\n", path, n_read, buff_size);
+        ERR("encountered a problem attempting to read the contents of '%s' "
+            "-- read %llu of %llu bytes\n", path, n_read, buff_size);
     }
 
+    /*
+     * NULL term.
+     */
     info.buff[buff_size - 1] = 0;
     
     fclose(f);
@@ -74,16 +75,9 @@ static void trim_comment(parse_info *info) {
 
     if (c != '#')    { return; }
 
-    printf("Comment: '");
-
     while ((c = *(++info->cursor))) {
-        if (c == '\n') {
-            break;
-        }
-        printf("%c", c);
+        if (c == '\n')    { break; }
     }
-    
-    printf("'\n");
 }
 
 static void trim_whitespace_and_comments(parse_info *info) {
@@ -153,8 +147,8 @@ static void parse_layout_file(const char *layout_file) {
 
     layout.nodes = tree_make(str, sicm_layout_node_t);
 
-
     trim_whitespace_and_comments(&info);
+    expect_keyword(&info, "layout");
 
 
     parse_info_free(&info);
