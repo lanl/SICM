@@ -227,8 +227,8 @@ static void expect_int(parse_info *info, long int *out) {
 
 /* END Parsing functions */
 
-static sicm_layout_node_t * get_or_create_node(const char *name) {
-    tree_it(str, sicm_layout_node_t)
+static sicm_layout_node_ptr * get_or_create_node(const char *name) {
+    tree_it(str, sicm_layout_node_ptr) it;
 }
 
 static void parse_layout_file(const char *layout_file) {
