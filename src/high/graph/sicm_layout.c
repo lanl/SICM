@@ -107,7 +107,7 @@ static void parse_error(parse_info *info, const char *fmt, ...) {
     va_list args;
 
     va_start(args, fmt);
-    fprintf(stderr, "[sicm-layout]: PARSE ERROR %s::%d\n"
+    fprintf(stderr, "[sicm-layout]: PARSE ERROR in %s :: line %d\n"
                     "               ", info->path, info->current_line);
     vfprintf(stderr, fmt, args);
     va_end(args);
