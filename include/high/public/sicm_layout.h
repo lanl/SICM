@@ -16,6 +16,7 @@ typedef struct {
     long int    numa_node_id;
     int         kind;
     int         attrs;
+    int         capacity;
 } sicm_layout_node_t;
 
 typedef sicm_layout_node_t *sicm_layout_node_ptr;
