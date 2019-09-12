@@ -290,7 +290,7 @@ static int parse_int_value(parse_info *info, sicm_layout_node_ptr current_node, 
         }
         expect_int(&info, integer);
     
-        LOG("!!! %s -- %ld\n", kwd, *integer);
+        LOG("!!! %s -- %p\n", kwd, integer);
 
         return 1;
     }
