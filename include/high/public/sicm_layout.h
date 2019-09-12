@@ -24,7 +24,7 @@ typedef char *str;
 use_tree(str, sicm_layout_node_t);
 
 typedef struct {
-    const char                    *name;
+    const char                    *name
     tree(str, sicm_layout_node_t)  nodes;
     int                            is_valid;
 } sicm_layout_t;

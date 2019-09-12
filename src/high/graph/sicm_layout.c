@@ -199,7 +199,7 @@ static long int optional_int(parse_info *info, long int *out) {
     return 1;
 }
 
-static void expect_word(parse_info *info, int *out) {
+static void expect_word(parse_info *info, const char *out) {
     const char *result;
 
     if (!optional_word(info, &result)) {
@@ -250,7 +250,7 @@ static void parse_layout_file(const char *layout_file) {
 
         } else {
             if (optional_word(&info, &word)) {
-                parse_error(&nfo, "did not expect '%d' here\n", word);
+                parse_error(&info, "did not expect '%d' here\n", word);
             } else {
                 parse_error(&info, "did not expect the end of the file\n");
             }
