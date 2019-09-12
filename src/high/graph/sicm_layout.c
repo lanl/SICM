@@ -53,6 +53,7 @@ static void parse_info_free(parse_info *info) {
 }
 
 static void trim_whitespace_and_comments(parse_info *info) {
+    
 }
 
 static int optional_int(parse_info *info, int *out) {
@@ -104,9 +105,9 @@ static void parse_layout_file(const char *layout_file) {
 
     layout.nodes = tree_make(str, sicm_layout_node_t);
 
-    /*
-     * @incomplete
-     */
+
+    trim_whitespace_and_comments(&info);
+
 
     parse_info_free(&info);
 
