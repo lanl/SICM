@@ -227,6 +227,10 @@ static void expect_int(parse_info *info, long int *out) {
 
 /* END Parsing functions */
 
+static sicm_layout_node_t * get_or_create_node(const char *name) {
+    tree_it(str, sicm_layout_node_t)
+}
+
 static void parse_layout_file(const char *layout_file) {
     parse_info  info;
     const char *current_node;
@@ -238,7 +242,7 @@ static void parse_layout_file(const char *layout_file) {
 
     LOG("using layout file '%s'\n", info.path);
 
-    layout.nodes = tree_make(str, sicm_layout_node_t);
+    layout.nodes = tree_make(str, sicm_layout_node_ptr);
 
     trim_whitespace_and_comments(&info);
    
@@ -274,16 +278,19 @@ void sicm_layout_init(const char *layout_file) {
 }
 
 void sicm_layout_fini(void) {
-    tree_it(str, sicm_layout_node_t)  it;
-    const char                       *key;
+    tree_it(str, sicm_layout_node_ptr)  it;
+    const char                         *key;
+    sicm_layout_node_ptr                val;
 
     free(layout.name);
 
     while (tree_len(layout.nodes) > 0) {
         it  = tree_begin(layout.nodes);
         key = tree_it_key(it);
+        val = tree_it_val(it);
         tree_delete(layout.nodes, key);
         free(key);
+        free(val);
     }
 
     tree_free(layout.nodes);

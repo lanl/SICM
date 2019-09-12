@@ -20,13 +20,14 @@ typedef struct {
     int         attrs;
 } sicm_layout_node_t;
 
+typedef sicm_layout_node_t *sicm_layout_node_ptr;
 typedef char *str;
-use_tree(str, sicm_layout_node_t);
+use_tree(str, sicm_layout_node_ptr);
 
 typedef struct {
-    const char                    *name;
-    tree(str, sicm_layout_node_t)  nodes;
-    int                            is_valid;
+    const char                      *name;
+    tree(str, sicm_layout_node_ptr)  nodes;
+    int                              is_valid;
 } sicm_layout_t;
 
 void sicm_layout_init(const char *layout_file);
