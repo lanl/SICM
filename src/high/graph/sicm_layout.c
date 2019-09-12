@@ -266,6 +266,34 @@ static sicm_layout_node_ptr * get_or_create_node(const char *name) {
     return node;
 }
 
+static int parse_attr(parse_info *info, sicm_layout_node_ptr current_node, const char *attr) {
+    int line;
+
+    if ((line = optional_keyword(&info, attr))) {
+        if (!current_node) {
+            parse_error_l(&info, line, "can't set '%s' for unspecified node\n", attr);
+        }
+        return 1;
+    }
+
+    return 0;
+}
+
+static int parse_int_value(parse_info *info, sicm_layout_node_ptr current_node, const char *kwd, long int *integer) {
+    int line;
+
+    if ((line = optional_keyword(&info, kwd))) {
+        if (!current_node) {
+            parse_error_l(&info, line, "can't set '%s' for unspecified node\n", kwd);
+        }
+        expect_int(&info, integer);
+
+        return 1;
+    }
+
+    return 0;
+}
+
 static void parse_layout_file(const char *layout_file) {
     parse_info           info;
     sicm_layout_node_ptr current_node;
@@ -301,42 +329,19 @@ static void parse_layout_file(const char *layout_file) {
             } else {
                 parse_error(&info, "expected either 'mem' or 'compute'\n");
             }
-        } else if ((line = optional_keyword(&info, "numa"))) {
-            if (!current_node) {
-                parse_error_l(&info, line, "can't set 'numa' for unspecified node\n");
-            }
-            expect_int(&info, &integer);
+        } else if (parse_int_value(&info, "numa", &integer)) {
             current_node->numa_node_id = integer;
-        } else if ((line = optional_keyword(&info, "capacity"))) {
-            if (!current_node) {
-                parse_error_l(&info, line, "can't set 'capacity' for unspecified node\n");
-            }
-            expect_int(&info, &integer);
+        } else if (parse_int_value(&info, "capacity", &integer)) {
             current_node->capacity = integer;
-        } else if ((line = optional_keyword(&info, "near_nic"))) {
-            if (!current_node) {
-                parse_error_l(&info, line, "can't set 'near_nic' for unspecified node\n");
-            }
+        } else if (parse_attr(&info, current_node, "near_nic")) {
             current_node->attrs |= NODE_NEAR_NIC;
-        } else if ((line = optional_keyword(&info, "low_lat"))) {
-            if (!current_node) {
-                parse_error_l(&info, line, "can't set 'low_lat' for unspecified node\n");
-            }
+        } else if (parse_attr(&info, current_node, "low_lat")) {
             current_node->attrs |= NODE_LOW_LAT;
-        } else if ((line = optional_keyword(&info, "hbm"))) {
-            if (!current_node) {
-                parse_error_l(&info, line, "can't set 'hbm' for unspecified node\n");
-            }
+        } else if (parse_attr(&info, current_node, "hbm")) {
             current_node->attrs |= NODE_HBM;
-        } else if ((line = optional_keyword(&info, "persist"))) {
-            if (!current_node) {
-                parse_error_l(&info, line, "can't set 'persist' for unspecified node\n");
-            }
+        } else if (parse_attr(&info, current_node, "persist")) {
             current_node->attrs |= NODE_PERSIST;
-        } else if ((line = optional_keyword(&info, "gpu"))) {
-            if (!current_node) {
-                parse_error_l(&info, line, "can't set 'gpu' for unspecified node\n");
-            }
+        } else if (parse_attr(&info, current_node, "gpu")) {
             current_node->attrs |= NODE_ON_GPU;
         } else {
             if (optional_word(&info, &buff)) {
