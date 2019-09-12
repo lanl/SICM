@@ -13,7 +13,7 @@
 
 typedef struct {
     const char *name;
-    int         numa_node_id;
+    long int    numa_node_id;
     int         kind;
     int         attrs;
 } sicm_layout_node_t;
