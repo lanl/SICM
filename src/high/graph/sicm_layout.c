@@ -232,9 +232,9 @@ static void parse_layout_file(const char *layout_file) {
     layout.nodes = tree_make(str, sicm_layout_node_t);
 
     trim_whitespace_and_comments(&info);
-    expect_int(&info, NULL);
+    
     expect_keyword(&info, "layout");
-
+    expect_int(&info, NULL);
     expect_word(&info, &layout_name);
 
     parse_info_free(&info);
