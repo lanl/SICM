@@ -66,11 +66,16 @@ static void trim_comment(parse_info *info) {
 
     if (c != '#')    { return; }
 
+    printf("Comment: '");
+
     while ((c = *(++info->cursor))) {
         if (c == '\n') {
             break;
         }
+        printf("%c", c);
     }
+    
+    printf("'\n");
 }
 
 static void trim_whitespace_and_comments(parse_info *info) {
