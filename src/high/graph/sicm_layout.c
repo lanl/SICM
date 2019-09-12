@@ -172,6 +172,8 @@ static long int optional_int(parse_info *info, long int *out) {
     long int i;
     char     buff[256];
 
+    LOG("from cursor: '%s'\n", info->cursor);
+
     if (sscanf(info->cursor, "%ld", &i) == 0) {
         return 0;
     }
