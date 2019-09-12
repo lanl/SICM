@@ -14,6 +14,54 @@
 
 static sicm_layout_t layout;
 
+/* BEG Parsing functions */
+
+typedef struct {
+    const char *path;
+    FILE *f;
+    int  current_line;
+} parse_info;
+
+static int optional_int(parse_info *info, int *out) {
+    return 0;
+}
+
+static int optional_word(parse_info *info, const char **out) {
+    return 0;
+}
+
+static int optional_keyword(parse_info *info, const char* s) {
+    return 0;
+}
+
+static void expect_int(parse_info *info, int *out) {
+    int result;
+
+    if (!optional_int(info, &result)) {
+        ERR("invalid layout file '%s' -- expected int on line %d\n", info.path, current_line);
+    }
+
+    if (out)    { *out = result; }
+}
+
+static void expect_word(parse_info *info, int *out) {
+    const char *result;
+
+    if (!optional_word(info, &result)) {
+        ERR("invalid layout file '%s' -- expected word on line %d\n", info.path, current_line);
+    }
+
+    if (out)    { *out = result; }
+}
+
+static void expect_keyword(parse_info *info, const char *s) {
+    if (!optional_keyword(info, s)) {
+        ERR("invalid layout file '%s' -- expected keyword '%s' on line %d\n", info.path, s, current_line);
+    }
+}
+
+/* END Parsing functions */
+
 static void parse_layout_file(const char *layout_file) {
     FILE *f;
 
