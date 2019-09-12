@@ -207,8 +207,9 @@ static int optional_keyword(parse_info *info, const char* s) {
 static long int optional_int(parse_info *info, long int *out) {
     long int i;
     char     buff[WORD_MAX];
+    int      line;
 
-    if (sscanf(info->cursor, "%ld", &i) == 0) {
+    if (!*info->cursor || sscanf(info->cursor, "%ld", &i) == 0) {
         return 0;
     }
 
@@ -218,9 +219,11 @@ static long int optional_int(parse_info *info, long int *out) {
 
     if (out)    { *out = i; }
 
+    line = info->current_line;
+
     trim_whitespace_and_comments(info);
 
-    return 1;
+    return line;
 }
 
 static void expect_word(parse_info *info, const char *out) {
