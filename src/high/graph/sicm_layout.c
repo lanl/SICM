@@ -4,6 +4,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <ctype.h>
+#include <stdarg.h>
 
 #define ERR(...) do {                                     \
     fprintf(stderr, "[sicm-layout] ERROR: " __VA_ARGS__); \
