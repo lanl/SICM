@@ -133,7 +133,7 @@ static int optional_word(parse_info *info, const char **out) {
 
     if (len) {
         LOG("parsed word '%s'\n", word_buff);
-        trim_whitespace_and_comments();
+        trim_whitespace_and_comments(info);
     }
 
     return len;
@@ -167,7 +167,7 @@ static int optional_keyword(parse_info *info, const char* s) {
         return 0;
     }
 
-    trim_whitespace_and_comments();
+    trim_whitespace_and_comments(info);
 
     return 1;
 }
