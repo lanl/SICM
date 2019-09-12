@@ -26,7 +26,8 @@ typedef struct {
 static parse_info parse_info_make(const char *path) {
     parse_info  info;
     FILE       *f;
-    size_t      buff_size;
+    size_t      buff_size,
+                n_read;
 
     f = fopen(path, "r");
     if (f == NULL) {
@@ -48,8 +49,9 @@ static parse_info parse_info_make(const char *path) {
 
     info.cursor = info.buff = malloc(buff_size);
 
-    if (fread(info.buff, 1, buff_size - 1, f) != (buff_size - 1)) {
-        ERR("encountered a problem attempting to read the contents of '%s'\n", path);
+    n_read = fread(info.buff, 1, buff_size - 1, f);
+    if (n_read != (buff_size - 1)) {
+        ERR("encountered a problem attempting to read the contents of '%s' -- only read %llu bytes\n", path, n_read);
     }
 
     info.buff[buff_size - 1] = 0;
