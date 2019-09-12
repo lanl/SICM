@@ -269,10 +269,10 @@ static sicm_layout_node_ptr * get_or_create_node(const char *name) {
 static int parse_attr(parse_info *info, sicm_layout_node_ptr current_node, const char *attr) {
     int line;
 
-    if ((line = optional_keyword(&info, attr))) {
-/*         if (!current_node) { */
-/*             parse_error_l(&info, line, "can't set '%s' for unspecified node\n", attr); */
-/*         } */
+    if ((line = optional_keyword(info, attr))) {
+        if (!current_node) {
+            parse_error_l(info, line, "can't set '%s' for unspecified node\n", attr);
+        }
     }
 
     return line;
@@ -281,19 +281,15 @@ static int parse_attr(parse_info *info, sicm_layout_node_ptr current_node, const
 static int parse_int_value(parse_info *info, sicm_layout_node_ptr current_node, const char *kwd, long int *integer) {
     int line;
 
-/*     line = optional_keyword(&info, kwd); */
-/*  */
-/*     if ((line = optional_keyword(&info, kwd))) { */
-/*         if (!current_node) { */
-/*             parse_error_l(&info, line, "can't set '%s' for unspecified node\n", kwd); */
-/*         } */
-/*      */
-/*         expect_int(&info, integer); */
-/*  */
-/*         return 1; */
-/*     } */
+    if ((line = optional_keyword(info, kwd))) {
+        if (!current_node) {
+            parse_error_l(info, line, "can't set '%s' for unspecified node\n", kwd);
+        }
+    
+        expect_int(info, integer);
+    }
 
-    return 0;
+    return line;
 }
 
 static void parse_layout_file(const char *layout_file) {
