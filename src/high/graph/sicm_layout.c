@@ -136,7 +136,6 @@ static int optional_word(parse_info *info, const char **out) {
     *buff_p = 0;
 
     if (out && len) {
-        *out = malloc(len + 1);
         memcpy(*out, word_buff, len + 1);
     }
 
@@ -229,29 +228,35 @@ static void expect_int(parse_info *info, long int *out) {
 
 static sicm_layout_node_ptr * get_or_create_node(const char *name) {
     tree_it(str, sicm_layout_node_ptr) it;
+    sicm_layout_node_ptr               node;
 
     it = tree_lookup(layout.nodes, name);
 
     if (tree_it_good(it)) {
-        return tree_it_val(it);
+        node = tree_it_val(it);
+    } else {
+        node = malloc(sizeof(*node));
+        memset(node, 0, sizeof(*node));
+        node->name = strdup(name);
+
+        tree_insert(node->name, node);
     }
 
-    return NULL;
+    return node;
 }
 
 static void parse_layout_file(const char *layout_file) {
-    parse_info            info;
-    sicm_layout_node_ptr  current_node;
-    const char           *word,
-                         *node_name;
-    long int              integer;
+    parse_info           info;
+    sicm_layout_node_ptr current_node;
+    char                 buff[256];
+    long int             integer;
 
     info         = parse_info_make(layout_file);
     current_node = NULL;
 
     LOG("using layout file '%s'\n", info.path);
 
-    layout.nodes = tree_make(str, sicm_layout_node_ptr);
+    layout.nodes = tree_make_c(str, sicm_layout_node_ptr, strcmp);
 
     trim_whitespace_and_comments(&info);
    
@@ -260,11 +265,11 @@ static void parse_layout_file(const char *layout_file) {
 
     while (*info.cursor) {
         if (optional_keyword(&info, "node")) {
-            expect_word(&info, &node_name);
-            current_node = get_or_create_node(node_name);
+            expect_word(&info, &buff);
+            current_node = get_or_create_node(buff);
         } else {
-            if (optional_word(&info, &word)) {
-                parse_error(&info, "did not expect '%s' here\n", word);
+            if (optional_word(&info, &buff)) {
+                parse_error(&info, "did not expect '%s' here\n", buff);
             } else {
                 parse_error(&info, "did not expect the end of the file\n");
             }
