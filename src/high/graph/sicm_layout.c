@@ -292,7 +292,7 @@ static int parse_int_value(parse_info *info, sicm_layout_node_ptr current_node, 
     return line;
 }
 
-static int parse_kind(parse_info *info, sicm_layout_node_ptr current_node, const char *kwd, long int *kind) {
+static int parse_kind(parse_info *info, sicm_layout_node_ptr current_node, long int *kind) {
 
     if ((line = optional_keyword(info, "kind"))) {
         if (!current_node) {
@@ -337,7 +337,7 @@ static void parse_layout_file(const char *layout_file) {
         if (optional_keyword(&info, "node")) {
             expect_word(&info, buff);
             current_node = get_or_create_node(buff);
-        } else if (parse_kind(&info, &integer)) {
+        } else if (parse_kind(&info, current_node, &integer)) {
             current_node->kind = integer; 
         } else if (parse_int_value(&info, current_node, "numa", &integer)) {
             current_node->numa_node_id = integer;
