@@ -124,7 +124,7 @@ static int optional_word(parse_info *info, const char **out) {
         }
     }
 
-    buff_p[len] = 0;
+    *buff_p = 0;
 
     if (out && len) {
         *out = malloc(len + 1);
@@ -133,6 +133,7 @@ static int optional_word(parse_info *info, const char **out) {
 
     if (len) {
         LOG("parsed word '%s'\n", word_buff);
+        trim_whitespace_and_comments();
     }
 
     return len;
@@ -165,6 +166,9 @@ static int optional_keyword(parse_info *info, const char* s) {
         info->cursor = cursor_save;
         return 0;
     }
+
+    trim_whitespace_and_comments();
+
     return 1;
 }
 
