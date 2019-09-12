@@ -107,7 +107,7 @@ static void parse_error(parse_info *info, const char *fmt, ...) {
     va_list args;
 
     va_start(args, fmt);
-    fprintf(stderr, "[sicm-layout]: PARSE ERROR in %s :: line %d\n"
+    fprintf(stderr, "[sicm-layout]: PARSE ERROR in '%s' :: line %d\n"
                     "               ", info->path, info->current_line);
     vfprintf(stderr, fmt, args);
     va_end(args);
@@ -141,7 +141,6 @@ static int optional_word(parse_info *info, const char **out) {
     }
 
     if (len) {
-        LOG("parsed word '%s'\n", word_buff);
         trim_whitespace_and_comments(info);
     }
 
@@ -248,7 +247,7 @@ static void parse_layout_file(const char *layout_file) {
 
     while (*info.cursor) {
         if (optional_keyword(&info, "node")) {
-
+            expect_word(&info, &current_node); 
         } else {
             if (optional_word(&info, &word)) {
                 parse_error(&info, "did not expect '%s' here\n", word);
