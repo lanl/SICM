@@ -87,7 +87,7 @@ static void trim_whitespace_and_comments(parse_info *info) {
                 info->current_line += 1;
             }
         } else if (c == '#') {
-/*             trim_comment(info); */
+            trim_comment(info);
         } else {
             break;
         }
@@ -146,7 +146,7 @@ static void parse_layout_file(const char *layout_file) {
     layout.nodes = tree_make(str, sicm_layout_node_t);
 
 
-    trim_whitespace_and_comments(&info);
+/*     trim_whitespace_and_comments(&info); */
 
 
     parse_info_free(&info);
