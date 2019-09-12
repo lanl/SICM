@@ -76,7 +76,10 @@ static void trim_comment(parse_info *info) {
     if (c != '#')    { return; }
 
     while ((c = *(++info->cursor))) {
-        if (c == '\n')    { break; }
+        if (c == '\n')    {
+            info->current_line += 1;
+            break;
+        }
     }
 }
 
