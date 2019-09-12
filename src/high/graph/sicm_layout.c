@@ -131,11 +131,11 @@ static void parse_error(parse_info *info, const char *fmt, ...) {
 }
 
 static int optional_word(parse_info *info, const char *out) {
-    char        c;
-    char        word_buff[WORD_MAX];
-    char       *buff_p;
-    int         len;
-    int         line;
+    char  c;
+    char  word_buff[WORD_MAX];
+    char *buff_p;
+    int   len;
+    int   line;
    
     len    = 0;
     buff_p = word_buff;
@@ -158,6 +158,7 @@ static int optional_word(parse_info *info, const char *out) {
     }
 
     line = info->current_line;
+    LOG("%d\n", line);
 
     if (len) {
         trim_whitespace_and_comments(info);
