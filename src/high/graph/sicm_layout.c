@@ -48,7 +48,7 @@ static parse_info parse_info_make(const char *path) {
     return info;
 }
 
-static parse_info_free(parse_info *info) {
+static void parse_info_free(parse_info *info) {
     free(info->buff);
 }
 
