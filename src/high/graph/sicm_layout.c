@@ -18,9 +18,43 @@ static sicm_layout_t layout;
 
 typedef struct {
     const char *path;
-    FILE *f;
+    char *buff, *cursor;
     int  current_line;
 } parse_info;
+
+static parse_info parse_info_make(const char *path) {
+    parse_info  info;
+    FILE       *f;
+    size_t      buff_size;
+
+    f = fopen(path, "r");
+    if (f == NULL) {
+        ERR("Could not open layout file '%s'.\n", path);
+    }
+
+    info.path         = path;
+    info.current_line = 1;
+   
+    /*
+     * Get the size of the file and allocate the buffer.
+     */
+    fseek(f, 0, SEEK_END);
+    buff_size = ftell(f) + 1;
+
+    fclose(f);
+
+    info.cursor = info.buff = malloc(buff_size);
+
+    return info;
+}
+
+static parse_info_free(parse_info *info) {
+    free(info->buff);
+}
+
+static void trim_whitespace_and_comments(parse_info *info) {
+    while
+}
 
 static int optional_int(parse_info *info, int *out) {
     return 0;
@@ -65,15 +99,9 @@ static void expect_keyword(parse_info *info, const char *s) {
 static void parse_layout_file(const char *layout_file) {
     parse_info info;
 
-    info.f            = fopen(layout_file, "r");
-    info.path         = layout_file;
-    info.current_line = 1;
+    info = parse_info_make(layout_file);
 
     LOG("using layout file '%s'\n", info.path);
-
-    if (info.f == NULL) {
-        ERR("Could not open layout file '%s'.\n", info.path);
-    }
 
     layout.nodes = tree_make(str, sicm_layout_node_t);
 
@@ -81,6 +109,8 @@ static void parse_layout_file(const char *layout_file) {
     /*
      * @incomplete
      */
+
+    parse_info_free(&info);
 
     layout.is_valid = 1;
 }
