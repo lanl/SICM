@@ -120,9 +120,15 @@ static int optional_keyword(parse_info *info, const char* s) {
     s_p         = s;
     cursor_save = info->cursor;
 
-    while (info->cursor && s_p &&
-          (*(s_p++) == *(info->cursor++))) {
+    while (info->cursor && s_p && (*s_p == *info->cursor)) {
         len += 1;
+        s_p += 1;
+        info->cursor += 1;
+    }
+
+    if (info->cursor && !isspace(*info->cursor)) {
+        info->cursor = cursor_save;
+        return 0;
     }
 
     if (len != strlen(s)) {
