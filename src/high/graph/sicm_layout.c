@@ -3,13 +3,13 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#define ERR(...) do {                                    \
-    fprintf(stderr,"[sicm-layout] ERROR: " __VA_ARGS__); \
-    exit(1);                                             \
+#define ERR(...) do {                                     \
+    fprintf(stderr, "[sicm-layout] ERROR: " __VA_ARGS__); \
+    exit(1);                                              \
 } while (0)
 
-#define LOG(...) do {                               \
-    fprintf(stderr, "[sicm-layout]: " __VA_ARGS__); \
+#define LOG(...) do {                                     \
+    fprintf(stderr, "[sicm-layout]:       " __VA_ARGS__); \
 } while (0)
 
 static sicm_layout_t layout;
