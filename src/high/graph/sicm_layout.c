@@ -424,10 +424,10 @@ static void parse_layout_file(const char *layout_file) {
             edge = get_edge(src_node, dst_node);
          
             while (1) {
-                if (optional_keyword("bandwidth")) {
+                if (optional_keyword(&info, "bandwidth")) {
                     expect_int(&info, &integer);
                     edge->bw = integer;
-                } else if (optional_keyword("latency")) {
+                } else if (optional_keyword(&info, "latency")) {
                     expect_int(&info, &integer);
                     edge->lat = integer;
                 } else {
