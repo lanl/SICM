@@ -641,6 +641,39 @@ long int sicm_layout_node_capacity(sicm_layout_node_handle handle) {
     return node->capacity;
 }
 
+int sicm_layout_node_is_near_nic(sicm_layout_node_handle handle) {
+    sicm_layout_node_ptr node;
+
+    node = find_existing_node(handle);
+
+    return node->attrs & LAYOUT_NODE_NEAR_NIC;
+}
+
+int sicm_layout_node_is_hbm(sicm_layout_node_handle handle) {
+    sicm_layout_node_ptr node;
+
+    node = find_existing_node(handle);
+
+    return node->attrs & LAYOUT_NODE_HBM;
+}
+
+int sicm_layout_node_is_nvm(sicm_layout_node_handle handle) {
+    sicm_layout_node_ptr node;
+
+    node = find_existing_node(handle);
+
+    return node->attrs & LAYOUT_NODE_NVM;
+}
+
+int sicm_layout_node_is_gpu(sicm_layout_node_handle handle) {
+    sicm_layout_node_ptr node;
+
+    node = find_existing_node(handle);
+
+    return node->attrs & LAYOUT_NODE_GPU;
+}
+
+
 void * sicm_node_alloc(size_t size, const char *node_name) {
     /*
      * @incomplete

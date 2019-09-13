@@ -68,3 +68,7 @@ const char * sicm_layout_node_name(sicm_layout_node_handle handle);
 int sicm_layout_node_kind(sicm_layout_node_handle handle);
 long int * sicm_layout_node_numa(sicm_layout_node_handle handle);
 long int sicm_layout_node_capacity(sicm_layout_node_handle handle);
+int sicm_layout_node_is_near_nic(sicm_layout_node_handle handle);
+int sicm_layout_node_is_hbm(sicm_layout_node_handle handle);
+int sicm_layout_node_is_nvm(sicm_layout_node_handle handle);
+int sicm_layout_node_is_gpu(sicm_layout_node_handle handle);
