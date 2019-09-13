@@ -40,5 +40,7 @@ int              sl_node_is_nvm(sl_node_handle handle);
 int              sl_node_is_gpu(sl_node_handle handle);
 
 sl_edge_handle   sl_edge(sl_node_handle src, sl_node_handle dst);
+sl_node_handle   sl_edge_src(sl_edge_handle handle);
+sl_node_handle   sl_edge_dst(sl_edge_handle handle);
 long int         sl_edge_bandwidth(sl_edge_handle handle);
 long int         sl_edge_latency(sl_edge_handle handle);

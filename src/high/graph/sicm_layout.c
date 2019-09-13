@@ -712,6 +712,8 @@ sl_edge_handle sl_edge(sl_node_handle src, sl_node_handle dst) {
 
 long int sl_edge_bandwidth(sl_edge_handle handle) { return handle->bw;  }
 long int sl_edge_latency(sl_edge_handle handle)   { return handle->lat; }
+sl_node_handle sl_edge_src(sl_edge_handle handle) { return handle->src;  }
+sl_node_handle sl_edge_dst(sl_edge_handle handle) { return handle->dst; }
 
 void * sicm_node_alloc(size_t size, const char *node_name) {
 
