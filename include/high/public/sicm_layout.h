@@ -23,7 +23,7 @@
 
 typedef const char *sl_node_handle;
 struct sl_edge_t;
-typedef sl_edge_t *sl_edge_handle;
+typedef struct sl_edge_t *sl_edge_handle;
 
 void             sl_init(const char *layout_file);
 void             sl_fini(void);
