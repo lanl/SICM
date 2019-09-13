@@ -42,7 +42,7 @@ static parse_info parse_info_make(const char *path) {
 
     info.path         = path;
     info.current_line = 1;
-   
+
     /*
      * Get the size of the file and allocate the buffer.
      */
@@ -64,7 +64,7 @@ static parse_info parse_info_make(const char *path) {
      * NULL term.
      */
     info.buff[buff_size - 1] = 0;
-    
+
     fclose(f);
 
     return info;
@@ -136,7 +136,7 @@ static int optional_word(parse_info *info, const char *out) {
     char *buff_p;
     int   len;
     int   line;
-   
+
     len    = 0;
     buff_p = word_buff;
 
@@ -150,7 +150,7 @@ static int optional_word(parse_info *info, const char *out) {
         }
     }
 
-    
+
     *buff_p = 0;
 
     if (out && len) {
@@ -160,7 +160,7 @@ static int optional_word(parse_info *info, const char *out) {
     if (!len) {
         return 0;
     }
-    
+
     line = info->current_line;
 
     trim_whitespace_and_comments(info);
@@ -242,7 +242,7 @@ static int expect_keyword(parse_info *info, const char *s) {
     if (!(line = optional_keyword(info, s))) {
         parse_error(info, "expected '%s'\n", s);
     }
-    
+
     return line;
 }
 
@@ -252,7 +252,7 @@ static int expect_int(parse_info *info, long int *out) {
     if (!(line = optional_int(info, out))) {
         parse_error(info, "expected an integer\n");
     }
-    
+
     return line;
 }
 
@@ -286,7 +286,7 @@ static sicm_layout_node_ptr get_or_create_node(const char *name) {
 
         tree_insert(layout.nodes, node->name, node);
     }
-    
+
     return node;
 }
 
@@ -309,7 +309,7 @@ static int parse_node_int_value(parse_info *info, sicm_layout_node_ptr current_n
         if (!current_node) {
             parse_error_l(info, line, "can't set '%s' for unspecified node\n", kwd);
         }
-    
+
         expect_int(info, integer);
     }
 
@@ -338,21 +338,22 @@ static int parse_node_kind(parse_info *info, sicm_layout_node_ptr current_node, 
     return 0;
 }
 
-static sicm_layout_edge_t * get_edge(sicm_layout_node_ptr src_node, sicm_layout_node_ptr dst_node) {
-    tree_it(str, sicm_layout_edge_t) edge_it;
-    sicm_layout_edge_t               new_edge;
+static sicm_layout_edge_ptr get_edge(sicm_layout_node_ptr src_node, sicm_layout_node_ptr dst_node) {
+    tree_it(str, sicm_layout_edge_ptr) edge_it;
+    sicm_layout_edge_ptr               new_edge;
 
     edge_it = tree_lookup(src_node->edges, dst_node->name);
 
     if (tree_it_good(edge_it)) {
-        return &tree_it_val(edge_it);
+        return tree_it_val(edge_it);
     }
 
-    new_edge.bw = new_edge.lat = -1;
+    new_edge     = malloc(sizeof(*new_edge));
+    new_edge->bw = new_edge->lat = -1;
 
-    edge_it = tree_insert(src_node->edges, dst_node->name, new_edge);
+    tree_insert(src_node->edges, dst_node->name, new_edge);
 
-    return &tree_it_val(edge_it);
+    return new_edge;
 }
 
 static void parse_layout_file(const char *layout_file) {
@@ -363,7 +364,8 @@ static void parse_layout_file(const char *layout_file) {
     char                   buff[WORD_MAX];
     long int               integer;
     int                    line;
-    sicm_layout_edge_t    *edge;
+    sicm_layout_edge_ptr  *edge1,
+                          *edge2;
 
     info         = parse_info_make(layout_file);
     current_node = NULL;
@@ -372,12 +374,12 @@ static void parse_layout_file(const char *layout_file) {
     layout.nodes = tree_make_c(str, sicm_layout_node_ptr, strcmp);
 
     trim_whitespace_and_comments(&info);
-  
+
     expect_keyword(&info, "layout");
     expect_word(&info, layout.name);
 
     while (*info.cursor) {
-        /* 
+        /*
          * Create a new node or select an existing one.
          */
         if (optional_keyword(&info, "node")) {
@@ -388,7 +390,7 @@ static void parse_layout_file(const char *layout_file) {
          * Set properties of the selected node.
          */
         } else if (parse_node_kind(&info, current_node, &integer)) {
-            current_node->kind = integer; 
+            current_node->kind = integer;
 
         } else if (parse_node_int_value(&info, current_node, "numa", &integer)) {
             current_node->numa_node_id = integer;
@@ -421,20 +423,21 @@ static void parse_layout_file(const char *layout_file) {
             line     = expect_word(&info, buff);
             dst_node = get_node(&info, buff, line);
 
-            edge = get_edge(src_node, dst_node);
-         
+            edge1 = get_edge(src_node, dst_node);
+            edge2 = get_edge(dst_node, src_node);
+
             while (1) {
                 if (optional_keyword(&info, "bandwidth")) {
                     expect_int(&info, &integer);
-                    edge->bw = integer;
+                    edge1->bw = edge2 = integer;
                 } else if (optional_keyword(&info, "latency")) {
                     expect_int(&info, &integer);
-                    edge->lat = integer;
+                    edge1->lat = edge2->lat = integer;
                 } else {
                     break;
                 }
             }
-            
+
         /*
          * Invalid input.
          */
@@ -464,19 +467,36 @@ void sicm_layout_init(const char *layout_file) {
 }
 
 void sicm_layout_fini(void) {
-    tree_it(str, sicm_layout_node_ptr)  it;
-    const char                         *key;
-    sicm_layout_node_ptr                val;
+    tree_it(str, sicm_layout_node_ptr)  node_it;
+    tree_it(str, sicm_layout_edge_ptr)  edge_it;
+    const char                         *node_key,
+                                       *edge_key;
+    sicm_layout_node_ptr                node_val;
+    sicm_layout_edge_ptr                edge_val;
 
     free(layout.name);
 
     while (tree_len(layout.nodes) > 0) {
-        it  = tree_begin(layout.nodes);
-        key = tree_it_key(it);
-        val = tree_it_val(it);
-        tree_delete(layout.nodes, key);
-        free(key);
-        free(val);
+        node_it  = tree_begin(layout.nodes);
+        node_key = tree_it_key(node_it);
+        node_val = tree_it_val(node_it);
+
+        tree_delete(layout.nodes, node_key);
+
+        free(node_key);
+
+        while (tree_len(node_val->edges) > 0) {
+            edge_it  = tree_begin(node_val->edges);
+            edge_key = tree_it_key(edge_it);
+            edge_val = tree_it_val(edge_it);
+
+            tree_delete(node_val->edges, edge_key);
+
+            free(edge_key);
+            free(edge_val);
+        }
+
+        free(node_val);
     }
 
     tree_free(layout.nodes);
