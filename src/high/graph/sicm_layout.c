@@ -19,14 +19,15 @@
     fprintf(stderr, "[sicm-layout]:       " __VA_ARGS__); \
 } while (0)
 
-static sicm_layout_t layout;
+static sl_t layout;
 
 /* BEG Parsing functions */
 
 typedef struct {
     const char *path;
-    char *buff, *cursor;
-    int  current_line;
+    char       *buff,
+               *cursor;
+    int         current_line;
 } parse_info;
 
 static parse_info parse_info_make(const char *path) {
@@ -70,9 +71,7 @@ static parse_info parse_info_make(const char *path) {
     return info;
 }
 
-static void parse_info_free(parse_info *info) {
-    free(info->buff);
-}
+static void parse_info_free(parse_info *info) { free(info->buff); }
 
 static void trim_comment(parse_info *info) {
     char c;
@@ -150,7 +149,6 @@ static int optional_word(parse_info *info, const char *out) {
             parse_error(info, "word '%s' is too long -- max word length is %d\n", word_buff, WORD_MAX - 1);
         }
     }
-
 
     *buff_p = 0;
 
@@ -259,8 +257,10 @@ static int expect_int(parse_info *info, long int *out) {
 
 /* END Parsing functions */
 
-static sicm_layout_node_ptr get_node(parse_info *info, const char *name, int line) {
-    tree_it(sicm_layout_str, sicm_layout_node_ptr) it;
+/* BEG Private functions */
+
+static sl_node_ptr get_node(parse_info *info, const char *name, int line) {
+    tree_it(sl_str, sl_node_ptr) it;
 
     it = tree_lookup(layout.nodes, name);
 
@@ -271,9 +271,9 @@ static sicm_layout_node_ptr get_node(parse_info *info, const char *name, int lin
     return tree_it_val(it);
 }
 
-static sicm_layout_node_ptr get_or_create_node(const char *name) {
-    tree_it(sicm_layout_str, sicm_layout_node_ptr) it;
-    sicm_layout_node_ptr               node;
+static sl_node_ptr get_or_create_node(const char *name) {
+    tree_it(sl_str, sl_node_ptr) it;
+    sl_node_ptr                  node;
 
     it = tree_lookup(layout.nodes, name);
 
@@ -284,12 +284,12 @@ static sicm_layout_node_ptr get_or_create_node(const char *name) {
         memset(node, 0, sizeof(*node));
 
         node->name         = strdup(name);
-        node->line         = LAYOUT_NODE_LINE_UNKNOWN;
-        node->numa_node_id = LAYOUT_NODE_NUMA_UNKNOWN;
-        node->kind         = LAYOUT_NODE_UNKNOWN;
+        node->line         = SL_NODE_LINE_UNKNOWN;
+        node->numa_node_id = SL_NODE_NUMA_UNKNOWN;
+        node->kind         = SL_NODE_UNKNOWN;
         node->attrs        = 0;
-        node->capacity     = LAYOUT_NODE_CAP_UNKNOWN;
-        node->edges        = tree_make_c(sicm_layout_str, sicm_layout_edge_ptr, strcmp);
+        node->capacity     = SL_NODE_CAP_UNKNOWN;
+        node->edges        = tree_make_c(sl_str, sl_edge_ptr, strcmp);
 
         tree_insert(layout.nodes, node->name, node);
     }
@@ -297,7 +297,7 @@ static sicm_layout_node_ptr get_or_create_node(const char *name) {
     return node;
 }
 
-static int parse_node_attr(parse_info *info, sicm_layout_node_ptr current_node, const char *attr) {
+static int parse_node_attr(parse_info *info, sl_node_ptr current_node, const char *attr) {
     int line;
 
     if ((line = optional_keyword(info, attr))) {
@@ -309,7 +309,7 @@ static int parse_node_attr(parse_info *info, sicm_layout_node_ptr current_node, 
     return line;
 }
 
-static int parse_node_int_value(parse_info *info, sicm_layout_node_ptr current_node, const char *kwd, long int *integer) {
+static int parse_node_int_value(parse_info *info, sl_node_ptr current_node, const char *kwd, long int *integer) {
     int line;
 
     if ((line = optional_keyword(info, kwd))) {
@@ -323,7 +323,7 @@ static int parse_node_int_value(parse_info *info, sicm_layout_node_ptr current_n
     return line;
 }
 
-static int parse_node_kind(parse_info *info, sicm_layout_node_ptr current_node, long int *kind) {
+static int parse_node_kind(parse_info *info, sl_node_ptr current_node, long int *kind) {
     int line;
 
     if ((line = optional_keyword(info, "kind"))) {
@@ -331,10 +331,10 @@ static int parse_node_kind(parse_info *info, sicm_layout_node_ptr current_node, 
             parse_error_l(info, line, "can't set 'kind' for unspecified node\n");
         }
         if (optional_keyword(info, "mem")) {
-            *kind = LAYOUT_NODE_MEM;
-            current_node->kind = LAYOUT_NODE_MEM;
+            *kind = SL_NODE_MEM;
+            current_node->kind = SL_NODE_MEM;
         } else if (optional_keyword(info, "compute")) {
-            *kind = LAYOUT_NODE_COMPUTE;
+            *kind = SL_NODE_COMPUTE;
         } else {
             parse_error(info, "expected either 'mem' or 'compute'\n");
         }
@@ -345,9 +345,9 @@ static int parse_node_kind(parse_info *info, sicm_layout_node_ptr current_node, 
     return 0;
 }
 
-static sicm_layout_edge_ptr get_edge(sicm_layout_node_ptr src_node, sicm_layout_node_ptr dst_node) {
-    tree_it(sicm_layout_str, sicm_layout_edge_ptr) edge_it;
-    sicm_layout_edge_ptr               new_edge;
+static sl_edge_ptr get_edge(sl_node_ptr src_node, sl_node_ptr dst_node) {
+    tree_it(sl_str, sl_edge_ptr) edge_it;
+    sl_edge_ptr                  new_edge;
 
     edge_it = tree_lookup(src_node->edges, dst_node->name);
 
@@ -356,8 +356,8 @@ static sicm_layout_edge_ptr get_edge(sicm_layout_node_ptr src_node, sicm_layout_
     }
 
     new_edge      = malloc(sizeof(*new_edge));
-    new_edge->bw  = LAYOUT_EDGE_BW_UNKNOWN;
-    new_edge->lat = LAYOUT_EDGE_LAT_UNKNOWN;
+    new_edge->bw  = SL_EDGE_BW_UNKNOWN;
+    new_edge->lat = SL_EDGE_LAT_UNKNOWN;
 
     tree_insert(src_node->edges, strdup(dst_node->name), new_edge);
 
@@ -365,22 +365,22 @@ static sicm_layout_edge_ptr get_edge(sicm_layout_node_ptr src_node, sicm_layout_
 }
 
 static void parse_layout_file(const char *layout_file) {
-    parse_info           info;
-    sicm_layout_node_ptr current_node,
-                         src_node,
-                         dst_node;
-    char                 buff[WORD_MAX];
-    long int             integer;
-    int                  line;
-    sicm_layout_edge_ptr edge1,
-                         edge2;
+    parse_info  info;
+    sl_node_ptr current_node,
+                src_node,
+                dst_node;
+    char        buff[WORD_MAX];
+    long int    integer;
+    int         line;
+    sl_edge_ptr edge1,
+                edge2;
 
     info         = parse_info_make(layout_file);
     current_node = NULL;
 
     layout.name  = malloc(WORD_MAX);
     layout.path  = strdup(layout_file);
-    layout.nodes = tree_make_c(sicm_layout_str, sicm_layout_node_ptr, strcmp);
+    layout.nodes = tree_make_c(sl_str, sl_node_ptr, strcmp);
 
     trim_whitespace_and_comments(&info);
 
@@ -394,7 +394,7 @@ static void parse_layout_file(const char *layout_file) {
         if ((line = optional_keyword(&info, "node"))) {
             expect_word(&info, buff);
             current_node = get_or_create_node(buff);
-            if (current_node->line == LAYOUT_NODE_LINE_UNKNOWN) {
+            if (current_node->line == SL_NODE_LINE_UNKNOWN) {
                 current_node->line = line;
             }
         /*
@@ -410,16 +410,16 @@ static void parse_layout_file(const char *layout_file) {
             current_node->capacity = integer;
 
         } else if (parse_node_attr(&info, current_node, "near_nic")) {
-            current_node->attrs |= LAYOUT_NODE_NEAR_NIC;
+            current_node->attrs |= SL_NODE_NEAR_NIC;
 
         } else if (parse_node_attr(&info, current_node, "hbm")) {
-            current_node->attrs |= LAYOUT_NODE_HBM;
+            current_node->attrs |= SL_NODE_HBM;
 
         } else if (parse_node_attr(&info, current_node, "nvm")) {
-            current_node->attrs |= LAYOUT_NODE_NVM;
+            current_node->attrs |= SL_NODE_NVM;
 
         } else if (parse_node_attr(&info, current_node, "gpu")) {
-            current_node->attrs |= LAYOUT_NODE_GPU;
+            current_node->attrs |= SL_NODE_GPU;
 
         /*
          * Parse an edge.
@@ -461,40 +461,29 @@ static void parse_layout_file(const char *layout_file) {
     parse_info_free(&info);
 }
 
-static void layout_error(int line, const char *fmt, ...) {
+static void layout_node_error(sl_node_ptr node, const char *fmt, ...) {
     va_list args;
 
     va_start(args, fmt);
-    fprintf(stderr, "[sicm-layout]: LAYOUT ERROR in '%s' :: line %d\n"
-                    "               ", layout.path, line);
-    vfprintf(stderr, fmt, args);
-    exit(1);
-    va_end(args);
-}
-
-static void layout_node_error(sicm_layout_node_ptr node, const char *fmt, ...) {
-    va_list args;
-
-    va_start(args, fmt);
-    fprintf(stderr, "[sicm-layout]: LAYOUT ERROR in '%s' :: for node '%s' defined on line %d\n"
+    fprintf(stderr, "[sicm-layout]: SL ERROR in '%s' :: for node '%s' defined on line %d\n"
                     "               ", layout.path, node->name, node->line);
     vfprintf(stderr, fmt, args);
     exit(1);
     va_end(args);
 }
 
-static void verify_node(sicm_layout_node_ptr node) {
-    if (node->kind == LAYOUT_NODE_COMPUTE) {
-        if (node->capacity != LAYOUT_NODE_CAP_UNKNOWN) {
+static void verify_node(sl_node_ptr node) {
+    if (node->kind == SL_NODE_COMPUTE) {
+        if (node->capacity != SL_NODE_CAP_UNKNOWN) {
             layout_node_error(node, "has conflicting attributes 'kind compute' and 'capacity'\n");
         }
-        if (node->attrs & LAYOUT_NODE_HBM) {
+        if (node->attrs & SL_NODE_HBM) {
             layout_node_error(node, "has conflicting attributes 'kind compute' and 'hbm'\n");
         }
-        if (node->attrs & LAYOUT_NODE_NVM) {
+        if (node->attrs & SL_NODE_NVM) {
             layout_node_error(node, "has conflicting attributes 'kind compute' and 'nvm'\n");
         }
-    } else if (node->kind == LAYOUT_NODE_MEM) {
+    } else if (node->kind == SL_NODE_MEM) {
         /*
          * Not really anything to check here..
          */
@@ -502,21 +491,25 @@ static void verify_node(sicm_layout_node_ptr node) {
         layout_node_error(node, "missing required attribute 'kind'\n");
     }
 
-    if (node->numa_node_id == LAYOUT_NODE_NUMA_UNKNOWN) {
+    if (node->numa_node_id == SL_NODE_NUMA_UNKNOWN) {
         layout_node_error(node, "missing required attribute 'numa'\n");
     }
 }
 
 static void verify_layout() {
-    tree_it(sicm_layout_str, sicm_layout_node_ptr) node_it;
+    tree_it(sl_str, sl_node_ptr) node_it;
 
     tree_traverse(layout.nodes, node_it) {
         verify_node(tree_it_val(node_it));
     }
 }
 
-void sicm_layout_init(const char *layout_file) {
-    if (layout_file == NULL) { layout_file = getenv("SICM_LAYOUT_FILE"); }
+/* END Private functions */
+
+/* BEG Public functions */
+
+void sl_init(const char *layout_file) {
+    if (layout_file == NULL) { layout_file = getenv("SICM_SL_FILE"); }
     if (layout_file == NULL) { layout_file = "sicm.layout";             }
 
     parse_layout_file(layout_file);
@@ -525,15 +518,15 @@ void sicm_layout_init(const char *layout_file) {
     layout.is_valid = 1;
 }
 
-void sicm_layout_fini(void) {
-    tree_it(sicm_layout_str,
-            sicm_layout_node_ptr)  node_it;
-    tree_it(sicm_layout_str,
-            sicm_layout_edge_ptr)  edge_it;
+void sl_fini(void) {
+    tree_it(sl_str,
+            sl_node_ptr)  node_it;
+    tree_it(sl_str,
+            sl_edge_ptr)  edge_it;
     const char                    *node_key,
                                   *edge_key;
-    sicm_layout_node_ptr           node_val;
-    sicm_layout_edge_ptr           edge_val;
+    sl_node_ptr           node_val;
+    sl_edge_ptr           edge_val;
 
     free(layout.name);
     free(layout.path);
@@ -570,22 +563,22 @@ void sicm_layout_fini(void) {
     tree_free(layout.nodes);
 }
 
-int sicm_layout_num_nodes() {
+int sl_num_nodes() {
     if (!layout.is_valid) {
-        ERR("Invalid layout. Perhaps sicm_layout_init() wasn't called?\n");
+        ERR("Invalid layout. Perhaps sl_init() wasn't called?\n");
     }
 
     return tree_len(layout.nodes);
 }
 
-sicm_layout_node_handle * sicm_layout_nodes() {
-    tree_it(sicm_layout_str, sicm_layout_node_ptr) node_it;
+sl_node_handle * sl_nodes() {
+    tree_it(sl_str, sl_node_ptr) node_it;
     int                                            n_nodes,
                                                    i;
     /*
      * Get number of nodes and check for valid layout.
      */
-    n_nodes = sicm_layout_num_nodes();
+    n_nodes = sl_num_nodes();
 
     if (layout.flat_nodes == NULL) {
         layout.flat_nodes = malloc(n_nodes * sizeof(*layout.flat_nodes));
@@ -599,80 +592,93 @@ sicm_layout_node_handle * sicm_layout_nodes() {
     return layout.flat_nodes;
 }
 
-static sicm_layout_node_ptr find_existing_node(sicm_layout_node_handle handle) {
-    tree_it(sicm_layout_str, sicm_layout_node_ptr) node_it;
+static sl_node_ptr find_existing_node(sl_node_handle handle) {
+    tree_it(sl_str, sl_node_ptr) node_it;
 
     if (!layout.is_valid) {
-        ERR("Invalid layout. Perhaps sicm_layout_init() wasn't called?\n");
+        ERR("Invalid layout. Perhaps sl_init() wasn't called?\n");
     }
 
     node_it = tree_lookup(layout.nodes, handle);
 
     if (!tree_it_good(node_it)) {
-        ERR("Node '%s' not found in layout. Only use node handles provided by sicm_layout_nodes().\n", handle);
+        ERR("Node '%s' not found in layout. Only use node handles provided by sl_nodes().\n", handle);
     }
 
     return tree_it_val(node_it);
 }
 
-const char * sicm_layout_node_name(sicm_layout_node_handle handle) { return handle; }
+const char * sl_node_name(sl_node_handle handle) { return handle; }
 
-int sicm_layout_node_kind(sicm_layout_node_handle handle) {
-    sicm_layout_node_ptr node;
+int sl_node_kind(sl_node_handle handle) {
+    sl_node_ptr node;
 
     node = find_existing_node(handle);
 
     return node->kind;
 }
 
-long int * sicm_layout_node_numa(sicm_layout_node_handle handle) {
-    sicm_layout_node_ptr node;
+long int * sl_node_numa(sl_node_handle handle) {
+    sl_node_ptr node;
 
     node = find_existing_node(handle);
 
     return node->numa_node_id;
 }
 
-long int sicm_layout_node_capacity(sicm_layout_node_handle handle) {
-    sicm_layout_node_ptr node;
+long int sl_node_capacity(sl_node_handle handle) {
+    sl_node_ptr node;
 
     node = find_existing_node(handle);
 
     return node->capacity;
 }
 
-int sicm_layout_node_is_near_nic(sicm_layout_node_handle handle) {
-    sicm_layout_node_ptr node;
+int sl_node_is_near_nic(sl_node_handle handle) {
+    sl_node_ptr node;
 
     node = find_existing_node(handle);
 
-    return node->attrs & LAYOUT_NODE_NEAR_NIC;
+    return node->attrs & SL_NODE_NEAR_NIC;
 }
 
-int sicm_layout_node_is_hbm(sicm_layout_node_handle handle) {
-    sicm_layout_node_ptr node;
+int sl_node_is_hbm(sl_node_handle handle) {
+    sl_node_ptr node;
 
     node = find_existing_node(handle);
 
-    return node->attrs & LAYOUT_NODE_HBM;
+    return node->attrs & SL_NODE_HBM;
 }
 
-int sicm_layout_node_is_nvm(sicm_layout_node_handle handle) {
-    sicm_layout_node_ptr node;
+int sl_node_is_nvm(sl_node_handle handle) {
+    sl_node_ptr node;
 
     node = find_existing_node(handle);
 
-    return node->attrs & LAYOUT_NODE_NVM;
+    return node->attrs & SL_NODE_NVM;
 }
 
-int sicm_layout_node_is_gpu(sicm_layout_node_handle handle) {
-    sicm_layout_node_ptr node;
+int sl_node_is_gpu(sl_node_handle handle) {
+    sl_node_ptr node;
 
     node = find_existing_node(handle);
 
-    return node->attrs & LAYOUT_NODE_GPU;
+    return node->attrs & SL_NODE_GPU;
 }
 
+sl_edge_handle sl_edge(sl_node_handle src, sl_node_handle dst) {
+    sl_node_ptr                  src_node;
+    tree_it(sl_str, sl_edge_ptr) edge_it;
+
+    src_node = find_existing_node(src);
+    edge_it  = tree_lookup(src_node->edges, dst);
+
+    if (!tree_it_good(edge_it)) {
+        return SL_NO_EDGE;
+    }
+
+    return tree_it_val(edge_it);
+}
 
 void * sicm_node_alloc(size_t size, const char *node_name) {
     /*
@@ -687,3 +693,5 @@ void * sicm_attr_alloc(size_t size, int attrs) {
      */
     return NULL;
 }
+
+/* END Public functions */
