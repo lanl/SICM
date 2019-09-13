@@ -12,7 +12,7 @@
 #define NODE_NEAR_NIC    (0x0)
 #define NODE_LOW_LAT     (0x1)
 #define NODE_HBM         (0x2)
-#define NODE_PERSIST     (0x4)
+#define NODE_NVM         (0x4)
 #define NODE_ON_GPU      (0x8)
 
 typedef struct {

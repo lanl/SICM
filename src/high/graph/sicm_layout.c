@@ -337,11 +337,19 @@ static void parse_layout_file(const char *layout_file) {
     expect_keyword(&info, "layout");
     expect_word(&info, layout.name);
 
+    LOG("creating layout '%s'\n", layout.name);
+
     while (*info.cursor) {
+        /* 
+         * Create a new node or select an existing one.
+         */
         if (optional_keyword(&info, "node")) {
             expect_word(&info, buff);
             current_node = get_or_create_node(buff);
 
+        /*
+         * Set properties of the selected node.
+         */
         } else if (parse_kind(&info, current_node, &integer)) {
             current_node->kind = integer; 
             if (integer == NODE_COMPUTE) {
@@ -370,14 +378,17 @@ static void parse_layout_file(const char *layout_file) {
             current_node->attrs |= NODE_HBM;
             LOG("set 'hbm' for node '%s'\n", current_node->name);
 
-        } else if (parse_attr(&info, current_node, "persist")) {
-            current_node->attrs |= NODE_PERSIST;
-            LOG("set 'persist' for node '%s'\n", current_node->name);
+        } else if (parse_attr(&info, current_node, "nvm")) {
+            current_node->attrs |= NODE_NVM;
+            LOG("set 'nvm' for node '%s'\n", current_node->name);
 
         } else if (parse_attr(&info, current_node, "gpu")) {
             current_node->attrs |= NODE_ON_GPU;
             LOG("set 'gpu' for node '%s'\n", current_node->name);
 
+        /*
+         * Create a new edge or select an existing one.
+         */
         } else {
             if (optional_word(&info, &buff)) {
                 parse_error(&info, "did not expect '%s' here\n", buff);
