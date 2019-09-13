@@ -287,7 +287,7 @@ static int expect_int(parse_info *info, long int *out) {
 
 /* BEG Private functions */
 
-static sl_node_ptr get_node(parse_info *info, const char *name, int line) {
+static sl_node_ptr get_node_for_edge(parse_info *info, const char *name, int line) {
     tree_it(sl_str, sl_node_ptr) it;
 
     it = tree_lookup(layout.nodes, name);
@@ -360,7 +360,6 @@ static int parse_node_kind(parse_info *info, sl_node_ptr current_node, long int 
         }
         if (optional_keyword(info, "mem")) {
             *kind = SL_NODE_MEM;
-            current_node->kind = SL_NODE_MEM;
         } else if (optional_keyword(info, "compute")) {
             *kind = SL_NODE_COMPUTE;
         } else {
@@ -456,10 +455,10 @@ static void parse_layout_file(const char *layout_file) {
          */
         } else if (optional_keyword(&info, "edge")) {
             line     = expect_word(&info, buff);
-            src_node = get_node(&info, buff, line);
+            src_node = get_node_for_edge(&info, buff, line);
             expect_keyword(&info, "->");
             line     = expect_word(&info, buff);
-            dst_node = get_node(&info, buff, line);
+            dst_node = get_node_for_edge(&info, buff, line);
 
             edge1 = get_edge(src_node, dst_node);
             edge2 = get_edge(dst_node, src_node);
@@ -514,9 +513,9 @@ static void verify_node(sl_node_ptr node) {
             layout_node_error(node, "has conflicting attributes 'kind compute' and 'nvm'\n");
         }
     } else if (node->kind == SL_NODE_MEM) {
-        /*
-         * Not really anything to check here..
-         */
+        if (node->attrs & SL_NODE_HBM && node->attrs & SL_NODE_NVM) {
+            layout_node_error(node, "has conflicting attributes 'hbm' and 'nvm'\n");
+        }
     } else {
         layout_node_error(node, "missing required attribute 'kind'\n");
     }
@@ -540,7 +539,7 @@ static void verify_layout(void) {
 
 void sl_init(const char *layout_file) {
     if (layout_file == NULL) { layout_file = getenv("SICM_SL_FILE"); }
-    if (layout_file == NULL) { layout_file = "sicm.layout";             }
+    if (layout_file == NULL) { layout_file = "sicm.layout";          }
 
     parse_layout_file(layout_file);
     verify_layout();
@@ -549,14 +548,16 @@ void sl_init(const char *layout_file) {
 }
 
 void sl_fini(void) {
-    tree_it(sl_str,
-            sl_node_ptr)  node_it;
-    tree_it(sl_str,
-            sl_edge_ptr)  edge_it;
-    const char                    *node_key,
-                                  *edge_key;
-    sl_node_ptr           node_val;
-    sl_edge_ptr           edge_val;
+    tree_it(sl_str, sl_node_ptr)  node_it;
+    tree_it(sl_str, sl_edge_ptr)  edge_it;
+    const char                   *node_key,
+                                 *edge_key;
+    sl_node_ptr                   node_val;
+    sl_edge_ptr                   edge_val;
+
+    if (!layout.is_valid) {
+        return;
+    }
 
     free(layout.name);
     free(layout.path);
@@ -611,8 +612,8 @@ int sl_num_nodes(void) {
 
 sl_node_handle * sl_nodes(void) {
     tree_it(sl_str, sl_node_ptr) node_it;
-    int                                            n_nodes,
-                                                   i;
+    int                          n_nodes,
+                                 i;
     /*
      * Get number of nodes and check for valid layout.
      */
@@ -720,5 +721,5 @@ sl_edge_handle sl_edge(sl_node_handle src, sl_node_handle dst) {
 
 long int sl_edge_bandwidth(sl_edge_handle handle) { return handle->bw;  }
 long int sl_edge_latency(sl_edge_handle handle)   { return handle->lat; }
-sl_node_handle sl_edge_src(sl_edge_handle handle) { return handle->src;  }
+sl_node_handle sl_edge_src(sl_edge_handle handle) { return handle->src; }
 sl_node_handle sl_edge_dst(sl_edge_handle handle) { return handle->dst; }
