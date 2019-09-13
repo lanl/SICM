@@ -453,6 +453,8 @@ static void parse_layout_file(const char *layout_file) {
     parse_info_free(&info);
 
     layout.is_valid = 1;
+
+    LOG("done parsing\n");
 }
 
 void sicm_layout_init(const char *layout_file) {
