@@ -464,8 +464,25 @@ static void parse_layout_file(const char *layout_file) {
     parse_info_free(&info);
 }
 
+static void layout_error(int line, const char *fmt, ...) {
+    va_list args;
+
+    va_start(args, fmt);
+    fprintf(stderr, "[sicm-layout]: LAYOUT ERROR in '%s' :: line %d\n"
+                    "               ", layout.path, line);
+    vfprintf(stderr, fmt, args);
+    exit(1);
+    va_end(args);
+}
+
 static void verify_node(sicm_layout_node_ptr node) {
     LOG("verifying '%s'\n", node->name);
+
+    if (node->kind == LAYOUT_NODE_COMPUTE) {
+    } else if (NODE->kind == LAYOUT_NODE_MEM) {
+    } else {
+        layout_error(node->lind, "node '%s' missing attribute 'kind'\n");
+    }
 }
 
 static void verify_layout() {
