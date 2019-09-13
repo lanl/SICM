@@ -481,7 +481,7 @@ static void verify_node(sicm_layout_node_ptr node) {
     if (node->kind == LAYOUT_NODE_COMPUTE) {
     } else if (node->kind == LAYOUT_NODE_MEM) {
     } else {
-        layout_error(node->line, "node '%s' missing attribute 'kind'\n");
+        layout_error(node->line, "node '%s' missing attribute 'kind'\n", node->name);
     }
 }
 
