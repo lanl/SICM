@@ -282,8 +282,14 @@ static sicm_layout_node_ptr get_or_create_node(const char *name) {
     } else {
         node = malloc(sizeof(*node));
         memset(node, 0, sizeof(*node));
-        node->name  = strdup(name);
-        node->edges = tree_make_c(str, sicm_layout_edge_ptr, strcmp);
+
+        node->name         = strdup(name);
+        node->line         = LAYOUT_NODE_LINE_UNKNOWN;
+        node->numa_node_id = LAYOUT_NODE_NUMA_UNKNOWN;
+        node->kind         = LAYOUT_NODE_UNKNOWN;
+        node->attrs        = 0;
+        node->capacity     = LAYOUT_NODE_CAP_UNKNOWN;
+        node->edges        = tree_make_c(str, sicm_layout_edge_ptr, strcmp);
 
         tree_insert(layout.nodes, node->name, node);
     }
@@ -325,10 +331,10 @@ static int parse_node_kind(parse_info *info, sicm_layout_node_ptr current_node, 
             parse_error_l(info, line, "can't set 'kind' for unspecified node\n");
         }
         if (optional_keyword(info, "mem")) {
-            *kind = NODE_MEM;
-            current_node->kind = NODE_MEM;
+            *kind = LAYOUT_NODE_MEM;
+            current_node->kind = LAYOUT_NODE_MEM;
         } else if (optional_keyword(info, "compute")) {
-            *kind = NODE_COMPUTE;
+            *kind = LAYOUT_NODE_COMPUTE;
         } else {
             parse_error(info, "expected either 'mem' or 'compute'\n");
         }
@@ -349,8 +355,9 @@ static sicm_layout_edge_ptr get_edge(sicm_layout_node_ptr src_node, sicm_layout_
         return tree_it_val(edge_it);
     }
 
-    new_edge     = malloc(sizeof(*new_edge));
-    new_edge->bw = new_edge->lat = -1;
+    new_edge      = malloc(sizeof(*new_edge));
+    new_edge->bw  = LAYOUT_EDGE_BW_UNKNOWN;
+    new_edge->lat = LAYOUT_EDGE_LAT_UNKNOWN;
 
     tree_insert(src_node->edges, strdup(dst_node->name), new_edge);
 
@@ -372,6 +379,7 @@ static void parse_layout_file(const char *layout_file) {
     current_node = NULL;
 
     layout.name  = malloc(WORD_MAX);
+    layout.path  = strdup(layout_file);
     layout.nodes = tree_make_c(str, sicm_layout_node_ptr, strcmp);
 
     trim_whitespace_and_comments(&info);
@@ -383,10 +391,12 @@ static void parse_layout_file(const char *layout_file) {
         /*
          * Create a new node or select an existing one.
          */
-        if (optional_keyword(&info, "node")) {
+        if ((line = optional_keyword(&info, "node"))) {
             expect_word(&info, buff);
             current_node = get_or_create_node(buff);
-
+            if (current_node->line == LAYOUT_LINE_UNKNOWN) {
+                current_node->line = line;
+            }
         /*
          * Set properties of the selected node.
          */
@@ -400,19 +410,19 @@ static void parse_layout_file(const char *layout_file) {
             current_node->capacity = integer;
 
         } else if (parse_node_attr(&info, current_node, "near_nic")) {
-            current_node->attrs |= NODE_NEAR_NIC;
+            current_node->attrs |= LAYOUT_NODE_NEAR_NIC;
 
         } else if (parse_node_attr(&info, current_node, "low_lat")) {
-            current_node->attrs |= NODE_LOW_LAT;
+            current_node->attrs |= LAYOUT_NODE_LOW_LAT;
 
         } else if (parse_node_attr(&info, current_node, "hbm")) {
-            current_node->attrs |= NODE_HBM;
+            current_node->attrs |= LAYOUT_NODE_HBM;
 
         } else if (parse_node_attr(&info, current_node, "nvm")) {
-            current_node->attrs |= NODE_NVM;
+            current_node->attrs |= LAYOUT_NODE_NVM;
 
         } else if (parse_node_attr(&info, current_node, "gpu")) {
-            current_node->attrs |= NODE_ON_GPU;
+            current_node->attrs |= LAYOUT_NODE_ON_GPU;
 
         /*
          * Parse an edge.
@@ -452,8 +462,6 @@ static void parse_layout_file(const char *layout_file) {
     }
 
     parse_info_free(&info);
-
-    layout.is_valid = 1;
 }
 
 void sicm_layout_init(const char *layout_file) {
@@ -461,10 +469,6 @@ void sicm_layout_init(const char *layout_file) {
     if (layout_file == NULL) { layout_file = "sicm.layout";             }
 
     parse_layout_file(layout_file);
-
-    if (!layout.is_valid) {
-        ERR("Invalid layout.\n");
-    }
 }
 
 void sicm_layout_fini(void) {
@@ -476,6 +480,7 @@ void sicm_layout_fini(void) {
     sicm_layout_edge_ptr                edge_val;
 
     free(layout.name);
+    free(layout.path);
 
     /*
      * Free each node.
