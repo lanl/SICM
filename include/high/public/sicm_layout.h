@@ -6,10 +6,10 @@
 #define SL_NODE_COMPUTE      (0x2)
 
 /* Node Attributes */
-#define SL_NODE_NEAR_NIC     (0x0)
-#define SL_NODE_HBM          (0x1)
-#define SL_NODE_NVM          (0x2)
-#define SL_NODE_GPU          (0x4)
+#define SL_NODE_NEAR_NIC     (0x1)
+#define SL_NODE_HBM          (0x2)
+#define SL_NODE_NVM          (0x4)
+#define SL_NODE_GPU          (0x8)
 
 #define SL_NODE_LINE_UNKNOWN (-1)
 #define SL_NODE_NUMA_UNKNOWN (-1L)
