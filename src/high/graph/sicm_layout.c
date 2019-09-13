@@ -427,15 +427,17 @@ static void parse_layout_file(const char *layout_file) {
                 if (optional_keyword(&info, "bandwidth")) {
                     expect_int(&info, &integer);
                     edge->bw = integer;
-                    LOG("set edge bw to %ld\n", integer);
                 } else if (optional_keyword(&info, "latency")) {
                     expect_int(&info, &integer);
                     edge->lat = integer;
-                    LOG("set edge lat to %ld\n", integer);
                 } else {
                     break;
                 }
             }
+            
+        /*
+         * Invalid input.
+         */
         } else {
             if (optional_word(&info, &buff)) {
                 parse_error(&info, "did not expect '%s' here\n", buff);
