@@ -1,0 +1,41 @@
+################################################################################
+# file:   'ecuador.layout'
+# author: Brandon Kammerdiener
+#
+#         This is an example SICM layout file for Equador, an Ivy Bridge server
+#         machine with two NUMA nodes.
+#
+#         All units are in GiB, GiB/s, or ns.
+################################################################################
+
+layout sicm.ecuador
+
+node cpu0
+    kind compute
+    numa 0
+
+node mem0
+    kind mem
+    numa 0
+    capacity 32
+
+edge cpu0 -> mem0
+    bandwidth 30
+    latency   74
+
+node cpu1
+    kind compute
+    numa 1
+
+node mem1
+    kind mem
+    numa 1
+    capacity 32
+
+edge cpu1 -> mem1
+    bandwidth 30
+    latency   74
+
+edge cpu0 -> cpu1 # QPI link
+    bandwidth 20
+    latency   144
