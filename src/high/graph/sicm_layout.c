@@ -501,7 +501,11 @@ static void verify_node(sicm_layout_node_ptr node) {
          * Not really anything to check here..
          */
     } else {
-        layout_node_error(node, "missing required attribute 'kind'\n", node->name);
+        layout_node_error(node, "missing required attribute 'kind'\n");
+    }
+
+    if (node->numa_node_id == LAYOUT_NODE_NUMA_UNKNOWN) {
+        layout_node_error(node, "missing required attribute 'numa'\n");
     }
 }
 
