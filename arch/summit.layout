@@ -1,0 +1,77 @@
+################################################################################
+# file:   'summit.layout'
+# author: Brandon Kammerdiener
+#
+#         This is an example SICM layout file for a Summit node.
+#         All units are in GiB, GiB/s, or ns.
+################################################################################
+
+layout sicm.summit
+
+################################################################################
+# POWER9
+################################################################################
+node P9_0    kind compute       numa 0                 near_nic
+node DRAM_0  kind mem           numa 0  capacity 256   near_nic
+node NVM_0   kind mem      nvm  numa 0  capacity 1600  near_nic
+edge P9_0 -> DRAM_0  bandwidth 135  latency -1
+edge P9_0 -> NVM_0   bandwidth 6    latency -1
+
+node P9_1    kind compute       numa 1                 near_nic
+node DRAM_1  kind mem           numa 1  capacity 256   near_nic
+edge P9_1 -> DRAM_1  bandwidth 135  latency -1
+edge P9_1 -> NVM_0   bandwidth 6    latency -1
+
+edge P9_0 -> P9_1    bandwidth 64   latency -1 # SMP interconnect
+
+################################################################################
+# V100
+################################################################################
+node V_2    gpu  kind compute       numa 2
+node HBM_2  gpu  kind mem      hbm  numa 2  capacity 16
+
+node V_3    gpu  kind compute       numa 3
+node HBM_3  gpu  kind mem      hbm  numa 3  capacity 16
+
+node V_4    gpu  kind compute       numa 4
+node HBM_4  gpu  kind mem      hbm  numa 4  capacity 16
+
+edge V_2 -> HBM_2  bandwidth 900  latency -1
+edge V_2 -> HBM_3  bandwidth 50   latency -1 # NVLink2
+
+edge V_3 -> HBM_2  bandwidth 50   latency -1 # NVLink2
+edge V_3 -> HBM_3  bandwidth 900  latency -1
+edge V_3 -> HBM_4  bandwidth 50   latency -1 # NVLink2
+
+edge V_4 -> HBM_3  bandwidth 50   latency -1 # NVLink2
+edge V_4 -> HBM_4  bandwidth 900  latency -1
+
+node V_5    gpu  kind compute       numa 5
+node HBM_5  gpu  kind mem      hbm  numa 5  capacity 16
+
+node V_6    gpu  kind compute       numa 6
+node HBM_6  gpu  kind mem      hbm  numa 6  capacity 16
+
+node V_7    gpu  kind compute       numa 7
+node HBM_7  gpu  kind mem      hbm  numa 7  capacity 16
+
+edge V_5 -> HBM_5  bandwidth 900  latency -1
+edge V_5 -> HBM_6  bandwidth 50   latency -1 # NVLink2
+
+edge V_6 -> HBM_5  bandwidth 50   latency -1 # NVLink2
+edge V_6 -> HBM_6  bandwidth 900  latency -1
+edge V_6 -> HBM_7  bandwidth 50   latency -1 # NVLink2
+
+edge V_7 -> HBM_6  bandwidth 50   latency -1 # NVLink2
+edge V_7 -> HBM_7  bandwidth 900  latency -1
+
+################################################################################
+# POWER9 to V100
+################################################################################
+edge P9_0 -> HBM_2  bandwidth 50  latency -1 # NVLink2
+edge P9_0 -> HBM_3  bandwidth 50  latency -1 # NVLink2
+edge P9_0 -> HBM_4  bandwidth 50  latency -1 # NVLink2
+
+edge P9_1 -> HBM_5  bandwidth 50  latency -1 # NVLink2
+edge P9_1 -> HBM_6  bandwidth 50  latency -1 # NVLink2
+edge P9_1 -> HBM_7  bandwidth 50  latency -1 # NVLink2
