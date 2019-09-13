@@ -226,27 +226,51 @@ static long int optional_int(parse_info *info, long int *out) {
     return line;
 }
 
-static void expect_word(parse_info *info, const char *out) {
-    if (!optional_word(info, out)) {
+static int expect_word(parse_info *info, const char *out) {
+    int line;
+
+    if (!(line = optional_word(info, out))) {
         parse_error(info, "expected a word\n");
     }
+
+    return line;
 }
 
-static void expect_keyword(parse_info *info, const char *s) {
-    if (!optional_keyword(info, s)) {
+static int expect_keyword(parse_info *info, const char *s) {
+    int line;
+
+    if (!(line = optional_keyword(info, s))) {
         parse_error(info, "expected keyword '%s'\n", s);
     }
+    
+    return line;
 }
 
-static void expect_int(parse_info *info, long int *out) {
-    if (!optional_int(info, out)) {
+static int expect_int(parse_info *info, long int *out) {
+    int line;
+
+    if (!(line = optional_int(info, out))) {
         parse_error(info, "expected an integer\n");
     }
+    
+    return line;
 }
 
 /* END Parsing functions */
 
-static sicm_layout_node_ptr * get_or_create_node(const char *name) {
+static sicm_layout_node_ptr get_node(parse_info *info, const char *name, int line) {
+    tree_it(str, sicm_layout_node_ptr) it;
+
+    it = tree_lookup(layout.nodes, name);
+
+    if (!tree_it_good(it)) {
+        parse_error_l(info, "node '%s' not defined yet -- can't create an edge with it", name);
+    }
+
+    return tree_it_val(it);
+}
+
+static sicm_layout_node_ptr get_or_create_node(const char *name) {
     tree_it(str, sicm_layout_node_ptr) it;
     sicm_layout_node_ptr               node;
 
@@ -316,7 +340,9 @@ static int parse_kind(parse_info *info, sicm_layout_node_ptr current_node, long 
 
 static void parse_layout_file(const char *layout_file) {
     parse_info           info;
-    sicm_layout_node_ptr current_node;
+    sicm_layout_node_ptr current_node,
+                         src_node,
+                         dst_node;
     char                 buff[WORD_MAX];
     long int             integer;
     int                  line;
@@ -367,6 +393,12 @@ static void parse_layout_file(const char *layout_file) {
         } else if (parse_attr(&info, current_node, "gpu")) {
             current_node->attrs |= NODE_ON_GPU;
 
+        /*
+         * Parse an edge.
+         */
+        } else if (optional_keyword(&info, "edge")) {
+            line     = expect_word(&info, buff);
+            src_node = get_node(&info, buff, line);
         } else {
             if (optional_word(&info, &buff)) {
                 parse_error(&info, "did not expect '%s' here\n", buff);
