@@ -1,8 +1,5 @@
 #pragma once
 
-#include "sicm_tree.h"
-
-
 /* Node Kinds */
 #define SL_NODE_UNKNOWN      (0x0)
 #define SL_NODE_MEM          (0x1)
@@ -22,42 +19,11 @@
 #define SL_EDGE_BW_UNKNOWN   (-1L)
 #define SL_EDGE_LAT_UNKNOWN  (-1L)
 
-typedef struct {
-    long int bw;
-    long int lat;
-} sl_edge_t, *sl_edge_ptr;
-
-typedef const char *sl_str;
-use_tree(sl_str, sl_edge_ptr);
-
-typedef struct {
-    const char                *name;
-    int                        line;
-    long int                   numa_node_id;
-    long int                   kind;
-    int                        attrs;
-    long int                   capacity;
-    tree(sl_str, sl_edge_ptr)  edges;
-} sl_node_t, *sl_node_ptr;
-
-use_tree(sl_str, sl_node_ptr);
-
-typedef struct {
-    const char                 *name,
-                               *path;
-    tree(sl_str, sl_node_ptr)   nodes;
-    const char                **flat_nodes;
-    int                         is_valid;
-} sl_t;
-
-
-/*
- * The public interface.
- */
-typedef const char *sl_node_handle;
-typedef sl_edge_ptr sl_edge_handle;
-
 #define SL_NO_EDGE (NULL)
+
+typedef const char *sl_node_handle;
+struct sl_edge_t;
+typedef sl_edge_t *sl_edge_handle;
 
 void             sl_init(const char *layout_file);
 void             sl_fini(void);

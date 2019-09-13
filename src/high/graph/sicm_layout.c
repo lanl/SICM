@@ -1,4 +1,5 @@
 #include "sicm_layout.h"
+#include "sicm_tree.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -6,20 +7,45 @@
 #include <ctype.h>
 #include <stdarg.h>
 
-
 #define WORD_MAX (256)
-
 
 #define ERR(...) do {                                     \
     fprintf(stderr, "[sicm-layout] ERROR: " __VA_ARGS__); \
     exit(1);                                              \
 } while (0)
 
-#define LOG(...) do {                                     \
-    fprintf(stderr, "[sicm-layout]:       " __VA_ARGS__); \
-} while (0)
+
+typedef struct sl_edge_t {
+    long int bw;
+    long int lat;
+} sl_edge, *sl_edge_ptr;
+
+typedef const char *sl_str;
+use_tree(sl_str, sl_edge_ptr);
+
+typedef struct {
+    const char                *name;
+    int                        line;
+    long int                   numa_node_id;
+    long int                   kind;
+    int                        attrs;
+    long int                   capacity;
+    tree(sl_str, sl_edge_ptr)  edges;
+} sl_node_t, *sl_node_ptr;
+
+use_tree(sl_str, sl_node_ptr);
+
+typedef struct {
+    const char                 *name,
+                               *path;
+    tree(sl_str, sl_node_ptr)   nodes;
+    const char                **flat_nodes;
+    int                         is_valid;
+} sl_t;
+
 
 static sl_t layout;
+
 
 /* BEG Parsing functions */
 
@@ -684,16 +710,7 @@ long int sl_edge_bandwidth(sl_edge_handle handle) { return handle->bw;  }
 long int sl_edge_latency(sl_edge_handle handle)   { return handle->lat; }
 
 void * sicm_node_alloc(size_t size, const char *node_name) {
-    /*
-     * @incomplete
-     */
-    return NULL;
-}
 
-void * sicm_attr_alloc(size_t size, int attrs) {
-    /*
-     * @incomplete
-     */
     return NULL;
 }
 
