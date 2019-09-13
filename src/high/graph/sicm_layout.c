@@ -606,10 +606,10 @@ static sicm_layout_node_ptr find_existing_node(sicm_layout_node_handle handle) {
         ERR("Invalid layout. Perhaps sicm_layout_init() wasn't called?\n");
     }
 
-    node_it = tree_lookup(layout.nodes, node);
+    node_it = tree_lookup(layout.nodes, handle);
 
     if (!tree_it_good(node_it)) {
-        ERR("Node '%s' not found in layout. Only use node handles provided by sicm_layout_nodes().\n");
+        ERR("Node '%s' not found in layout. Only use node handles provided by sicm_layout_nodes().\n", handle);
     }
 
     return tree_it_val(node_it);
@@ -630,7 +630,7 @@ long int * sicm_layout_node_numa(sicm_layout_node_handle handle) {
 
     node = find_existing_node(handle);
 
-    return node->numa;
+    return node->numa_node_id;
 }
 
 long int sicm_layout_node_capacity(sicm_layout_node_handle handle) {
