@@ -146,6 +146,8 @@ static int optional_word(parse_info *info, const char *out) {
         len          += 1;
 
         if (len == WORD_MAX - 1) {
+            *buff_p = 0;
+            parse_error(info, "word '%s' is too long\n", buff);
             ERR("word too long to parse on line %d\n", info->current_line);
         }
     }
@@ -476,6 +478,9 @@ void sicm_layout_fini(void) {
 
     free(layout.name);
 
+    /*
+     * Free each node.
+     */
     while (tree_len(layout.nodes) > 0) {
         node_it  = tree_begin(layout.nodes);
         node_key = tree_it_key(node_it);
@@ -485,6 +490,9 @@ void sicm_layout_fini(void) {
 
         free(node_key);
 
+        /*
+         * Free each edge.
+         */
         while (tree_len(node_val->edges) > 0) {
             edge_it  = tree_begin(node_val->edges);
             edge_key = tree_it_key(edge_it);
