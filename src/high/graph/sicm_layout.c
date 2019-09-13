@@ -464,11 +464,24 @@ static void parse_layout_file(const char *layout_file) {
     parse_info_free(&info);
 }
 
+static void verify_node(sicm_layout_node_ptr node) {
+
+}
+
+static void verify_layout() {
+    tree_it(str, sicm_layout_node_ptr) node_it;
+
+    tree_traverse(layout.nodes, node_it) {
+        verify_node(tree_it_val(node_it));
+    }
+}
+
 void sicm_layout_init(const char *layout_file) {
     if (layout_file == NULL) { layout_file = getenv("SICM_LAYOUT_FILE"); }
     if (layout_file == NULL) { layout_file = "sicm.layout";             }
 
     parse_layout_file(layout_file);
+    verify_layout();
 }
 
 void sicm_layout_fini(void) {
