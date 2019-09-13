@@ -526,7 +526,7 @@ static void verify_node(sl_node_ptr node) {
     }
 }
 
-static void verify_layout() {
+static void verify_layout(void) {
     tree_it(sl_str, sl_node_ptr) node_it;
 
     tree_traverse(layout.nodes, node_it) {
@@ -593,7 +593,15 @@ void sl_fini(void) {
     tree_free(layout.nodes);
 }
 
-int sl_num_nodes() {
+const char * sl_layout_name(void) {
+    if (!layout.is_valid) {
+        ERR("Invalid layout. Perhaps sl_init() wasn't called?\n");
+    }
+
+    return layout.name;
+}
+
+int sl_num_nodes(void) {
     if (!layout.is_valid) {
         ERR("Invalid layout. Perhaps sl_init() wasn't called?\n");
     }
@@ -601,7 +609,7 @@ int sl_num_nodes() {
     return tree_len(layout.nodes);
 }
 
-sl_node_handle * sl_nodes() {
+sl_node_handle * sl_nodes(void) {
     tree_it(sl_str, sl_node_ptr) node_it;
     int                                            n_nodes,
                                                    i;

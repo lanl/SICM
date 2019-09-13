@@ -29,8 +29,10 @@ typedef struct sl_edge_t *sl_edge_handle;
 void             sl_init(const char *layout_file);
 void             sl_fini(void);
 
-int              sl_num_nodes();
-sl_node_handle * sl_nodes();
+const char *     sl_layout_name(void);
+
+int              sl_num_nodes(void);
+sl_node_handle * sl_nodes(void);
 const char *     sl_node_name(sl_node_handle handle);
 int              sl_node_kind(sl_node_handle handle);
 long int         sl_node_numa(sl_node_handle handle);
