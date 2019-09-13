@@ -399,6 +399,7 @@ static void parse_layout_file(const char *layout_file) {
         } else if (optional_keyword(&info, "edge")) {
             line     = expect_word(&info, buff);
             src_node = get_node(&info, buff, line);
+            expect_keyword(&info, "->");
         } else {
             if (optional_word(&info, &buff)) {
                 parse_error(&info, "did not expect '%s' here\n", buff);
