@@ -64,3 +64,7 @@ void sicm_layout_fini(void);
 
 int sicm_layout_num_nodes();
 sicm_layout_node_handle * sicm_layout_nodes();
+const char * sicm_layout_node_name(sicm_layout_node_handle handle);
+int sicm_layout_node_kind(sicm_layout_node_handle handle);
+long int * sicm_layout_node_numa(sicm_layout_node_handle handle);
+long int sicm_layout_node_capacity(sicm_layout_node_handle handle);

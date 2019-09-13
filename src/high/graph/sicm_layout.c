@@ -599,6 +599,48 @@ sicm_layout_node_handle * sicm_layout_nodes() {
     return layout.flat_nodes;
 }
 
+static sicm_layout_node_ptr find_existing_node(sicm_layout_node_handle handle) {
+    tree_it(sicm_layout_str, sicm_layout_node_ptr) node_it;
+
+    if (!layout.is_valid) {
+        ERR("Invalid layout. Perhaps sicm_layout_init() wasn't called?\n");
+    }
+
+    node_it = tree_lookup(layout.nodes, node);
+
+    if (!tree_it_good(node_it)) {
+        ERR("Node '%s' not found in layout. Only use node handles provided by sicm_layout_nodes().\n");
+    }
+
+    return tree_it_val(node_it);
+}
+
+const char * sicm_layout_node_name(sicm_layout_node_handle handle) { return handle; }
+
+int sicm_layout_node_kind(sicm_layout_node_handle handle) {
+    sicm_layout_node_ptr node;
+
+    node = find_existing_node(handle);
+
+    return node->kind;
+}
+
+long int * sicm_layout_node_numa(sicm_layout_node_handle handle) {
+    sicm_layout_node_ptr node;
+
+    node = find_existing_node(handle);
+
+    return node->numa;
+}
+
+long int sicm_layout_node_capacity(sicm_layout_node_handle handle) {
+    sicm_layout_node_ptr node;
+
+    node = find_existing_node(handle);
+
+    return node->capacity;
+}
+
 void * sicm_node_alloc(size_t size, const char *node_name) {
     /*
      * @incomplete
