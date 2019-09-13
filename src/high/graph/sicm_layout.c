@@ -484,8 +484,6 @@ static void layout_node_error(sicm_layout_node_ptr node, const char *fmt, ...) {
 }
 
 static void verify_node(sicm_layout_node_ptr node) {
-    LOG("verifying '%s'\n", node->name);
-
     if (node->kind == LAYOUT_NODE_COMPUTE) {
         if (node->capacity != LAYOUT_NODE_CAP_UNKNOWN) {
             layout_node_error(node, "has conflicting attributes 'kind compute' and 'capacity'");
