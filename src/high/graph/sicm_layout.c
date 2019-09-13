@@ -18,7 +18,7 @@
 typedef struct sl_edge_t {
     long int bw;
     long int lat;
-} sl_edge, *sl_edge_ptr;
+} *sl_edge_ptr;
 
 typedef const char *sl_str;
 use_tree(sl_str, sl_edge_ptr);
