@@ -477,7 +477,7 @@ static void layout_node_error(sicm_layout_node_ptr node, const char *fmt, ...) {
 
     va_start(args, fmt);
     fprintf(stderr, "[sicm-layout]: LAYOUT ERROR in '%s' :: for node '%s' defined on line %d\n"
-                    "               ", layout.path, node->name, line);
+                    "               ", layout.path, node->name, node->line);
     vfprintf(stderr, fmt, args);
     exit(1);
     va_end(args);
