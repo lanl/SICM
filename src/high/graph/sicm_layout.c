@@ -538,8 +538,8 @@ static void verify_layout(void) {
 /* BEG Public functions */
 
 void sl_init(const char *layout_file) {
-    if (layout_file == NULL) { layout_file = getenv("SICM_SL_FILE"); }
-    if (layout_file == NULL) { layout_file = "sicm.layout";          }
+    if (layout_file == NULL) { layout_file = getenv("SICM_LAYOUT_FILE"); }
+    if (layout_file == NULL) { layout_file = "sicm.layout";              }
 
     parse_layout_file(layout_file);
     verify_layout();
