@@ -521,6 +521,8 @@ void sicm_layout_init(const char *layout_file) {
 
     parse_layout_file(layout_file);
     verify_layout();
+
+    layout.is_valid = 1;
 }
 
 void sicm_layout_fini(void) {
@@ -566,6 +568,35 @@ void sicm_layout_fini(void) {
     }
 
     tree_free(layout.nodes);
+}
+
+int sicm_layout_num_nodes() {
+    if (!layout.is_valid) {
+        ERR("Invalid layout. Perhaps sicm_layout_init() wasn't called?\n");
+    }
+
+    return tree_len(layout.nodes);
+}
+
+sicm_layout_node_handle * sicm_layout_nodes() {
+    tree_it(sicm_layout_str, sicm_layout_node_ptr) node_it;
+    int                                            n_nodes,
+                                                   i;
+    /*
+     * Get number of nodes and check for valid layout.
+     */
+    n_nodes = sicm_layout_num_nodes();
+
+    if (layout.flat_nodes == NULL) {
+        layout.flat_nodes = malloc(n_nodes * sizeof(*layout.flat_nodes));
+
+        i = 0;
+        tree_traverse(layout.nodes, node_it) {
+            layout.flat_nodes[i++] = tree_it_key(node_it);
+        }
+    }
+
+    return layout.flat_nodes;
 }
 
 void * sicm_node_alloc(size_t size, const char *node_name) {

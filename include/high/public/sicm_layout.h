@@ -44,12 +44,23 @@ typedef struct {
 use_tree(sicm_layout_str, sicm_layout_node_ptr);
 
 typedef struct {
-    const char                 *name,
-                               *path;
+    const char                  *name,
+                                *path;
     tree(sicm_layout_str,
-         sicm_layout_node_ptr)  nodes;
+         sicm_layout_node_ptr)   nodes;
+    const char                 **flat_nodes;
+    int                          is_valid;
 } sicm_layout_t;
+
+
+
+/*
+ * The public interface.
+ */
+typedef const char *sicm_layout_node_handle;
 
 void sicm_layout_init(const char *layout_file);
 void sicm_layout_fini(void);
 
+int sicm_layout_num_nodes();
+sicm_layout_node_handle * sicm_layout_nodes();
