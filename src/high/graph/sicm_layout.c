@@ -357,15 +357,15 @@ static sicm_layout_edge_ptr get_edge(sicm_layout_node_ptr src_node, sicm_layout_
 }
 
 static void parse_layout_file(const char *layout_file) {
-    parse_info             info;
-    sicm_layout_node_ptr   current_node,
-                           src_node,
-                           dst_node;
-    char                   buff[WORD_MAX];
-    long int               integer;
-    int                    line;
-    sicm_layout_edge_ptr  *edge1,
-                          *edge2;
+    parse_info           info;
+    sicm_layout_node_ptr current_node,
+                         src_node,
+                         dst_node;
+    char                 buff[WORD_MAX];
+    long int             integer;
+    int                  line;
+    sicm_layout_edge_ptr edge1,
+                         edge2;
 
     info         = parse_info_make(layout_file);
     current_node = NULL;
