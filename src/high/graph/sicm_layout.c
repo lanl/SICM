@@ -394,7 +394,7 @@ static void parse_layout_file(const char *layout_file) {
         if ((line = optional_keyword(&info, "node"))) {
             expect_word(&info, buff);
             current_node = get_or_create_node(buff);
-            if (current_node->line == LAYOUT_LINE_UNKNOWN) {
+            if (current_node->line == LAYOUT_NODE_LINE_UNKNOWN) {
                 current_node->line = line;
             }
         /*

@@ -21,7 +21,7 @@
 
 /* Edge Attributes */
 #define LAYOUT_EDGE_BW_UNKNOWN   (-1L)
-#define LATOUT_EDGE_LAT_UNKNOWN  (-1L)
+#define LAYOUT_EDGE_LAT_UNKNOWN  (-1L)
 
 typedef struct {
     long int bw;
