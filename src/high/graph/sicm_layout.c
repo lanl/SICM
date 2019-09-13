@@ -290,7 +290,7 @@ static sicm_layout_node_ptr get_or_create_node(const char *name) {
     return node;
 }
 
-static int parse_attr(parse_info *info, sicm_layout_node_ptr current_node, const char *attr) {
+static int parse_node_attr(parse_info *info, sicm_layout_node_ptr current_node, const char *attr) {
     int line;
 
     if ((line = optional_keyword(info, attr))) {
@@ -302,7 +302,7 @@ static int parse_attr(parse_info *info, sicm_layout_node_ptr current_node, const
     return line;
 }
 
-static int parse_int_value(parse_info *info, sicm_layout_node_ptr current_node, const char *kwd, long int *integer) {
+static int parse_node_int_value(parse_info *info, sicm_layout_node_ptr current_node, const char *kwd, long int *integer) {
     int line;
 
     if ((line = optional_keyword(info, kwd))) {
@@ -316,7 +316,7 @@ static int parse_int_value(parse_info *info, sicm_layout_node_ptr current_node, 
     return line;
 }
 
-static int parse_kind(parse_info *info, sicm_layout_node_ptr current_node, long int *kind) {
+static int parse_node_kind(parse_info *info, sicm_layout_node_ptr current_node, long int *kind) {
     int line;
 
     if ((line = optional_keyword(info, "kind"))) {
@@ -338,14 +338,32 @@ static int parse_kind(parse_info *info, sicm_layout_node_ptr current_node, long 
     return 0;
 }
 
+static sicm_layout_edge_t * get_edge(sicm_layout_node_ptr src_node, sicm_layout_node_ptr dst_node) {
+    tree_it(str, sicm_layout_edge_t) edge_it;
+    sicm_layout_edge_t               new_edge;
+
+    edge_it = tree_lookup(src_node->edges, dst_node->name);
+
+    if (tree_it_good(edge_it)) {
+        return &tree_it_val(edge_it);
+    }
+
+    new_edge.bw = new_edge.lat = -1;
+
+    edge_it = tree_insert(src_node->edges, dst_node->name, new_edge);
+
+    return &tree_it_val(edge_it);
+}
+
 static void parse_layout_file(const char *layout_file) {
-    parse_info           info;
-    sicm_layout_node_ptr current_node,
-                         src_node,
-                         dst_node;
-    char                 buff[WORD_MAX];
-    long int             integer;
-    int                  line;
+    parse_info             info;
+    sicm_layout_node_ptr   current_node,
+                           src_node,
+                           dst_node;
+    char                   buff[WORD_MAX];
+    long int               integer;
+    int                    line;
+    sicm_layout_edge_t    *edge;
 
     info         = parse_info_make(layout_file);
     current_node = NULL;
@@ -369,28 +387,28 @@ static void parse_layout_file(const char *layout_file) {
         /*
          * Set properties of the selected node.
          */
-        } else if (parse_kind(&info, current_node, &integer)) {
+        } else if (parse_node_kind(&info, current_node, &integer)) {
             current_node->kind = integer; 
 
-        } else if (parse_int_value(&info, current_node, "numa", &integer)) {
+        } else if (parse_node_int_value(&info, current_node, "numa", &integer)) {
             current_node->numa_node_id = integer;
 
-        } else if (parse_int_value(&info, current_node, "capacity", &integer)) {
+        } else if (parse_node_int_value(&info, current_node, "capacity", &integer)) {
             current_node->capacity = integer;
 
-        } else if (parse_attr(&info, current_node, "near_nic")) {
+        } else if (parse_node_attr(&info, current_node, "near_nic")) {
             current_node->attrs |= NODE_NEAR_NIC;
 
-        } else if (parse_attr(&info, current_node, "low_lat")) {
+        } else if (parse_node_attr(&info, current_node, "low_lat")) {
             current_node->attrs |= NODE_LOW_LAT;
 
-        } else if (parse_attr(&info, current_node, "hbm")) {
+        } else if (parse_node_attr(&info, current_node, "hbm")) {
             current_node->attrs |= NODE_HBM;
 
-        } else if (parse_attr(&info, current_node, "nvm")) {
+        } else if (parse_node_attr(&info, current_node, "nvm")) {
             current_node->attrs |= NODE_NVM;
 
-        } else if (parse_attr(&info, current_node, "gpu")) {
+        } else if (parse_node_attr(&info, current_node, "gpu")) {
             current_node->attrs |= NODE_ON_GPU;
 
         /*
@@ -402,6 +420,20 @@ static void parse_layout_file(const char *layout_file) {
             expect_keyword(&info, "->");
             line     = expect_word(&info, buff);
             dst_node = get_node(&info, buff, line);
+
+            edge = get_edge(src_node, dst_node);
+         
+            while (1) {
+                if (optional_keyword("bandwidth")) {
+                    expect_int(&info, &integer);
+                    edge->bw = integer;
+                } else if (optional_keyword("latency")) {
+                    expect_int(&info, &integer);
+                    edge->lat = integer;
+                } else {
+                    break;
+                }
+            }
         } else {
             if (optional_word(&info, &buff)) {
                 parse_error(&info, "did not expect '%s' here\n", buff);
