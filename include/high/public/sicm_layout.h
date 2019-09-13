@@ -31,21 +31,23 @@ typedef const char *sicm_layout_str;
 use_tree(sicm_layout_str, sicm_layout_edge_ptr);
 
 typedef struct {
-    const char                      *name;
-    int                              line;
-    long int                         numa_node_id;
-    long int                         kind;
-    int                              attrs;
-    long int                         capacity;
-    tree(sicm_layout_str, sicm_layout_edge_ptr)  edges;
+    const char                 *name;
+    int                         line;
+    long int                    numa_node_id;
+    long int                    kind;
+    int                         attrs;
+    long int                    capacity;
+    tree(sicm_layout_str,
+         sicm_layout_edge_ptr)  edges;
 } sicm_layout_node_t, *sicm_layout_node_ptr;
 
 use_tree(sicm_layout_str, sicm_layout_node_ptr);
 
 typedef struct {
-    const char                      *name,
-                                    *path;
-    tree(sicm_layout_str, sicm_layout_node_ptr)  nodes;
+    const char                 *name,
+                               *path;
+    tree(sicm_layout_str,
+         sicm_layout_node_ptr)  nodes;
 } sicm_layout_t;
 
 void sicm_layout_init(const char *layout_file);

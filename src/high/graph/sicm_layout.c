@@ -380,7 +380,7 @@ static void parse_layout_file(const char *layout_file) {
 
     layout.name  = malloc(WORD_MAX);
     layout.path  = strdup(layout_file);
-    layout.nodes = tree_make_c(str, sicm_layout_node_ptr, strcmp);
+    layout.nodes = tree_make_c(sicm_layout_str, sicm_layout_node_ptr, strcmp);
 
     trim_whitespace_and_comments(&info);
 
@@ -508,7 +508,7 @@ static void verify_node(sicm_layout_node_ptr node) {
 }
 
 static void verify_layout() {
-    tree_it(str, sicm_layout_node_ptr) node_it;
+    tree_it(sicm_layout_str, sicm_layout_node_ptr) node_it;
 
     tree_traverse(layout.nodes, node_it) {
         verify_node(tree_it_val(node_it));
@@ -524,12 +524,14 @@ void sicm_layout_init(const char *layout_file) {
 }
 
 void sicm_layout_fini(void) {
-    tree_it(str, sicm_layout_node_ptr)  node_it;
-    tree_it(str, sicm_layout_edge_ptr)  edge_it;
-    const char                         *node_key,
-                                       *edge_key;
-    sicm_layout_node_ptr                node_val;
-    sicm_layout_edge_ptr                edge_val;
+    tree_it(sicm_layout_str,
+            sicm_layout_node_ptr)  node_it;
+    tree_it(sicm_layout_str,
+            sicm_layout_edge_ptr)  edge_it;
+    const char                    *node_key,
+                                  *edge_key;
+    sicm_layout_node_ptr           node_val;
+    sicm_layout_edge_ptr           edge_val;
 
     free(layout.name);
     free(layout.path);
