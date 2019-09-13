@@ -8,6 +8,8 @@
  *
  * Then, for each compute node, it finds the memory node connected
  * to it with the highest bandwidth.
+ *
+ * Then, it lists each node that has the 'near_nic' attribute set.
  */
 
 int main(int argc, char **argv) {
@@ -75,6 +77,14 @@ int main(int argc, char **argv) {
             }
         }
     }
+
+    for (i = 0; i < num_nodes; i += 1) {
+        node = nodes[i];
+        if (sl_node_is_near_nic(node)) {
+            printf("%s is near the NIC\n", sl_node_name(node));
+        }
+    }
+
     sl_fini();
 
     return 0;
