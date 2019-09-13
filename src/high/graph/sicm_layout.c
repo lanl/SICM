@@ -147,7 +147,7 @@ static int optional_word(parse_info *info, const char *out) {
 
         if (len == WORD_MAX - 1) {
             *buff_p = 0;
-            parse_error(info, "word '%s' is too long\n", buff);
+            parse_error(info, "word '%s' is too long\n", word_buff);
             ERR("word too long to parse on line %d\n", info->current_line);
         }
     }
