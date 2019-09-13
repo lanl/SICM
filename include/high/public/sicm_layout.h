@@ -10,10 +10,9 @@
 
 /* Node Attributes */
 #define LAYOUT_NODE_NEAR_NIC     (0x0)
-#define LAYOUT_NODE_LOW_LAT      (0x1)
-#define LAYOUT_NODE_HBM          (0x2)
-#define LAYOUT_NODE_NVM          (0x4)
-#define LAYOUT_NODE_ON_GPU       (0x8)
+#define LAYOUT_NODE_HBM          (0x1)
+#define LAYOUT_NODE_NVM          (0x2)
+#define LAYOUT_NODE_GPU          (0x4)
 
 #define LAYOUT_NODE_LINE_UNKNOWN (-1)
 #define LAYOUT_NODE_NUMA_UNKNOWN (-1L)

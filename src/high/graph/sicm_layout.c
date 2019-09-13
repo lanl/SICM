@@ -412,9 +412,6 @@ static void parse_layout_file(const char *layout_file) {
         } else if (parse_node_attr(&info, current_node, "near_nic")) {
             current_node->attrs |= LAYOUT_NODE_NEAR_NIC;
 
-        } else if (parse_node_attr(&info, current_node, "low_lat")) {
-            current_node->attrs |= LAYOUT_NODE_LOW_LAT;
-
         } else if (parse_node_attr(&info, current_node, "hbm")) {
             current_node->attrs |= LAYOUT_NODE_HBM;
 
@@ -422,7 +419,7 @@ static void parse_layout_file(const char *layout_file) {
             current_node->attrs |= LAYOUT_NODE_NVM;
 
         } else if (parse_node_attr(&info, current_node, "gpu")) {
-            current_node->attrs |= LAYOUT_NODE_ON_GPU;
+            current_node->attrs |= LAYOUT_NODE_GPU;
 
         /*
          * Parse an edge.
@@ -475,13 +472,36 @@ static void layout_error(int line, const char *fmt, ...) {
     va_end(args);
 }
 
+static void layout_node_error(sicm_layout_node_ptr node, const char *fmt, ...) {
+    va_list args;
+
+    va_start(args, fmt);
+    fprintf(stderr, "[sicm-layout]: LAYOUT ERROR in '%s' :: for node '%s' defined on line %d\n"
+                    "               ", layout.path, node->name, line);
+    vfprintf(stderr, fmt, args);
+    exit(1);
+    va_end(args);
+}
+
 static void verify_node(sicm_layout_node_ptr node) {
     LOG("verifying '%s'\n", node->name);
 
     if (node->kind == LAYOUT_NODE_COMPUTE) {
+        if (node->capacity != LAYOUT_NODE_CAP_UNKNOWN) {
+            layout_node_error(node, "has conflicting attributes 'kind compute' and 'capacity'");
+        }
+        if (node->attrs & LAYOUT_NODE_HBM) {
+            layout_node_error(node, "has conflicting attributes 'kind compute' and 'hbm'");
+        }
+        if (node->attrs & LAYOUT_NODE_NVM) {
+            layout_node_error(node, "has conflicting attributes 'kind compute' and 'nvm'");
+        }
     } else if (node->kind == LAYOUT_NODE_MEM) {
+        /*
+         * Not really anything to check here..
+         */
     } else {
-        layout_error(node->line, "node '%s' missing attribute 'kind'\n", node->name);
+        layout_node_error(node, "missing required attribute 'kind'\n", node->name);
     }
 }
 
