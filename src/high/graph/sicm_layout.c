@@ -407,9 +407,10 @@ static void parse_layout_file(const char *layout_file) {
     info         = parse_info_make(layout_file);
     current_node = NULL;
 
-    layout.name  = malloc(WORD_MAX);
-    layout.path  = strdup(layout_file);
-    layout.nodes = tree_make_c(sl_str, sl_node_ptr, strcmp);
+    layout.name       = malloc(WORD_MAX);
+    layout.path       = strdup(layout_file);
+    layout.nodes      = tree_make_c(sl_str, sl_node_ptr, strcmp);
+    layout.flat_nodes = NULL;
 
     trim_whitespace_and_comments(&info);
 
@@ -592,6 +593,7 @@ void sl_fini(void) {
     }
 
     tree_free(layout.nodes);
+    free(layout.flat_nodes);
 }
 
 const char * sl_layout_name(void) {
