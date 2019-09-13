@@ -16,8 +16,10 @@
 
 
 typedef struct sl_edge_t {
-    long int bw;
-    long int lat;
+    const char *src,
+               *dst;
+    long int    bw;
+    long int    lat;
 } *sl_edge_ptr;
 
 typedef const char *sl_str;
@@ -382,6 +384,8 @@ static sl_edge_ptr get_edge(sl_node_ptr src_node, sl_node_ptr dst_node) {
     }
 
     new_edge      = malloc(sizeof(*new_edge));
+    new_edge->src = src_node->name;
+    new_edge->dst = dst_node->name;
     new_edge->bw  = SL_EDGE_BW_UNKNOWN;
     new_edge->lat = SL_EDGE_LAT_UNKNOWN;
 
