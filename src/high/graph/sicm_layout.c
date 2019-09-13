@@ -465,7 +465,7 @@ static void parse_layout_file(const char *layout_file) {
 }
 
 static void verify_node(sicm_layout_node_ptr node) {
-
+    LOG("verifying '%s'\n", node->name);
 }
 
 static void verify_layout() {
