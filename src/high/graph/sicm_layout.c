@@ -351,7 +351,7 @@ static sicm_layout_edge_ptr get_edge(sicm_layout_node_ptr src_node, sicm_layout_
     new_edge     = malloc(sizeof(*new_edge));
     new_edge->bw = new_edge->lat = -1;
 
-    tree_insert(src_node->edges, dst_node->name, new_edge);
+    tree_insert(src_node->edges, strdup(dst_node->name), new_edge);
 
     return new_edge;
 }
@@ -453,8 +453,6 @@ static void parse_layout_file(const char *layout_file) {
     parse_info_free(&info);
 
     layout.is_valid = 1;
-
-    LOG("done parsing\n");
 }
 
 void sicm_layout_init(const char *layout_file) {
