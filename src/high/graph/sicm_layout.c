@@ -240,7 +240,7 @@ static int expect_keyword(parse_info *info, const char *s) {
     int line;
 
     if (!(line = optional_keyword(info, s))) {
-        parse_error(info, "expected keyword '%s'\n", s);
+        parse_error(info, "expected '%s'\n", s);
     }
     
     return line;
@@ -400,6 +400,8 @@ static void parse_layout_file(const char *layout_file) {
             line     = expect_word(&info, buff);
             src_node = get_node(&info, buff, line);
             expect_keyword(&info, "->");
+            line     = expect_word(&info, buff);
+            dst_node = get_node(&info, buff, line);
         } else {
             if (optional_word(&info, &buff)) {
                 parse_error(&info, "did not expect '%s' here\n", buff);
