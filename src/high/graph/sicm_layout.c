@@ -264,7 +264,7 @@ static sicm_layout_node_ptr get_node(parse_info *info, const char *name, int lin
     it = tree_lookup(layout.nodes, name);
 
     if (!tree_it_good(it)) {
-        parse_error_l(info, "node '%s' not defined yet -- can't create an edge with it", name);
+        parse_error_l(info, line, "node '%s' not defined yet -- can't create an edge with it", name);
     }
 
     return tree_it_val(it);
