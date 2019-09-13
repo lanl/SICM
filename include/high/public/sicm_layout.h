@@ -66,7 +66,7 @@ int              sl_num_nodes();
 sl_node_handle * sl_nodes();
 const char *     sl_node_name(sl_node_handle handle);
 int              sl_node_kind(sl_node_handle handle);
-long int *       sl_node_numa(sl_node_handle handle);
+long int         sl_node_numa(sl_node_handle handle);
 long int         sl_node_capacity(sl_node_handle handle);
 int              sl_node_is_near_nic(sl_node_handle handle);
 int              sl_node_is_hbm(sl_node_handle handle);
@@ -74,3 +74,5 @@ int              sl_node_is_nvm(sl_node_handle handle);
 int              sl_node_is_gpu(sl_node_handle handle);
 
 sl_edge_handle   sl_edge(sl_node_handle src, sl_node_handle dst);
+long int         sl_edge_bandwidth(sl_edge_handle handle);
+long int         sl_edge_latency(sl_edge_handle handle);

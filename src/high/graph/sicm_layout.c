@@ -618,7 +618,7 @@ int sl_node_kind(sl_node_handle handle) {
     return node->kind;
 }
 
-long int * sl_node_numa(sl_node_handle handle) {
+long int sl_node_numa(sl_node_handle handle) {
     sl_node_ptr node;
 
     node = find_existing_node(handle);
@@ -679,6 +679,9 @@ sl_edge_handle sl_edge(sl_node_handle src, sl_node_handle dst) {
 
     return tree_it_val(edge_it);
 }
+
+long int sl_edge_bandwidth(sl_edge_handle handle) { return handle->bw;  }
+long int sl_edge_latency(sl_edge_handle handle)   { return handle->lat; }
 
 void * sicm_node_alloc(size_t size, const char *node_name) {
     /*
