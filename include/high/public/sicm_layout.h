@@ -27,8 +27,8 @@ typedef struct {
     long int lat;
 } sicm_layout_edge_t, *sicm_layout_edge_ptr;
 
-typedef const char *str;
-use_tree(str, sicm_layout_edge_ptr);
+typedef const char *sicm_layout_str;
+use_tree(sicm_layout_str, sicm_layout_edge_ptr);
 
 typedef struct {
     const char                      *name;
@@ -37,15 +37,15 @@ typedef struct {
     long int                         kind;
     int                              attrs;
     long int                         capacity;
-    tree(str, sicm_layout_edge_ptr)  edges;
+    tree(sicm_layout_str, sicm_layout_edge_ptr)  edges;
 } sicm_layout_node_t, *sicm_layout_node_ptr;
 
-use_tree(str, sicm_layout_node_ptr);
+use_tree(sicm_layout_str, sicm_layout_node_ptr);
 
 typedef struct {
     const char                      *name,
                                     *path;
-    tree(str, sicm_layout_node_ptr)  nodes;
+    tree(sicm_layout_str, sicm_layout_node_ptr)  nodes;
 } sicm_layout_t;
 
 void sicm_layout_init(const char *layout_file);

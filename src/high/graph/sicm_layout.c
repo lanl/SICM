@@ -260,7 +260,7 @@ static int expect_int(parse_info *info, long int *out) {
 /* END Parsing functions */
 
 static sicm_layout_node_ptr get_node(parse_info *info, const char *name, int line) {
-    tree_it(str, sicm_layout_node_ptr) it;
+    tree_it(sicm_layout_str, sicm_layout_node_ptr) it;
 
     it = tree_lookup(layout.nodes, name);
 
@@ -272,7 +272,7 @@ static sicm_layout_node_ptr get_node(parse_info *info, const char *name, int lin
 }
 
 static sicm_layout_node_ptr get_or_create_node(const char *name) {
-    tree_it(str, sicm_layout_node_ptr) it;
+    tree_it(sicm_layout_str, sicm_layout_node_ptr) it;
     sicm_layout_node_ptr               node;
 
     it = tree_lookup(layout.nodes, name);
@@ -289,7 +289,7 @@ static sicm_layout_node_ptr get_or_create_node(const char *name) {
         node->kind         = LAYOUT_NODE_UNKNOWN;
         node->attrs        = 0;
         node->capacity     = LAYOUT_NODE_CAP_UNKNOWN;
-        node->edges        = tree_make_c(str, sicm_layout_edge_ptr, strcmp);
+        node->edges        = tree_make_c(sicm_layout_str, sicm_layout_edge_ptr, strcmp);
 
         tree_insert(layout.nodes, node->name, node);
     }
@@ -346,7 +346,7 @@ static int parse_node_kind(parse_info *info, sicm_layout_node_ptr current_node, 
 }
 
 static sicm_layout_edge_ptr get_edge(sicm_layout_node_ptr src_node, sicm_layout_node_ptr dst_node) {
-    tree_it(str, sicm_layout_edge_ptr) edge_it;
+    tree_it(sicm_layout_str, sicm_layout_edge_ptr) edge_it;
     sicm_layout_edge_ptr               new_edge;
 
     edge_it = tree_lookup(src_node->edges, dst_node->name);
