@@ -486,13 +486,13 @@ static void layout_node_error(sicm_layout_node_ptr node, const char *fmt, ...) {
 static void verify_node(sicm_layout_node_ptr node) {
     if (node->kind == LAYOUT_NODE_COMPUTE) {
         if (node->capacity != LAYOUT_NODE_CAP_UNKNOWN) {
-            layout_node_error(node, "has conflicting attributes 'kind compute' and 'capacity'");
+            layout_node_error(node, "has conflicting attributes 'kind compute' and 'capacity'\n");
         }
         if (node->attrs & LAYOUT_NODE_HBM) {
-            layout_node_error(node, "has conflicting attributes 'kind compute' and 'hbm'");
+            layout_node_error(node, "has conflicting attributes 'kind compute' and 'hbm'\n");
         }
         if (node->attrs & LAYOUT_NODE_NVM) {
-            layout_node_error(node, "has conflicting attributes 'kind compute' and 'nvm'");
+            layout_node_error(node, "has conflicting attributes 'kind compute' and 'nvm'\n");
         }
     } else if (node->kind == LAYOUT_NODE_MEM) {
         /*
