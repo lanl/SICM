@@ -15,19 +15,23 @@
 #define NODE_NVM         (0x4)
 #define NODE_ON_GPU      (0x8)
 
+typedef struct {
+    long int bw;
+    long int lat;
+} sicm_layout_edge_t;
+
 typedef const char *str;
-use_tree(str, long);
+use_tree(str, sicm_layout_edge_t);
 
 typedef struct {
-    const char      *name;
-    long int         numa_node_id;
-    int              kind;
-    int              attrs;
-    int              capacity;
-    tree(str, long)  edges;
-} sicm_layout_node_t;
+    const char                    *name;
+    long int                       numa_node_id;
+    int                            kind;
+    int                            attrs;
+    int                            capacity;
+    tree(str, sicm_layout_edge_t)  edges;
+} sicm_layout_node_t, *sicm_layout_node_ptr;
 
-typedef sicm_layout_node_t *sicm_layout_node_ptr;
 use_tree(str, sicm_layout_node_ptr);
 
 typedef struct {
