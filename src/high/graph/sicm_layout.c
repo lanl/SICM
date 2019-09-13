@@ -429,7 +429,7 @@ static void parse_layout_file(const char *layout_file) {
             while (1) {
                 if (optional_keyword(&info, "bandwidth")) {
                     expect_int(&info, &integer);
-                    edge1->bw = edge2 = integer;
+                    edge1->bw = edge2->bw = integer;
                 } else if (optional_keyword(&info, "latency")) {
                     expect_int(&info, &integer);
                     edge1->lat = edge2->lat = integer;
