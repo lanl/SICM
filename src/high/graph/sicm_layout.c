@@ -260,8 +260,11 @@ static sicm_layout_node_ptr * get_or_create_node(const char *name) {
         node->name = strdup(name);
 
         tree_insert(layout.nodes, node->name, node);
-        LOG("new node '%s'\n", name);
+
+        LOG("created new node '%s'\n", node->name);
     }
+    
+    LOG("selected node '%s'\n", node->name);
 
     return node;
 }
@@ -324,7 +327,7 @@ static void parse_layout_file(const char *layout_file) {
     info         = parse_info_make(layout_file);
     current_node = NULL;
 
-    LOG("using layout file '%s'\n", info.path);
+    LOG("parsing layout file '%s'\n", info.path);
 
     layout.name  = malloc(WORD_MAX);
     layout.nodes = tree_make_c(str, sicm_layout_node_ptr, strcmp);
@@ -338,22 +341,43 @@ static void parse_layout_file(const char *layout_file) {
         if (optional_keyword(&info, "node")) {
             expect_word(&info, buff);
             current_node = get_or_create_node(buff);
+
         } else if (parse_kind(&info, current_node, &integer)) {
             current_node->kind = integer; 
+            if (integer == NODE_COMPUTE) {
+                LOG("set node '%s' to be NODE_COMPUTE\n", current_node->name);
+            } else {
+                LOG("set node '%s' to be NODE_MEM\n", current_node->name);
+            }
+
         } else if (parse_int_value(&info, current_node, "numa", &integer)) {
             current_node->numa_node_id = integer;
+            LOG("set 'numa' to %ld for node '%s'\n", integer, current_node->name);
+
         } else if (parse_int_value(&info, current_node, "capacity", &integer)) {
             current_node->capacity = integer;
+            LOG("set 'capacity' to %ld for node '%s'\n", integer, current_node->name);
+
         } else if (parse_attr(&info, current_node, "near_nic")) {
             current_node->attrs |= NODE_NEAR_NIC;
+            LOG("set 'near_nic' for node '%s'\n", current_node->name);
+
         } else if (parse_attr(&info, current_node, "low_lat")) {
             current_node->attrs |= NODE_LOW_LAT;
+            LOG("set 'low_lat' for node '%s'\n", current_node->name);
+
         } else if (parse_attr(&info, current_node, "hbm")) {
             current_node->attrs |= NODE_HBM;
+            LOG("set 'hbm' for node '%s'\n", current_node->name);
+
         } else if (parse_attr(&info, current_node, "persist")) {
             current_node->attrs |= NODE_PERSIST;
+            LOG("set 'persist' for node '%s'\n", current_node->name);
+
         } else if (parse_attr(&info, current_node, "gpu")) {
             current_node->attrs |= NODE_ON_GPU;
+            LOG("set 'gpu' for node '%s'\n", current_node->name);
+
         } else {
             if (optional_word(&info, &buff)) {
                 parse_error(&info, "did not expect '%s' here\n", buff);
