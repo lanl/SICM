@@ -19,8 +19,8 @@
 #define SL_EDGE_BW_UNKNOWN   (-1L)
 #define SL_EDGE_LAT_UNKNOWN  (-1L)
 
-#define SL_NULL_NODE (NULL)
-#define SL_NO_EDGE   (NULL)
+#define SL_NULL_NODE         (NULL)
+#define SL_NO_EDGE           (NULL)
 
 typedef const char *sl_node_handle;
 struct sl_edge_t;
