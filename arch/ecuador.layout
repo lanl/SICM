@@ -2,7 +2,7 @@
 # file:   'ecuador.layout'
 # author: Brandon Kammerdiener
 #
-#         This is an example SICM layout file for Equador, an Ivy Bridge server
+#         This is an example SICM layout file for Ecuador, an Ivy Bridge server
 #         machine with two NUMA nodes.
 #
 #         All units are in GiB, GiB/s, or ns.
