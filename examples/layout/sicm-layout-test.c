@@ -12,6 +12,10 @@
  * Then, it lists each node that has the 'near_nic' attribute set.
  */
 
+void gpu_hbm(sl_node_handle *nodes, int num_nodes);
+void high_bw(sl_node_handle *nodes, int num_nodes);
+void near_nic(sl_node_handle *nodes, int num_nodes);
+
 int main(int argc, char **argv) {
     const char     *layout_path;
     sl_node_handle *nodes,
@@ -36,8 +40,26 @@ int main(int argc, char **argv) {
 
     sl_init(layout_path);
 
+    printf("the layout is '%s'\n", sl_layout_name());
+
     num_nodes = sl_num_nodes();
     nodes     = sl_nodes();
+
+    gpu_hbm(nodes, num_nodes);
+    high_bw(nodes, num_nodes);
+    near_nic(nodes, num_nodes);
+
+    sl_fini();
+
+    return 0;
+}
+
+void gpu_hbm(sl_node_handle *nodes, int num_nodes) {
+    int            i;
+    long           cap, total_cap;
+    sl_node_handle node;
+
+    printf("test: gpu_hbm\n");
 
     for (i = 0; i < num_nodes; i += 1) {
         node = nodes[i];
@@ -51,7 +73,16 @@ int main(int argc, char **argv) {
         }
     }
 
-    printf("total gpu hbm capacity: %ld GB\n", total_cap);
+    printf("    total gpu hbm capacity: %ld GB\n", total_cap);
+}
+
+void high_bw(sl_node_handle *nodes, int num_nodes) {
+    int            i, j;
+    long           bw, max_bw;
+    sl_node_handle node, high_bw_node;
+    sl_edge_handle edge;
+
+    printf("test: high_bw\n");
 
     for (i = 0; i < num_nodes; i += 1) {
         node = nodes[i];
@@ -71,21 +102,22 @@ int main(int argc, char **argv) {
             }
 
             if (high_bw_node == SL_NULL_NODE) {
-                printf("node %s has no edges to memory\n", sl_node_name(node));
+                printf("    node %s has no edges to memory\n", sl_node_name(node));
             } else {
-                printf("%s -> %s @ %ld GB/s\n", sl_node_name(node), sl_node_name(high_bw_node), max_bw);
+                printf("    %s -> %s @ %ld GB/s\n", sl_node_name(node), sl_node_name(high_bw_node), max_bw);
             }
         }
     }
+}
+
+void near_nic(sl_node_handle *nodes, int num_nodes) {
+    int i;
+
+    printf("test: near_nic\n");
 
     for (i = 0; i < num_nodes; i += 1) {
-        node = nodes[i];
-        if (sl_node_is_near_nic(node)) {
-            printf("%s is near the NIC\n", sl_node_name(node));
+        if (sl_node_is_near_nic(nodes[i])) {
+            printf("    %s is near the NIC\n", sl_node_name(nodes[i]));
         }
     }
-
-    sl_fini();
-
-    return 0;
 }
