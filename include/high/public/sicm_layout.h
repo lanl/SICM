@@ -47,6 +47,3 @@ sl_node_handle   sl_edge_src(sl_edge_handle handle);
 sl_node_handle   sl_edge_dst(sl_edge_handle handle);
 long int         sl_edge_bandwidth(sl_edge_handle handle);
 long int         sl_edge_latency(sl_edge_handle handle);
-
-#define sl_node_traverse(it) \
-    for ((it) = sl_nodes(); (it) <= sl_nodes() + sl_num_nodes(); (it) += 1)
