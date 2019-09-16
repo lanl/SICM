@@ -18,21 +18,10 @@ void near_nic(sl_node_handle *nodes, int num_nodes);
 
 int main(int argc, char **argv) {
     const char     *layout_path;
-    sl_node_handle *nodes,
-                    node,
-                    high_bw_node;
-    sl_edge_handle  edge;
-    int             num_nodes,
-                    i,
-                    j;
-    long            total_cap,
-                    cap,
-                    max_bw,
-                    bw;
+    sl_node_handle *nodes;
+    int             num_nodes;
 
     layout_path  = NULL;
-    total_cap    = 0;
-    high_bw_node = SL_NULL_NODE;
 
     if (argc > 1) {
         layout_path = argv[1];
@@ -61,6 +50,8 @@ void gpu_hbm(sl_node_handle *nodes, int num_nodes) {
 
     printf("test: gpu_hbm\n");
 
+    total_cap = 0;
+
     for (i = 0; i < num_nodes; i += 1) {
         node = nodes[i];
         if (sl_node_kind(node) == SL_NODE_MEM) {
@@ -86,8 +77,11 @@ void high_bw(sl_node_handle *nodes, int num_nodes) {
 
     for (i = 0; i < num_nodes; i += 1) {
         node = nodes[i];
+
         if (sl_node_kind(node) == SL_NODE_COMPUTE) {
             max_bw = 0;
+            high_bw_node = SL_NULL_NODE;
+
             for (j = 0; j < num_nodes; j += 1) {
                 if (sl_node_kind(nodes[j]) == SL_NODE_MEM) {
                     edge = sl_edge(node, nodes[j]);
