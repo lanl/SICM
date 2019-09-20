@@ -720,6 +720,12 @@ struct sicm_device * sl_node_device(sl_node_handle handle) {
     node = find_existing_node(handle);
 
     if (node->kind == SL_NODE_COMPUTE)    { return NULL; }
+    /*
+     * @incomplete
+     * SICM doesn't recognize any GPU devices yet, so I'll
+     * leave this unimplemented.
+     */
+    if (node->attrs & SL_NODE_GPU)        { return NULL; }
 
     if (node->attrs & SL_NODE_HBM) {
         desired_tag = SICM_KNL_HBM;
