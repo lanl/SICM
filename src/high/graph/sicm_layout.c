@@ -730,7 +730,7 @@ struct sicm_device * sl_node_device(sl_node_handle handle) {
     }
 
     for (i = 0; i < layout.device_list.count; i += 1) {
-        device = layout.device_list.devices + i;
+        device = layout.device_list.devices + i
         if (device->tag == desired_tag && sicm_numa_id(device) == node->numa_node_id) {
             return device;
         }
