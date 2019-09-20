@@ -1,3 +1,4 @@
+#include "sicm_low.h"
 #include "sicm_layout.h"
 #include "sicm_tree.h"
 
