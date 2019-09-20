@@ -43,7 +43,7 @@ typedef struct {
     tree(sl_str, sl_node_ptr)   nodes;
     const char                **flat_nodes;
     int                         is_valid;
-    sicm_device                *device_list;
+    sicm_device_list            device_list;
 } sl_t;
 
 
