@@ -10,11 +10,15 @@
  * to it with the highest bandwidth.
  *
  * Then, it lists each node that has the 'near_nic' attribute set.
+ *
+ * Finally, it lists the sicm_device pointer for each node that can
+ * be used with the rest of the SICM API.
  */
 
 void gpu_hbm(sl_node_handle *nodes, int num_nodes);
 void high_bw(sl_node_handle *nodes, int num_nodes);
 void near_nic(sl_node_handle *nodes, int num_nodes);
+void devices(sl_node_handle *nodes, int num_nodes);
 
 int main(int argc, char **argv) {
     const char     *layout_path;
@@ -37,6 +41,7 @@ int main(int argc, char **argv) {
     gpu_hbm(nodes, num_nodes);
     high_bw(nodes, num_nodes);
     near_nic(nodes, num_nodes);
+    devices(nodes, num_nodes);
 
     sl_fini();
 
@@ -113,5 +118,15 @@ void near_nic(sl_node_handle *nodes, int num_nodes) {
         if (sl_node_is_near_nic(nodes[i])) {
             printf("    %s is near the NIC\n", sl_node_name(nodes[i]));
         }
+    }
+}
+
+void devices(sl_node_handle *nodes, int num_nodes) {
+    int i;
+
+    printf("test: devices\n");
+
+    for (i = 0; i < num_nodes; i += 1) {
+        printf("    device for '%s': %p\n", sl_node_name(nodes[i]), sl_node_device(nodes[i]));
     }
 }
