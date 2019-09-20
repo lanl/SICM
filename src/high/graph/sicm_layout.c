@@ -43,6 +43,7 @@ typedef struct {
     tree(sl_str, sl_node_ptr)   nodes;
     const char                **flat_nodes;
     int                         is_valid;
+    sicm_device                *device_list;
 } sl_t;
 
 
@@ -546,6 +547,8 @@ void sl_init(const char *layout_file) {
     verify_layout();
 
     layout.is_valid = 1;
+
+    layout.device_list = sicm_init();
 }
 
 void sl_fini(void) {
@@ -593,6 +596,7 @@ void sl_fini(void) {
     }
 
     tree_free(layout.nodes);
+    sicm_fini(layout.device_list);
     free(layout.flat_nodes);
 }
 
