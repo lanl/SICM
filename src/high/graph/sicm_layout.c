@@ -707,6 +707,10 @@ int sl_node_is_gpu(sl_node_handle handle) {
     return node->attrs & SL_NODE_GPU;
 }
 
+sicm_device * sl_node_device(sl_node_handle handle) {
+    return NULL;
+}
+
 sl_edge_handle sl_edge(sl_node_handle src, sl_node_handle dst) {
     sl_node_ptr                  src_node;
     tree_it(sl_str, sl_edge_ptr) edge_it;
