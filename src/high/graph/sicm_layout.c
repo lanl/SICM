@@ -711,11 +711,11 @@ int sl_node_is_gpu(sl_node_handle handle) {
     return node->attrs & SL_NODE_GPU;
 }
 
-struct sicm_device * sl_node_device(sl_node_handle handle) {
-    sl_node_ptr         node;
-    int                 i;
-    struct sicm_device *device;
-    int                 desired_tag;
+sicm_device * sl_node_device(sl_node_handle handle) {
+    sl_node_ptr      node;
+    int              i;
+    sicm_device     *device;
+    sicm_device_tag  desired_tag;
 
     node = find_existing_node(handle);
 
@@ -728,15 +728,19 @@ struct sicm_device * sl_node_device(sl_node_handle handle) {
     if (node->attrs & SL_NODE_GPU)        { return NULL; }
 
     if (node->attrs & SL_NODE_HBM) {
+        /*
+         * @incomplete
+         * Differentiate between KNL and PowerPC HBM.
+         */
         desired_tag = SICM_KNL_HBM;
     } else if (node->attrs & SL_NODE_NVM) {
-        desired_tag = SICM_KNL_HBM;
+        desired_tag = SICM_OPTANE;
     } else {
         desired_tag = SICM_DRAM;
     }
 
     for (i = 0; i < layout.device_list.count; i += 1) {
-        device = layout.device_list.devices + i;
+        device = layout.device_list.devices[i];
         printf("trying device %d %d\n", device->tag, sicm_numa_id(device));
         if (device->tag == desired_tag && sicm_numa_id(device) == node->numa_node_id) {
             return device;
