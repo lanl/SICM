@@ -550,7 +550,6 @@ success:
 	if (mbind(ret, size, mpol, nodemaskp, maxnode, MPOL_MF_MOVE) < 0) {
     perror("mbind");
     fprintf(stderr, "Allocated: %p to %p\nUnmapped: %p to %p\nm: %p", n, n + size, n, n + m - n, m);
-    fflush(stderr);
 		munmap(ret, size);
 		ret = NULL;
 		goto restore_mempolicy;
