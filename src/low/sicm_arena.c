@@ -535,26 +535,21 @@ static void *sa_alloc(extent_hooks_t *h, void *new_addr, size_t size, size_t ali
 
 	size += alignment;
 	ret = mmap(NULL, size, PROT_READ | PROT_WRITE, mmflags, sa->fd, sa->size);
-  fprintf(stderr, "%u: %p, %zu, %d, %lu, %lu\n", arena_ind, ret, size, mpol, *nodemaskp, maxnode);
-  fflush(stderr);
 	if (ret == MAP_FAILED) {
 		perror("mmap2");
 		ret = NULL;
 		goto restore_mempolicy;
 	}
 
-  fprintf(stderr, "Allocated from %p to %p\n", ret, ((char *) ret) + size);
 	n = (uintptr_t) ret;
 	m = n + alignment - (n%alignment);
-  fprintf(stderr, "m is %p\n", m);
 	munmap(ret, m-n);
-  fprintf(stderr, "Munmapping %p to %p\n", ret, ((char *)ret) + m - n);
 	ret = (void *) m;
 
 success:
 	if (mbind(ret, size, mpol, nodemaskp, maxnode, MPOL_MF_MOVE) < 0) {
     perror("mbind");
-    fprintf(stderr, "%u: %p, %zu, %d, %lu, %lu\n", arena_ind, ret, size, mpol, *nodemaskp, maxnode);
+    fprintf(stderr, "Allocated: %p to %p\nUnmapped: %p to %p\n", n, n + size, n, n + m - n);
     fflush(stderr);
 		munmap(ret, size);
 		ret = NULL;
