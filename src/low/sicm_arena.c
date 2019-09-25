@@ -484,7 +484,6 @@ static void *sa_alloc(extent_hooks_t *h, void *new_addr, size_t size, size_t ali
 	get_mempolicy(&oldmode, oldnodemask->maskp, oldnodemask->size, NULL, 0);
 	switch (sa->flags & SICM_ALLOC_MASK) {
 	case SICM_ALLOC_STRICT:
-    fprintf(stderr, "Binding strictly.\n");
 		mpol = MPOL_BIND;
 		nodemaskp = sa->nodemask->maskp;
 		maxnode = sa->nodemask->size;
@@ -520,7 +519,6 @@ static void *sa_alloc(extent_hooks_t *h, void *new_addr, size_t size, size_t ali
 		perror("mmap");
 		goto restore_mempolicy;
 	}
-  goto success;
 
 	if (alignment == 0 || ((uintptr_t) ret)%alignment == 0) {
 		// we are lucky and got the right alignment
@@ -537,6 +535,8 @@ static void *sa_alloc(extent_hooks_t *h, void *new_addr, size_t size, size_t ali
 
 	size += alignment;
 	ret = mmap(NULL, size, PROT_READ | PROT_WRITE, mmflags, sa->fd, sa->size);
+  fprintf(stderr, "%u: %p, %zu, %d, %lu, %lu\n", arena_ind, ret, size, mpol, *nodemaskp, maxnode);
+  fflush(stderr);
 	if (ret == MAP_FAILED) {
 		perror("mmap2");
 		ret = NULL;
@@ -551,6 +551,8 @@ static void *sa_alloc(extent_hooks_t *h, void *new_addr, size_t size, size_t ali
 success:
 	if (mbind(ret, size, mpol, nodemaskp, maxnode, MPOL_MF_MOVE) < 0) {
     perror("mbind");
+    fprintf(stderr, "%u: %p, %zu, %d, %lu, %lu\n", arena_ind, ret, size, mpol, *nodemaskp, maxnode);
+    fflush(stderr);
 		munmap(ret, size);
 		ret = NULL;
 		goto restore_mempolicy;
