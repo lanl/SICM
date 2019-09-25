@@ -520,6 +520,7 @@ static void *sa_alloc(extent_hooks_t *h, void *new_addr, size_t size, size_t ali
 		perror("mmap");
 		goto restore_mempolicy;
 	}
+  goto success;
 
 	if (alignment == 0 || ((uintptr_t) ret)%alignment == 0) {
 		// we are lucky and got the right alignment
