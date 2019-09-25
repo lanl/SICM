@@ -162,13 +162,17 @@ void sicm_arena_destroy(sicm_arena arena) {
 	if (sa == NULL)
 		return;
 
+  pthread_mutex_lock(sa->mutex);
+  pthread_mutex_unlock(sa->mutex);
+  pthread_mutex_destroy(sa->mutex);
+	munmap(sa->mutex, sizeof(pthread_mutex_t));
+
 	/* Free up the arena */
 	snprintf(str, sizeof(str), "arena.%u.destroy", sa->arena_ind);
 	arena_ind_sz = sizeof(unsigned);
 	je_mallctl(str, (void *) &sa->arena_ind, &arena_ind_sz, NULL, 0);
 
 	extent_arr_free(sa->extents);
-	munmap(sa->mutex, sizeof(pthread_mutex_t));
 	free(sa->devs.devices);
 	numa_free_nodemask(sa->nodemask);
 	free(sa);
@@ -480,6 +484,7 @@ static void *sa_alloc(extent_hooks_t *h, void *new_addr, size_t size, size_t ali
 	get_mempolicy(&oldmode, oldnodemask->maskp, oldnodemask->size, NULL, 0);
 	switch (sa->flags & SICM_ALLOC_MASK) {
 	case SICM_ALLOC_STRICT:
+    fprintf(stderr, "Binding strictly.\n");
 		mpol = MPOL_BIND;
 		nodemaskp = sa->nodemask->maskp;
 		maxnode = sa->nodemask->size;
@@ -545,7 +550,6 @@ static void *sa_alloc(extent_hooks_t *h, void *new_addr, size_t size, size_t ali
 success:
 	if (mbind(ret, size, mpol, nodemaskp, maxnode, MPOL_MF_MOVE) < 0) {
     perror("mbind");
-    fprintf(stderr, "Args: %zu %zu %lu,%p %lu\n", ret, size, *nodemaskp, nodemaskp, maxnode);
 		munmap(ret, size);
 		ret = NULL;
 		goto restore_mempolicy;
