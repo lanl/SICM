@@ -545,14 +545,11 @@ static void *sa_alloc(extent_hooks_t *h, void *new_addr, size_t size, size_t ali
 success:
 	if (mbind(ret, size, mpol, nodemaskp, maxnode, MPOL_MF_MOVE) < 0) {
     perror("mbind");
-    fprintf(stderr, "Address: %p %zu %zu\n", ret, size, alignment);
+    fprintf(stderr, "Args: %zu %zu %lu,%p %lu\n", ret, size, *nodemaskp, nodemaskp, maxnode);
 		munmap(ret, size);
-		perror("mbind");
 		ret = NULL;
 		goto restore_mempolicy;
-	} else {
-    fprintf(stderr, "Aligned mbind succeeded: %zu\n", alignment);
-  }
+	}
 
   /* Add the extent to the array of extents */
   extent_arr_insert(sa->extents, ret, (char *)ret + size, NULL);
