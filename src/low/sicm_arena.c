@@ -549,7 +549,7 @@ static void *sa_alloc(extent_hooks_t *h, void *new_addr, size_t size, size_t ali
 success:
 	if (mbind(ret, size, mpol, nodemaskp, maxnode, MPOL_MF_MOVE) < 0) {
     perror("mbind");
-    fprintf(stderr, "Allocated: %p to %p\nUnmapped: %p to %p\n", n, n + size, n, n + m - n);
+    fprintf(stderr, "Allocated: %p to %p\nUnmapped: %p to %p\nm: %p", n, n + size, n, n + m - n, m);
     fflush(stderr);
 		munmap(ret, size);
 		ret = NULL;
