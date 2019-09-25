@@ -545,7 +545,7 @@ static void *sa_alloc(extent_hooks_t *h, void *new_addr, size_t size, size_t ali
 	m = n + alignment - (n%alignment);
 	munmap(ret, m-n);
 	ret = (void *) m;
-  size -= alignment;
+  size = size - (m-n);
 
 success:
 	if (mbind(ret, size, mpol, nodemaskp, maxnode, MPOL_MF_MOVE) < 0) {
