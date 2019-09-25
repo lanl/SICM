@@ -543,9 +543,12 @@ static void *sa_alloc(extent_hooks_t *h, void *new_addr, size_t size, size_t ali
 		goto restore_mempolicy;
 	}
 
+  fprintf(stderr, "Allocated from %p to %p\n", ret, ((char *) ret) + size);
 	n = (uintptr_t) ret;
 	m = n + alignment - (n%alignment);
+  fprintf(stderr, "m is %p\n", m);
 	munmap(ret, m-n);
+  fprintf(stderr, "Munmapping %p to %p\n", ret, ((char *)ret) + m - n);
 	ret = (void *) m;
 
 success:
