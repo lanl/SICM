@@ -238,14 +238,12 @@ void profile_online_init() {
   } else if(profopts.should_profile_extent_size) {
   } else if(profopts.should_profile_rss) {
   } else {
-    fprintf(stderr, "SH_PROFILE_ONLINE requires at least one type of weight profiling. Aborting.\n");
-    exit(1);
+    fprintf(stderr, "WARNING: SH_PROFILE_ONLINE requires at least one type of weight profiling.\n");
   }
 
   /* Look for the event that we're supposed to use for value. Error out if it's not found. */
   if(!profopts.should_profile_all) { 
-    fprintf(stderr, "SH_PROFILE_ONLINE requires SH_PROFILE_ALL. Aborting.\n");
-    exit(1);
+    fprintf(stderr, "WARNING: SH_PROFILE_ONLINE requires SH_PROFILE_ALL.\n");
   }
   found = 0;
   for(i = 0; i < profopts.num_profile_all_events; i++) {
