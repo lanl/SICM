@@ -150,11 +150,8 @@ void profile_all_skip_interval(int s) {
   size_t i, n;
 
   for(i = 0; i < profopts.num_profile_all_events; i++) {
-    for(n = 0; n <= tracker.max_index; n++) {
-      arena = tracker.arenas[n];
-      profinfo = prof.info[n];
-      per_event_profinfo = &(profinfo->profile_all.events[i]);
-      if((!arena) || (!profinfo) || (!profinfo->num_intervals)) continue;
+    arena_arr_for(i) {
+      arena_check_good(arena, profinfo, i);
 
       per_event_profinfo->intervals = (size_t *)orig_realloc(per_event_profinfo->intervals, profinfo->num_intervals * sizeof(size_t));
       if(profinfo->num_intervals == 1) {
@@ -189,9 +186,9 @@ void profile_all_interval(int s) {
 
     /* Loops over the arenas */
     total_samples = 0;
-    for(n = 0; n <= tracker.max_index; n++) {
-      profinfo = prof.info[n];
-      if(!profinfo) continue;
+    arena_arr_for(i) {
+      arena_check_good(arena, profinfo, i);
+
       profinfo->profile_all.tmp_accumulator = 0;
     }
 

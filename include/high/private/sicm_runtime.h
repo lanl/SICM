@@ -67,7 +67,7 @@ typedef struct tracker_struct {
   int num_numa_nodes;
   deviceptr lower_device, upper_device, default_device;
 
-  /* Stores arenas associated with a device,
+  /* Stores arena indices associated with a device,
    * for the per-device arena layouts only. */
   pthread_rwlock_t device_arenas_lock;
   tree(deviceptr, int) device_arenas;
@@ -80,12 +80,15 @@ typedef struct tracker_struct {
   pthread_rwlock_t sites_lock;
   tree(int, siteinfo_ptr) sites;
 
+  /* Arena layout */
+  enum arena_layout layout;
+  size_t big_small_threshold;
+
   /* Keeps track of arenas */
   arena_info **arenas;
-  enum arena_layout layout;
   int max_arenas, arenas_per_thread, max_sites_per_arena;
   int max_index;
-  size_t big_small_threshold;
+  pthread_mutex_t arena_lock;
 
   /* Incremented atomically to keep track of which arena indices are
    * taken or not */
@@ -98,8 +101,6 @@ typedef struct tracker_struct {
   tree(addr_t, alloc_info_ptr) profile_allocs_map;
   pthread_rwlock_t profile_allocs_map_lock;
 
-  /* Gets locked when we add an arena */
-  pthread_mutex_t arena_lock;
 
   /* Associates a thread with an index (starting at 0) into the `arenas` array */
   pthread_mutex_t thread_lock;
@@ -113,6 +114,15 @@ typedef struct tracker_struct {
   /* Ensures that nothing happens before initialization */
   char finished_initializing;
 } tracker_struct;
+
+#define arena_arr_for(i) \
+  for(i = 0; i < tracker.max_index; i++)
+
+#define arena_check_good(a, p, i) \
+  a = tracker.arenas[i]; \
+  p = prof.info[i]; \
+  if((!a) || (!p) || (!p->num_intervals)) continue;
+
 
 #define DEFAULT_ARENA_LAYOUT INVALID_LAYOUT
 

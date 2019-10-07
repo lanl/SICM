@@ -35,11 +35,8 @@ void profile_allocs_interval(int s) {
   size_t i;
 
   /* Iterate over the arenas and set their size to the tmp_accumulator */
-  for(i = 0; i <= tracker.max_index; i++) {
-    arena = tracker.arenas[i];
-    profinfo = prof.info[i];
-    if((!arena) || (!profinfo) || (!profinfo->num_intervals)) continue;
-
+  arena_arr_for(i) {
+    arena_check_good(arena, profinfo, i);
     profinfo->profile_allocs.tmp_accumulator = arena->size;
   }
 
@@ -71,5 +68,19 @@ void profile_allocs_post_interval(profile_info *info) {
 }
 
 void profile_allocs_skip_interval(int s) {
-  /* TODO */
+  arena_info *arena;
+  profile_info *profinfo;
+  size_t i;
+
+  arena_arr_for(i) {
+    arena_check_good(arena, profinfo, i);
+
+    if(arena->num_intervals == 1) {
+      profinfo->profile_allocs.tmp_accumulator = 0;
+    } else {
+      profinfo->profile_allocs.tmp_accumulator = profinfo->intervals[info->num_intervals - 2];
+    }
+  }
+
+  end_interval();
 }

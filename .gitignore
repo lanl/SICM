@@ -6,6 +6,8 @@
 *.la
 *.pyc
 
+.spack-env
+
 # Makefiles
 /Makefile.in
 /Makefile

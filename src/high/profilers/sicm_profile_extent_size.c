@@ -80,27 +80,15 @@ void profile_extent_size_skip_interval(int s) {
   arena_info *arena;
   size_t i;
 
-  pthread_rwlock_rdlock(&tracker.extents_lock);
-  
-  extent_arr_for(tracker.extents, i) {
-    arena = (arena_info *) tracker.extents->arr[i].arena;
-    if(!arena) continue;
-    profinfo = prof.info[arena->index];
-    if((!profinfo) || (!profinfo->num_intervals)) continue;
+  arena_arr_for(i) {
+    arena_check_good(arena, profinfo, i);
 
-    /* Store this interval */
-    profinfo->profile_extent_size.intervals = 
-      (size_t *)orig_realloc(profinfo->profile_extent_size.intervals, 
-                        profinfo->num_intervals * sizeof(size_t));
     if(profinfo->num_intervals == 1) {
-      profinfo->profile_extent_size.intervals[profinfo->num_intervals - 1] = 0;
+      profinfo->tmp_accumulator = 0;
     } else {
-      profinfo->profile_extent_size.intervals[profinfo->num_intervals - 1] = 
-        profinfo->profile_extent_size.intervals[profinfo->num_intervals - 2];
+      profinfo->tmp_accumulator = profinfo->intervals[profinfo->num_intervals - 2];
     }
   }
-
-  pthread_rwlock_unlock(&tracker.extents_lock);
 
   end_interval();
 }

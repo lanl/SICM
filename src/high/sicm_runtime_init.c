@@ -718,8 +718,9 @@ void sh_terminate() {
     }
 
     /* Clean up the arenas */
-    for(i = 0; i <= tracker.max_index; i++) {
-      if(!tracker.arenas[i]) continue;
+    arena_arr_for(i) {
+      arena_check_good(arena, profinfo, i);
+
       sicm_arena_destroy(tracker.arenas[i]->arena);
       orig_free(tracker.arenas[i]);
     }

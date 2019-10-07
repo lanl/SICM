@@ -110,12 +110,8 @@ void profile_master_interval(int s) {
   clock_gettime(CLOCK_MONOTONIC, &start);
 
   /* Increment the interval */
-  for(i = 0; i <= tracker.max_index; i++) {
-    profinfo = prof.info[i];
-    arena = tracker.arenas[i];
-
-    /* Make sure this arena is fully valid */
-    if(!arena || !profinfo) continue;
+  arena_arr_for(i) {
+    arena_check_good(arena, profinfo, i);
 
     if(profinfo->num_intervals == 0) {
       /* This is the arena's first interval, make note */
@@ -177,10 +173,8 @@ void profile_master_interval(int s) {
    * The profiling threads fill the value `tmp_accumulator`, and
    * this loop maintains the peak, total, and per-interval value.
    */
-  for(i = 0; i <= tracker.max_index; i++) {
-    profinfo = prof.info[i];
-
-    if(!profinfo || !(profinfo->num_intervals)) continue;
+  arena_arr_for(i) {
+    arena_check_good(arena, profinfo, i);
 
     if(profopts.should_profile_all) {
       profile_all_post_interval(profinfo);
@@ -440,10 +434,8 @@ void print_profiling() {
   arena_info *arena;
 
   printf("===== PROFILING INFORMATION =====\n");
-  for(i = 0; i <= tracker.max_index; i++) {
-    profinfo = prof.info[i];
-    arena = tracker.arenas[i];
-    if(!profinfo || !arena) continue;
+  arena_arr_for(i) {
+    arena_check_good(arena, profinfo, i);
 
     /* Print the sites that are in this arena */
     printf("%d sites: ", arena->num_alloc_sites);
