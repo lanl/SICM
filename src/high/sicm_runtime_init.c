@@ -707,7 +707,6 @@ __attribute__((destructor))
 void sh_terminate() {
   size_t i;
   arena_info *arena;
-  profile_info *profinfo;
 
   /* Clean up the low-level interface */
   sicm_fini(&tracker.device_list);
@@ -721,7 +720,7 @@ void sh_terminate() {
 
     /* Clean up the arenas */
     arena_arr_for(i) {
-      arena_check_good(arena, profinfo, i);
+      arena_check_good(arena, i);
 
       sicm_arena_destroy(tracker.arenas[i]->arena);
       orig_free(tracker.arenas[i]);
