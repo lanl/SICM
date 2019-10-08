@@ -128,8 +128,6 @@ void profile_online_interval(int s) {
       value = get_value(i, event_index);
       weight = get_weight(i);
 
-      fprintf(stderr, "SORTING: %zu %zu\n", value, weight);
-
       if(!weight) continue;
       if(!value) value = 1;
 
@@ -156,12 +154,10 @@ void profile_online_interval(int s) {
       weight = get_weight(tree_it_val(it));
 
       if(hot) {
-        fprintf("HOT: %zu / %zu\n", value, weight);
         hotset_value += value;
         hotset_weight += weight;
         tree_insert(hotset, tree_it_val(it), tracker.upper_device);
       } else {
-        fprintf("COLD: %zu / %zu\n", value, weight);
         coldset_value += value;
         coldset_weight += weight;
         tree_insert(coldset, tree_it_val(it), tracker.upper_device);

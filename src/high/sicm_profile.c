@@ -181,9 +181,6 @@ void profile_master_interval(int s) {
       fprintf(stderr, "Arena %d:\n", i);
     }
     prof_check_good(arena, profinfo, i);
-    if(i == tracker.track_arena) {
-      fprintf(stderr, "  Populated.\n");
-    }
 
     if(profopts.should_profile_all) {
       profile_all_post_interval(profinfo);
@@ -204,9 +201,13 @@ void profile_master_interval(int s) {
     if(i == tracker.track_arena) {
       if(profopts.should_profile_all) {
         for(n = 0; n < profopts.num_profile_all_events; n++) {
-          printf("  Event: %s\n", profopts.profile_all_events[n]);
-          printf("    %zu\n", profinfo->profile_all.events[n].intervals[profinfo->num_intervals - 1]);
+          fprintf(stderr, "  Event: %s\n", profopts.profile_all_events[n]);
+          fprintf(stderr, "    %zu\n", profinfo->profile_all.events[n].intervals[profinfo->num_intervals - 1]);
         }
+      }
+      if(profopts.should_profile_extent_size) {
+        fprintf(stderr, "  Extent size:\n");
+        fprintf(stderr, "    %zu\n", profinfo->profile_extent_size.intervals[profinfo->num_intervals - 1]);
       }
     }
   }
