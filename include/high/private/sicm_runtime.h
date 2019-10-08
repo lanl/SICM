@@ -118,10 +118,9 @@ typedef struct tracker_struct {
 #define arena_arr_for(i) \
   for(i = 0; i < tracker.max_index; i++)
 
-#define arena_check_good(a, p, i) \
+#define arena_check_good(a, i) \
   a = tracker.arenas[i]; \
-  p = prof.info[i]; \
-  if((!a) || (!p) || (!p->num_intervals)) continue;
+  if(!a) continue;
 
 
 #define DEFAULT_ARENA_LAYOUT INVALID_LAYOUT

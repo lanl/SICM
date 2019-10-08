@@ -79,3 +79,8 @@ void sh_stop_profile_master_thread();
 void end_interval();
 
 void *create_profile_arena(int);
+
+#define prof_check_good(a, p, i) \
+  a = tracker.arenas[i]; \
+  p = prof.info[i]; \
+  if((!a) || (!p) || (!p->num_intervals)) continue;

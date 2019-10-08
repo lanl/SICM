@@ -111,7 +111,7 @@ void profile_master_interval(int s) {
 
   /* Increment the interval */
   arena_arr_for(i) {
-    arena_check_good(arena, profinfo, i);
+    prof_check_good(arena, profinfo, i);
 
     if(profinfo->num_intervals == 0) {
       /* This is the arena's first interval, make note */
@@ -174,7 +174,7 @@ void profile_master_interval(int s) {
    * this loop maintains the peak, total, and per-interval value.
    */
   arena_arr_for(i) {
-    arena_check_good(arena, profinfo, i);
+    prof_check_good(arena, profinfo, i);
 
     if(profopts.should_profile_all) {
       profile_all_post_interval(profinfo);
@@ -435,7 +435,7 @@ void print_profiling() {
 
   printf("===== PROFILING INFORMATION =====\n");
   arena_arr_for(i) {
-    arena_check_good(arena, profinfo, i);
+    prof_check_good(arena, profinfo, i);
 
     /* Print the sites that are in this arena */
     printf("%d sites: ", arena->num_alloc_sites);

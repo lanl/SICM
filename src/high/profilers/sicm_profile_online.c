@@ -52,7 +52,7 @@ size_t get_value(size_t index, size_t event_index) {
   per_event_profile_all_info *per_event_profinfo;
   size_t value;
 
-  arena_check_good(arena, profinfo, index);
+  prof_check_good(arena, profinfo, index);
   per_event_profinfo = &(profinfo->profile_all.events[event_index]);
 
   return per_event_profinfo->total;
@@ -64,7 +64,7 @@ size_t get_weight(size_t index) {
   profile_info *profinfo;
   size_t weight;
 
-  arena_check_good(arena, profinfo, index);
+  prof_check_good(arena, profinfo, index);
 
   /* TODO: Speed this up by setting something up (perhaps an offset into profinfo)
    * in `profile_online_init`.
@@ -116,7 +116,7 @@ void profile_online_interval(int s) {
     /* Sort arenas by value/weight in the `sorted_arenas` tree */
     sorted_arenas = tree_make_c(valweightptr, size_t, &value_per_weight_cmp);
     arena_arr_for(i) {
-      arena_check_good(arena, profinfo, i);
+      prof_check_good(arena, profinfo, i);
 
       value = get_value(i, event_index);
       weight = get_weight(i);

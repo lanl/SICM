@@ -81,7 +81,7 @@ void profile_extent_size_skip_interval(int s) {
   size_t i;
 
   arena_arr_for(i) {
-    arena_check_good(arena, profinfo, i);
+    prof_check_good(arena, profinfo, i);
 
     if(profinfo->num_intervals == 1) {
       profinfo->tmp_accumulator = 0;

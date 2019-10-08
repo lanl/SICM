@@ -36,7 +36,7 @@ void profile_allocs_interval(int s) {
 
   /* Iterate over the arenas and set their size to the tmp_accumulator */
   arena_arr_for(i) {
-    arena_check_good(arena, profinfo, i);
+    prof_check_good(arena, profinfo, i);
     profinfo->profile_allocs.tmp_accumulator = arena->size;
   }
 
@@ -73,7 +73,7 @@ void profile_allocs_skip_interval(int s) {
   size_t i;
 
   arena_arr_for(i) {
-    arena_check_good(arena, profinfo, i);
+    prof_check_good(arena, profinfo, i);
 
     if(arena->num_intervals == 1) {
       profinfo->profile_allocs.tmp_accumulator = 0;

@@ -706,6 +706,8 @@ void sh_init() {
 __attribute__((destructor))
 void sh_terminate() {
   size_t i;
+  arena_info *arena;
+  profile_info *profinfo;
 
   /* Clean up the low-level interface */
   sicm_fini(&tracker.device_list);
