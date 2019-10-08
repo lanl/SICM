@@ -147,13 +147,18 @@ void profile_online_interval(int s) {
     coldset = tree_make(size_t, deviceptr);
     it = tree_last(sorted_arenas);
     while(tree_it_good(it)) {
+      value = get_value(tree_it_val(it), event_index);
+      weight = get_weight(tree_it_val(it));
+
       if(hot) {
-        hotset_value += get_value(tree_it_val(it), event_index);
-        hotset_weight += get_weight(tree_it_val(it));
+        fprintf("HOT: %zu / %zu\n", value, weight);
+        hotset_value += value;
+        hotset_weight += weight;
         tree_insert(hotset, tree_it_val(it), tracker.upper_device);
       } else {
-        coldset_value += get_value(tree_it_val(it), event_index);
-        coldset_weight += get_weight(tree_it_val(it));
+        fprintf("COLD: %zu / %zu\n", value, weight);
+        coldset_value += value;
+        coldset_weight += weight;
         tree_insert(coldset, tree_it_val(it), tracker.upper_device);
       }
       if(cold_next_site) {
