@@ -116,6 +116,7 @@ void profile_online_interval(int s) {
 
   if(lower_avail < prof.profile_online.lower_avail_initial) {
     /* The lower tier is now being used, so we need to reconfigure. */
+    fprintf(stderr, "The upper tier is now contested. Using online approach.\n");
 
     /* Sort arenas by value/weight in the `sorted_arenas` tree */
     sorted_arenas = tree_make_c(valweightptr, size_t, &value_per_weight_cmp);
@@ -182,7 +183,7 @@ void profile_online_interval(int s) {
           /* The arena is in the current coldset, but not the previous one.
            * Bind its pages to the lower device.
            */
-          printf("Arena %d -> AEP\n", tree_it_key(hit));
+          fprintf(stderr, "Arena %d -> AEP\n", tree_it_key(hit));
           sicm_arena_set_devices(tracker.arenas[tree_it_key(hit)]->arena, /* The arena */
                                  prof.profile_online.lower_dl);           /* The device list */
         }
@@ -195,7 +196,7 @@ void profile_online_interval(int s) {
           /* The arena is in the current hotset, but not the previous one.
            * Bind its pages to the upper device.
            */
-          printf("Arena %d -> DDR\n", tree_it_key(hit));
+          fprintf(stderr, "Arena %d -> DDR\n", tree_it_key(hit));
           sicm_arena_set_devices(tracker.arenas[tree_it_key(hit)]->arena, /* The arena */
                                  prof.profile_online.upper_dl);           /* The device list */
         }
