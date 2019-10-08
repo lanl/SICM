@@ -120,7 +120,6 @@ void profile_online_interval(int s) {
 
   if(lower_avail < prof.profile_online.lower_avail_initial) {
     /* The lower tier is now being used, so we need to reconfigure. */
-    fprintf(stderr, "The upper tier is now contested. Using online approach.\n");
 
     /* Sort arenas by value/weight in the `sorted_arenas` tree */
     sorted_arenas = tree_make_c(valweightptr, size_t, &value_per_weight_cmp);
@@ -129,6 +128,9 @@ void profile_online_interval(int s) {
 
       value = get_value(i, event_index);
       weight = get_weight(i);
+
+      fprintf(stderr, "SORTING: %zu %zu\n", value, weight);
+
       if(!weight) continue;
       if(!value) value = 1;
 
