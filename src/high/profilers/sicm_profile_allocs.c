@@ -75,10 +75,10 @@ void profile_allocs_skip_interval(int s) {
   arena_arr_for(i) {
     prof_check_good(arena, profinfo, i);
 
-    if(arena->num_intervals == 1) {
+    if(profinfo->num_intervals == 1) {
       profinfo->profile_allocs.tmp_accumulator = 0;
     } else {
-      profinfo->profile_allocs.tmp_accumulator = profinfo->intervals[info->num_intervals - 2];
+      profinfo->profile_allocs.tmp_accumulator = profinfo->profile_allocs.intervals[profinfo->num_intervals - 2];
     }
   }
 
