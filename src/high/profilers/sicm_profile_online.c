@@ -94,6 +94,7 @@ void profile_online_interval(int s) {
          value, weight,
          event_index;
   arena_info *arena;
+  profile_info *profinfo;
 
   /* Sorted sites */
   tree(valweightptr, size_t) sorted_arenas;
