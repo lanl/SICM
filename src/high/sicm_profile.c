@@ -173,10 +173,12 @@ void profile_master_interval(int s) {
    * The profiling threads fill the value `tmp_accumulator`, and
    * this loop maintains the peak, total, and per-interval value.
    */
-  fprintf(stderr, "=====");
+  fprintf(stderr, "=====\n");
   arena_arr_for(i) {
     if(i == tracker.track_arena) {
-      fprintf(stderr, "Arena %d:\n", i);
+      fprintf(stderr, "\nArena %d:\n", i);
+    } else {
+      fprintf(stderr, "%d ", i);
     }
     prof_check_good(arena, profinfo, i);
 
@@ -205,7 +207,7 @@ void profile_master_interval(int s) {
       }
     }
   }
-  fprintf(stderr, "=====");
+  fprintf(stderr, "=====\n");
 
   /* Finished handling this interval. Wait for another. */
   prof.cur_interval++;
