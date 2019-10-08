@@ -176,11 +176,12 @@ void profile_master_interval(int s) {
   fprintf(stderr, "=====\n");
   arena_arr_for(i) {
     if(i == tracker.track_arena) {
-      fprintf(stderr, "\nArena %d:\n", i);
-    } else {
-      fprintf(stderr, "%d ", i);
+      fprintf(stderr, "Arena %d:\n", i);
     }
     prof_check_good(arena, profinfo, i);
+    if(i == tracker.track_arena) {
+      fprintf(stderr, "  Populated.\n");
+    }
 
     if(profopts.should_profile_all) {
       profile_all_post_interval(profinfo);
