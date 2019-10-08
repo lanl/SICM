@@ -175,7 +175,6 @@ void profile_master_interval(int s) {
    * The profiling threads fill the value `tmp_accumulator`, and
    * this loop maintains the peak, total, and per-interval value.
    */
-  fprintf(stderr, "=====\n");
   arena_arr_for(i) {
     prof_check_good(arena, profinfo, i);
 
@@ -197,8 +196,10 @@ void profile_master_interval(int s) {
 
     /* Check if this arena contains the site that we're tracking,
      * print out some profiling information if so */
+    fprintf(stderr, "=====\n");
     for(n = 0; n < arena->num_alloc_sites; n++) {
       if(arena->alloc_sites[n] == tracker.track_site) {
+        fprintf(stderr, "Site %d\n", tracker.track_site);
         if(profopts.should_profile_all) {
           for(x = 0; x < profopts.num_profile_all_events; x++) {
             fprintf(stderr, "  Event: %s\n", profopts.profile_all_events[x]);
@@ -209,11 +210,15 @@ void profile_master_interval(int s) {
           fprintf(stderr, "  Extent size:\n");
           fprintf(stderr, "    %zu\n", profinfo->profile_extent_size.intervals[profinfo->num_intervals - 1]);
         }
+        if(profopts.should_profile_allocs) {
+          fprintf(stderr, "  Allocations size:\n");
+          fprintf(stderr, "    %zu\n", profinfo->profile_allocs.intervals[profinfo->num_intervals - 1]);
+        }
         break;
       }
     }
+    fprintf(stderr, "=====\n");
   }
-  fprintf(stderr, "=====\n");
 
   /* Finished handling this interval. Wait for another. */
   prof.cur_interval++;
