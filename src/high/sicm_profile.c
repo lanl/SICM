@@ -96,7 +96,7 @@ void end_interval() {
  */
 void profile_master_interval(int s) {
 	struct timespec start, end, target, actual;
-  size_t i;
+  size_t i, n;
   char copy;
 
   /* Convenience pointers */
@@ -173,7 +173,11 @@ void profile_master_interval(int s) {
    * The profiling threads fill the value `tmp_accumulator`, and
    * this loop maintains the peak, total, and per-interval value.
    */
+  fprintf(stderr, "=====");
   arena_arr_for(i) {
+    if(i == tracker.track_arena) {
+      fprintf(stderr, "Arena %d:\n", i);
+    }
     prof_check_good(arena, profinfo, i);
 
     if(profopts.should_profile_all) {
@@ -191,7 +195,17 @@ void profile_master_interval(int s) {
     if(profopts.should_profile_online) {
       profile_online_post_interval(profinfo);
     }
+
+    if(i == tracker.track_arena) {
+      if(profopts.should_profile_all) {
+        for(n = 0; n < profopts.num_profile_all_events; n++) {
+          printf("  Event: %s\n", profopts.profile_all_events[n]);
+          printf("    %zu\n", profinfo->profile_all.events[n].intervals[profinfo->num_intervals - 1]);
+        }
+      }
+    }
   }
+  fprintf(stderr, "=====");
 
   /* Finished handling this interval. Wait for another. */
   prof.cur_interval++;

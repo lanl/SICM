@@ -89,6 +89,7 @@ typedef struct tracker_struct {
   int max_arenas, arenas_per_thread, max_sites_per_arena;
   int max_index;
   pthread_mutex_t arena_lock;
+  int track_arena;
 
   /* Incremented atomically to keep track of which arena indices are
    * taken or not */

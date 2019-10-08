@@ -154,6 +154,12 @@ void set_options() {
     }
   }
 
+  env = getenv("SH_TRACK_ARENA");
+  tracker.track_arena = 0;
+  if(env) {
+    tracker.track_arena = strtol(env, NULL, 0);
+  }
+
   /* Get the arena layout */
   env = getenv("SH_ARENA_LAYOUT");
   if(env) {
