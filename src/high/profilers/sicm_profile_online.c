@@ -52,13 +52,8 @@ size_t get_value(size_t index, size_t event_index) {
   per_event_profile_all_info *per_event_profinfo;
   size_t value;
 
-  /* Get the profiling information */
-  arena = tracker.arenas[index];
-  profinfo = prof.info[index];
+  arena_check_good(arena, profinfo, index);
   per_event_profinfo = &(profinfo->profile_all.events[event_index]);
-  if((!arena) || (!profinfo) || (!profinfo->num_intervals)) {
-    return 0;
-  }
 
   return per_event_profinfo->total;
 }
@@ -69,22 +64,17 @@ size_t get_weight(size_t index) {
   profile_info *profinfo;
   size_t weight;
 
-  /* Get the profiling information */
-  arena = tracker.arenas[index];
-  profinfo = prof.info[index];
-  if((!arena) || (!profinfo) || (!profinfo->num_intervals)) {
-    return 0;
-  }
-  
+  arena_check_good(arena, profinfo, index);
+
   /* TODO: Speed this up by setting something up (perhaps an offset into profinfo)
    * in `profile_online_init`.
    */
   if(profopts.should_profile_allocs) {
-    return profinfo->profile_allocs.peak / 1024;
+    return profinfo->profile_allocs.intervals[profinfo->num_intervals - 1] / 1024;
   } else if(profopts.should_profile_extent_size) {
-    return profinfo->profile_extent_size.peak/ 1024;
+    return profinfo->profile_extent_size.intervals[profinfo->num_intervals - 1] / 1024;
   } else if(profopts.should_profile_rss) {
-    return profinfo->profile_rss.peak / 1024;
+    return profinfo->profile_rss.intervals[profinfo->num_intervals - 1] / 1024;
   }
 }
 
