@@ -111,7 +111,9 @@ void profile_master_interval(int s) {
 
   /* Increment the interval */
   arena_arr_for(i) {
-    prof_check_good(arena, profinfo, i);
+    arena_check_good(arena, i);
+    profinfo = prof.info[i];
+    if(!profinfo) continue;
 
     if(profinfo->num_intervals == 0) {
       /* This is the arena's first interval, make note */
