@@ -96,7 +96,7 @@ void end_interval() {
  */
 void profile_master_interval(int s) {
 	struct timespec start, end, target, actual;
-  size_t i, n;
+  size_t i, n, x;
   char copy;
 
   /* Convenience pointers */
@@ -177,9 +177,6 @@ void profile_master_interval(int s) {
    */
   fprintf(stderr, "=====\n");
   arena_arr_for(i) {
-    if(i == tracker.track_arena) {
-      fprintf(stderr, "Arena %d:\n", i);
-    }
     prof_check_good(arena, profinfo, i);
 
     if(profopts.should_profile_all) {
@@ -198,16 +195,21 @@ void profile_master_interval(int s) {
       profile_online_post_interval(profinfo);
     }
 
-    if(i == tracker.track_arena) {
-      if(profopts.should_profile_all) {
-        for(n = 0; n < profopts.num_profile_all_events; n++) {
-          fprintf(stderr, "  Event: %s\n", profopts.profile_all_events[n]);
-          fprintf(stderr, "    %zu\n", profinfo->profile_all.events[n].intervals[profinfo->num_intervals - 1]);
+    /* Check if this arena contains the site that we're tracking,
+     * print out some profiling information if so */
+    for(n = 0; n < arena->num_alloc_sites; n++) {
+      if(arena->alloc_sites[n] == tracker.track_site) {
+        if(profopts.should_profile_all) {
+          for(x = 0; x < profopts.num_profile_all_events; x++) {
+            fprintf(stderr, "  Event: %s\n", profopts.profile_all_events[x]);
+            fprintf(stderr, "    %zu\n", profinfo->profile_all.events[x].intervals[profinfo->num_intervals - 1]);
+          }
         }
-      }
-      if(profopts.should_profile_extent_size) {
-        fprintf(stderr, "  Extent size:\n");
-        fprintf(stderr, "    %zu\n", profinfo->profile_extent_size.intervals[profinfo->num_intervals - 1]);
+        if(profopts.should_profile_extent_size) {
+          fprintf(stderr, "  Extent size:\n");
+          fprintf(stderr, "    %zu\n", profinfo->profile_extent_size.intervals[profinfo->num_intervals - 1]);
+        }
+        break;
       }
     }
   }
