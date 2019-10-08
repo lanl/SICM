@@ -186,8 +186,8 @@ void profile_all_interval(int s) {
 
     /* Loops over the arenas */
     total_samples = 0;
-    arena_arr_for(i) {
-      prof_check_good(arena, profinfo, i);
+    arena_arr_for(n) {
+      prof_check_good(arena, profinfo, n);
 
       profinfo->profile_all.tmp_accumulator = 0;
     }
