@@ -148,16 +148,16 @@ void profile_online_interval(int s) {
     cold_next_site = 0;
     hotset = tree_make(size_t, deviceptr);
     coldset = tree_make(size_t, deviceptr);
-    it = tree_last(sorted_arenas);
-    while(tree_it_good(it)) {
+    it = tree_first(sorted_arenas);
+    tree_traverse(sorted_arenas, it) {
       value = get_value(tree_it_val(it), event_index);
       weight = get_weight(tree_it_val(it));
 
+      fprintf(stderr, "(%zu, %zu); ", value, weight);
       if(hot) {
         hotset_value += value;
         hotset_weight += weight;
         tree_insert(hotset, tree_it_val(it), tracker.upper_device);
-        fprintf(stderr, "(%zu, %zu); ", value, weight);
       } else {
         coldset_value += value;
         coldset_weight += weight;
@@ -170,7 +170,6 @@ void profile_online_interval(int s) {
       if(hotset_weight > prof.profile_online.upper_avail_initial) {
         cold_next_site = 1;
       }
-      tree_it_prev(it);
     }
 
     fprintf(stderr, "\n");
