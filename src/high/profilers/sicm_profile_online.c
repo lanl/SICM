@@ -157,6 +157,7 @@ void profile_online_interval(int s) {
         hotset_value += value;
         hotset_weight += weight;
         tree_insert(hotset, tree_it_val(it), tracker.upper_device);
+        fprintf(stderr, "(%zu, %zu); ", value, weight);
       } else {
         coldset_value += value;
         coldset_weight += weight;
@@ -171,6 +172,10 @@ void profile_online_interval(int s) {
       }
       tree_it_prev(it);
     }
+
+    fprintf(stderr, "\n");
+    fprintf(stderr, "Hotset (%zu, %zu).\n", hotset_value, hotset_weight);
+    fprintf(stderr, "Coldset (%zu, %zu).\n", coldset_value, coldset_weight);
 
     /* If this is the first interval, just make the previous sets
      * empty */
