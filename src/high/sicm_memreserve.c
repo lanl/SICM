@@ -69,7 +69,6 @@ int main(int argc, char **argv)
   num_pages = amount;
 	size = num_pages * pagesize;
 	
-#if 0
 	/* Allocate the data and fill it with garbage */
 	/* Uses numa to bind all of this process' memory to the node.
 	 * Also uses bind, not preferred.
@@ -82,10 +81,6 @@ int main(int argc, char **argv)
 	}
 	numa_set_bind_policy(strict);
 	data = numa_alloc_onnode(size, node);
-#endif
-  printf("Allocating %zu bytes.\n", size);
-  fflush(stdout);
-  data = malloc(size);
 
 	/* Allocate the array of threads and arguments */
 	threads = malloc(sizeof(pthread_t) * num_threads);

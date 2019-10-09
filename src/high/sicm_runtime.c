@@ -508,10 +508,11 @@ void* sh_aligned_alloc(int id, size_t alignment, size_t sz) {
     ret = je_aligned_alloc(alignment, sz);
   } else {
     index = get_arena_index(id, sz);
-    if(profopts.should_profile_allocs) {
-      tracker.arenas[index]->size += sz;
-    }
     ret = sicm_arena_alloc_aligned(tracker.arenas[index]->arena, sz, alignment);
+
+    if(profopts.should_profile_allocs) {
+      profile_allocs_alloc(ret, sz, index);
+    }
   }
 
   if (profopts.should_run_rdspy) {
