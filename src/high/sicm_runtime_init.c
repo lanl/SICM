@@ -159,6 +159,9 @@ void set_options() {
   if(env) {
     tracker.track_site = strtol(env, NULL, 0);
   }
+  if(tracker.log_file) {
+    fprintf(tracker.log_file, "SH_TRACK_SITE: %d\n", tracker.track_site);
+  }
 
   /* Get the arena layout */
   env = getenv("SH_ARENA_LAYOUT");

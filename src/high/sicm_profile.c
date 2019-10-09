@@ -196,9 +196,9 @@ void profile_master_interval(int s) {
 
     /* Check if this arena contains the site that we're tracking,
      * print out some profiling information if so */
-    fprintf(stderr, "=====\n");
     for(n = 0; n < arena->num_alloc_sites; n++) {
       if(arena->alloc_sites[n] == tracker.track_site) {
+        fprintf(stderr, "=====\n");
         fprintf(stderr, "Site %d\n", tracker.track_site);
         if(profopts.should_profile_all) {
           for(x = 0; x < profopts.num_profile_all_events; x++) {
@@ -214,10 +214,10 @@ void profile_master_interval(int s) {
           fprintf(stderr, "  Allocations size:\n");
           fprintf(stderr, "    %zu\n", profinfo->profile_allocs.intervals[profinfo->num_intervals - 1]);
         }
+        fprintf(stderr, "=====\n");
         break;
       }
     }
-    fprintf(stderr, "=====\n");
   }
 
   /* Finished handling this interval. Wait for another. */
