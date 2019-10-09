@@ -291,4 +291,5 @@ void profile_online_post_interval(profile_info *info) {
 }
 
 void profile_online_skip_interval(int s) {
+  end_interval();
 }
