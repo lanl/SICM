@@ -28,7 +28,7 @@ void free(void *ptr) {
 }
 
 int posix_memalign(void **ptr, size_t alignment, size_t size) {
-  return sh_posix_memalign(0, ptr, alignment, sz);
+  return sh_posix_memalign(0, ptr, alignment, size);
 }
 
 void * aligned_alloc(size_t alignment, size_t size) {
