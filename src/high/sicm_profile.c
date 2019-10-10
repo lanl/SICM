@@ -535,6 +535,8 @@ void sh_stop_profile_master_thread() {
   pthread_kill(prof.master_id, prof.stop_signal);
   pthread_join(prof.master_id, NULL);
 
-  print_profiling();
+  if(!profopts.should_profile_online) {
+    print_profiling();
+  }
   deinitialize_profiling();
 }
