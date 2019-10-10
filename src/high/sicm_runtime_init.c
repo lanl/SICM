@@ -1,3 +1,5 @@
+/* Required for dlsym */
+#include <dlfcn.h>
 #include "sicm_runtime.h"
 
 /* Options for profiling */

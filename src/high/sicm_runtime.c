@@ -11,10 +11,6 @@
 #include <inttypes.h>
 #include <pthread.h>
 #include <jemalloc/jemalloc.h>
-
-/* Required for dlsym */
-#include <dlfcn.h>
-
 #include "sicm_runtime.h"
 #include "sicm_rdspy.h"
 
