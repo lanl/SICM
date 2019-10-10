@@ -1,4 +1,5 @@
 /* Required for dlsym */
+#define _GNU_SOURCE
 #include <dlfcn.h>
 #include "sicm_runtime.h"
 
