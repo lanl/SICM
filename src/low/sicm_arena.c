@@ -79,7 +79,6 @@ static sarena *sicm_arena_new(size_t sz, sicm_arena_flags flags, sicm_device_lis
 	nodemask = sicm_device_list_check_numa(devs);
 	if (nodemask == NULL)
 		return NULL;
-
 	
 	sa = malloc(sizeof(sarena));
 	if (sa == NULL) {
@@ -161,6 +160,8 @@ void sicm_arena_destroy(sicm_arena arena) {
 
 	if (sa == NULL)
 		return;
+  if (sa->mutex == NULL)
+    return;
 
   pthread_mutex_lock(sa->mutex);
   pthread_mutex_unlock(sa->mutex);

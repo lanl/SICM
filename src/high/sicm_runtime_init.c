@@ -745,4 +745,5 @@ void sh_terminate() {
     sh_rdspy_terminate();
   }
 
+  sh_initialized = 0;
 }
