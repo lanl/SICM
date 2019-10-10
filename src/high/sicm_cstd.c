@@ -27,22 +27,16 @@ void free(void *ptr) {
   sh_free(ptr);
 }
 
-/* I'm commenting these out because external libraries (such as libpfm4) will
- * use these function to allocate memory, then use `libc`'s `free` to free up the
- * memory allocated with them, resulting in an invalid pointer (since the pointer
- * was allocated with jemalloc and freed with `libc`).
- */
-#if 0
-/* Never inline these */
-#undef strdup
-char *strdup(const char *str1) __attribute__((used)) __attribute__((noinline));
-
-/* Call sh_alloc from all of these */
-char *strdup(const char *str1) {
-  char *buf = sh_alloc(0, strlen(str1) + 1);
-  strcpy(buf, str1);
-  return buf;
+external int posix_memalign(void **ptr, size_t alignment, size_t size) {
+  return sh_posix_memalign(0, ptr, alignment, sz);
 }
-#endif
+
+external void * aligned_alloc(size_t alignment, size_t size) {
+  return sh_aligned_alloc(0, alignment, size);
+}
+
+external void * memalign(size_t alignment, size_t size) {
+  return sh_memalign(0, alignment, size);
+}
 
 #endif
