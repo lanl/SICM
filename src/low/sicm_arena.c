@@ -292,6 +292,7 @@ int sicm_arena_set_devices(sicm_arena a, sicm_device_list *devs) {
 		}
 		// TODO: not sure what to do if moving back fails
 		numa_free_nodemask(nodemask);
+    pthread_mutex_unlock(sa->mutex);
 		return sa->err;
 	} else {
 		sa->devs.count = devs->count;
