@@ -27,15 +27,15 @@ void free(void *ptr) {
   sh_free(ptr);
 }
 
-external int posix_memalign(void **ptr, size_t alignment, size_t size) {
+int posix_memalign(void **ptr, size_t alignment, size_t size) {
   return sh_posix_memalign(0, ptr, alignment, sz);
 }
 
-external void * aligned_alloc(size_t alignment, size_t size) {
+void * aligned_alloc(size_t alignment, size_t size) {
   return sh_aligned_alloc(0, alignment, size);
 }
 
-external void * memalign(size_t alignment, size_t size) {
+void * memalign(size_t alignment, size_t size) {
   return sh_memalign(0, alignment, size);
 }
 
