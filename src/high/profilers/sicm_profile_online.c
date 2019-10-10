@@ -152,7 +152,6 @@ void profile_online_interval(int s) {
       value = get_value(tree_it_val(it), event_index);
       weight = get_weight(tree_it_val(it));
 
-      fprintf(stderr, "(%zu, %zu); ", value, weight);
       if(hot) {
         hotset_value += value;
         hotset_weight += weight;
@@ -171,10 +170,6 @@ void profile_online_interval(int s) {
       }
     }
 
-    fprintf(stderr, "\n");
-    fprintf(stderr, "Hotset (%zu, %zu).\n", hotset_value, hotset_weight);
-    fprintf(stderr, "Coldset (%zu, %zu).\n", coldset_value, coldset_weight);
-
     /* If this is the first interval, just make the previous sets
      * empty */
     if(!prof.profile_online.prev_coldset) {
@@ -192,7 +187,6 @@ void profile_online_interval(int s) {
           /* The arena is in the current coldset, but not the previous one.
            * Bind its pages to the lower device.
            */
-          fprintf(stderr, "Arena %d -> AEP\n", tree_it_key(hit));
           sicm_arena_set_devices(tracker.arenas[tree_it_key(hit)]->arena, /* The arena */
                                  prof.profile_online.lower_dl);           /* The device list */
         }
@@ -205,7 +199,6 @@ void profile_online_interval(int s) {
           /* The arena is in the current hotset, but not the previous one.
            * Bind its pages to the upper device.
            */
-          fprintf(stderr, "Arena %d -> DDR\n", tree_it_key(hit));
           sicm_arena_set_devices(tracker.arenas[tree_it_key(hit)]->arena, /* The arena */
                                  prof.profile_online.upper_dl);           /* The device list */
         }
