@@ -633,6 +633,11 @@ void sh_init() {
     return;
   }
 
+  orig_malloc_ptr = dlsym(RTLD_NEXT, "malloc");
+  orig_calloc_ptr = dlsym(RTLD_NEXT, "calloc");
+  orig_realloc_ptr = dlsym(RTLD_NEXT, "realloc");
+  orig_free_ptr = dlsym(RTLD_NEXT, "free");
+
   tracker.device_list = sicm_init();
 
   /* Initialize all of the locks */

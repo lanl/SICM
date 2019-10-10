@@ -9,6 +9,10 @@
 #include "sicm_tree.h"
 
 extern char sh_initialized;
+extern void *(*orig_malloc_ptr)(size_t);
+extern void *(*orig_calloc_ptr)(size_t, size_t);
+extern void *(*orig_realloc_ptr)(void *, size_t);
+extern void (*orig_free_ptr)(void *);
 
 enum arena_layout {
   SHARED_ONE_ARENA, /* One arena between all threads */
