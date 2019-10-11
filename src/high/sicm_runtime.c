@@ -365,6 +365,9 @@ void sh_create_arena(int index, int id, sicm_device *device) {
   }
 
   /* Create the arena if it doesn't exist */
+  if(index == 0) {
+    fprintf(stderr, "Calling orig_calloc: %p\n", orig_calloc_ptr);
+  }
   arena = orig_calloc(1, sizeof(arena_info));
   arena->index = index;
   arena->alloc_sites = orig_malloc(sizeof(int) * tracker.max_sites_per_arena);
@@ -382,6 +385,10 @@ void sh_create_arena(int index, int id, sicm_device *device) {
   dl.devices[0] = device;
   arena->arena = sicm_arena_create(0, SICM_ALLOC_RELAXED, &dl);
   orig_free(dl.devices);
+
+  if(index == 0) {
+    printf("Constructed arena at index 0: %p %p\n", arena, arena->arena);
+  }
 
   /* Now add the arena to the array of arenas */
   tracker.arenas[index] = arena;
