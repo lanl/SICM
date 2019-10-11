@@ -443,7 +443,12 @@ void* sh_realloc(int id, void *ptr, size_t sz) {
   void *ret;
   alloc_info_ptr aip;
 
-  if((tracker.layout == INVALID_LAYOUT) || (id == 0) || (!sh_initialized)) {
+  if(!sh_initialized) {
+    fprintf(stderr, "Got a premature realloc with id %d for %zu bytes.\n", id, sz);
+    exit(1);
+  }
+
+  if((tracker.layout == INVALID_LAYOUT) || (id == 0)) {
     ret = je_realloc(ptr, sz);
   } else {
     index = get_arena_index(id, sz);
@@ -466,7 +471,12 @@ void* sh_alloc(int id, size_t sz) {
   void *ret;
   alloc_info_ptr aip;
 
-  if((tracker.layout == INVALID_LAYOUT) || !sz || (id == 0) || (!sh_initialized)) {
+  if(!sh_initialized) {
+    fprintf(stderr, "Got a premature alloc with id %d for %zu bytes.\n", id, sz);
+    exit(1);
+  }
+
+  if((tracker.layout == INVALID_LAYOUT) || !sz || (id == 0)) {
     ret = je_malloc(sz);
   } else {
     index = get_arena_index(id, sz);
@@ -489,7 +499,8 @@ void* sh_aligned_alloc(int id, size_t alignment, size_t sz) {
   void *ret;
 
   if(!sh_initialized) {
-    return je_aligned_alloc(alignment, sz);
+    fprintf(stderr, "Got a premature aligned_alloc with id %d for %zu bytes.\n", id, sz);
+    exit(1);
   }
 
   if(!sz) {
@@ -527,6 +538,11 @@ void* sh_calloc(int id, size_t num, size_t sz) {
   void *ptr;
   size_t i;
 
+  if(!sh_initialized) {
+    fprintf(stderr, "Got a premature calloc with id %d for %zu bytes.\n", id, sz);
+    exit(1);
+  }
+
   ptr = sh_alloc(id, num * sz);
   memset(ptr, 0, num * sz);
   return ptr;
@@ -538,8 +554,8 @@ void sh_free(void* ptr) {
   }
 
   if(!sh_initialized) {
-    je_free(ptr);
-    return;
+    fprintf(stderr, "Got a premature free with id %d for %zu bytes.\n", id, sz);
+    exit(1);
   }
 
   if(profopts.should_run_rdspy) {
