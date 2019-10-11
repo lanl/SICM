@@ -71,16 +71,16 @@ char prefree(void *ptr) {
  *  after the malloc wrappers have been defined.
  */
 void *__attribute__ ((noinline)) orig_malloc(size_t size) {
-  return (*orig_malloc_ptr)(size);
+  return je_malloc(size);
 }
 void *__attribute__ ((noinline)) orig_calloc(size_t num, size_t size) {
-  return (*orig_calloc_ptr)(num, size);
+  return je_calloc(num, size);
 }
 void *__attribute__ ((noinline)) orig_realloc(void *ptr, size_t size) {
-  return (*orig_realloc_ptr)(ptr, size);
+  return je_realloc(ptr, size);
 }
 void __attribute__ ((noinline)) orig_free(void *ptr) {
-  (*orig_free_ptr)(ptr);
+  je_free(ptr);
   return;
 }
 
