@@ -479,7 +479,6 @@ void* sh_alloc(int id, size_t sz) {
   if(!sh_initialized) {
     fprintf(stderr, "Got a premature alloc with id %d for %zu bytes.\n", id, sz);
 		nptrs = backtrace(buffer, 100);
-		printf("backtrace() returned %d addresses\n", nptrs);
 
 		/* The call backtrace_symbols_fd(buffer, nptrs, STDOUT_FILENO)
 			would produce similar output to the following: */
@@ -490,8 +489,11 @@ void* sh_alloc(int id, size_t sz) {
 			 exit(EXIT_FAILURE);
 		}
 
-		for (j = 0; j < nptrs; j++)
-			 printf("%s\n", strings[j]);
+		for (j = 0; j < nptrs; j++) {
+			 fprintf(stderr, "%s\n", strings[j]);
+       fflush(stderr);
+    }
+
     exit(1);
   }
 
