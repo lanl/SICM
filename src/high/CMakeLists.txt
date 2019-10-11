@@ -10,7 +10,7 @@ add_library(sicm_runtime SHARED
             profilers/sicm_profile_online.c
             profilers/sicm_profile_one.c)
 add_library(sicm_overrides SHARED 
-            sicm_cstd.c)
+            sicm_overrides.c)
 add_library(sicm_compass SHARED sicm_compass.cpp)
 add_library(sicm_rdspy SHARED sicm_rdspy.cpp)
 add_executable(sicm_memreserve sicm_memreserve.c)

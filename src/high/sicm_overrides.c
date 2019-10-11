@@ -3,7 +3,14 @@
 
 #include <stdlib.h> /* For exit() */
 #include <string.h>
-#include "sicm_runtime.h" /* For sh_initialized */
+
+void* sh_alloc(int id, size_t sz);
+void* sh_aligned_alloc(int id, size_t alignment, size_t sz);
+void* sh_memalign(int id, size_t alignment, size_t sz);
+int sh_posix_memalign(int id, void **ptr, size_t alignment, size_t sz);
+void* sh_calloc(int id, size_t num, size_t sz);
+void* sh_realloc(int id, void *ptr, size_t sz);
+void sh_free(void* ptr);
 
 /* Just define `malloc`, `calloc`, `realloc`, and `free`. We want
  * all allocations to come through us no matter what, else we'll have edge cases
