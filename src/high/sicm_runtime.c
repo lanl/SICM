@@ -21,6 +21,33 @@ void *(*orig_realloc_ptr)(void *, size_t);
 void (*orig_free_ptr)(void *);
 
 /*************************************************
+ *                  PREALLOC                     *
+ *************************************************
+ * Ridiculously simple allocator, just to use a few
+ * times before we're all initialized.
+ */
+#define PREALLOC_MAX 1024
+static void *prealloc_list[PREALLOC_MAX];
+static size_t prealloc_cnt = 0;
+void *prealloc(size_t size) {
+  void *ret;
+
+  if(prealloc_cnt >= PREALLOC_MAX - 1) {
+    fprintf(stderr, "Prealloc out of memory.\n");
+    exit(1);
+  }
+  
+  ret = mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_ANONYMOUS | MAP_PRIVATE, 0, 0);
+  if(ret == MAP_FAILED) {
+    fprintf(stderr, "Prealloc couldn't mmap.\n");
+    exit(1);
+  }
+
+  prealloc_list[prealloc_cnt++] = ret;
+  return ret;
+}
+
+/*************************************************
  *               ORIG_MALLOC                     *
  *************************************************
  *  Used for allocating data structures in SICM
@@ -445,7 +472,7 @@ void* sh_realloc(int id, void *ptr, size_t sz) {
 
   if(!sh_initialized) {
     fprintf(stderr, "Got a premature realloc with id %d for %zu bytes.\n", id, sz);
-    exit(1);
+    return prealloc(sz);
   }
 
   if((tracker.layout == INVALID_LAYOUT) || (id == 0)) {
@@ -478,23 +505,7 @@ void* sh_alloc(int id, size_t sz) {
 
   if(!sh_initialized) {
     fprintf(stderr, "Got a premature alloc with id %d for %zu bytes.\n", id, sz);
-		nptrs = backtrace(buffer, 100);
-
-		/* The call backtrace_symbols_fd(buffer, nptrs, STDOUT_FILENO)
-			would produce similar output to the following: */
-
-		strings = backtrace_symbols(buffer, nptrs);
-		if (strings == NULL) {
-			 perror("backtrace_symbols");
-			 exit(EXIT_FAILURE);
-		}
-
-		for (j = 0; j < nptrs; j++) {
-			 fprintf(stderr, "%s\n", strings[j]);
-       fflush(stderr);
-    }
-
-    exit(1);
+    return prealloc(sz);
   }
 
   if((tracker.layout == INVALID_LAYOUT) || !sz || (id == 0)) {
@@ -521,7 +532,7 @@ void* sh_aligned_alloc(int id, size_t alignment, size_t sz) {
 
   if(!sh_initialized) {
     fprintf(stderr, "Got a premature aligned_alloc with id %d for %zu bytes.\n", id, sz);
-    exit(1);
+    return prealloc(sz);
   }
 
   if(!sz) {
@@ -561,7 +572,7 @@ void* sh_calloc(int id, size_t num, size_t sz) {
 
   if(!sh_initialized) {
     fprintf(stderr, "Got a premature calloc with id %d for %zu bytes.\n", id, sz);
-    exit(1);
+    return prealloc(sz);
   }
 
   ptr = sh_alloc(id, num * sz);
