@@ -27,7 +27,8 @@ void (*orig_free_ptr)(void *);
  * times before we're all initialized.
  */
 #define PREALLOC_MAX 1024
-static void *prealloc_list[PREALLOC_MAX];
+static void *prealloc_ptrs[PREALLOC_MAX];
+static size_t prealloc_size[PREALLOC_MAX];
 static size_t prealloc_cnt = 0;
 void *prealloc(size_t size) {
   void *ret;
@@ -43,8 +44,24 @@ void *prealloc(size_t size) {
     exit(1);
   }
 
-  prealloc_list[prealloc_cnt++] = ret;
+  prealloc_ptrs[prealloc_cnt] = ret;
+  prealloc_size[prealloc_cnt++] = size;
   return ret;
+}
+
+char prefree(void *ptr) {
+  size_t i;
+  char flag;
+
+  flag = 0;
+  for(i = 0; i < prealloc_cnt; i++) {
+    if(prealloc_list[i] == ptr) {
+      munmap(ptr, prealloc_size[i]);
+      flag = 1;
+    }
+  }
+
+  return flag;
 }
 
 /*************************************************
@@ -585,8 +602,8 @@ void sh_free(void* ptr) {
     return;
   }
 
-  if(!sh_initialized) {
-    fprintf(stderr, "Got a premature free with ptr %p\n", ptr);
+  if(!prefree(ptr) && !sh_initialized) {
+    fprintf(stderr, "Got a free for a pointer that prealloc didn't allocate. Aborting.\n");
     exit(1);
   }
 
