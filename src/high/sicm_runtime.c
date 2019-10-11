@@ -55,7 +55,7 @@ char prefree(void *ptr) {
 
   flag = 0;
   for(i = 0; i < prealloc_cnt; i++) {
-    if(prealloc_list[i] == ptr) {
+    if(prealloc_ptrs[i] == ptr) {
       munmap(ptr, prealloc_size[i]);
       flag = 1;
     }
