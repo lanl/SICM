@@ -1,7 +1,6 @@
 add_library(sicm_runtime SHARED 
             sicm_runtime.c
             sicm_runtime_init.c
-            sicm_cstd.c
             sicm_rdspy.c
             sicm_profile.c
             profilers/sicm_profile_all.c
@@ -10,6 +9,8 @@ add_library(sicm_runtime SHARED
             profilers/sicm_profile_extent_size.c
             profilers/sicm_profile_online.c
             profilers/sicm_profile_one.c)
+add_library(sicm_overrides SHARED 
+            sicm_cstd.c)
 add_library(sicm_compass SHARED sicm_compass.cpp)
 add_library(sicm_rdspy SHARED sicm_rdspy.cpp)
 add_executable(sicm_memreserve sicm_memreserve.c)
@@ -20,6 +21,8 @@ target_include_directories(sicm_runtime PRIVATE ${CMAKE_SOURCE_DIR}/include/high
 target_include_directories(sicm_runtime PUBLIC ${CMAKE_SOURCE_DIR}/include/high/public)
 target_include_directories(sicm_runtime PRIVATE ${CMAKE_SOURCE_DIR}/include/low/private)
 target_include_directories(sicm_runtime PUBLIC ${CMAKE_SOURCE_DIR}/include/low/public)
+target_include_directories(sicm_overrides PRIVATE ${CMAKE_SOURCE_DIR}/include/high/private)
+target_include_directories(sicm_overrides PUBLIC ${CMAKE_SOURCE_DIR}/include/high/public)
 target_include_directories(sicm_memreserve PUBLIC ${CMAKE_SOURCE_DIR}/include/high/public)
 target_include_directories(sicm_hotset PUBLIC ${CMAKE_SOURCE_DIR}/include/high/public)
 
@@ -33,6 +36,8 @@ find_package(Threads)
 find_package(Jemalloc REQUIRED)
 target_include_directories(sicm_runtime PRIVATE ${JEMALLOC_INCLUDE_DIR})
 target_link_libraries(sicm_runtime ${JEMALLOC_LIBRARIES} ${CMAKE_THREAD_LIBS_INIT})
+target_include_directories(sicm_overrides PRIVATE ${JEMALLOC_INCLUDE_DIR})
+target_link_libraries(sicm_overrides ${JEMALLOC_LIBRARIES} ${CMAKE_THREAD_LIBS_INIT})
 target_include_directories(sicm_memreserve PRIVATE ${JEMALLOC_INCLUDE_DIR})
 target_link_libraries(sicm_memreserve ${JEMALLOC_LIBRARIES} ${CMAKE_THREAD_LIBS_INIT})
 target_include_directories(sicm_hotset PRIVATE ${JEMALLOC_INCLUDE_DIR})
@@ -71,7 +76,7 @@ target_link_libraries(sicm_rdspy ${LLVM_LIBRARIES})
 find_library(LIBRT rt)
 target_link_libraries(sicm_runtime ${LIBRT})
 
-install(TARGETS sicm_runtime sicm_compass sicm_rdspy sicm_memreserve sicm_hotset
+install(TARGETS sicm_runtime sicm_overrides sicm_compass sicm_rdspy sicm_memreserve sicm_hotset
         LIBRARY DESTINATION lib
         RUNTIME DESTINATION bin)
 install(DIRECTORY ${CMAKE_SOURCE_DIR}/include/high/public/
