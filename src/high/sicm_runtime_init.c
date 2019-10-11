@@ -636,12 +636,21 @@ void sh_init() {
     return;
   }
 
+  fprintf(stderr, "Beginning initialization.\n");
+  fflush(stderr);
+
   orig_malloc_ptr = dlsym(RTLD_NEXT, "malloc");
   orig_calloc_ptr = dlsym(RTLD_NEXT, "calloc");
   orig_realloc_ptr = dlsym(RTLD_NEXT, "realloc");
   orig_free_ptr = dlsym(RTLD_NEXT, "free");
 
+  fprintf(stderr, "Initializing SICM.\n");
+  fflush(stderr);
+
   tracker.device_list = sicm_init();
+
+  fprintf(stderr, "Initialized SICM.\n");
+  fflush(stderr);
 
   /* Initialize all of the locks */
   pthread_rwlock_init(&tracker.extents_lock, NULL);
@@ -716,8 +725,11 @@ void sh_init() {
     fprintf(tracker.log_file, "===== END OPTIONS =====\n");
     fclose(tracker.log_file);
   }
+
   sh_initialized = 1;
-  printf("Finished initialization.\n");
+
+  fprintf(stderr, "Finished initialization.\n");
+  fflush(stderr);
 }
 
 __attribute__((destructor))
