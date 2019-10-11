@@ -554,7 +554,7 @@ void sh_free(void* ptr) {
   }
 
   if(!sh_initialized) {
-    fprintf(stderr, "Got a premature free with id %d for %zu bytes.\n", id, sz);
+    fprintf(stderr, "Got a premature free with ptr %p\n", ptr);
     exit(1);
   }
 
