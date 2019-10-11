@@ -737,6 +737,13 @@ void sh_terminate() {
   size_t i;
   arena_info *arena;
 
+  if(!sh_initialized) {
+    fprintf(stderr, "Tried to sh_terminate a second time?\n");
+    fflush(stderr);
+    return;
+  }
+  sh_initialized = 0;
+
   /* Clean up the low-level interface */
   sicm_fini(&tracker.device_list);
 
@@ -764,6 +771,4 @@ void sh_terminate() {
   if(profopts.should_run_rdspy) {
     sh_rdspy_terminate();
   }
-
-  sh_initialized = 0;
 }
