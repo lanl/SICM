@@ -738,8 +738,6 @@ void sh_terminate() {
   arena_info *arena;
 
   if(!sh_initialized) {
-    fprintf(stderr, "Tried to sh_terminate a second time?\n");
-    fflush(stderr);
     return;
   }
   sh_initialized = 0;
