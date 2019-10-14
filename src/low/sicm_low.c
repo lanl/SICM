@@ -83,6 +83,7 @@ struct sicm_device_list sicm_init() {
 
   int node_count = numa_max_node() + 1, depth;
   int device_count = node_count * (huge_page_size_count + 1);
+  fprintf(stderr, "Node count: %d\n", node_count);
 
   struct bitmask* non_dram_nodes = numa_bitmask_alloc(node_count);
 
