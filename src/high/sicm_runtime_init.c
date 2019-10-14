@@ -87,7 +87,7 @@ sicm_device *get_device_from_numa_node(int id) {
   }
 
   if(retval == NULL) {
-    fprintf(stderr, "Couldn't find an appropriate device for NUMA node %d.\n", id);
+    fprintf(stderr, "Couldn't find an appropriate device for NUMA node %d, out of %lu devices.\n", id, tracker.device_list.count);
     exit(1);
   }
 
