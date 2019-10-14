@@ -633,6 +633,8 @@ void sh_init() {
 
   if(sh_initialized) {
     /* We already initialized, don't do it again. */
+    fprintf(stderr, "sh_initialized called twice.\n");
+    fflush(stderr);
     return;
   }
 
