@@ -197,7 +197,17 @@ void profile_online_interval(int s) {
           /* The arena is in the current coldset, but not the previous one.
            * Bind its pages to the lower device.
            */
-          sicm_arena_set_devices(tracker.arenas[tree_it_key(hit)]->arena, /* The arena */
+          arena = tracker.arenas[tree_it_key(hit)];
+          if(profopts.profile_online_print_reconfigures) {
+            value = get_value(tree_it_key(hit), event_index);
+            weight = get_weight(tree_it_key(hit));
+            printf("Demoting arena %zu (%zu, %zu): ", tree_it_key(hit), value, weight);
+            for(n = 0; n < arena->num_alloc_sites; n++) {
+              printf("%d ", arena->alloc_sites[n]);
+            }
+            printf("\n");
+          }
+          sicm_arena_set_devices(arena->arena, /* The arena */
                                  prof.profile_online.lower_dl);           /* The device list */
         }
       }
@@ -209,6 +219,16 @@ void profile_online_interval(int s) {
           /* The arena is in the current hotset, but not the previous one.
            * Bind its pages to the upper device.
            */
+          arena = tracker.arenas[tree_it_key(hit)];
+          if(profopts.profile_online_print_reconfigures) {
+            value = get_value(tree_it_key(hit), event_index);
+            weight = get_weight(tree_it_key(hit));
+            printf("Demoting arena %zu (%zu, %zu): ", tree_it_key(hit), value, weight);
+            for(n = 0; n < arena->num_alloc_sites; n++) {
+              printf("%d ", arena->alloc_sites[n]);
+            }
+            printf("\n");
+          }
           sicm_arena_set_devices(tracker.arenas[tree_it_key(hit)]->arena, /* The arena */
                                  prof.profile_online.upper_dl);           /* The device list */
         }

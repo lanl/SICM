@@ -160,6 +160,12 @@ void set_options() {
     if(env) {
       profopts.profile_online_use_last_interval = 1;
     }
+
+    env = getenv("SH_PROFILE_ONLINE_PRINT_RECONFIGURES");
+    profopts.profile_online_print_reconfigures = 0;
+    if(env) {
+      profopts.profile_online_print_reconfigures = 1;
+    }
   }
   if(tracker.log_file) {
     fprintf(tracker.log_file, "SH_PROFILE_ONLINE: %d\n", profopts.should_profile_online);
