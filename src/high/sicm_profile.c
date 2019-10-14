@@ -471,7 +471,7 @@ void print_profiling() {
     }
     printf("\n");
 
-    if(tracker.should_print_intervals) {
+    if(profopts.should_print_intervals) {
       /* General info */
       printf("    Number of intervals: %zu\n", profinfo->num_intervals);
       printf("    First interval: %zu\n", profinfo->first_interval);
@@ -481,7 +481,7 @@ void print_profiling() {
     if(profopts.should_profile_rss) {
       printf("  RSS:\n");
       printf("    Peak: %zu\n", profinfo->profile_rss.peak);
-      if(tracker.should_print_intervals) {
+      if(profopts.should_print_intervals) {
         for(x = 0; x < profinfo->num_intervals; x++) {
           printf("    %zu\n", profinfo->profile_rss.intervals[x]);
         }
@@ -492,7 +492,7 @@ void print_profiling() {
     if(profopts.should_profile_extent_size) {
       printf("  Extents size:\n");
       printf("    Peak: %zu\n", profinfo->profile_extent_size.peak);
-      if(tracker.should_print_intervals) {
+      if(profopts.should_print_intervals) {
         for(x = 0; x < profinfo->num_intervals; x++) {
           printf("    %zu\n", profinfo->profile_extent_size.intervals[x]);
         }
@@ -503,7 +503,7 @@ void print_profiling() {
     if(profopts.should_profile_allocs) {
       printf("  Allocations size:\n");
       printf("    Peak: %zu\n", profinfo->profile_allocs.peak);
-      if(tracker.should_print_intervals) {
+      if(profopts.should_print_intervals) {
         for(x = 0; x < profinfo->num_intervals; x++) {
           printf("    %zu\n", profinfo->profile_allocs.intervals[x]);
         }
@@ -516,7 +516,7 @@ void print_profiling() {
         printf("  Event: %s\n", profopts.profile_all_events[n]);
         printf("    Total: %zu\n", profinfo->profile_all.events[n].total);
         printf("    Peak: %zu\n", profinfo->profile_all.events[n].peak);
-        if(tracker.should_print_intervals) {
+        if(profopts.should_print_intervals) {
           for(x = 0; x < profinfo->num_intervals; x++) {
             printf("      %zu\n", profinfo->profile_all.events[n].intervals[x]);
           }
