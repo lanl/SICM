@@ -471,16 +471,20 @@ void print_profiling() {
     }
     printf("\n");
 
-    /* General info */
-    printf("    Number of intervals: %zu\n", profinfo->num_intervals);
-    printf("    First interval: %zu\n", profinfo->first_interval);
+    if(tracker.should_print_intervals) {
+      /* General info */
+      printf("    Number of intervals: %zu\n", profinfo->num_intervals);
+      printf("    First interval: %zu\n", profinfo->first_interval);
+    }
 
     /* profile_rss */
     if(profopts.should_profile_rss) {
       printf("  RSS:\n");
       printf("    Peak: %zu\n", profinfo->profile_rss.peak);
-      for(x = 0; x < profinfo->num_intervals; x++) {
-        printf("    %zu\n", profinfo->profile_rss.intervals[x]);
+      if(tracker.should_print_intervals) {
+        for(x = 0; x < profinfo->num_intervals; x++) {
+          printf("    %zu\n", profinfo->profile_rss.intervals[x]);
+        }
       }
     }
 
@@ -488,8 +492,10 @@ void print_profiling() {
     if(profopts.should_profile_extent_size) {
       printf("  Extents size:\n");
       printf("    Peak: %zu\n", profinfo->profile_extent_size.peak);
-      for(x = 0; x < profinfo->num_intervals; x++) {
-        printf("    %zu\n", profinfo->profile_extent_size.intervals[x]);
+      if(tracker.should_print_intervals) {
+        for(x = 0; x < profinfo->num_intervals; x++) {
+          printf("    %zu\n", profinfo->profile_extent_size.intervals[x]);
+        }
       }
     }
 
@@ -497,8 +503,10 @@ void print_profiling() {
     if(profopts.should_profile_allocs) {
       printf("  Allocations size:\n");
       printf("    Peak: %zu\n", profinfo->profile_allocs.peak);
-      for(x = 0; x < profinfo->num_intervals; x++) {
-        printf("    %zu\n", profinfo->profile_allocs.intervals[x]);
+      if(tracker.should_print_intervals) {
+        for(x = 0; x < profinfo->num_intervals; x++) {
+          printf("    %zu\n", profinfo->profile_allocs.intervals[x]);
+        }
       }
     }
 
@@ -508,8 +516,10 @@ void print_profiling() {
         printf("  Event: %s\n", profopts.profile_all_events[n]);
         printf("    Total: %zu\n", profinfo->profile_all.events[n].total);
         printf("    Peak: %zu\n", profinfo->profile_all.events[n].peak);
-        for(x = 0; x < profinfo->num_intervals; x++) {
-          printf("      %zu\n", profinfo->profile_all.events[n].intervals[x]);
+        if(tracker.should_print_intervals) {
+          for(x = 0; x < profinfo->num_intervals; x++) {
+            printf("      %zu\n", profinfo->profile_all.events[n].intervals[x]);
+          }
         }
       }
     }
@@ -535,8 +545,6 @@ void sh_stop_profile_master_thread() {
   pthread_kill(prof.master_id, prof.stop_signal);
   pthread_join(prof.master_id, NULL);
 
-  if(!profopts.should_profile_online) {
-    print_profiling();
-  }
+  print_profiling();
   deinitialize_profiling();
 }

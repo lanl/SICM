@@ -122,6 +122,12 @@ void set_options() {
     fflush(stdout);
   }
 
+  env = getenv("SH_PRINT_INTERVALS");
+  profopts.should_print_intervals = 0;
+  if(env) {
+    profopts.should_print_intervals = 1;
+  }
+
   /* Do we want to use the online approach, moving arenas around devices automatically? */
   env = getenv("SH_PROFILE_ONLINE");
   profopts.should_profile_online = 0;
