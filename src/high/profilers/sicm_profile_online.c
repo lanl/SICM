@@ -75,12 +75,22 @@ size_t get_weight(size_t index) {
     return 0;
   }
 
-  if(profopts.should_profile_allocs) {
-    return profinfo->profile_allocs.intervals[profinfo->num_intervals - 2] / 1024;
-  } else if(profopts.should_profile_extent_size) {
-    return profinfo->profile_extent_size.intervals[profinfo->num_intervals - 2] / 1024;
-  } else if(profopts.should_profile_rss) {
-    return profinfo->profile_rss.intervals[profinfo->num_intervals - 2] / 1024;
+  if(profopts.profile_online_use_last_interval) {
+    if(profopts.should_profile_allocs) {
+      return profinfo->profile_allocs.intervals[profinfo->num_intervals - 2] / 1024;
+    } else if(profopts.should_profile_extent_size) {
+      return profinfo->profile_extent_size.intervals[profinfo->num_intervals - 2] / 1024;
+    } else if(profopts.should_profile_rss) {
+      return profinfo->profile_rss.intervals[profinfo->num_intervals - 2] / 1024;
+    }
+  } else {
+    if(profopts.should_profile_allocs) {
+      return profinfo->profile_allocs.peak / 1024;
+    } else if(profopts.should_profile_extent_size) {
+      return profinfo->profile_extent_size.peak / 1024;
+    } else if(profopts.should_profile_rss) {
+      return profinfo->profile_rss.peak / 1024;
+    }
   }
 }
 

@@ -154,6 +154,12 @@ void set_options() {
       profopts.profile_online_event = orig_malloc(sizeof(char) * (strlen(env) + 1));
       strcpy(profopts.profile_online_event, env);
     }
+
+    env = getenv("SH_PROFILE_ONLINE_USE_LAST_INTERVAL");
+    profopts.profile_online_use_last_interval = 0;
+    if(env) {
+      profopts.profile_online_use_last_interval = 1;
+    }
   }
   if(tracker.log_file) {
     fprintf(tracker.log_file, "SH_PROFILE_ONLINE: %d\n", profopts.should_profile_online);
@@ -161,6 +167,7 @@ void set_options() {
     if(profopts.profile_online_event) {
       fprintf(tracker.log_file, "SH_PROFILE_ONLINE_EVENT: %s\n", profopts.profile_online_event);
     }
+    fprintf(tracker.log_file, "SH_PROFILE_ONLINE_USE_LAST_INTERVAL: %d\n", profopts.profile_online_use_last_interval);
   }
 
   env = getenv("SH_TRACK_SITE");

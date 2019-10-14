@@ -155,6 +155,7 @@ typedef struct profiling_options {
   int profile_one_site;
   int should_run_rdspy;
   int should_print_intervals;
+  int profile_online_use_last_interval;
 
   /* Sample rates */
   size_t profile_rate_nseconds;
