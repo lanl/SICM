@@ -104,7 +104,7 @@ void *profile_online(void *a) {
 }
 
 void profile_online_interval(int s) {
-  size_t i, upper_avail, lower_avail,
+  size_t i, n, upper_avail, lower_avail,
          value, weight,
          event_index;
   arena_info *arena;
