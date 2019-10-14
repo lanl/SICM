@@ -202,6 +202,7 @@ struct sicm_device_list sicm_init() {
 		compute_node = j;
 	   }
          }
+         fprintf(stderr, "Found an Optane node: %d\n", i);
          devices[idx]->tag = SICM_OPTANE;
 	 devices[idx]->node = i;
          devices[idx]->data.optane = (struct sicm_optane_data){ 
