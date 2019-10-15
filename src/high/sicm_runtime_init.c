@@ -774,9 +774,6 @@ void sh_terminate() {
     exit(1);
   }
 
-  /* Clean up the low-level interface */
-  sicm_fini(&tracker.device_list);
-
   if(tracker.layout != INVALID_LAYOUT) {
 
     /* Clean up the profiler */
@@ -797,6 +794,10 @@ void sh_terminate() {
     orig_free(tracker.orig_thread_indices);
     extent_arr_free(tracker.extents);
   }
+
+  /* Clean up the low-level interface */
+  sicm_fini(&tracker.device_list);
+
 
   if(profopts.should_run_rdspy) {
     sh_rdspy_terminate();
