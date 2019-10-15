@@ -757,7 +757,7 @@ __attribute__((destructor))
 void sh_terminate() {
   size_t i;
   arena_info *arena;
-  int on;
+  int on, err;
 
   if(!sh_initialized) {
     return;
@@ -766,7 +766,7 @@ void sh_terminate() {
 
   /* Disable the background thread in jemalloc to avoid a segfault */
   on = 1;
-	err = je_mallctl("background_thread", NULL, NULL, (void *)&on, sizeof(int));
+  je_mallctl("background_thread", NULL, NULL, (void *)&on, sizeof(int));
 
   /* Clean up the low-level interface */
   sicm_fini(&tracker.device_list);
