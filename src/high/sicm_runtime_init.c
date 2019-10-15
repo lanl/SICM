@@ -766,7 +766,11 @@ void sh_terminate() {
 
   /* Disable the background thread in jemalloc to avoid a segfault */
   on = 1;
-  je_mallctl("background_thread", NULL, NULL, (void *)&on, sizeof(int));
+  err = je_mallctl("background_thread", NULL, NULL, (void *)&on, sizeof(int));
+  if(err) {
+    fprintf(stderr, "Failed to disable background threads: %d\n", err);
+    exit(1);
+  }
 
   /* Clean up the low-level interface */
   sicm_fini(&tracker.device_list);
