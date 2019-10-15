@@ -1,6 +1,7 @@
 /* Required for dlsym */
 #define _GNU_SOURCE
 #include <dlfcn.h>
+#include <stdbool.h>
 #include "sicm_runtime.h"
 
 /* Options for profiling */
@@ -757,7 +758,8 @@ __attribute__((destructor))
 void sh_terminate() {
   size_t i;
   arena_info *arena;
-  int on, err;
+  int err;
+  bool on;
 
   if(!sh_initialized) {
     return;
@@ -765,8 +767,8 @@ void sh_terminate() {
   sh_initialized = 0;
 
   /* Disable the background thread in jemalloc to avoid a segfault */
-  on = 1;
-  err = je_mallctl("background_thread", NULL, NULL, (void *)&on, sizeof(int));
+  on = false;
+  err = je_mallctl("background_thread", NULL, NULL, (void *)&on, sizeof(bool));
   if(err) {
     fprintf(stderr, "Failed to disable background threads: %d\n", err);
     exit(1);
