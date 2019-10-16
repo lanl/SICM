@@ -5,7 +5,7 @@
 #include <sys/types.h>
 #include <time.h>
 
-#include <kmeans.h>
+#include <kmeans/kmeans.h>
 
 /* diff two timespecs */
 long double nanoseconds(struct timespec * start, struct timespec * end) {
@@ -327,7 +327,7 @@ int main(int argc, char * argv[]) {
         fprintf(stderr, "%s size iterations memory_type [memory_type ...]\n", argv[0]);
         fprintf(stderr, "\n");
         fprintf(stderr, "The order memory types should be listed, if available:\n");
-        fprintf(stderr, "    HBM DRAM GPU OPTANE\n\n");
+        fprintf(stderr, "    DRAM HBM GPU OPTANE\n\n");
         return 1;
     }
 
