@@ -157,16 +157,13 @@ void sicm_arena_destroy(sicm_arena arena) {
 	sarena *sa = arena;
 	char str[32];
 	size_t arena_ind_sz;
+  pthread_mutex_t *mutex;
 
-	if (sa == NULL)
-		return;
-  if (sa->mutex == NULL)
-    return;
-
-  pthread_mutex_lock(sa->mutex);
-  pthread_mutex_unlock(sa->mutex);
-  pthread_mutex_destroy(sa->mutex);
-	munmap(sa->mutex, sizeof(pthread_mutex_t));
+  /* Save the mutex and free it after the whole rest of the arena has
+   * been freed. This fixes a number of rare, but possible, segfaults in
+   * which sa_dalloc is called while the arena is freed, but the mutex has
+   * already been freed. */
+  mutex = sa->mutex;
 
 	/* Free up the arena */
 	snprintf(str, sizeof(str), "arena.%u.destroy", sa->arena_ind);
@@ -177,6 +174,12 @@ void sicm_arena_destroy(sicm_arena arena) {
 	free(sa->devs.devices);
 	numa_free_nodemask(sa->nodemask);
 	free(sa);
+
+  pthread_mutex_lock(mutex);
+  pthread_mutex_unlock(mutex);
+  pthread_mutex_destroy(mutex);
+	munmap(mutex, sizeof(pthread_mutex_t));
+
 }
 
 sicm_arena_list *sicm_arenas_list() {
