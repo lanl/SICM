@@ -81,6 +81,7 @@ static sarena *sicm_arena_new(size_t sz, sicm_arena_flags flags, sicm_device_lis
 		return NULL;
 	
 	sa = malloc(sizeof(sarena));
+  printf("ARENA: %p\n", sa);
 	if (sa == NULL) {
 		return NULL;
 	}
@@ -179,7 +180,6 @@ void sicm_arena_destroy(sicm_arena arena) {
   pthread_mutex_unlock(mutex);
   pthread_mutex_destroy(mutex);
 	munmap(mutex, sizeof(pthread_mutex_t));
-
 }
 
 sicm_arena_list *sicm_arenas_list() {
