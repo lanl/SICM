@@ -80,7 +80,7 @@ static sarena *sicm_arena_new(size_t sz, sicm_arena_flags flags, sicm_device_lis
 	if (nodemask == NULL)
 		return NULL;
 	
-	sa = benmalloc(sizeof(sarena));
+	sa = je_malloc(sizeof(sarena));
   printf("ARENA: %p\n", sa);
 	if (sa == NULL) {
 		return NULL;
