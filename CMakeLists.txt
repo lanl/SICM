@@ -18,6 +18,9 @@ if(SICM_BUILD_HIGH_LEVEL)
   add_subdirectory(bin)
 endif()
 
+# Add helper code found in the contrib directory
+add_subdirectory(contrib)
+
 # Compile some tests
 enable_testing()
 add_subdirectory(test)
