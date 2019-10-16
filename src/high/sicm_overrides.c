@@ -22,6 +22,13 @@ void *malloc(size_t size) {
   return sh_alloc(0, size);
 }
 
+void *benmalloc(size_t size) {
+  void *ptr;
+  ptr = je_malloc(size);
+  printf("Allocating a new sarena: %p\n", ptr);
+  return ptr;
+}
+
 void *calloc(size_t num, size_t size) {
   return sh_calloc(0, num, size);
 }

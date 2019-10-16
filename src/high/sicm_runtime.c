@@ -514,7 +514,6 @@ void* sh_alloc(int id, size_t sz) {
 
   if(!sh_initialized || !id) {
     ret = je_malloc(sz);
-    printf("Using default jemalloc to allocate %p.\n", ret);
     return ret;
   }
 
