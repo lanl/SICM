@@ -513,7 +513,9 @@ void* sh_alloc(int id, size_t sz) {
 
 
   if(!sh_initialized || !id) {
-    return je_malloc(sz);
+    ret = je_malloc(sz);
+    printf("Using default jemalloc to allocate %p.\n", ret);
+    return ret;
   }
 
   if((tracker.layout == INVALID_LAYOUT) || !sz) {
