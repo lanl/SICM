@@ -74,7 +74,7 @@ void *__attribute__ ((noinline)) orig_malloc(size_t size) {
   return je_mallocx(size, MALLOCX_TCACHE_NONE);
 }
 void *__attribute__ ((noinline)) orig_calloc(size_t num, size_t size) {
-  return je_mallocx(num, size, MALLOCX_TCACHE_NONE | MALLOCX_ZERO);
+  return je_mallocx(num * size, MALLOCX_TCACHE_NONE | MALLOCX_ZERO);
 }
 void *__attribute__ ((noinline)) orig_realloc(void *ptr, size_t size) {
   return je_rallocx(ptr, size, MALLOCX_TCACHE_NONE);
