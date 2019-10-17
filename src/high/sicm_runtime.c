@@ -71,16 +71,16 @@ char prefree(void *ptr) {
  *  after the malloc wrappers have been defined.
  */
 void *__attribute__ ((noinline)) orig_malloc(size_t size) {
-  return je_malloc(size);
+  return je_mallocx(size, MALLOCX_TCACHE_NONE);
 }
 void *__attribute__ ((noinline)) orig_calloc(size_t num, size_t size) {
-  return je_calloc(num, size);
+  return je_mallocx(num, size, MALLOCX_TCACHE_NONE | MALLOCX_ZERO);
 }
 void *__attribute__ ((noinline)) orig_realloc(void *ptr, size_t size) {
-  return je_realloc(ptr, size);
+  return je_rallocx(ptr, size, MALLOCX_TCACHE_NONE);
 }
 void __attribute__ ((noinline)) orig_free(void *ptr) {
-  je_free(ptr);
+  je_dallocx(ptr, MALLOCX_TCACHE_NONE);
   return;
 }
 
@@ -512,20 +512,15 @@ void* sh_alloc(int id, size_t sz) {
 	char **strings;
 
 
-  if(!sh_initialized || !id) {
-    ret = je_malloc(sz);
-    return ret;
+  if(!sh_initialized || !id || (tracker.layout == INVALID_LAYOUT) || !sz) {
+    return je_mallocx(sz, MALLOCX_TCACHE_NONE);
   }
 
-  if((tracker.layout == INVALID_LAYOUT) || !sz) {
-    ret = je_malloc(sz);
-  } else {
-    index = get_arena_index(id, sz);
-    ret = sicm_arena_alloc(tracker.arenas[index]->arena, sz);
+  index = get_arena_index(id, sz);
+  ret = sicm_arena_alloc(tracker.arenas[index]->arena, sz);
 
-    if(profopts.should_profile_allocs) {
-      profile_allocs_alloc(ret, sz, index);
-    }
+  if(profopts.should_profile_allocs) {
+    profile_allocs_alloc(ret, sz, index);
   }
 
   if (profopts.should_run_rdspy) {
@@ -539,23 +534,19 @@ void* sh_aligned_alloc(int id, size_t alignment, size_t sz) {
   int index;
   void *ret;
 
-  if(!sh_initialized || !id) {
-    return je_aligned_alloc(alignment, sz);
-  }
-
   if(!sz) {
     return NULL;
   }
 
-  if(tracker.layout == INVALID_LAYOUT) {
-    ret = je_aligned_alloc(alignment, sz);
-  } else {
-    index = get_arena_index(id, sz);
-    ret = sicm_arena_alloc_aligned(tracker.arenas[index]->arena, sz, alignment);
+  if(!sh_initialized || !id || (tracker.layout == INVALID_LAYOUT)) {
+    return je_mallocx(sz, MALLOCX_TCACHE_NONE | MALLOCX_ALIGN(alignment));
+  }
 
-    if(profopts.should_profile_allocs) {
-      profile_allocs_alloc(ret, sz, index);
-    }
+  index = get_arena_index(id, sz);
+  ret = sicm_arena_alloc_aligned(tracker.arenas[index]->arena, sz, alignment);
+
+  if(profopts.should_profile_allocs) {
+    profile_allocs_alloc(ret, sz, index);
   }
 
   if (profopts.should_run_rdspy) {
@@ -588,8 +579,8 @@ void sh_free(void* ptr) {
     return;
   }
 
-  if(!sh_initialized) {
-    je_free(ptr);
+  if(!sh_initialized || (tracker.layout == INVALID_LAYOUT)) {
+    je_dallocx(ptr, MALLOCX_TCACHE_NONE);
     return;
   }
 
@@ -601,9 +592,5 @@ void sh_free(void* ptr) {
     profile_allocs_free(ptr);
   }
 
-  if(tracker.layout == INVALID_LAYOUT) {
-    je_free(ptr);
-  } else {
-    sicm_free(ptr);
-  }
+  sicm_free(ptr);
 }
