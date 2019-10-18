@@ -603,7 +603,7 @@ void set_options() {
         sscanf(str, "%d", &node);
 
         /* Construct a site_info struct to store in the tree */
-        site_struct = orig_malloc(sizeof(site_info));
+        site_info *site_struct = orig_malloc(sizeof(site_info));
         pthread_rwlock_init(&site_struct->lock, NULL);
         site_struct->device = get_device_from_numa_node;
         site_struct->arena = -1;
