@@ -22,6 +22,9 @@ LLVMOPT="${LLVMOPT:-opt}"
 LD_COMPILER="${LD_COMPILER:-clang}"
 LD_LINKER="${LD_LINKER:-clang}"
 
+# Layers of context. Defaults to 3.
+SH_CONTEXT="${SH_CONTEXT:-3}"
+
 # To disable transformation
 NO_IR="${NO_IR:- }"
 NO_TRANSFORM="${NO_TRANSFORM:- }"
@@ -99,7 +102,7 @@ ${LLVMPATH}${LLVMLINK} $BC_STR -o .sicm_ir.bc
 # Run the compiler pass to generate the call graph.
 if [[ $NO_TRANSFORM = " " ]]; then
   ${LLVMPATH}${LLVMOPT} -load ${LIB_DIR}/libsicm_compass.so -compass-mode=analyze \
-      -compass-quick-exit -compass -compass-depth=3 \
+      -compass-quick-exit -compass -compass-depth=${SH_CONTEXT} \
       .sicm_ir.bc -o .sicm_ir_transformed.bc
 
   # Run the compiler pass on each individual file
@@ -107,12 +110,12 @@ if [[ $NO_TRANSFORM = " " ]]; then
   COMMANDS=""
   if [ -z ${SH_RDSPY+x} ]; then
       for file in "${FILES_ARR[@]}"; do
-        COMMANDS+="${LLVMPATH}${LLVMOPT} -load ${LIB_DIR}/libsicm_compass.so -compass-detail -compass-mode=transform -compass -compass-depth=3 ${file}.bc -o ${file}.bc"
+        COMMANDS+="${LLVMPATH}${LLVMOPT} -load ${LIB_DIR}/libsicm_compass.so -compass-detail -compass-mode=transform -compass -compass-depth=${SH_CONTEXT} ${file}.bc -o ${file}.bc"
         COMMANDS+=$'\n'
       done
   else
       for file in "${FILES_ARR[@]}"; do
-        COMMANDS+="${LLVMPATH}${LLVMOPT} -load ${LIB_DIR}/libsicm_compass.so -load ${LIB_DIR}/libsicm_rdspy.so -compass-mode=transform -compass -compass-depth=3 -rdspy -rdspy-sampling-threshold=${SH_RDSPY_SAMPLE} ${file}.bc -o ${file}.bc"
+        COMMANDS+="${LLVMPATH}${LLVMOPT} -load ${LIB_DIR}/libsicm_compass.so -load ${LIB_DIR}/libsicm_rdspy.so -compass-mode=transform -compass -compass-depth=${SH_CONTEXT} -rdspy -rdspy-sampling-threshold=${SH_RDSPY_SAMPLE} ${file}.bc -o ${file}.bc"
         COMMANDS+=$'\n'
       done
   fi
