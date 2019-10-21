@@ -102,7 +102,7 @@ ${LLVMPATH}${LLVMLINK} $BC_STR -o .sicm_ir.bc
 # Run the compiler pass to generate the call graph.
 if [[ $NO_TRANSFORM = " " ]]; then
   ${LLVMPATH}${LLVMOPT} -load ${LIB_DIR}/libsicm_compass.so -compass-mode=analyze \
-      -compass-quick-exit -compass -compass-depth=${SH_CONTEXT} \
+      -compass -compass-depth=${SH_CONTEXT} \
       .sicm_ir.bc -o .sicm_ir_transformed.bc
 
   # Run the compiler pass on each individual file
