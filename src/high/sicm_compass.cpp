@@ -1171,13 +1171,15 @@ out:
 
             flipCG();
 
+            /*
             if (CompassClassicalCG) {
                 doCloningClassical();
             } else {
                 doCloningExtended();
-            }
+            } 
+            */
 
-            //transformCallSites();
+            transformCallSites();
 
             //fprintf(stderr, "%u function clones created\n", ncloned);
             //fprintf(stderr, "%llu allocation sites\n", n_sites);
