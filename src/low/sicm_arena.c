@@ -360,6 +360,10 @@ void *sicm_arena_realloc(sicm_arena a, void *ptr, size_t sz) {
 		return NULL;
 	}
 
+  if(ptr == NULL) {
+    return sicm_arena_alloc(a, sz);
+  }
+
 	sa = a;
 	flags = 0;
 	if (sa != NULL)
