@@ -188,7 +188,7 @@ static inline app_info *sh_parse_site_info(FILE *file) {
       }
     } else if(in_block == 1) {
     } else if(in_block == 2) {
-      /* See if this is the start of a site's profiling */
+      /* See if this is the start of an arena's profiling */
       num_tok = sscanf(line,
                       "%d sites: %d",
                       &i,

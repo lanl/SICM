@@ -21,50 +21,6 @@ void *(*orig_realloc_ptr)(void *, size_t);
 void (*orig_free_ptr)(void *);
 
 /*************************************************
- *                  PREALLOC                     *
- *************************************************
- * Ridiculously simple allocator, just to use a few
- * times before we're all initialized.
- */
-#define PREALLOC_MAX 1024
-static void *prealloc_ptrs[PREALLOC_MAX];
-static size_t prealloc_size[PREALLOC_MAX];
-static size_t prealloc_cnt = 0;
-void *prealloc(size_t size) {
-  void *ret;
-
-  if(prealloc_cnt >= PREALLOC_MAX - 1) {
-    fprintf(stderr, "Prealloc out of memory.\n");
-    exit(1);
-  }
-  
-  ret = mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_ANONYMOUS | MAP_PRIVATE, 0, 0);
-  if(ret == MAP_FAILED) {
-    fprintf(stderr, "Prealloc couldn't mmap.\n");
-    exit(1);
-  }
-
-  prealloc_ptrs[prealloc_cnt] = ret;
-  prealloc_size[prealloc_cnt++] = size;
-  return ret;
-}
-
-char prefree(void *ptr) {
-  size_t i;
-  char flag;
-
-  flag = 0;
-  for(i = 0; i < prealloc_cnt; i++) {
-    if(prealloc_ptrs[i] == ptr) {
-      munmap(ptr, prealloc_size[i]);
-      flag = 1;
-    }
-  }
-
-  return flag;
-}
-
-/*************************************************
  *               ORIG_MALLOC                     *
  *************************************************
  *  Used for allocating data structures in SICM

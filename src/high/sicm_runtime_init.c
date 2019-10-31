@@ -122,10 +122,18 @@ void set_options() {
     fflush(stdout);
   }
 
+  /* Should we print the per-interval profiling information, or just the aggregated profiling? */
   env = getenv("SH_PRINT_INTERVALS");
   profopts.should_print_intervals = 0;
   if(env) {
     profopts.should_print_intervals = 1;
+  }
+
+  /* Should we split each type of profiling into its own thread? */
+  env = getenv("SH_PROFILE_SEPARATE_THREADS");
+  profopts.should_profile_separate_threads = 0;
+  if(env) {
+    profopts.should_profile_separate_threads = 1;
   }
 
   /* Do we want to use the online approach, moving arenas around devices automatically? */

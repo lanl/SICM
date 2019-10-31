@@ -84,11 +84,14 @@ void *create_profile_arena(int index) {
 }
 
 void end_interval() {
-  /* Signal the master thread that we're done */
-  pthread_mutex_lock(&prof.mtx);
-  prof.threads_finished++;
-  pthread_cond_signal(&prof.cond);
-  pthread_mutex_unlock(&prof.mtx);
+  /* Signal the master thread that we're done. Should only get called
+   * by separated profiling threads. */
+  if(profopts.should_profile_separate_threads) {
+    pthread_mutex_lock(&prof.mtx);
+    prof.threads_finished++;
+    pthread_cond_signal(&prof.cond);
+    pthread_mutex_unlock(&prof.mtx);
+  }
 }
 
 /* This is the signal handler for the Master thread, so
@@ -122,41 +125,61 @@ void profile_master_interval(int s) {
     profinfo->num_intervals++;
   }
 
-  /* Notify the threads */
-  for(i = 0; i < prof.num_profile_threads; i++) {
-    profthread = &prof.profile_threads[i];
-    if(profthread->skipped_intervals == (profthread->skip_intervals - 1)) {
-      /* This thread doesn't get skipped */
-      pthread_kill(prof.profile_threads[i].id, prof.profile_threads[i].signal);
-      profthread->skipped_intervals = 0;
-    } else {
-      /* This thread gets skipped */
-      pthread_kill(prof.profile_threads[i].id, prof.profile_threads[i].skip_signal);
-      profthread->skipped_intervals++;
-    }
-  }
-
-  /* Wait for the threads to do their bit */
-  pthread_mutex_lock(&prof.mtx);
-  while(1) {
-    if(prof.threads_finished) {
-      /* At least one thread is finished, check if it's all of them */
-      copy = prof.threads_finished;
-      pthread_mutex_unlock(&prof.mtx);
-      if(copy == prof.num_profile_threads) {
-        /* They're all done. */
-        pthread_mutex_lock(&prof.mtx);
-        prof.threads_finished = 0;
-        break;
+  if(profopts.should_profile_separate_threads) {
+    /* Notify the threads */
+    for(i = 0; i < prof.num_profile_threads; i++) {
+      profthread = &prof.profile_threads[i];
+      if(profthread->skipped_intervals == (profthread->skip_intervals - 1)) {
+        /* This thread doesn't get skipped */
+        pthread_kill(prof.profile_threads[i].id, prof.profile_threads[i].signal);
+        profthread->skipped_intervals = 0;
+      } else {
+        /* This thread gets skipped */
+        pthread_kill(prof.profile_threads[i].id, prof.profile_threads[i].skip_signal);
+        profthread->skipped_intervals++;
       }
-      /* At least one was done, but not all of them. Continue waiting. */
-      pthread_mutex_lock(&prof.mtx);
-    } else {
-      /* Wait for at least one thread to signal us */
-      pthread_cond_wait(&prof.cond, &prof.mtx);
+    }
+
+    /* Wait for the threads to do their bit */
+    pthread_mutex_lock(&prof.mtx);
+    while(1) {
+      if(prof.threads_finished) {
+        /* At least one thread is finished, check if it's all of them */
+        copy = prof.threads_finished;
+        pthread_mutex_unlock(&prof.mtx);
+        if(copy == prof.num_profile_threads) {
+          /* They're all done. */
+          pthread_mutex_lock(&prof.mtx);
+          prof.threads_finished = 0;
+          break;
+        }
+        /* At least one was done, but not all of them. Continue waiting. */
+        pthread_mutex_lock(&prof.mtx);
+      } else {
+        /* Wait for at least one thread to signal us */
+        pthread_cond_wait(&prof.cond, &prof.mtx);
+      }
+    }
+    pthread_mutex_unlock(&prof.mtx);
+  } else {
+    /* If we're not separating the profiling threads, just call these functions
+     * from the current thread. */
+    if(profopts.should_profile_all) {
+      profile_all_interval(0);
+    }
+    if(profopts.should_profile_rss) {
+      profile_rss_interval(0);
+    }
+    if(profopts.should_profile_extent_size) {
+      profile_extent_size_interval(0);
+    }
+    if(profopts.should_profile_allocs) {
+      profile_allocs_interval(0);
+    }
+    if(profopts.should_profile_online) {
+      profile_online_interval(0);
     }
   }
-  pthread_mutex_unlock(&prof.mtx);
 
   /* End time */
   clock_gettime(CLOCK_MONOTONIC, &end);
@@ -196,26 +219,28 @@ void profile_master_interval(int s) {
 
     /* Check if this arena contains the site that we're tracking,
      * print out some profiling information if so */
-    for(n = 0; n < arena->num_alloc_sites; n++) {
-      if(arena->alloc_sites[n] == tracker.track_site) {
-        fprintf(stderr, "=====\n");
-        fprintf(stderr, "Site %d\n", tracker.track_site);
-        if(profopts.should_profile_all) {
-          for(x = 0; x < profopts.num_profile_all_events; x++) {
-            fprintf(stderr, "  Event: %s\n", profopts.profile_all_events[x]);
-            fprintf(stderr, "    %zu\n", profinfo->profile_all.events[x].intervals[profinfo->num_intervals - 1]);
+    if(tracker.track_site != -1) {
+      for(n = 0; n < arena->num_alloc_sites; n++) {
+        if(arena->alloc_sites[n] == tracker.track_site) {
+          fprintf(stderr, "=====\n");
+          fprintf(stderr, "Site %d\n", tracker.track_site);
+          if(profopts.should_profile_all) {
+            for(x = 0; x < profopts.num_profile_all_events; x++) {
+              fprintf(stderr, "  Event: %s\n", profopts.profile_all_events[x]);
+              fprintf(stderr, "    %zu\n", profinfo->profile_all.events[x].intervals[profinfo->num_intervals - 1]);
+            }
           }
+          if(profopts.should_profile_extent_size) {
+            fprintf(stderr, "  Extent size:\n");
+            fprintf(stderr, "    %zu\n", profinfo->profile_extent_size.intervals[profinfo->num_intervals - 1]);
+          }
+          if(profopts.should_profile_allocs) {
+            fprintf(stderr, "  Allocations size:\n");
+            fprintf(stderr, "    %zu\n", profinfo->profile_allocs.intervals[profinfo->num_intervals - 1]);
+          }
+          fprintf(stderr, "=====\n");
+          break;
         }
-        if(profopts.should_profile_extent_size) {
-          fprintf(stderr, "  Extent size:\n");
-          fprintf(stderr, "    %zu\n", profinfo->profile_extent_size.intervals[profinfo->num_intervals - 1]);
-        }
-        if(profopts.should_profile_allocs) {
-          fprintf(stderr, "  Allocations size:\n");
-          fprintf(stderr, "    %zu\n", profinfo->profile_allocs.intervals[profinfo->num_intervals - 1]);
-        }
-        fprintf(stderr, "=====\n");
-        break;
       }
     }
   }
@@ -233,14 +258,16 @@ void profile_master_stop(int s) {
 
   timer_delete(prof.timerid);
 
-  /* Cancel all threads. Since threads can only be running while the master
-   * thread is in a different signal handler from this one, it's impossible that they're
-   * in an interval currently.
-   */
-  for(i = 0; i < prof.num_profile_threads; i++) {
-    profthread = &prof.profile_threads[i];
-    pthread_cancel(profthread->id);
-    pthread_join(profthread->id, NULL);
+  if(profopts.should_profile_separate_threads) {
+    /* Cancel all threads. Since threads can only be running while the master
+     * thread is in a different signal handler from this one, it's impossible that they're
+     * in an interval currently.
+     */
+    for(i = 0; i < prof.num_profile_threads; i++) {
+      profthread = &prof.profile_threads[i];
+      pthread_cancel(profthread->id);
+      pthread_join(profthread->id, NULL);
+    }
   }
 
   pthread_exit(NULL);
@@ -300,35 +327,38 @@ void *profile_master(void *a) {
   sigset_t mask;
   pid_t tid;
 
-  if(profopts.should_profile_all) {
-    setup_profile_thread(&profile_all, 
-                         &profile_all_interval, 
-                         &profile_all_skip_interval, 
-                         profopts.profile_all_skip_intervals);
-  }
-  if(profopts.should_profile_rss) {
-    setup_profile_thread(&profile_rss, 
-                         &profile_rss_interval, 
-                         &profile_rss_skip_interval, 
-                         profopts.profile_rss_skip_intervals);
-  }
-  if(profopts.should_profile_extent_size) {
-    setup_profile_thread(&profile_extent_size, 
-                         &profile_extent_size_interval, 
-                         &profile_extent_size_skip_interval, 
-                         profopts.profile_extent_size_skip_intervals);
-  }
-  if(profopts.should_profile_allocs) {
-    setup_profile_thread(&profile_allocs, 
-                         &profile_allocs_interval, 
-                         &profile_allocs_skip_interval, 
-                         profopts.profile_allocs_skip_intervals);
-  }
-  if(profopts.should_profile_online) {
-    setup_profile_thread(&profile_online, 
-                         &profile_online_interval, 
-                         &profile_online_skip_interval, 
-                         profopts.profile_online_skip_intervals);
+  if(profopts.should_profile_separate_threads) {
+    /* Only do this if we're running every profiling thread in a separate pthread. */
+    if(profopts.should_profile_all) {
+      setup_profile_thread(&profile_all, 
+                           &profile_all_interval, 
+                           &profile_all_skip_interval, 
+                           profopts.profile_all_skip_intervals);
+    }
+    if(profopts.should_profile_rss) {
+      setup_profile_thread(&profile_rss, 
+                           &profile_rss_interval, 
+                           &profile_rss_skip_interval, 
+                           profopts.profile_rss_skip_intervals);
+    }
+    if(profopts.should_profile_extent_size) {
+      setup_profile_thread(&profile_extent_size, 
+                           &profile_extent_size_interval, 
+                           &profile_extent_size_skip_interval, 
+                           profopts.profile_extent_size_skip_intervals);
+    }
+    if(profopts.should_profile_allocs) {
+      setup_profile_thread(&profile_allocs, 
+                           &profile_allocs_interval, 
+                           &profile_allocs_skip_interval, 
+                           profopts.profile_allocs_skip_intervals);
+    }
+    if(profopts.should_profile_online) {
+      setup_profile_thread(&profile_online, 
+                           &profile_online_interval, 
+                           &profile_online_skip_interval, 
+                           profopts.profile_online_skip_intervals);
+    }
   }
   
   /* Initialize synchronization primitives */
@@ -452,6 +482,18 @@ void sh_start_profile_master_thread() {
 void deinitialize_profiling() {
   if(profopts.should_profile_all) {
     profile_all_deinit();
+  }
+  if(profopts.should_profile_rss) {
+    profile_rss_deinit();
+  }
+  if(profopts.should_profile_extent_size) {
+    profile_extent_size_deinit();
+  }
+  if(profopts.should_profile_allocs) {
+    profile_allocs_deinit();
+  }
+  if(profopts.should_profile_online) {
+    profile_online_deinit();
   }
 }
 

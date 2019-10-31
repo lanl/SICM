@@ -32,6 +32,8 @@ typedef struct profile_info {
   profile_online_info profile_online;
 } profile_info;
 
+/* Information about a single profiling thread. Used by the
+ * master profiling thread to keep track of them. */
 typedef struct profile_thread {
   pthread_t id;
   int signal, skip_signal;
@@ -61,6 +63,7 @@ typedef struct profiler {
 
   /* Per-arena profiling information */
   profile_info **info;
+  profile_info **prev_info;
   pthread_rwlock_t info_lock;
 
   /* Data for each profile thread */

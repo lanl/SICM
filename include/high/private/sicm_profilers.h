@@ -55,7 +55,6 @@ typedef struct profile_online_info {
   /* profile_online */
 } profile_online_info;
 
-
 /********************
  * Data needed to do the profiling
  ********************/
@@ -79,7 +78,6 @@ typedef struct profile_allocs_data {
   /* profile_allocs */
 } profile_allocs_data;
 
-
 /* profile_online */
 typedef struct valweight {
   size_t value, weight;
@@ -93,7 +91,6 @@ typedef struct profile_online_data {
   struct sicm_device_list *upper_dl, *lower_dl;
   tree(size_t, deviceptr) prev_hotset, prev_coldset;
 } profile_online_data;
-
 
 /********************
  * Functions

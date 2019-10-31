@@ -151,7 +151,8 @@ typedef struct profiling_options {
       should_profile_rss,
       should_profile_extent_size,
       should_profile_allocs,
-      should_profile;
+      should_profile,
+      should_profile_separate_threads;
   int profile_one_site;
   int should_run_rdspy;
   int should_print_intervals;
