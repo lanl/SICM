@@ -466,11 +466,6 @@ void* sh_alloc(int id, size_t sz) {
   void *ret;
   alloc_info_ptr aip;
 
-	int j, nptrs;
-	void *buffer[100];
-	char **strings;
-
-
   if(!sh_initialized || !id || (tracker.layout == INVALID_LAYOUT) || !sz) {
     return je_mallocx(sz, MALLOCX_TCACHE_NONE);
   }
@@ -493,11 +488,7 @@ void* sh_aligned_alloc(int id, size_t alignment, size_t sz) {
   int index;
   void *ret;
 
-  if(!sz) {
-    return NULL;
-  }
-
-  if(!sh_initialized || !id || (tracker.layout == INVALID_LAYOUT)) {
+  if(!sh_initialized || !id || (tracker.layout == INVALID_LAYOUT) || !sz) {
     return je_mallocx(sz, MALLOCX_TCACHE_NONE | MALLOCX_ALIGN(alignment));
   }
 
