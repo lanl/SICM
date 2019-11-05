@@ -27,7 +27,7 @@ target_include_directories(sicm_overrides PRIVATE ${CMAKE_SOURCE_DIR}/include/lo
 target_include_directories(sicm_overrides PUBLIC ${CMAKE_SOURCE_DIR}/include/low/public)
 target_include_directories(sicm_memreserve PUBLIC ${CMAKE_SOURCE_DIR}/include/high/public)
 target_include_directories(sicm_hotset PUBLIC ${CMAKE_SOURCE_DIR}/include/high/public)
-target_include_directories(sicm_hotset PRIVATE ${CMAKE_SOURCE_DIR}/include/high/public)
+target_include_directories(sicm_hotset PRIVATE ${CMAKE_SOURCE_DIR}/include/high/private)
 
 target_link_libraries(sicm_runtime sicm)
 
