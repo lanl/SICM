@@ -80,6 +80,8 @@ prev_app_info *sh_parse_profiling(FILE *file) {
   unsigned index;
   size_t num_arenas, cur_arena_index, tmp_sizet;
   int tmp_int, site;
+  char *event;
+  size_t i;
 
   if(!file) {
     fprintf(stderr, "Invalid file pointer to be parsed. Aborting.\n");
@@ -139,7 +141,7 @@ prev_app_info *sh_parse_profiling(FILE *file) {
           fprintf(stderr, "Didn't find a number of arenas. Aborting.\n");
           exit(1);
         }
-        if((cur_arena_index == num_arenas - 1) {
+        if((cur_arena_index == num_arenas - 1)) {
           fprintf(stderr, "Too many arenas when parsing profiling info. Aborting.\n");
           exit(1);
         }
@@ -161,10 +163,10 @@ prev_app_info *sh_parse_profiling(FILE *file) {
         depth = 1;
         continue;
       } else if(sscanf(line, "First interval: %zu", &tmp_sizet)) {
-        ret->first_interval = tmp_sizet;
+        ret->prev_info_arr[cur_arena_index].info.first_interval = tmp_sizet;
         continue;
       } else if(sscanf(line, "Number of intervals: %zu", &tmp_sizet)) {
-        ret->intervals = tmp_sizet;
+        ret->prev_info_arr[cur_arena_index].info.num_intervals = tmp_sizet;
         continue;
       } else if(sscanf(line, "Number of allocation sites: %d", &tmp_int)) {
         ret->prev_info_arr[cur_arena_index].num_alloc_sites = tmp_int;
@@ -196,7 +198,6 @@ prev_app_info *sh_parse_profiling(FILE *file) {
         /* Up in depth */
         depth = 2;
         continue;
-      } else if(sscanf(line, "BEGIN EVENT %s", event)) {
       } else {
         fprintf(stderr, "Didn't recognize a line in the profiling information. Aborting.\n");
         exit(1);
