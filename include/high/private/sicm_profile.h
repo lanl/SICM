@@ -46,6 +46,7 @@ typedef struct prev_profile_info {
 typedef struct prev_app_info {
   size_t num_arenas;
   size_t num_profile_all_events;
+  char **profile_all_events;
   prev_profile_info *prev_info_arr;
 } prev_app_info;
 
