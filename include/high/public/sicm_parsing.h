@@ -134,7 +134,7 @@ prev_app_info *sh_parse_profiling(FILE *file) {
         ret->num_arenas = num_arenas;
         ret->prev_info_arr = calloc(num_arenas, sizeof(prev_profile_info));
         continue;
-      } else if(sscanf("Number of PROFILE_ALL events: %zu\n", &tmp_sizet) == 1) {
+      } else if(sscanf(line, "Number of PROFILE_ALL events: %zu\n", &tmp_sizet) == 1) {
         ret->num_profile_all_events = tmp_sizet;
         continue;
       } else if(sscanf(line, "BEGIN ARENA %u", index) == 1) {
