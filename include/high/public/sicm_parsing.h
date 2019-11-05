@@ -172,18 +172,19 @@ prev_app_info *sh_parse_profiling(FILE *file) {
       } else if(sscanf(line, "Number of intervals: %zu", &tmp_sizet)) {
         ret->prev_info_arr[cur_arena_index].info.num_intervals = tmp_sizet;
         continue;
-      } else if(sscanf(line, "Number of allocation sites: %d", &tmp_int)) {
+      } else if(sscanf(line, "  Number of allocation sites: %d\n", &tmp_int)) {
         ret->prev_info_arr[cur_arena_index].num_alloc_sites = tmp_int;
         ret->prev_info_arr[cur_arena_index].alloc_sites = malloc(tmp_int * sizeof(int));
         continue;
-      } else if(strcmp(line, "Allocation sites:") == 0) {
-        sscanf(line, "Allocation sites: %n", &tmp_int);
+      } else if(strcmp(line, "  Allocation sites: ") == 0) {
+        sscanf(line, "  Allocation sites: %n", &tmp_int);
         line = line + tmp_int;
         while(sscanf(line, "%d %n", &site, &tmp_int) > 0) {
           printf("Found site %d\n", site);
+          fflush(stdout);
           ret->prev_info_arr[cur_arena_index].alloc_sites[i] = site;
         }
-      } else if(strcmp(line, "BEGIN PROFILE_ALL") == 0) {
+      } else if(strcmp(line, "  BEGIN PROFILE_ALL") == 0) {
         /* Down in depth */
         depth = 3;
         profile_type = 0;
@@ -199,7 +200,7 @@ prev_app_info *sh_parse_profiling(FILE *file) {
        2. The end of this profiling block
     */
     } else if((depth == 3) && (profile_type == 0)) {
-      if(strcmp(line, "END PROFILE_ALL") == 0) {
+      if(strcmp(line, "  END PROFILE_ALL") == 0) {
         /* Up in depth */
         depth = 2;
         continue;
