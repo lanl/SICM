@@ -105,6 +105,16 @@ void set_options() {
   FILE *guidance_file;
   ssize_t len;
 
+  /* See if there's profiling information that we can use later */
+  env = getenv("SH_PROFILE_FILE");
+  if(env) {
+    profopts.profile_file = fopen(env, "r");
+    if(!profopts.profile_file) {
+      fprintf(stderr, "Failed to open profile file. Aborting.\n");
+      exit(1);
+    }
+  }
+
   /* Output the chosen options to this file */
   env = getenv("SH_LOG_FILE");
   tracker.log_file = NULL;
@@ -425,7 +435,7 @@ void set_options() {
       for(n = 0; n < profopts.num_imcs; n++) {
         index = (i * profopts.num_imcs) + n;
         /* Allocate enough room for the IMC name, the event name, two colons, and a terminator. */
-        profopts.profile_one_events[index] = orig_malloc(sizeof(char) * 
+        profopts.profile_one_events[index] = orig_malloc(sizeof(char) *
                                     (strlen(tmp_profile_one_events[i]) + strlen(profopts.imcs[n]) + 3));
         sprintf(profopts.profile_one_events[index], "%s::%s", profopts.imcs[n], tmp_profile_one_events[i]);
       }
@@ -452,7 +462,7 @@ void set_options() {
   profopts.should_profile_extent_size = 0;
   if(env) {
     profopts.should_profile_extent_size = 1;
-    
+
     env = getenv("SH_PROFILE_EXTENT_SIZE_SKIP_INTERVALS");
     profopts.profile_extent_size_skip_intervals = 1;
     if(env) {
@@ -464,7 +474,7 @@ void set_options() {
   profopts.should_profile_allocs = 0;
   if(env) {
     profopts.should_profile_allocs = 1;
-    
+
     env = getenv("SH_PROFILE_ALLOCS_SKIP_INTERVALS");
     profopts.profile_allocs_skip_intervals = 1;
     if(env) {
@@ -488,7 +498,7 @@ void set_options() {
   }
 
   /* How many samples should be collected by perf, maximum?
-   * Assuming we're only tracking addresses, this number is multiplied by 
+   * Assuming we're only tracking addresses, this number is multiplied by
    * the page size and divided by 16 to get the maximum number of samples.
    * 8 of those bytes are the header, and the other 8 are the address itself.
    * By default this is 64 pages, which yields 16k samples.
@@ -708,7 +718,7 @@ void sh_init() {
   tracker.sites = tree_make(int, siteinfo_ptr);
   tracker.device_arenas = tree_make(deviceptr, int);
   set_options();
-  
+
   if(tracker.layout != INVALID_LAYOUT) {
     tracker.arenas = (arena_info **) orig_calloc(tracker.max_arenas, sizeof(arena_info *));
 
@@ -751,7 +761,7 @@ void sh_init() {
       sh_start_profile_master_thread();
     }
   }
-  
+
   if (profopts.should_run_rdspy) {
     sh_rdspy_init(tracker.max_threads, tracker.num_static_sites);
   }

@@ -32,6 +32,23 @@ typedef struct profile_info {
   profile_online_info profile_online;
 } profile_info;
 
+/* Stores information about a previous run's arena.
+   Printed and parsed by sicm_parsing.h. */
+typedef struct prev_profile_info {
+  unsigned index;
+  int num_alloc_sites, *alloc_sites;
+  profile_info info;
+} prev_profile_info;
+
+/* Stores just enough information to recreate a previous run's
+   profiling. This information is printed and read back in by
+   sicm_parsing.h. */
+typedef struct prev_app_info {
+  size_t num_arenas;
+  size_t num_profile_all_events;
+  prev_profile_info *prev_info_arr;
+} prev_app_info;
+
 /* Information about a single profiling thread. Used by the
  * master profiling thread to keep track of them. */
 typedef struct profile_thread {
@@ -63,8 +80,10 @@ typedef struct profiler {
 
   /* Per-arena profiling information */
   profile_info **info;
-  profile_info **prev_info;
   pthread_rwlock_t info_lock;
+
+  /* Some previous run's profiling. */
+  prev_profile_info *prev_info;
 
   /* Data for each profile thread */
   profile_all_data profile_all;

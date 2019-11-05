@@ -170,6 +170,7 @@ typedef struct profiling_options {
   int max_sample_pages;
 
   /* Online */
+  FILE *profile_file; /* File containing previous run's profiling */
   char *profile_online_event;
   char profile_online_nobind;
 

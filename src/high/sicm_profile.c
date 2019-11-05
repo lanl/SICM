@@ -6,6 +6,7 @@
 #include <sys/syscall.h>
 #include <signal.h>
 #include "sicm_profile.h"
+#include "sicm_parsing.h"
 
 profiler prof;
 static int global_signal;
@@ -28,15 +29,15 @@ char timespec_cmp(struct timespec *a, struct timespec *b) {
 /* Subtracts two timespec structs from each other. Assumes stop is
  * larger than start.
  */
-void timespec_diff(struct timespec *start, struct timespec *stop,                           
+void timespec_diff(struct timespec *start, struct timespec *stop,
                    struct timespec *result)
 {
   if ((stop->tv_nsec - start->tv_nsec) < 0) {
-    result->tv_sec = stop->tv_sec - start->tv_sec - 1;                                      
-    result->tv_nsec = stop->tv_nsec - start->tv_nsec + 1000000000;                          
+    result->tv_sec = stop->tv_sec - start->tv_sec - 1;
+    result->tv_nsec = stop->tv_nsec - start->tv_nsec + 1000000000;
   } else {
-    result->tv_sec = stop->tv_sec - start->tv_sec;                                          
-    result->tv_nsec = stop->tv_nsec - start->tv_nsec;                                       
+    result->tv_sec = stop->tv_sec - start->tv_sec;
+    result->tv_nsec = stop->tv_nsec - start->tv_nsec;
   }
   return;
 }
@@ -330,37 +331,37 @@ void *profile_master(void *a) {
   if(profopts.should_profile_separate_threads) {
     /* Only do this if we're running every profiling thread in a separate pthread. */
     if(profopts.should_profile_all) {
-      setup_profile_thread(&profile_all, 
-                           &profile_all_interval, 
-                           &profile_all_skip_interval, 
+      setup_profile_thread(&profile_all,
+                           &profile_all_interval,
+                           &profile_all_skip_interval,
                            profopts.profile_all_skip_intervals);
     }
     if(profopts.should_profile_rss) {
-      setup_profile_thread(&profile_rss, 
-                           &profile_rss_interval, 
-                           &profile_rss_skip_interval, 
+      setup_profile_thread(&profile_rss,
+                           &profile_rss_interval,
+                           &profile_rss_skip_interval,
                            profopts.profile_rss_skip_intervals);
     }
     if(profopts.should_profile_extent_size) {
-      setup_profile_thread(&profile_extent_size, 
-                           &profile_extent_size_interval, 
-                           &profile_extent_size_skip_interval, 
+      setup_profile_thread(&profile_extent_size,
+                           &profile_extent_size_interval,
+                           &profile_extent_size_skip_interval,
                            profopts.profile_extent_size_skip_intervals);
     }
     if(profopts.should_profile_allocs) {
-      setup_profile_thread(&profile_allocs, 
-                           &profile_allocs_interval, 
-                           &profile_allocs_skip_interval, 
+      setup_profile_thread(&profile_allocs,
+                           &profile_allocs_interval,
+                           &profile_allocs_skip_interval,
                            profopts.profile_allocs_skip_intervals);
     }
     if(profopts.should_profile_online) {
-      setup_profile_thread(&profile_online, 
-                           &profile_online_interval, 
-                           &profile_online_skip_interval, 
+      setup_profile_thread(&profile_online,
+                           &profile_online_interval,
+                           &profile_online_skip_interval,
                            profopts.profile_online_skip_intervals);
     }
   }
-  
+
   /* Initialize synchronization primitives */
   pthread_mutex_init(&prof.mtx, NULL);
   pthread_cond_init(&prof.cond, NULL);
@@ -394,7 +395,7 @@ void *profile_master(void *a) {
     fprintf(stderr, "Error creating timer. Aborting.\n");
     exit(1);
   }
-  
+
   /* Set the timer */
   its.it_value.tv_sec = profopts.profile_rate_nseconds / 1000000000;
   its.it_value.tv_nsec = profopts.profile_rate_nseconds % 1000000000;
@@ -419,6 +420,11 @@ void *profile_master(void *a) {
 
 void initialize_profiling() {
   pthread_rwlock_init(&(prof.info_lock), NULL);
+
+  /* If applicable, read in the previous run's profiling information */
+  if(profopts.profile_file) {
+    prof.prev_info = sh_parse_profiling(profopts.profile_file);
+  }
 
   /* Allocate room for the per-arena profiling information */
   prof.info = orig_calloc(tracker.max_arenas, sizeof(profile_info *));
@@ -497,96 +503,12 @@ void deinitialize_profiling() {
   }
 }
 
-void print_profiling() {
-  size_t i, n, x;
-  profile_info *profinfo;
-  arena_info *arena;
-
-  printf("===== PROFILING INFORMATION =====\n");
-  arena_arr_for(i) {
-    prof_check_good(arena, profinfo, i);
-
-    /* Print the sites that are in this arena */
-    printf("%d sites: ", arena->num_alloc_sites);
-    for(n = 0; n < arena->num_alloc_sites; n++) {
-      printf("%d ", arena->alloc_sites[n]);
-    }
-    printf("\n");
-
-    if(profopts.should_print_intervals) {
-      /* General info */
-      printf("    Number of intervals: %zu\n", profinfo->num_intervals);
-      printf("    First interval: %zu\n", profinfo->first_interval);
-    }
-
-    /* profile_rss */
-    if(profopts.should_profile_rss) {
-      printf("  RSS:\n");
-      printf("    Peak: %zu\n", profinfo->profile_rss.peak);
-      if(profopts.should_print_intervals) {
-        for(x = 0; x < profinfo->num_intervals; x++) {
-          printf("    %zu\n", profinfo->profile_rss.intervals[x]);
-        }
-      }
-    }
-
-    /* profile_extent_size */
-    if(profopts.should_profile_extent_size) {
-      printf("  Extents size:\n");
-      printf("    Peak: %zu\n", profinfo->profile_extent_size.peak);
-      if(profopts.should_print_intervals) {
-        for(x = 0; x < profinfo->num_intervals; x++) {
-          printf("    %zu\n", profinfo->profile_extent_size.intervals[x]);
-        }
-      }
-    }
-
-    /* profile_allocs */
-    if(profopts.should_profile_allocs) {
-      printf("  Allocations size:\n");
-      printf("    Peak: %zu\n", profinfo->profile_allocs.peak);
-      if(profopts.should_print_intervals) {
-        for(x = 0; x < profinfo->num_intervals; x++) {
-          printf("    %zu\n", profinfo->profile_allocs.intervals[x]);
-        }
-      }
-    }
-
-    /* profile_all events */
-    if(profopts.should_profile_all) {
-      for(n = 0; n < profopts.num_profile_all_events; n++) {
-        printf("  Event: %s\n", profopts.profile_all_events[n]);
-        printf("    Total: %zu\n", profinfo->profile_all.events[n].total);
-        printf("    Peak: %zu\n", profinfo->profile_all.events[n].peak);
-        if(profopts.should_print_intervals) {
-          for(x = 0; x < profinfo->num_intervals; x++) {
-            printf("      %zu\n", profinfo->profile_all.events[n].intervals[x]);
-          }
-        }
-      }
-    }
-  }
-  printf("===== END PROFILING INFORMATION =====\n");
-  fflush(stdout);
-
-#if 0
-  /* MBI profiling */
-  } else if(profopts.should_profile_one) {
-    printf("===== MBI RESULTS FOR SITE %u =====\n", profopts.profile_one_site);
-    printf("Average bandwidth: %.1f MB/s\n", prof.running_avg);
-    printf("Maximum bandwidth: %.1f MB/s\n", prof.max_bandwidth);
-    if(profopts.should_profile_rss) {
-      printf("Peak RSS: %zu\n", tracker.arenas[profopts.profile_one_site]->peak_rss);
-    }
-    printf("===== END MBI RESULTS =====\n");
-#endif
-}
 
 void sh_stop_profile_master_thread() {
   /* Tell the master thread to stop */
   pthread_kill(prof.master_id, prof.stop_signal);
   pthread_join(prof.master_id, NULL);
 
-  print_profiling();
+  sh_print_profiling(prof.info);
   deinitialize_profiling();
 }

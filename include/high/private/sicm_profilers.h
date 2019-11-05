@@ -143,15 +143,3 @@ void profile_online_interval(int);
 void profile_online_post_interval(profile_info *);
 void profile_online_skip_interval(int);
 void profile_online_arena_init(profile_online_info *);
-
-#if 0
-/* ONE */
-typedef struct profile_one_data {
-  /* For measuring bandwidth */
-  size_t num_bandwidth_intervals;
-  float running_avg;
-  float max_bandwidth;
-} profile_one_data;
-void *profile_one(void *a);
-void profile_one_interval(int s);
-#endif

@@ -1,284 +1,206 @@
 /*
  * Contains code for parsing output of the high-level interface.
- * Reads information about each allocation site into a structure.
+ * Also outputs profiling information to a file.
  */
 
 #include <inttypes.h>
 #include <limits.h>
 #include <stdio.h>
+#include "sicm_profile.h"
 #include "sicm_tree.h"
 
-/* Holds information about a single site and a single type of profiling */
-typedef struct event {
-  char *name;
-  size_t total, peak;
-} event;
+/* Iterates over the structure and prints it out so that it can
+ * be seamlessly read back in */
+void sh_print_profiling(profile_info **info) {
+  size_t i, n, x, num_arenas;
+  profile_info *profinfo;
+  arena_info *arena;
 
-/* Holds information on a single site */
-typedef struct site {
-  size_t num_events;
-  event *events;
-  int id;
-} site;
-typedef site * siteptr;
-
-/* Tree of sites */
-use_tree(int, siteptr);
-typedef struct app_info {
-  tree(int, siteptr) sites;
-  event *events;
-  size_t num_events;
-} app_info;
-
-static inline void free_info(app_info *info) {
-  tree_it(int, siteptr) it;
-  size_t i;
-
-  if(info->num_events) {
-    for(i = 0; i < info->num_events; i++) {
-      free(info->events[i].name);
-    }
-    free(info->events);
+  /* Figure out how many valid arenas there are. */
+  num_arenas = 0;
+  arena_arr_for(i) {
+    prof_check_good(arena, profinfo, i);
+    num_arenas++;
   }
-  tree_traverse(info->sites, it) {
-    if(tree_it_val(it)->num_events) {
-      for(i = 0; i < info->num_events; i++) {
-        free(tree_it_val(it)->events[i].name);
+
+  printf("===== BEGIN SICM PROFILING INFORMATION =====\n");
+  printf("Number of PROFILE_ALL events: %zu\n", profopts.num_profile_all_events);
+  printf("Number of arenas: %zu\n", num_arenas);
+  arena_arr_for(i) {
+    prof_check_good(arena, profinfo, i);
+
+    /* Arena information and sites that are in this one arena */
+    printf("BEGIN ARENA %u\n", arena->index);
+    printf("  Number of allocation sites: %d\n", arena->num_alloc_sites);
+    printf("  Allocation sites: ");
+    for(n = 0; n < arena->num_alloc_sites; n++) {
+      printf("%d ", arena->alloc_sites[n]);
+    }
+    printf("\n");
+
+    /* Interval information */
+    printf("  First interval: %zu\n", profinfo->first_interval);
+    printf("  Number of intervals: %zu\n", profinfo->num_intervals);
+
+    if(profopts.should_profile_all) {
+      printf("  BEGIN PROFILE_ALL\n");
+      for(n = 0; n < profopts.num_profile_all_events; n++) {
+        printf("    BEGIN EVENT %s\n", profopts.profile_all_events[n]);
+        printf("      Total: %zu\n", profinfo->profile_all.events[n].total);
+        printf("      Peak: %zu\n", profinfo->profile_all.events[n].peak);
+        if(profopts.should_print_intervals) {
+          printf("        ");
+          for(x = 0; x < profinfo->num_intervals; x++) {
+            printf("%zu ", profinfo->profile_all.events[n].intervals[x]);
+          }
+          printf("\n");
+        }
+        printf("    END EVENT\n", profopts.profile_all_events[n]);
       }
-      free(tree_it_val(it)->events);
+      printf("  END PROFILE_ALL\n");
     }
-    free(tree_it_val(it));
+    printf("END ARENA\n", arena->index);
+
   }
-  tree_free(info->sites);
-  free(info);
+  printf("===== END SICM PROFILING INFORMATION =====\n");
 }
 
-static inline void print_info(app_info *info) {
-  size_t i;
-  tree_it(int, siteptr) it;
+/* Reads the above-printed information back into an array of prev_profile_info structs. */
+prev_app_info *sh_parse_profiling(FILE *file) {
+  /* Stores all profiling information */
+  prev_app_info *ret;
 
-  printf("Totals:\n");
-  for(i = 0; i < info->num_events; i++) {
-    printf("%s: %zu TOTAL, %zu PEAK\n", info->events[i].name, info->events[i].total, info->events[i].peak);
-  }
-  
-  tree_traverse(info->sites, it) {
-    printf("%d\n", tree_it_val(it)->id);
-    for(i = 0; i < tree_it_val(it)->num_events; i++) {
-      printf("  %s: %zu TOTAL %zu PEAK\n", tree_it_val(it)->events[i].name,
-                                           tree_it_val(it)->events[i].total,
-                                           tree_it_val(it)->events[i].peak);
-    }
-  }
-}
-
-/* Creates a new event and adds it to the app_info structure, as
- * well as the cur_sites sites */
-static inline void create_event(app_info *info, siteptr *cur_sites, size_t num_sites, char *eventstr) {
-  size_t i;
-  char seen;
-  siteptr cur_site;
-
-  /* See if we've seen this event before */
-  seen = 0;
-  for(i = 0; i < info->num_events; i++) {
-    if(strncmp(info->events[i].name, eventstr, 64) == 0) {
-      seen = 1;
-    }
-  }
-
-  if(!seen) {
-    /* Store this event for the whole application */
-    info->num_events++;
-    info->events = (event *) realloc(info->events,
-                                     sizeof(event) * info->num_events);
-    info->events[info->num_events - 1].name = (char *) malloc(sizeof(char) * (strlen(eventstr) + 1));
-    strcpy(info->events[info->num_events - 1].name, eventstr);
-    info->events[info->num_events - 1].total = 0;
-    info->events[info->num_events - 1].peak = 0;
-  }
-
-  /* Iterate over the given sites */
-  for(i = 0; i < num_sites; i++) {
-    /* Allocate room for the new event */
-    cur_site = cur_sites[i];
-    cur_site->num_events++;
-    cur_site->events = (event *) realloc(cur_site->events, 
-                                         sizeof(event) * cur_site->num_events);
-    cur_site->events[cur_site->num_events - 1].name = (char *) malloc(sizeof(char) * (strlen(eventstr) + 1));
-    strcpy(cur_site->events[cur_site->num_events - 1].name, eventstr);
-    cur_site->events[cur_site->num_events - 1].total = 0;
-    cur_site->events[cur_site->num_events - 1].peak = 0;
-  }
-}
-
-/* "tp" is 0 for total, 1 for peak */
-static inline void add_event_total(app_info *info, siteptr *cur_sites, size_t num_sites, size_t val, char tp) {
-  size_t i;
-  siteptr cur_site;
-
-  /* Find this event in the app_info struct, add up the total */
-  cur_site = cur_sites[0];
-  for(i = 0; i < info->num_events; i++) {
-    if(strncmp(cur_site->events[cur_site->num_events - 1].name, info->events[i].name, 64) == 0) {
-      if(tp == 0) {
-        info->events[i].total += val;
-      } else {
-        info->events[i].peak += val;
-      }
-      break;
-    }
-  }
-
-  for(i = 0; i < num_sites; i++) {
-    cur_site = cur_sites[i];
-    if(tp == 0) {
-      cur_site->events[cur_site->num_events - 1].total = val;
-    } else {
-      cur_site->events[cur_site->num_events - 1].peak = val;
-    }
-  }
-}
-
-/* Reads in profiling information from the file pointer, returns
- * a tree containing all sites and their bandwidth, peak RSS,
- * and number of accesses (if applicable).
- */
-static inline app_info *sh_parse_site_info(FILE *file) {
-  char *line, in_block, *tok, in_event, *tmp_str;
-  size_t len, val, num_sites;
-  double val_double;
+  /* Used to read things in */
   ssize_t read;
-  siteptr *cur_sites; /* An array of site pointers */
-  siteptr cur_site;
-  int site_id, num_tok, i, n;
-  float bandwidth, seconds;
-  tree_it(int, siteptr) it;
-  app_info *info;
+  char *line;
+  size_t len;
+  char depth, profile_type;
 
-  info = (app_info *)malloc(sizeof(app_info));
-  info->sites = tree_make(int, siteptr);
-  info->num_events = 0;
-  info->events = NULL;
+  /* Temporaries */
+  unsigned index;
+  size_t num_arenas, cur_arena_index, tmp_sizet;
+  int tmp_int, site;
 
   if(!file) {
-    fprintf(stderr, "Invalid file pointer. Aborting.\n");
+    fprintf(stderr, "Invalid file pointer to be parsed. Aborting.\n");
     exit(1);
   }
 
-  /* Read in from stdin and fill in the tree with the sites */
-  cur_sites = NULL;
-  site_id = 0;
-  line = NULL;
-  len = 0;
-  in_block = 0; /* 0 if not in results block,
-                   1 if in MBI results block,
-                   2 if in PEBS results block */
-  in_event = 0;
+  /* This keeps track of how deeply indented we are.
+     0: Not in profiling information yet.
+     1: In profiling information.
+     2: In an arena.
+     3: In a type of profiling.
+     4: In a specific event.
+  */
+  depth = 0;
 
+  /* Stores the type of profiling that we're currently looking at.
+     0: profile_all
+  */
+  profile_type = -1;
+
+  ret = malloc(sizeof(prev_app_info));
+  len = 0;
+  line = NULL;
+  cur_arena_index = 0;
   while(read = getline(&line, &len, file) != -1) {
 
-    if(in_block == 0) {
-      /* We're not in any results blocks, try to get into one */
-
-      if(strncmp(line, "===== PROFILING INFORMATION =====\n", 25) == 0) {
-        /* Found some PEBS results */
-        in_block = 2;
-        in_event = 0;
+    /* Here, we want to look for profiling information output */
+    if(depth == 0) {
+      if(strcmp(line, "===== BEGIN SICM PROFILING INFORMATION =====\n") == 0) {
+        depth = 1;
+        num_arenas = 0;
+        continue;
       }
-    } else if(in_block == 1) {
-    } else if(in_block == 2) {
-      /* See if this is the start of an arena's profiling */
-      num_tok = sscanf(line,
-                      "%d sites: %d",
-                      &i,
-                      &n);
-      if(num_tok == 2) {
-        num_tok = sscanf(line,
-                        "%zu sites: %d",
-                        &num_sites,
-                        &n);
-        if(cur_sites) free(cur_sites);
-        cur_sites = (siteptr *) malloc(sizeof(siteptr) * num_sites);
-        /* Iterate over the site IDs and read them in */
-        tok = strtok(line, " ");
-        tok = strtok(NULL, " ");
-        tok = strtok(NULL, " ");
-        i = 0;
-        while(tok != NULL) {
-          num_tok = sscanf(tok, "%d", &site_id);
-          if(num_tok == 1) {
-            it = tree_lookup(info->sites, site_id);
-            if(tree_it_good(it)) {
-              /* We already created this site */
-              cur_sites[i] = tree_it_val(it);
-            } else {
-              /* Create the site */
-              cur_sites[i] = (siteptr) malloc(sizeof(site));
-              cur_sites[i]->events = NULL;
-              cur_sites[i]->num_events = 0;
-              cur_sites[i]->id = site_id;
-              tree_insert(info->sites, site_id, cur_sites[i]);
-            }
-          } else {
-            break;
-          }
-          tok = strtok(NULL, " ");
-          i++;
+
+    /* At this level, we're looking for three things:
+       1. A number of arenas
+       2. The start of a new arena
+       3. The number of events of various types
+       3. The end of profiling information
+    */
+    } else if(depth == 1) {
+      if(strcmp(line, "===== END SICM PROFILING INFORMATION =====\n") == 0) {
+        /* Up in depth */
+        depth = 0;
+        break;
+      } else if(sscanf(line, "Number of arenas: %zu", &num_arenas) == 1) {
+        ret->num_arenas = num_arenas;
+        ret->prev_info_arr = calloc(num_arenas, sizeof(prev_profile_info));
+        continue;
+      } else if(sscanf("Number of PROFILE_ALL events: %zu\n", &tmp_sizet) == 1) {
+        ret->num_profile_all_events = tmp_sizet;
+        continue;
+      } else if(sscanf(line, "BEGIN ARENA %u", index) == 1) {
+        /* Down in depth */
+        depth = 2;
+        if(!num_arenas) {
+          fprintf(stderr, "Didn't find a number of arenas. Aborting.\n");
+          exit(1);
         }
-        continue;
-      }
-
-      /* See if this line defines a new event */
-      tmp_str = NULL;
-      if(strncmp(line, "  Event: ", 9) == 0) {
-        tmp_str = (char *) malloc(sizeof(char) * 64);
-        num_tok = sscanf(line, "  Event: %s\n", tmp_str);
-      } else if(strncmp(line, "  Extents size:", 15) == 0) {
-        tmp_str = (char *) malloc(sizeof(char) * 12);
-        strcpy(tmp_str, "extent_size");
-      } else if(strncmp(line, "  Allocations size:", 19) == 0) {
-        tmp_str = (char *) malloc(sizeof(char) * 11);
-        strcpy(tmp_str, "alloc_size");
-      } else if(strncmp(line, "  RSS:", 6) == 0) {
-        tmp_str = (char *) malloc(sizeof(char) * 4);
-        strcpy(tmp_str, "rss");
-      }
-      if(tmp_str) {
-        /* Triggered if we found a new event above */
-        in_event = 1;
-        create_event(info, cur_sites, num_sites, tmp_str);
-        free(tmp_str);
-
-        continue;
-
-      /* If we didn't find a new event above, then we're most likely in an event */
-      } else if(in_event) {
-        num_tok = sscanf(line, "  Total: %zu\n", &val);
-        if(num_tok == 1) {
-          add_event_total(info, cur_sites, num_sites, val, 0);
-          continue;
+        if((cur_arena_index == num_arenas - 1) {
+          fprintf(stderr, "Too many arenas when parsing profiling info. Aborting.\n");
+          exit(1);
         }
-
-        /* Get peak number that this event got to this arena */
-        num_tok = sscanf(line, "  Peak: %zu\n", &val);
-        if(num_tok == 1) {
-          add_event_total(info, cur_sites, num_sites, val, 1);
-          continue;
-        }
+        ret->prev_info_arr[cur_arena_index].index = index;
         continue;
+      } else {
+        fprintf(stderr, "Didn't recognize a line in the profiling information. Aborting.\n");
+        exit(1);
       }
-      
-      if(strncmp(line, "===== END PROFILING INFORMATION =====\n", 32) == 0) {
-        in_block = 0;
-        in_event = 0;
-        free(cur_sites);
+
+    /* At this level, we're looking for:
+       1. Per-arena information (numerous).
+       2. The beginning of a type of profiling.
+       3. The end of an arena.
+    */
+    } else if(depth == 2) {
+      if(strcmp(line, "END ARENA") == 0) {
+        /* Up in depth */
+        depth = 1;
         continue;
+      } else if(sscanf(line, "First interval: %zu", &tmp_sizet)) {
+        ret->first_interval = tmp_sizet;
+        continue;
+      } else if(sscanf(line, "Number of intervals: %zu", &tmp_sizet)) {
+        ret->intervals = tmp_sizet;
+        continue;
+      } else if(sscanf(line, "Number of allocation sites: %d", &tmp_int)) {
+        ret->prev_info_arr[cur_arena_index].num_alloc_sites = tmp_int;
+        ret->prev_info_arr[cur_arena_index].alloc_sites = malloc(tmp_int * sizeof(int));
+        continue;
+      } else if(strcmp(line, "Allocation sites:") == 0) {
+        sscanf(line, "Allocation sites: %n", &tmp_int);
+        line = line + tmp_int;
+        while(sscanf(line, "%d %n", &site, &tmp_int) > 0) {
+          printf("Found site %d\n", site);
+          ret->prev_info_arr[cur_arena_index].alloc_sites[i] = site;
+        }
+      } else if(strcmp(line, "BEGIN PROFILE_ALL") == 0) {
+        /* Down in depth */
+        depth = 3;
+        profile_type = 0;
+        continue;
+      } else {
+        fprintf(stderr, "Didn't recognize a line in the profiling information. Aborting.\n");
+        exit(1);
+      }
+
+    /* Looking for:
+       1. The start of a particular event
+       2. The end of this profiling block
+    */
+    } else if((depth == 3) && (profile_type == 0)) {
+      if(strcmp(line, "END PROFILE_ALL") == 0) {
+        /* Up in depth */
+        depth = 2;
+        continue;
+      } else if(sscanf(line, "BEGIN EVENT %s", event)) {
+      } else {
+        fprintf(stderr, "Didn't recognize a line in the profiling information. Aborting.\n");
+        exit(1);
       }
     }
   }
-
-  if(cur_sites) free(cur_sites);
-  free(line);
-  return info;
 }
