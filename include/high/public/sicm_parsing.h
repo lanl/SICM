@@ -176,7 +176,7 @@ prev_app_info *sh_parse_profiling(FILE *file) {
         ret->prev_info_arr[cur_arena_index].num_alloc_sites = tmp_int;
         ret->prev_info_arr[cur_arena_index].alloc_sites = malloc(tmp_int * sizeof(int));
         continue;
-      } else if(strcmp(line, "  Allocation sites: ") == 0) {
+      } else if(strncmp(line, "  Allocation sites: ", 20) == 0) {
         sscanf(line, "  Allocation sites: %n", &tmp_int);
         line = line + tmp_int;
         while(sscanf(line, "%d %n", &site, &tmp_int) > 0) {
@@ -184,6 +184,7 @@ prev_app_info *sh_parse_profiling(FILE *file) {
           fflush(stdout);
           ret->prev_info_arr[cur_arena_index].alloc_sites[i] = site;
         }
+        continue;
       } else if(strcmp(line, "  BEGIN PROFILE_ALL") == 0) {
         /* Down in depth */
         depth = 3;
@@ -209,6 +210,10 @@ prev_app_info *sh_parse_profiling(FILE *file) {
         fprintf(stderr, "Line: %s\n", line);
         exit(1);
       }
+
+    } else {
+      fprintf(stderr, "Invalid depth (%d) detected in parsing. Aborting.\n", depth);
+      exit(1);
     }
   }
 }
