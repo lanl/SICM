@@ -14,7 +14,7 @@ add_library(sicm_overrides SHARED
 add_library(sicm_compass SHARED sicm_compass.cpp)
 add_library(sicm_rdspy SHARED sicm_rdspy.cpp)
 add_executable(sicm_memreserve sicm_memreserve.c)
-add_executable(sicm_hotset sicm_hotset.c)
+#add_executable(sicm_hotset sicm_hotset.c)
 
 # Public and private headers for each library
 target_include_directories(sicm_runtime PRIVATE ${CMAKE_SOURCE_DIR}/include/high/private)
@@ -26,10 +26,10 @@ target_include_directories(sicm_overrides PUBLIC ${CMAKE_SOURCE_DIR}/include/hig
 target_include_directories(sicm_overrides PRIVATE ${CMAKE_SOURCE_DIR}/include/low/private)
 target_include_directories(sicm_overrides PUBLIC ${CMAKE_SOURCE_DIR}/include/low/public)
 target_include_directories(sicm_memreserve PUBLIC ${CMAKE_SOURCE_DIR}/include/high/public)
-target_include_directories(sicm_hotset PUBLIC ${CMAKE_SOURCE_DIR}/include/high/public)
-target_include_directories(sicm_hotset PRIVATE ${CMAKE_SOURCE_DIR}/include/high/private)
-target_include_directories(sicm_hotset PUBLIC ${CMAKE_SOURCE_DIR}/include/low/public)
-target_include_directories(sicm_hotset PRIVATE ${CMAKE_SOURCE_DIR}/include/low/private)
+#target_include_directories(sicm_hotset PUBLIC ${CMAKE_SOURCE_DIR}/include/high/public)
+#target_include_directories(sicm_hotset PRIVATE ${CMAKE_SOURCE_DIR}/include/high/private)
+#target_include_directories(sicm_hotset PUBLIC ${CMAKE_SOURCE_DIR}/include/low/public)
+#target_include_directories(sicm_hotset PRIVATE ${CMAKE_SOURCE_DIR}/include/low/private)
 
 target_link_libraries(sicm_runtime sicm)
 
@@ -45,8 +45,8 @@ target_include_directories(sicm_overrides PRIVATE ${JEMALLOC_INCLUDE_DIR})
 target_link_libraries(sicm_overrides ${JEMALLOC_LIBRARIES} ${CMAKE_THREAD_LIBS_INIT})
 target_include_directories(sicm_memreserve PRIVATE ${JEMALLOC_INCLUDE_DIR})
 target_link_libraries(sicm_memreserve ${JEMALLOC_LIBRARIES} ${CMAKE_THREAD_LIBS_INIT})
-target_include_directories(sicm_hotset PRIVATE ${JEMALLOC_INCLUDE_DIR})
-target_link_libraries(sicm_hotset ${JEMALLOC_LIBRARIES})
+#target_include_directories(sicm_hotset PRIVATE ${JEMALLOC_INCLUDE_DIR})
+#target_link_libraries(sicm_hotset ${JEMALLOC_LIBRARIES})
 
 ####################
 #     libnuma      #
@@ -56,8 +56,8 @@ target_include_directories(sicm_runtime PRIVATE ${NUMA_INCLUDE_DIR})
 target_link_libraries(sicm_runtime ${NUMA_LIBRARY})
 target_include_directories(sicm_memreserve PRIVATE ${NUMA_INCLUDE_DIR})
 target_link_libraries(sicm_memreserve ${NUMA_LIBRARY})
-target_include_directories(sicm_hotset PRIVATE ${NUMA_INCLUDE_DIR})
-target_link_libraries(sicm_hotset ${NUMA_LIBRARY})
+#target_include_directories(sicm_hotset PRIVATE ${NUMA_INCLUDE_DIR})
+#target_link_libraries(sicm_hotset ${NUMA_LIBRARY})
 
 ####################
 #     libpfm4      #
@@ -81,7 +81,8 @@ target_link_libraries(sicm_rdspy ${LLVM_LIBRARIES})
 find_library(LIBRT rt)
 target_link_libraries(sicm_runtime ${LIBRT})
 
-install(TARGETS sicm_runtime sicm_overrides sicm_compass sicm_rdspy sicm_memreserve sicm_hotset
+#sicm_hotset
+install(TARGETS sicm_runtime sicm_overrides sicm_compass sicm_rdspy sicm_memreserve
         LIBRARY DESTINATION lib
         RUNTIME DESTINATION bin)
 install(DIRECTORY ${CMAKE_SOURCE_DIR}/include/high/public/
