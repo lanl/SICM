@@ -166,10 +166,10 @@ prev_app_info *sh_parse_profiling(FILE *file) {
         /* Up in depth */
         depth = 1;
         continue;
-      } else if(sscanf(line, "First interval: %zu", &tmp_sizet)) {
+      } else if(sscanf(line, "  First interval: %zu", &tmp_sizet)) {
         ret->prev_info_arr[cur_arena_index].info.first_interval = tmp_sizet;
         continue;
-      } else if(sscanf(line, "Number of intervals: %zu", &tmp_sizet)) {
+      } else if(sscanf(line, "  Number of intervals: %zu", &tmp_sizet)) {
         ret->prev_info_arr[cur_arena_index].info.num_intervals = tmp_sizet;
         continue;
       } else if(sscanf(line, "  Number of allocation sites: %d\n", &tmp_int)) {
@@ -180,11 +180,8 @@ prev_app_info *sh_parse_profiling(FILE *file) {
         sscanf(line, "  Allocation sites: %n", &tmp_int);
         line = line + tmp_int;
         while(sscanf(line, "%d %n", &site, &tmp_int) > 0) {
-          printf("Found site %d\n", site);
-          fflush(stdout);
           ret->prev_info_arr[cur_arena_index].alloc_sites[i] = site;
           line += tmp_int;
-          printf("The next group: '%s'\n", line);
         }
         continue;
       } else if(strcmp(line, "  BEGIN PROFILE_ALL") == 0) {
