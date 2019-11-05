@@ -140,7 +140,7 @@ prev_app_info *sh_parse_profiling(FILE *file) {
       } else if(sscanf(line, "Number of PROFILE_ALL events: %zu\n", &tmp_sizet) == 1) {
         ret->num_profile_all_events = tmp_sizet;
         continue;
-      } else if(sscanf(line, "BEGIN ARENA %u", index) == 1) {
+      } else if(sscanf(line, "BEGIN ARENA %u", &index) == 1) {
         /* Down in depth */
         depth = 2;
         if(!num_arenas) {
