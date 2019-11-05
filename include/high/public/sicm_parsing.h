@@ -77,7 +77,7 @@ prev_app_info *sh_parse_profiling(FILE *file) {
   char depth, profile_type;
 
   /* Temporaries */
-  unsigned index;
+  unsigned index, tmp_uint;
   size_t num_arenas, cur_arena_index, cur_event_index, tmp_sizet;
   int tmp_int, site;
   char *event;
@@ -279,7 +279,7 @@ prev_app_info *sh_parse_profiling(FILE *file) {
         line = line + tmp_int;
         i = 0;
         while(sscanf(line, "%zu %n", &tmp_sizet, &tmp_int) > 0) {
-          if(i == cur_arena->num_intervals) {
+          if(i == cur_arena->info.num_intervals) {
             fprintf(stderr, "There were too many intervals specified. Aborting.\n");
             exit(1);
           }
