@@ -183,6 +183,8 @@ prev_app_info *sh_parse_profiling(FILE *file) {
           printf("Found site %d\n", site);
           fflush(stdout);
           ret->prev_info_arr[cur_arena_index].alloc_sites[i] = site;
+          line += tmp_int;
+          printf("The next group: '%s'\n", line);
         }
         continue;
       } else if(strcmp(line, "  BEGIN PROFILE_ALL") == 0) {
