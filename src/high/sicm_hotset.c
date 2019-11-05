@@ -10,6 +10,7 @@
 #include <string.h>
 #include <inttypes.h>
 #include <limits.h>
+#include "sicm_tree.h"
 #include "sicm_parsing.h"
 
 union metric {
@@ -256,7 +257,7 @@ tree(int, siteptr) get_filtered_hotset(tree(int, siteptr) sites, size_t capacity
 	break_next_site = 0;
   packed_size = 0;
   tree_traverse(sorted_sites, sit) {
-    
+
     /* First just grab the more important sites, even if they're larger */
     if(proftype == 0) {
       if(tree_it_key(sit)->bandwidth / total_value.band > 0.005) {
@@ -309,9 +310,9 @@ tree(int, siteptr) get_hotset(tree(int, siteptr) sites, size_t capacity) {
 
   printf("Sorted sites:\n");
   tree_traverse(sorted_sites, sit) {
-    printf("%d: %zu %zu %lf\n", tree_it_val(sit), 
+    printf("%d: %zu %zu %lf\n", tree_it_val(sit),
                                 tree_it_key(sit)->events[value_index].total,
-                                tree_it_key(sit)->events[weight_index].peak, 
+                                tree_it_key(sit)->events[weight_index].peak,
                                 ((double)tree_it_key(sit)->events[value_index].total) / ((double)tree_it_key(sit)->events[weight_index].peak));
   }
 
@@ -417,7 +418,7 @@ tree(int, siteptr) get_thermos(tree(int, siteptr) sites, size_t capacity, char p
 					packed_size += tree_it_key(sit)->peak_rss;
 					tree_insert(ret, tree_it_val(sit), tree_it_key(sit));
 				}
-			} else if(proftype == 1) { 
+			} else if(proftype == 1) {
 				if(site_accs > tmp_accs) {
 					packed_size += tree_it_key(sit)->peak_rss;
 					tree_insert(ret, tree_it_val(sit), tree_it_key(sit));
@@ -444,23 +445,23 @@ tree(int, siteptr) get_thermos(tree(int, siteptr) sites, size_t capacity, char p
  * based on arguments. Prints the hotset to stdout.
  */
 int main(int argc, char **argv) {
-  char *weight_event, 
-       *value_event, 
-       algo, 
-       captype, 
+  char *weight_event,
+       *value_event,
+       algo,
+       captype,
        *endptr;
-  size_t cap_bytes, 
-         chosen_weight, 
-         total_weight, 
-         tot_peak_rss, 
+  size_t cap_bytes,
+         chosen_weight,
+         total_weight,
+         tot_peak_rss,
          gcd,
          i;
-  union metric chosen_value, 
+  union metric chosen_value,
                total_value;
   long long node;
-  float cap_float, 
+  float cap_float,
         scale;
-  tree(int, siteptr) sites, 
+  tree(int, siteptr) sites,
                      chosen_sites;
   tree_it(int, siteptr) it;
   app_info *info;
