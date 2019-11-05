@@ -134,7 +134,7 @@ prev_app_info *sh_parse_profiling(FILE *file) {
         ret->num_arenas = num_arenas;
         ret->prev_info_arr = calloc(num_arenas, sizeof(prev_profile_info));
         continue;
-      } else if(sscanf("Number of PROFILE_ALL events: %zu", &tmp_sizet) == 1) {
+      } else if(sscanf("Number of PROFILE_ALL events: %zu\n", &tmp_sizet) == 1) {
         ret->num_profile_all_events = tmp_sizet;
         continue;
       } else if(sscanf(line, "BEGIN ARENA %u", index) == 1) {
@@ -151,7 +151,7 @@ prev_app_info *sh_parse_profiling(FILE *file) {
         ret->prev_info_arr[cur_arena_index].index = index;
         continue;
       } else {
-        fprintf(stderr, "Didn't recognize a line in the profiling information. Aborting.\n");
+        fprintf(stderr, "Didn't recognize a line in the profiling information at depth %d. Aborting.\n", depth);
         fprintf(stderr, "Line: %s\n", line);
         exit(1);
       }
@@ -189,7 +189,7 @@ prev_app_info *sh_parse_profiling(FILE *file) {
         profile_type = 0;
         continue;
       } else {
-        fprintf(stderr, "Didn't recognize a line in the profiling information. Aborting.\n");
+        fprintf(stderr, "Didn't recognize a line in the profiling information at depth %d. Aborting.\n", depth);
         fprintf(stderr, "Line: %s\n", line);
         exit(1);
       }
@@ -204,7 +204,7 @@ prev_app_info *sh_parse_profiling(FILE *file) {
         depth = 2;
         continue;
       } else {
-        fprintf(stderr, "Didn't recognize a line in the profiling information. Aborting.\n");
+        fprintf(stderr, "Didn't recognize a line in the profiling information at depth %d. Aborting.\n", depth);
         fprintf(stderr, "Line: %s\n", line);
         exit(1);
       }
