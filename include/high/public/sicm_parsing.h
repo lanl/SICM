@@ -126,6 +126,9 @@ prev_app_info *sh_parse_profiling(FILE *file) {
        3. The end of profiling information
     */
     } else if(depth == 1) {
+      printf("The line we're parsing: '%s'\n", line);
+      tmp_int = sscanf(line, "Number of PROFILE_ALL events: %zu\n", &tmp_size_t);
+      printf("Got %d tokens back.\n", tmp_int);
       if(strcmp(line, "===== END SICM PROFILING INFORMATION =====\n") == 0) {
         /* Up in depth */
         depth = 0;
