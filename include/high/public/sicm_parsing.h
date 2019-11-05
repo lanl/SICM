@@ -229,7 +229,7 @@ prev_app_info *sh_parse_profiling(FILE *file) {
         /* Up in depth */
         depth = 2;
         continue;
-      } else if(sscanf(line, "    BEGIN EVENT %s", event) == 1) {
+      } else if(sscanf(line, "    BEGIN EVENT %s\n", event) == 1) {
         /* Down in depth */
         if(cur_event_index > ret->num_profile_all_events - 1) {
           fprintf(stderr, "Too many events specified. Aborting.\n");
