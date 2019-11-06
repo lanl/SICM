@@ -150,7 +150,7 @@ prev_app_info *sh_parse_profiling(FILE *file) {
           fprintf(stderr, "Didn't find a number of arenas. Aborting.\n");
           exit(1);
         }
-        if((cur_arena_index == num_arenas - 1)) {
+        if((cur_arena_index > num_arenas - 1)) {
           fprintf(stderr, "Too many arenas when parsing profiling info. Aborting.\n");
           exit(1);
         }
