@@ -225,12 +225,11 @@ prev_app_info *sh_parse_profiling(FILE *file) {
        2. The end of this profiling block
     */
     } else if((depth == 3) && (profile_type == 0)) {
-      printf("Should begin an event: %s\n", line);
       if(strcmp(line, "  END PROFILE_ALL\n") == 0) {
         /* Up in depth */
         depth = 2;
         continue;
-      } else if(sscanf(line, "    BEGIN EVENT %s\n", event) == 1) {
+      } else if(sscanf(line, "    BEGIN EVENT %ms\n", &event) == 1) {
         /* Down in depth */
         if(cur_event_index > ret->num_profile_all_events - 1) {
           fprintf(stderr, "Too many events specified. Aborting.\n");
@@ -239,6 +238,7 @@ prev_app_info *sh_parse_profiling(FILE *file) {
         if(!(ret->profile_all_events[cur_event_index])) {
           strcpy(ret->profile_all_events[cur_event_index], event);
         }
+        free(event);
         cur_event = &(cur_arena->info.profile_all.events[cur_event_index]);
         depth = 4;
         continue;
@@ -289,8 +289,9 @@ prev_app_info *sh_parse_profiling(FILE *file) {
           i++;
         }
         continue;
-      } else if(sscanf(line, "    END EVENT %s\n", event) == 1) {
+      } else if(sscanf(line, "    END EVENT %ms\n", &event) == 1) {
         /* Up in depth */
+        free(event);
         depth = 3;
         cur_event_index++;
         continue;
