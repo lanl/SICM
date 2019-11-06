@@ -225,6 +225,7 @@ prev_app_info *sh_parse_profiling(FILE *file) {
        2. The end of this profiling block
     */
     } else if((depth == 3) && (profile_type == 0)) {
+      printf("Should begin an event: %s\n", line);
       if(strcmp(line, "  END PROFILE_ALL\n") == 0) {
         /* Up in depth */
         depth = 2;
