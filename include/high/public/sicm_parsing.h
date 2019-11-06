@@ -236,6 +236,7 @@ prev_app_info *sh_parse_profiling(FILE *file) {
           exit(1);
         }
         if(!(ret->profile_all_events[cur_event_index])) {
+          ret->profile_all_events[cur_event_index] = malloc((strlen(event) + 1) * sizeof(char));
           strcpy(ret->profile_all_events[cur_event_index], event);
         }
         free(event);
