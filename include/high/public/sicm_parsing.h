@@ -87,7 +87,7 @@ void sh_print_prev_profiling(prev_app_info *ret) {
   printf("Number of PROFILE_ALL events: %zu\n", ret->num_profile_all_events);
   printf("Number of arenas: %zu\n", ret->num_arenas);
   for(i = 0; i < ret->num_arenas; i++) {
-    arena = &(ret->prev_profile_info[i]);
+    arena = &(ret->prev_info_arr[i]);
     profinfo = &(arena->info);
     /* Arena information and sites that are in this one arena */
     printf("BEGIN ARENA %u\n", arena->index);
