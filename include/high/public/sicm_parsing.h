@@ -78,7 +78,7 @@ void sh_print_profiling(profile_info **info) {
 }
 
 /* Just for debugging, prints out the profiling information that it just read in. */
-void sh_print_prev_profiling(prev_app_info *info) {
+void sh_print_prev_profiling(prev_app_info *ret) {
   size_t i, n, x, num_arenas;
   profile_info *profinfo;
   prev_profile_info *arena;
