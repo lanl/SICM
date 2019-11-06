@@ -162,8 +162,6 @@ prev_app_info *sh_parse_profiling(FILE *file) {
     exit(1);
   }
 
-  printf("Parsing profiling information.\n");
-
   /* This keeps track of how deeply indented we are.
      0: Not in profiling information yet.
      1: In profiling information.
@@ -192,7 +190,6 @@ prev_app_info *sh_parse_profiling(FILE *file) {
     /* Here, we want to look for profiling information output */
     if(depth == 0) {
       if(strcmp(line, "===== BEGIN SICM PROFILING INFORMATION =====\n") == 0) {
-        printf("Found the beginning of profiling info\n");
         depth = 1;
         num_arenas = 0;
       }
@@ -382,6 +379,8 @@ prev_app_info *sh_parse_profiling(FILE *file) {
       exit(1);
     }
   }
+
+  sh_print_prev_profiling(ret);
 
   return ret;
 }
