@@ -59,6 +59,78 @@ void sh_print_profiling(profile_info **info) {
       }
       printf("  END PROFILE_ALL\n");
     }
+    if(profopts.should_profile_allocs) {
+      printf("  BEGIN PROFILE_ALLOCS\n");
+      printf("    Peak: %zu\n", profinfo->profile_allocs.peak);
+      if(profopts.should_print_intervals) {
+        printf("    Intervals: ");
+        for(x = 0; x < profinfo->num_intervals; x++) {
+          printf("%zu ", profinfo->profile_allocs.intervals[x]);
+        }
+        printf("\n");
+      }
+      printf("  END PROFILE_ALLOCS\n");
+    }
+    printf("END ARENA %u\n", arena->index);
+
+  }
+  printf("===== END SICM PROFILING INFORMATION =====\n");
+}
+
+/* Just for debugging, prints out the profiling information that it just read in. */
+void sh_print_prev_profiling(prev_app_info *info) {
+  size_t i, n, x, num_arenas;
+  profile_info *profinfo;
+  prev_profile_info *arena;
+
+  printf("===== BEGIN SICM PREVIOUS PROFILING INFORMATION =====\n");
+  printf("Number of PROFILE_ALL events: %zu\n", ret->num_profile_all_events);
+  printf("Number of arenas: %zu\n", ret->num_arenas);
+  for(i = 0; i < ret->num_arenas; i++) {
+    arena = &(ret->prev_profile_info[i]);
+    profinfo = &(arena->info);
+    /* Arena information and sites that are in this one arena */
+    printf("BEGIN ARENA %u\n", arena->index);
+    printf("  Number of allocation sites: %d\n", arena->num_alloc_sites);
+    printf("  Allocation sites: ");
+    for(n = 0; n < arena->num_alloc_sites; n++) {
+      printf("%d ", arena->alloc_sites[n]);
+    }
+    printf("\n");
+
+    /* Interval information */
+    printf("  First interval: %zu\n", profinfo->first_interval);
+    printf("  Number of intervals: %zu\n", profinfo->num_intervals);
+
+    if(profopts.should_profile_all) {
+      printf("  BEGIN PROFILE_ALL\n");
+      for(n = 0; n < ret->num_profile_all_events; n++) {
+        printf("    BEGIN EVENT %s\n", ret->profile_all_events[n]);
+        printf("      Total: %zu\n", profinfo->profile_all.events[n].total);
+        printf("      Peak: %zu\n", profinfo->profile_all.events[n].peak);
+        if(profopts.should_print_intervals) {
+          printf("      Intervals: ");
+          for(x = 0; x < profinfo->num_intervals; x++) {
+            printf("%zu ", profinfo->profile_all.events[n].intervals[x]);
+          }
+          printf("\n");
+        }
+        printf("    END EVENT %s\n", ret->profile_all_events[n]);
+      }
+      printf("  END PROFILE_ALL\n");
+    }
+    if(profopts.should_profile_allocs) {
+      printf("  BEGIN PROFILE_ALLOCS\n");
+      printf("    Peak: %zu\n", profinfo->profile_allocs.peak);
+      if(profopts.should_print_intervals) {
+        printf("    Intervals: ");
+        for(x = 0; x < profinfo->num_intervals; x++) {
+          printf("%zu ", profinfo->profile_allocs.intervals[x]);
+        }
+        printf("\n");
+      }
+      printf("  END PROFILE_ALLOCS\n");
+    }
     printf("END ARENA %u\n", arena->index);
 
   }
@@ -247,6 +319,22 @@ prev_app_info *sh_parse_profiling(FILE *file) {
       if(strcmp(line, "  END PROFILE_ALLOCS\n") == 0) {
         /* Up in depth */
         depth = 2;
+      } else if(sscanf(line, "    Peak: %zu\n", &tmp_sizet)) {
+        cur_arena->info.profile_allocs.peak = tmp_sizet;
+      } else if(strncmp(line, "    Intervals: ", 17) == 0) {
+        sscanf(line, "    Intervals: %n", &tmp_int);
+        tmpline = line;
+        tmpline = tmpline + tmp_int;
+        i = 0;
+        while(sscanf(tmpline, "%zu %n", &tmp_sizet, &tmp_int) > 0) {
+          if(i == cur_arena->info.num_intervals) {
+            fprintf(stderr, "There were too many intervals specified. Aborting.\n");
+            exit(1);
+          }
+          cur_arena->info.profile_allocs.intervals[i] = tmp_sizet;
+          tmpline += tmp_int;
+          i++;
+        }
       } else {
         fprintf(stderr, "Didn't recognize a line in the profiling information at depth %d. Aborting.\n", depth);
         fprintf(stderr, "Line: %s\n", line);
@@ -294,4 +382,6 @@ prev_app_info *sh_parse_profiling(FILE *file) {
       exit(1);
     }
   }
+
+  return ret;
 }
