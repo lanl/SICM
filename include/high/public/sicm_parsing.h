@@ -72,7 +72,7 @@ prev_app_info *sh_parse_profiling(FILE *file) {
 
   /* Used to read things in */
   ssize_t read;
-  char *line;
+  char *line, *tmpline;
   size_t len;
   char depth, profile_type;
 
@@ -108,6 +108,7 @@ prev_app_info *sh_parse_profiling(FILE *file) {
   profile_type = -1;
 
   ret = malloc(sizeof(prev_app_info));
+  ret->profile_all_events = NULL;
   len = 0;
   line = NULL;
   cur_arena = NULL;
@@ -122,7 +123,6 @@ prev_app_info *sh_parse_profiling(FILE *file) {
         printf("Found the beginning of profiling info\n");
         depth = 1;
         num_arenas = 0;
-        continue;
       }
 
     /* At this level, we're looking for three things:
@@ -139,10 +139,8 @@ prev_app_info *sh_parse_profiling(FILE *file) {
       } else if(sscanf(line, "Number of arenas: %zu", &num_arenas) == 1) {
         ret->num_arenas = num_arenas;
         ret->prev_info_arr = calloc(num_arenas, sizeof(prev_profile_info));
-        continue;
       } else if(sscanf(line, "Number of PROFILE_ALL events: %zu\n", &tmp_sizet) == 1) {
         ret->num_profile_all_events = tmp_sizet;
-        continue;
       } else if(sscanf(line, "BEGIN ARENA %u", &index) == 1) {
         /* Down in depth */
         depth = 2;
@@ -156,7 +154,6 @@ prev_app_info *sh_parse_profiling(FILE *file) {
         }
         cur_arena = &(ret->prev_info_arr[cur_arena_index]);
         cur_arena->index = index;
-        continue;
       } else {
         fprintf(stderr, "Didn't recognize a line in the profiling information at depth %d. Aborting.\n", depth);
         fprintf(stderr, "Line: %s\n", line);
@@ -173,31 +170,27 @@ prev_app_info *sh_parse_profiling(FILE *file) {
         /* Up in depth */
         depth = 1;
         cur_arena_index++;
-        continue;
       } else if(sscanf(line, "  First interval: %zu", &tmp_sizet)) {
         cur_arena->info.first_interval = tmp_sizet;
-        continue;
       } else if(sscanf(line, "  Number of intervals: %zu", &tmp_sizet)) {
         cur_arena->info.num_intervals = tmp_sizet;
-        continue;
       } else if(sscanf(line, "  Number of allocation sites: %d\n", &tmp_int)) {
         cur_arena->num_alloc_sites = tmp_int;
         cur_arena->alloc_sites = malloc(tmp_int * sizeof(int));
-        continue;
       } else if(strncmp(line, "  Allocation sites: ", 20) == 0) {
         sscanf(line, "  Allocation sites: %n", &tmp_int);
-        line = line + tmp_int;
+        tmpline = line;
+        tmpline = tmpline + tmp_int;
         i = 0;
-        while(sscanf(line, "%d %n", &site, &tmp_int) > 0) {
+        while(sscanf(tmpline, "%d %n", &site, &tmp_int) > 0) {
           if(i == cur_arena->num_alloc_sites) {
             fprintf(stderr, "There were too many allocation sites specified. Aborting.\n");
             exit(1);
           }
           cur_arena->alloc_sites[i] = site;
-          line += tmp_int;
+          tmpline += tmp_int;
           i++;
         }
-        continue;
       } else if(strcmp(line, "  BEGIN PROFILE_ALL\n") == 0) {
         /* Down in depth */
         depth = 3;
@@ -209,11 +202,9 @@ prev_app_info *sh_parse_profiling(FILE *file) {
                                                     sizeof(per_event_profile_all_info));
         cur_event_index = 0;
         cur_event = &(cur_arena->info.profile_all.events[cur_event_index]);
-        continue;
       } else if(strcmp(line, "  BEGIN PROFILE_ALLOCS\n") == 0) {
         depth = 3;
         profile_type = 1;
-        continue;
       } else {
         fprintf(stderr, "Didn't recognize a line in the profiling information at depth %d. Aborting.\n", depth);
         fprintf(stderr, "Line: %s\n", line);
@@ -228,7 +219,6 @@ prev_app_info *sh_parse_profiling(FILE *file) {
       if(strcmp(line, "  END PROFILE_ALL\n") == 0) {
         /* Up in depth */
         depth = 2;
-        continue;
       } else if(sscanf(line, "    BEGIN EVENT %ms\n", &event) == 1) {
         /* Down in depth */
         if(cur_event_index > ret->num_profile_all_events - 1) {
@@ -242,7 +232,6 @@ prev_app_info *sh_parse_profiling(FILE *file) {
         free(event);
         cur_event = &(cur_arena->info.profile_all.events[cur_event_index]);
         depth = 4;
-        continue;
       } else {
         fprintf(stderr, "Didn't recognize a line in the profiling information at depth %d. Aborting.\n", depth);
         fprintf(stderr, "Line: %s\n", line);
@@ -258,7 +247,6 @@ prev_app_info *sh_parse_profiling(FILE *file) {
       if(strcmp(line, "  END PROFILE_ALLOCS\n") == 0) {
         /* Up in depth */
         depth = 2;
-        continue;
       } else {
         fprintf(stderr, "Didn't recognize a line in the profiling information at depth %d. Aborting.\n", depth);
         fprintf(stderr, "Line: %s\n", line);
@@ -278,24 +266,23 @@ prev_app_info *sh_parse_profiling(FILE *file) {
         cur_event->peak = tmp_sizet;
       } else if(strncmp(line, "      Intervals: ", 17) == 0) {
         sscanf(line, "      Intervals: %n", &tmp_int);
-        line = line + tmp_int;
+        tmpline = line;
+        tmpline = tmpline + tmp_int;
         i = 0;
-        while(sscanf(line, "%zu %n", &tmp_sizet, &tmp_int) > 0) {
+        while(sscanf(tmpline, "%zu %n", &tmp_sizet, &tmp_int) > 0) {
           if(i == cur_arena->info.num_intervals) {
             fprintf(stderr, "There were too many intervals specified. Aborting.\n");
             exit(1);
           }
           cur_event->intervals[i] = tmp_sizet;
-          line += tmp_int;
+          tmpline += tmp_int;
           i++;
         }
-        continue;
       } else if(sscanf(line, "    END EVENT %ms\n", &event) == 1) {
         /* Up in depth */
         free(event);
         depth = 3;
         cur_event_index++;
-        continue;
       } else {
         fprintf(stderr, "Didn't recognize a line in the profiling information at depth %d. Aborting.\n", depth);
         fprintf(stderr, "Line: %s\n", line);
