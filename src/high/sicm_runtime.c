@@ -11,6 +11,8 @@
 #include <inttypes.h>
 #include <pthread.h>
 #include <jemalloc/jemalloc.h>
+
+#define SICM_RUNTIME 1
 #include "sicm_runtime.h"
 #include "sicm_rdspy.h"
 
@@ -480,7 +482,7 @@ void* sh_alloc(int id, size_t sz) {
   if (profopts.should_run_rdspy) {
     sh_rdspy_alloc(ret, sz, id);
   }
-  
+
   return ret;
 }
 
@@ -502,7 +504,7 @@ void* sh_aligned_alloc(int id, size_t alignment, size_t sz) {
   if (profopts.should_run_rdspy) {
     sh_rdspy_alloc(ret, sz, id);
   }
-  
+
   return ret;
 }
 

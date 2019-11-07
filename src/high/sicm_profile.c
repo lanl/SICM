@@ -5,6 +5,8 @@
 #include <sys/time.h>
 #include <sys/syscall.h>
 #include <signal.h>
+
+#define SICM_RUNTIME 1
 #include "sicm_profile.h"
 #include "sicm_parsing.h"
 

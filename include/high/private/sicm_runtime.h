@@ -1,7 +1,5 @@
 #pragma once
 
-#define SICM_RUNTIME 1
-
 #include <inttypes.h>
 #include "sicm_malloc_free.h"
 #include "sicm_low.h"

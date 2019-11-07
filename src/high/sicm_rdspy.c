@@ -8,6 +8,8 @@
 #include <assert.h>
 #include <pthread.h>
 #include <stdio.h>
+
+#define SICM_RUNTIME 1
 #include "sicm_rdspy.h"
 #include "sicm_tree.h"
 
@@ -26,7 +28,7 @@ static int               max_threads;
 static int               num_static_sites;
 
 static pthread_rwlock_t       chunks_end_lock;
- 
+
 static SiteReadsAgg           agg_hist;
 static pthread_mutex_t        sra_lock;
 
@@ -45,7 +47,7 @@ void SiteReadsAgg_finish(SiteReadsAgg * sra) {
     int   b,
           next_b,
           sid;
-    
+
     f = fopen("read_times.csv", "w");
 
     fprintf(f, "site");
@@ -135,7 +137,7 @@ inline void ThreadReadsInfo_flush(ThreadReadsInfo *tri) {
                               bucket;
     void                     *addr;
     uint64_t                  ticks;
-    
+
     for (at = tri->list; at <= tri->top; at++) {
         addr = at->addr;
 
@@ -161,7 +163,7 @@ inline void ThreadReadsInfo_flush(ThreadReadsInfo *tri) {
 static ThreadReadsInfo * get_tri() {
     ThreadReadsInfo *tri;
     int              idx;
-    
+
     tri = pthread_getspecific(tri_key);
 
     if (tri == NULL) {
@@ -209,7 +211,7 @@ void sh_rdspy_free(void *ptr) {
 
     tri = get_tri();
 
-    pthread_mutex_lock(&tri_lock); 
+    pthread_mutex_lock(&tri_lock);
 
     pthread_rwlock_rdlock(&site_map_lock);
     ThreadReadsInfo_flush(tris[i]);
@@ -220,8 +222,8 @@ void sh_rdspy_free(void *ptr) {
     /*     ThreadReadsInfo_flush(tris[i]); */
     /*     pthread_rwlock_unlock(&site_map_lock); */
     /* } */
-    
-    pthread_mutex_unlock(&tri_lock); 
+
+    pthread_mutex_unlock(&tri_lock);
 }
 
 unsigned long long sh_read(void * ptr, uint64_t beg, uint64_t end) {

@@ -2,6 +2,8 @@
 #define _GNU_SOURCE
 #include <dlfcn.h>
 #include <stdbool.h>
+
+#define SICM_RUNTIME 1
 #include "sicm_runtime.h"
 
 /* Options for profiling */
