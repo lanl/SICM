@@ -19,10 +19,7 @@
 #include <errno.h>
 #include <poll.h>
 
-#ifdef SICM_RUNTIME
 #include "sicm_runtime.h"
-#endif /* SICM_RUNTIME */
-
 #include "sicm_profilers.h"
 
 /* Profiling information for one arena */
@@ -110,11 +107,7 @@ void end_interval();
 
 void *create_profile_arena(int);
 
-#ifdef SICM_RUNTIME
-
 #define prof_check_good(a, p, i) \
   a = tracker.arenas[i]; \
   p = prof.info[i]; \
   if((!a) || (!p) || !(p->num_intervals)) continue;
-
-#endif /* SICM_RUNTIME */

@@ -139,7 +139,7 @@ tree(site_info_ptr, int) convert_to_site_tree(prev_app_info *info) {
   for(i = 0; i < info->num_arenas; i++) {
     arena_info = &(info->prev_info_arr[i]);
 
-    site = malloc(sizeof(site_info));
+    site = malloc(sizeof(site_profile_info));
     site->value = get_value(arena_info);
     site->weight = get_weight(arena_info);
     site->value_per_weight = ((double) site->value) / ((double) site->weight);

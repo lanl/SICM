@@ -6,8 +6,8 @@
 #include <inttypes.h>
 #include <limits.h>
 #include <stdio.h>
-#include "sicm_profile.h"
 #include "sicm_tree.h"
+#include "sicm_profile.h"
 
 #ifdef SICM_RUNTIME
 
