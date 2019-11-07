@@ -9,6 +9,8 @@
 #include "sicm_profile.h"
 #include "sicm_tree.h"
 
+#ifdef SICM_RUNTIME
+
 /* Iterates over the structure and prints it out so that it can
  * be seamlessly read back in */
 void sh_print_profiling(profile_info **info) {
@@ -136,6 +138,8 @@ void sh_print_prev_profiling(prev_app_info *ret) {
   }
   printf("===== END SICM PREVIOUS PROFILING INFORMATION =====\n");
 }
+
+#endif /* SICM_RUNTIME */
 
 /* Reads the above-printed information back into an array of prev_profile_info structs. */
 prev_app_info *sh_parse_profiling(FILE *file) {

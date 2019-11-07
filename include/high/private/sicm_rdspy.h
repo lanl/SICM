@@ -1,6 +1,6 @@
 /*
  * sicm_rdspy.h
- * Delcarations for rdspy allocation site profiling
+ * Declarations for rdspy allocation site profiling
  * Brandon Kammerdiener
  * December, 2018
  */
