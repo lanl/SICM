@@ -25,7 +25,7 @@ static char algo_flag = 0;     /* 0 for hotset */
 static char sort_flag = 0;     /* 0 for `value_per_weight`,
                                   1 for `value`,
                                   2 for `weight` */
-static char event[] = "MEM_LOAD_UOPS_RETIRED:L3_MISS"; /* Event string to use for value */
+static char *event = NULL; /* Event string to use for value. Default set in main(). */
 static size_t value_event_index = SIZE_MAX; /* Index into the array of events to use for value */
 
 static struct option long_options[] = {
@@ -47,11 +47,11 @@ static struct option long_options[] = {
   {0, 0, 0, 0}
 };
 
-typedef struct site_info {
+typedef struct site_profile_info {
   size_t value, weight;
   double value_per_weight;
-} site_info;
-typedef site_info * site_info_ptr; /* Required for tree.h */
+} site_profile_info;
+typedef site_profile_info * site_info_ptr; /* Required for tree.h */
 use_tree(site_info_ptr, int);
 
 /* Gets a value from the given prev_profile_info */
@@ -83,7 +83,7 @@ size_t get_weight(prev_profile_info *arena_info) {
 }
 
 /* This is the function that tree uses to sort the sites.
-   This is run each time the tree compares two site_info structs.
+   This is run each time the tree compares two site_profile_info structs.
    Slow (since it checks these conditions for every comparison), but simple. */
 int site_tree_cmp(site_info_ptr a, site_info_ptr b) {
   int retval;
@@ -134,7 +134,7 @@ tree(site_info_ptr, int) convert_to_site_tree(prev_app_info *info) {
 
   site_tree = tree_make_c(site_info_ptr, int, &site_tree_cmp);
 
-  /* Iterate over the arenas, create a site_info struct for each site,
+  /* Iterate over the arenas, create a site_profile_info struct for each site,
      and simply insert them into the tree (which sorts them). */
   for(i = 0; i < info->num_arenas; i++) {
     arena_info = &(info->prev_info_arr[i]);
@@ -226,7 +226,7 @@ tree(site_info_ptr, int) get_hotset(tree(site_info_ptr, int) site_tree) {
   char break_next_site;
   size_t packed_size;
 
-  ret = tree_make(int, siteptr);
+  ret = tree_make(site_info_ptr, int);
 
   /* Iterate over the sites (which have already been sorted), adding them
      greedily, until the capacity is reached. */
@@ -262,6 +262,10 @@ int main(int argc, char **argv) {
   /* The set of hot sites that we've chosen */
   tree(site_info_ptr, int) hot_site_tree;
   tree_it(site_info_ptr, int) sit;
+
+  /* Set a default event */
+  event = malloc(30 * sizeof(char));
+  strcpy(event, "MEM_LOAD_UOPS_RETIRED:L3_MISS");
 
   /* Use getopt to read in the options. */
   option_index = 0;
@@ -379,7 +383,7 @@ int main(int argc, char **argv) {
     scale_sites(site_tree, scale);
   }
 
-  if(algo == 0) {
+  if(algo_flag == 0) {
     hot_site_tree = get_hotset(site_tree);
   } else {
     fprintf(stderr, "Packing algorithm not yet implemented. Aborting.\n");
@@ -409,7 +413,7 @@ int main(int argc, char **argv) {
   printf("NUMA node: %ld\n", node);
   printf("Scale factor: %lf\n", scale);
   printf("Packing algorithm: ");
-  if(algo == 0) {
+  if(algo_flag == 0) {
     printf("hotset\n");
   }
   printf("Sorting type: ");
