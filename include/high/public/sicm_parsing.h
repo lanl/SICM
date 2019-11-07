@@ -134,7 +134,7 @@ void sh_print_prev_profiling(prev_app_info *ret) {
     printf("END ARENA %u\n", arena->index);
 
   }
-  printf("===== END SICM PROFILING INFORMATION =====\n");
+  printf("===== END SICM PREVIOUS PROFILING INFORMATION =====\n");
 }
 
 /* Reads the above-printed information back into an array of prev_profile_info structs. */
@@ -379,8 +379,6 @@ prev_app_info *sh_parse_profiling(FILE *file) {
       exit(1);
     }
   }
-
-  sh_print_prev_profiling(ret);
 
   return ret;
 }

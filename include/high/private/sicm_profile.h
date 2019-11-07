@@ -35,8 +35,8 @@ typedef struct profile_info {
 /* Stores information about a previous run's arena.
    Printed and parsed by sicm_parsing.h. */
 typedef struct prev_profile_info {
-  unsigned index;
-  int num_alloc_sites, *alloc_sites;
+  unsigned index; /* This arena's index into the array of arenas. */
+  int num_alloc_sites, *alloc_sites; /* Array of site IDs in this arena */
   profile_info info;
 } prev_profile_info;
 
@@ -44,10 +44,13 @@ typedef struct prev_profile_info {
    profiling. This information is printed and read back in by
    sicm_parsing.h. */
 typedef struct prev_app_info {
+  /* Array of arenas and their info */
   size_t num_arenas;
+  prev_profile_info *prev_info_arr;
+
+  /* Array of event strings in the profiling */
   size_t num_profile_all_events;
   char **profile_all_events;
-  prev_profile_info *prev_info_arr;
 } prev_app_info;
 
 /* Information about a single profiling thread. Used by the
