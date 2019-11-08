@@ -134,6 +134,10 @@ tree(site_info_ptr, int) convert_to_site_tree(prev_app_info *info) {
 
   site_tree = tree_make_c(site_info_ptr, int, &site_tree_cmp);
 
+  if(verbose_flag) {
+    printf("Generating a tree of sorted sites.\n");
+  }
+
   /* Iterate over the arenas, create a site_profile_info struct for each site,
      and simply insert them into the tree (which sorts them). */
   for(i = 0; i < info->num_arenas; i++) {
@@ -390,6 +394,10 @@ int main(int argc, char **argv) {
 
   /* For the sake of simplicity, convert the parsed profiling information into simpler trees */
   site_tree = convert_to_site_tree(info);
+
+  if(verbose_flag) {
+    printf("Finished converting profiling to a tree of sites.\n");
+  }
 
   /* Scale the weight of each site down by this factor */
   if(scale) {
