@@ -157,6 +157,10 @@ tree(site_info_ptr, int) convert_to_site_tree(prev_app_info *info) {
       site_copy = malloc(sizeof(site_profile_info));
       memcpy(site_copy, site, sizeof(site_profile_info));
       tree_insert(site_tree, site_copy, arena_info->alloc_sites[n]);
+
+      if(verbose_flag) {
+        printf("Inserting site %d into the tree.\n", arena_info->alloc_sites[n]);
+      }
     }
   }
 
