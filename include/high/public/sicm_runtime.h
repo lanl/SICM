@@ -4,9 +4,12 @@
 #include "sicm_malloc_free.h"
 #include "sicm_low.h"
 #include "sicm_tree.h"
+#include "sicm_extent_arr.h"
 
 #ifdef SICM_RUNTIME
 #include "sicm_impl.h"
+#else
+struct sarena;
 #endif
 
 extern char sh_initialized;
