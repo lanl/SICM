@@ -5,6 +5,7 @@
 #include <sys/time.h>
 #include <sys/syscall.h>
 #include <signal.h>
+#include <perfmon/pfmlib_perf_event.h>
 
 #define SICM_RUNTIME 1
 #include "sicm_profile.h"

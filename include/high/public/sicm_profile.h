@@ -11,7 +11,6 @@
 #include <linux/perf_event.h>
 #include <asm/perf_regs.h>
 #include <asm/unistd.h>
-#include <perfmon/pfmlib_perf_event.h>
 #include <time.h>
 #include <signal.h>
 #include <stdbool.h>
