@@ -9,7 +9,7 @@
 #ifdef SICM_RUNTIME
 #include "sicm_impl.h"
 #else
-struct sarena;
+typedef struct sarena sarena;
 #endif
 
 extern char sh_initialized;
