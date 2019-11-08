@@ -281,7 +281,7 @@ int main(int argc, char **argv) {
   /* Use getopt to read in the options. */
   option_index = 0;
   while(1) {
-    c = getopt_long(argc, argv, "v:e:w:a:c:n:s:", long_options, &option_index);
+    c = getopt_long(argc, argv, "v:e:w:a:c:n:s:o:", long_options, &option_index);
     if(c == -1) {
       break;
     }
