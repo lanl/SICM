@@ -4,11 +4,11 @@
 #include "sicm_malloc_free.h"
 #include "sicm_low.h"
 #include "sicm_tree.h"
-#include "sicm_extent_arr.h"
 
 #ifdef SICM_RUNTIME
 #include "sicm_impl.h"
 #else
+typedef struct extent_arr extent_arr;
 typedef struct sarena sarena;
 #endif
 
