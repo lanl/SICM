@@ -8,7 +8,6 @@
 #include <sys/ioctl.h>
 #include <sys/mman.h>
 #include <sys/types.h>
-#include <linux/perf_event.h>
 #include <asm/perf_regs.h>
 #include <asm/unistd.h>
 #include <time.h>
