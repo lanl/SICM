@@ -153,14 +153,13 @@ tree(site_info_ptr, int) convert_to_site_tree(prev_app_info *info) {
     site->value_per_weight = ((double) site->value) / ((double) site->weight);
 
     for(n = 0; n < arena_info->num_alloc_sites; n++) {
+      if(verbose_flag) {
+        printf("Inserting site %d into the tree.\n", arena_info->alloc_sites[n]);
+      }
       /* We make a copy of this struct for each site to aid freeing this up in the future */
       site_copy = malloc(sizeof(site_profile_info));
       memcpy(site_copy, site, sizeof(site_profile_info));
       tree_insert(site_tree, site_copy, arena_info->alloc_sites[n]);
-
-      if(verbose_flag) {
-        printf("Inserting site %d into the tree.\n", arena_info->alloc_sites[n]);
-      }
     }
   }
 
