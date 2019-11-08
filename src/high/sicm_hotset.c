@@ -38,7 +38,7 @@ static struct option long_options[] = {
   {"weight", required_argument, NULL, 'w'}, /* The type of profiling to use as the "weight" of an arena.
                                                Defaults to `profile_allocs`. */
   {"algo", required_argument, NULL, 'a'},   /* The packing algorithm. Defaults to `hotset`. */
-  {"cap", required_argument, NULL, 'c'},    /* The capacity to pack into. */
+  {"capacity", required_argument, NULL, 'c'},    /* The capacity to pack into. */
   {"node", required_argument, NULL, 'n'},   /* The node that the chosen arenas should go onto. */
   {"scale", required_argument, NULL, 's'},  /* What factor should we scale the weight down by? */
   {"sort", required_argument, NULL, 'o'},   /* How should we sort the sites? Possibilities are
