@@ -5,6 +5,8 @@
 #include <sys/syscall.h>
 #include <errno.h>
 #include <sys/types.h>
+
+#define SICM_RUNTIME 1
 #include "sicm_runtime.h"
 #include "sicm_profilers.h"
 #include "sicm_profile.h"
@@ -30,7 +32,7 @@ void profile_extent_size_interval(int s) {
   char *start, *end;
 
   pthread_rwlock_rdlock(&tracker.extents_lock);
-  
+
   /* Zero out the accumulator for each arena */
   extent_arr_for(tracker.extents, i) {
     arena = (arena_info *) tracker.extents->arr[i].arena;
@@ -69,7 +71,7 @@ void profile_extent_size_post_interval(profile_info *info) {
   }
 
   /* Store this interval */
-  profinfo->intervals = 
+  profinfo->intervals =
     (size_t *)orig_realloc(profinfo->intervals, info->num_intervals * sizeof(size_t));
   profinfo->intervals[info->num_intervals - 1] = profinfo->tmp_accumulator;
 }

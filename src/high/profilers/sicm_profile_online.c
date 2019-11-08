@@ -5,6 +5,8 @@
 #include <sys/syscall.h>
 #include <errno.h>
 #include <sys/types.h>
+
+#define SICM_RUNTIME 1
 #include "sicm_runtime.h"
 #include "sicm_profilers.h"
 #include "sicm_profile.h"
@@ -271,7 +273,7 @@ void profile_online_init() {
   }
 
   /* Look for the event that we're supposed to use for value. Error out if it's not found. */
-  if(!profopts.should_profile_all) { 
+  if(!profopts.should_profile_all) {
     fprintf(stderr, "WARNING: SH_PROFILE_ONLINE requires SH_PROFILE_ALL.\n");
   }
   found = 0;

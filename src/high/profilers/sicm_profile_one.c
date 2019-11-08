@@ -5,6 +5,8 @@
 #include <sys/syscall.h>
 #include <errno.h>
 #include <sys/types.h>
+
+#define SICM_RUNTIME 1
 #include "sicm_runtime.h"
 #include "sicm_profilers.h"
 #include "sicm_profile.h"
@@ -55,7 +57,7 @@ void profile_one_interval(int s)
   }
 
   printf("%f MB/s\n", total);
-  
+
   /* Calculate the running average */
   prof.num_bandwidth_intervals++;
   prof.running_avg = ((prof.running_avg * (prof.num_bandwidth_intervals - 1)) + total) / prof.num_bandwidth_intervals;
@@ -65,4 +67,3 @@ void profile_one_interval(int s)
   }
 }
 #endif
-

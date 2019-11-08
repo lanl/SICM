@@ -5,6 +5,8 @@
 #include <sys/syscall.h>
 #include <errno.h>
 #include <sys/types.h>
+
+#define SICM_RUNTIME 1
 #include "sicm_runtime.h"
 #include "sicm_profilers.h"
 #include "sicm_profile.h"

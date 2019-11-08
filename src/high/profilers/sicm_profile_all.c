@@ -7,6 +7,8 @@
 #include <sys/types.h>
 #include <linux/perf_event.h>
 #include <perfmon/pfmlib_perf_event.h>
+
+#define SICM_RUNTIME 1
 #include "sicm_runtime.h"
 #include "sicm_profilers.h"
 #include "sicm_profile.h"
