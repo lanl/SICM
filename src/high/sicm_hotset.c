@@ -121,10 +121,6 @@ int site_tree_cmp(site_info_ptr a, site_info_ptr b) {
     exit(1);
   }
 
-  if(verbose_flag) {
-    printf("%lf <-> %lf, returning %d\n", a->value_per_weight, b->value_per_weight, retval);
-  }
-
   return retval;
 }
 
