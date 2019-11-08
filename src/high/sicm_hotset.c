@@ -306,6 +306,7 @@ int main(int argc, char **argv) {
         free(event);
         event = malloc((strlen(optarg) + 1) * sizeof(char));
         strcpy(event, optarg);
+        break;
       case 'w':
         /* weight */
         if(strcmp("profile_allocs", optarg) == 0) {
@@ -353,6 +354,7 @@ int main(int argc, char **argv) {
           fprintf(stderr, "Sorting type not recognized. Aborting.\n");
           exit(1);
         }
+        break;
       case '?':
         /* We're relying on getopt_long to print an error message. */
         break;
