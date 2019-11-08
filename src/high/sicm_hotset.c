@@ -88,6 +88,10 @@ size_t get_weight(prev_profile_info *arena_info) {
 int site_tree_cmp(site_info_ptr a, site_info_ptr b) {
   int retval;
 
+  if(a == b) {
+    return 0;
+  }
+
   if(sort_flag == 0) {
     if(a->value_per_weight < b->value_per_weight) {
       retval = 1;
