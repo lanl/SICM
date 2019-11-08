@@ -287,7 +287,7 @@ int main(int argc, char **argv) {
     }
 
     switch(c) {
-      case '0':
+      case 0:
         /* This is an option that just sets a flag. Ignore it. */
         break;
       case 'v':
