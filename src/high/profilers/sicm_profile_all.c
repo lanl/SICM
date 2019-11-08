@@ -5,6 +5,8 @@
 #include <sys/syscall.h>
 #include <errno.h>
 #include <sys/types.h>
+#include <linux/perf_event.h>
+#include <perfmon/pfmlib_perf_event.h>
 #include "sicm_runtime.h"
 #include "sicm_profilers.h"
 #include "sicm_profile.h"
@@ -112,14 +114,14 @@ void profile_all_init() {
   /* mmap the perf file descriptors */
   prof.profile_all.metadata = orig_malloc(sizeof(struct perf_event_mmap_page *) * profopts.num_profile_all_events);
   for(i = 0; i < profopts.num_profile_all_events; i++) {
-    prof.profile_all.metadata[i] = mmap(NULL, 
-                                        prof.profile_all.pagesize + (prof.profile_all.pagesize * profopts.max_sample_pages), 
-                                        PROT_READ | PROT_WRITE, 
-                                        MAP_SHARED, 
-                                        prof.profile_all.fds[i], 
+    prof.profile_all.metadata[i] = mmap(NULL,
+                                        prof.profile_all.pagesize + (prof.profile_all.pagesize * profopts.max_sample_pages),
+                                        PROT_READ | PROT_WRITE,
+                                        MAP_SHARED,
+                                        prof.profile_all.fds[i],
                                         0);
     if(prof.profile_all.metadata[i] == MAP_FAILED) {
-      fprintf(stderr, "Failed to mmap room (%zu bytes) for perf samples. Aborting with:\n%s\n", 
+      fprintf(stderr, "Failed to mmap room (%zu bytes) for perf samples. Aborting with:\n%s\n",
               prof.profile_all.pagesize + (prof.profile_all.pagesize * profopts.max_sample_pages), strerror(errno));
       exit(1);
     }
