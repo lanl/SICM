@@ -235,10 +235,21 @@ tree(site_info_ptr, int) get_hotset(tree(site_info_ptr, int) site_tree) {
   tree_traverse(site_tree, sit) {
     packed_size += tree_it_key(sit)->weight;
     tree_insert(ret, tree_it_key(sit), tree_it_val(sit));
+    if(verbose_flag) {
+      printf("Inserting %d (val: %zu, weight: %zu, v/w: %lf)\n", tree_it_val(sit),
+                                                                   tree_it_key(sit)->value,
+                                                                   tree_it_key(sit)->weight,
+                                                                   tree_it_key(sit)->value_per_weight);
+      fflush(stdout);
+    }
 
     /* If we're over capacity, break. We've already added the site,
      * so we overflow by exactly one site. */
     if(packed_size > capacity) {
+      if(verbose_flag) {
+        printf("Packed size is %zu, capacity is %zu. That's the last site.\n", packed_size, capacity);
+        fflush(stdout);
+      }
       break;
     }
   }
