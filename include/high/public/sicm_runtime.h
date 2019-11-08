@@ -3,8 +3,11 @@
 #include <inttypes.h>
 #include "sicm_malloc_free.h"
 #include "sicm_low.h"
-#include "sicm_impl.h"
 #include "sicm_tree.h"
+
+#ifdef SICM_RUNTIME
+#include "sicm_impl.h"
+#endif
 
 extern char sh_initialized;
 extern void *(*orig_malloc_ptr)(size_t);
