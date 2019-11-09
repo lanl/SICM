@@ -75,6 +75,7 @@ int main(int argc, char **argv) {
         break;
       case 'v':
         verbose = 1;
+        break;
       case 'l':
         /* value */
         value = malloc((strlen(optarg) + 1) * sizeof(char));
