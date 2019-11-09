@@ -160,7 +160,6 @@ int main(int argc, char **argv) {
      Here, we'll assume all of these values are valid, so no errors. */
   printf("Value profiling type: %s", value);
   printf("Value event: %s\n", event);
-  printf("Value event index: %zu\n", value_event_index);
   printf("Weight profiling type: %s", weight);
   printf("Capacity that we packed into: %ju\n", capacity);
   printf("NUMA node: %ld\n", node);
