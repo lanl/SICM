@@ -81,6 +81,7 @@ typedef struct profile_allocs_data {
 /* profile_online */
 typedef struct valweight {
   size_t value, weight;
+  double value_per_weight;
 } valweight;
 typedef valweight * valweightptr;
 use_tree(valweightptr, size_t);
