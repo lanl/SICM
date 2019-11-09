@@ -1,3 +1,4 @@
+#pragma once
 /*
  * Contains code for parsing output of the high-level interface.
  * Also outputs profiling information to a file.
