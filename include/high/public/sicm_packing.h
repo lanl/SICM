@@ -1,3 +1,5 @@
+#pragma once
+
 /* Packing.
  * Generates a packed hotset/knapsack from SICM's high-level interface's output.
  * First run SICM's high-level interface with one of the profiling methods,
@@ -35,7 +37,7 @@ size_t get_value(prev_profile_info *arena_info) {
   size_t value;
 
   if(sh_value_flag == 0) {
-    value = arena_info->info.profile_all.events[value_event_index].total;
+    value = arena_info->info.profile_all.events[sh_value_event_index].total;
   } else {
     fprintf(stderr, "Invalid value type detected. Aborting.\n");
     exit(1);
@@ -68,7 +70,7 @@ int site_tree_cmp(site_info_ptr a, site_info_ptr b) {
     return 0;
   }
 
-  if(sort_flag == 0) {
+  if(sh_sort_flag == 0) {
     if(a->value_per_weight < b->value_per_weight) {
       retval = 1;
     } else if(a->value_per_weight > b->value_per_weight) {
@@ -76,7 +78,7 @@ int site_tree_cmp(site_info_ptr a, site_info_ptr b) {
     } else {
       retval = 1;
     }
-  } else if(sort_flag == 1) {
+  } else if(sh_sort_flag == 1) {
     if(a->value < b->value) {
       retval = 1;
     } else if(a->value > b->value) {
@@ -84,7 +86,7 @@ int site_tree_cmp(site_info_ptr a, site_info_ptr b) {
     } else {
       retval = 1;
     }
-  } else if(sort_flag == 2) {
+  } else if(sh_sort_flag == 2) {
     if(a->weight < b->weight) {
       retval = 1;
     } else if(a->weight > b->weight) {

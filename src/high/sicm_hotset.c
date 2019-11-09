@@ -158,29 +158,13 @@ int main(int argc, char **argv) {
 
   /* Print debugging information about how we generated this guidance file
      Here, we'll assume all of these values are valid, so no errors. */
-  printf("Value profiling type: ");
-  if(value_flag == 0) {
-    printf("profile_all\n");
-  }
+  printf("Value profiling type: %s", value);
   printf("Value event: %s\n", event);
   printf("Value event index: %zu\n", value_event_index);
-  printf("Weight profiling type: ");
-  if(weight_flag == 0) {
-    printf("profile_allocs\n");
-  }
+  printf("Weight profiling type: %s", weight);
   printf("Capacity that we packed into: %ju\n", capacity);
   printf("NUMA node: %ld\n", node);
   printf("Scale factor: %lf\n", scale);
-  printf("Packing algorithm: ");
-  if(algo_flag == 0) {
-    printf("hotset\n");
-  }
-  printf("Sorting type: ");
-  if(sort_flag == 0) {
-    printf("value_per_weight\n");
-  } else if(sort_flag == 1) {
-    printf("value\n");
-  } else if(sort_flag == 2) {
-    printf("weight\n");
-  }
+  printf("Packing algorithm: %s", algo);
+  printf("Sorting type: %s", sort);
 }
