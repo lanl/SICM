@@ -76,7 +76,7 @@ void sh_print_profiling(profile_info **info) {
     }
     if(profopts.should_profile_extent_size) {
       printf("  BEGIN PROFILE_EXTENT_SIZE\n");
-      printf("    Peak: profinfo->profile_extent_size.peak);
+      printf("    Peak: %zu\n", profinfo->profile_extent_size.peak);
       if(profopts.should_print_intervals) {
         printf("    Intervals: ");
         for(x = 0; x < profinfo->num_intervals; x++) {
