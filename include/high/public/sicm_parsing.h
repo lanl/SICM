@@ -74,6 +74,18 @@ void sh_print_profiling(profile_info **info) {
       }
       printf("  END PROFILE_ALLOCS\n");
     }
+    if(profopts.should_profile_extent_size) {
+      printf("  BEGIN PROFILE_EXTENT_SIZE\n");
+      printf("    Peak: profinfo->profile_extent_size.peak);
+      if(profopts.should_print_intervals) {
+        printf("    Intervals: ");
+        for(x = 0; x < profinfo->num_intervals; x++) {
+          printf("%zu ", profinfo->profile_extent_size.intervals[x]);
+        }
+        printf("\n");
+      }
+      printf("  END PROFILE_EXTENT_SIZE\n");
+    }
     printf("END ARENA %u\n", arena->index);
 
   }
@@ -179,6 +191,7 @@ prev_app_info *sh_parse_profiling(FILE *file) {
   /* Stores the type of profiling that we're currently looking at.
      0: profile_all
      1: profile_allocs
+     2: profile_extent_size
   */
   profile_type = -1;
 
@@ -279,6 +292,9 @@ prev_app_info *sh_parse_profiling(FILE *file) {
       } else if(strcmp(line, "  BEGIN PROFILE_ALLOCS\n") == 0) {
         depth = 3;
         profile_type = 1;
+      } else if(strcmp(line, "  BEGIN PROFILE_EXTENT_SIZE\n") == 0) {
+        depth = 3;
+        profile_type = 2;
       } else {
         fprintf(stderr, "Didn't recognize a line in the profiling information at depth %d. Aborting.\n", depth);
         fprintf(stderr, "Line: %s\n", line);
@@ -312,7 +328,8 @@ prev_app_info *sh_parse_profiling(FILE *file) {
         exit(1);
       }
 
-    /* Looking for:
+    /* PROFILE_ALLOCS.
+       Looking for:
        1. A peak
        2. An array of interval values
        3. The end of this profiling block
@@ -334,6 +351,38 @@ prev_app_info *sh_parse_profiling(FILE *file) {
             exit(1);
           }
           cur_arena->info.profile_allocs.intervals[i] = tmp_sizet;
+          tmpline += tmp_int;
+          i++;
+        }
+      } else {
+        fprintf(stderr, "Didn't recognize a line in the profiling information at depth %d. Aborting.\n", depth);
+        fprintf(stderr, "Line: %s\n", line);
+        exit(1);
+      }
+
+    /* PROFILE_EXTENT_SIZE.
+       Looking for:
+       1. A peak
+       2. An array of interval values
+       3. The end of this profiling block
+    */
+    } else if((depth == 3) && (profile_type == 2)) {
+      if(strcmp(line, "  END PROFILE_EXTENT_SIZE\n") == 0) {
+        /* Up in depth */
+        depth = 2;
+      } else if(sscanf(line, "    Peak: %zu\n", &tmp_sizet)) {
+        cur_arena->info.profile_extent_size.peak = tmp_sizet;
+      } else if(strncmp(line, "    Intervals: ", 17) == 0) {
+        sscanf(line, "    Intervals: %n", &tmp_int);
+        tmpline = line;
+        tmpline = tmpline + tmp_int;
+        i = 0;
+        while(sscanf(tmpline, "%zu %n", &tmp_sizet, &tmp_int) > 0) {
+          if(i == cur_arena->info.num_intervals) {
+            fprintf(stderr, "There were too many intervals specified. Aborting.\n");
+            exit(1);
+          }
+          cur_arena->info.profile_extent_size.intervals[i] = tmp_sizet;
           tmpline += tmp_int;
           i++;
         }
