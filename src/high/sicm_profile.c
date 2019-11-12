@@ -437,7 +437,7 @@ void initialize_profiling() {
   pthread_rwlock_init(&(prof.profile_lock), NULL);
 
   /* Initialize the structs that store the profiling information */
-  prof.profile = malloc(sizeof(application_profile));
+  prof.profile = orig_malloc(sizeof(application_profile));
 
   /* If applicable, read in the previous run's profiling information */
   if(profopts.profile_file) {
@@ -452,7 +452,7 @@ void initialize_profiling() {
   prof.profile->num_profile_all_events = profopts.num_profile_all_events;
   prof.profile->profile_all_events = orig_calloc(prof.profile->num_profile_all_events, sizeof(char *));
   for(i = 0; i < profopts.profile_all_events; i++) {
-    prof.profile->profile_all_events[i] = malloc((strlen(profopts.profile_all_events[i]) + 1) * sizeof(char));
+    prof.profile->profile_all_events[i] = orig_malloc((strlen(profopts.profile_all_events[i]) + 1) * sizeof(char));
     strcpy(prof.profile->profile_all_events[i], profopts.profile_all_events[i]);
   }
 

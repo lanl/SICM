@@ -35,6 +35,7 @@ static size_t sh_value_event_index = SIZE_MAX; /* Index into the array of events
 typedef struct site_profile_info {
   size_t value, weight;
   double value_per_weight;
+  int index;
 } site_profile_info;
 typedef site_profile_info * site_info_ptr; /* Required for tree.h */
 use_tree(site_info_ptr, int);
@@ -138,14 +139,15 @@ tree(site_info_ptr, int) sh_convert_to_site_tree(application_profile *info) {
       continue;
     }
 
-    site = malloc(sizeof(site_profile_info));
+    site = orig_malloc(sizeof(site_profile_info));
     site->value = get_value(aprof);
     site->weight = get_weight(aprof);
     site->value_per_weight = ((double) site->value) / ((double) site->weight);
+    site->index = aprof->index;
 
     for(n = 0; n < aprof->num_alloc_sites; n++) {
       /* We make a copy of this struct for each site to aid freeing this up in the future */
-      site_copy = malloc(sizeof(site_profile_info));
+      site_copy = orig_malloc(sizeof(site_profile_info));
       memcpy(site_copy, site, sizeof(site_profile_info));
       tree_insert(site_tree, site_copy, aprof->alloc_sites[n]);
     }
@@ -270,7 +272,7 @@ tree(site_info_ptr, int) sh_get_hot_sites(tree(site_info_ptr, int) site_tree, ui
 
 /* Initializes this packing library, sets all of the globals above. Some of the char ** pointers can be pointers to NULL,
    in which case this function will fill them in with a default value. */
-void sh_packing_init(prev_app_info *info, char **value, char **event, char **weight, char **algo, char **sort, char verbose) {
+void sh_packing_init(application_profile *info, char **value, char **event, char **weight, char **algo, char **sort, char verbose) {
   size_t i;
 
   if(!info) {
@@ -280,19 +282,19 @@ void sh_packing_init(prev_app_info *info, char **value, char **event, char **wei
 
   /* Set the defaults if any of the dereferenced pointers are NULL */
   if(*value == NULL) {
-    *value = malloc(strlen(DEFAULT_VALUE) * sizeof(char));
+    *value = orig_malloc(strlen(DEFAULT_VALUE) * sizeof(char));
     strcpy(*value, DEFAULT_VALUE);
   }
   if(*weight == NULL) {
-    *value = malloc(strlen(DEFAULT_WEIGHT) * sizeof(char));
+    *value = orig_malloc(strlen(DEFAULT_WEIGHT) * sizeof(char));
     strcpy(*value, DEFAULT_WEIGHT);
   }
   if(*algo == NULL) {
-    *value = malloc(strlen(DEFAULT_ALGO) * sizeof(char));
+    *value = orig_malloc(strlen(DEFAULT_ALGO) * sizeof(char));
     strcpy(*value, DEFAULT_ALGO);
   }
   if(*sort == NULL) {
-    *value = malloc(strlen(DEFAULT_SORT) * sizeof(char));
+    *value = orig_malloc(strlen(DEFAULT_SORT) * sizeof(char));
     strcpy(*value, DEFAULT_SORT);
   }
 
@@ -309,7 +311,7 @@ void sh_packing_init(prev_app_info *info, char **value, char **event, char **wei
     if(*event == NULL) {
       /* Just grab the first event in the value's list of events */
       if(info->num_profile_all_events) {
-        *event = malloc(strlen(info->profile_all_events[0]) * sizeof(char));
+        *event = orig_malloc(strlen(info->profile_all_events[0]) * sizeof(char));
         strcpy(*event, info->profile_all_events[0]);
       } else {
         fprintf(stderr, "The chosen value profiling has no events to default to. Aborting.\n");

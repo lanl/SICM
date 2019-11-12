@@ -128,7 +128,7 @@ application_profile *sh_parse_profiling(FILE *file) {
   */
   profile_type = -1;
 
-  ret = malloc(sizeof(application_profile));
+  ret = orig_malloc(sizeof(application_profile));
   ret->profile_all_events = NULL;
   len = 0;
   line = NULL;
@@ -158,7 +158,7 @@ application_profile *sh_parse_profiling(FILE *file) {
         break;
       } else if(sscanf(line, "Number of arenas: %zu", &num_arenas) == 1) {
         ret->num_arenas = num_arenas;
-        ret->arenas = calloc(num_arenas, sizeof(arena_profile *));
+        ret->arenas = orig_calloc(num_arenas, sizeof(arena_profile *));
       } else if(sscanf(line, "Number of PROFILE_ALL events: %zu\n", &tmp_sizet) == 1) {
         ret->num_profile_all_events = tmp_sizet;
       } else if(sscanf(line, "BEGIN ARENA %u", &index) == 1) {
@@ -172,7 +172,7 @@ application_profile *sh_parse_profiling(FILE *file) {
           fprintf(stderr, "Too many arenas when parsing profiling info. Aborting.\n");
           exit(1);
         }
-        cur_arena = malloc(sizeof(arena_profile));
+        cur_arena = orig_malloc(sizeof(arena_profile));
         ret->arenas[cur_arena_index] = cur_arena;
         cur_arena->index = index;
       } else {
@@ -197,7 +197,7 @@ application_profile *sh_parse_profiling(FILE *file) {
         cur_arena->num_intervals = tmp_sizet;
       } else if(sscanf(line, "  Number of allocation sites: %d\n", &tmp_int)) {
         cur_arena->num_alloc_sites = tmp_int;
-        cur_arena->alloc_sites = malloc(tmp_int * sizeof(int));
+        cur_arena->alloc_sites = orig_malloc(tmp_int * sizeof(int));
       } else if(strncmp(line, "  Allocation sites: ", 20) == 0) {
         sscanf(line, "  Allocation sites: %n", &tmp_int);
         tmpline = line;
@@ -217,9 +217,9 @@ application_profile *sh_parse_profiling(FILE *file) {
         depth = 3;
         profile_type = 0;
         if(!(ret->profile_all_events)) {
-          ret->profile_all_events = calloc(ret->num_profile_all_events, sizeof(char *));
+          ret->profile_all_events = orig_calloc(ret->num_profile_all_events, sizeof(char *));
         }
-        cur_arena->profile_all.events = calloc(ret->num_profile_all_events,
+        cur_arena->profile_all.events = orig_calloc(ret->num_profile_all_events,
                                                     sizeof(per_event_profile_all_info));
         cur_event_index = 0;
         cur_event = &(cur_arena->profile_all.events[cur_event_index]);
@@ -250,10 +250,10 @@ application_profile *sh_parse_profiling(FILE *file) {
           exit(1);
         }
         if(!(ret->profile_all_events[cur_event_index])) {
-          ret->profile_all_events[cur_event_index] = malloc((strlen(event) + 1) * sizeof(char));
+          ret->profile_all_events[cur_event_index] = orig_malloc((strlen(event) + 1) * sizeof(char));
           strcpy(ret->profile_all_events[cur_event_index], event);
         }
-        free(event);
+        orig_free(event);
         cur_event = &(cur_arena->profile_all.events[cur_event_index]);
         depth = 4;
       } else {
@@ -353,7 +353,7 @@ application_profile *sh_parse_profiling(FILE *file) {
         }
       } else if(sscanf(line, "    END EVENT %ms\n", &event) == 1) {
         /* Up in depth */
-        free(event);
+        orig_free(event);
         depth = 3;
         cur_event_index++;
       } else {

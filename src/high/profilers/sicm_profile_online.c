@@ -20,83 +20,6 @@ void profile_online_interval(int);
 void profile_online_skip_interval(int);
 void profile_online_post_interval(arena_profile *);
 
-/***
- * Utility functions
- ***/
-
-static inline int double_cmp(double a, double b) {
-  int retval;
-  if(a < b) {
-    retval = 1;
-  } else if(a > b) {
-    retval = -1;
-  } else {
-    retval = 1;
-  }
-  return retval;
-}
-
-/* Used to compare two arenas to sort the tree */
-int value_per_weight_cmp(valweightptr a, valweightptr b) {
-  double a_bpb, b_bpb;
-  int retval;
-
-  if(a == b) return 0;
-
-  a_bpb = ((double)a->value) / ((double)a->weight);
-  b_bpb = ((double)b->value) / ((double)b->weight);
-
-  return double_cmp(a_bpb, b_bpb);
-}
-
-size_t get_value(size_t index, size_t event_index) {
-  arena_info *arena;
-  arena_profile *aprof;
-  per_event_profile_all_info *per_event_aprof;
-  size_t value;
-
-  arena = tracker.arenas[index];
-  aprof = prof.profile->arenas[index];
-  per_event_aprof = &(aprof->profile_all.events[event_index]);
-
-  return per_event_aprof->total;
-}
-
-/* Gets weight in kilobytes, to match sicm_avail and sicm_capacity. */
-size_t get_weight(size_t index) {
-  arena_info *arena;
-  arena_profile *aprof;
-  size_t weight;
-
-  arena = tracker.arenas[index];
-  aprof = prof.profile->arenas[index];
-
-  /* TODO: Speed this up by setting something up (perhaps an offset into aprof)
-   * in `profile_online_init`.
-   */
-  if(aprof->num_intervals <= 1) {
-    return 0;
-  }
-
-  if(profopts.profile_online_use_last_interval) {
-    if(profopts.should_profile_allocs) {
-      return aprof->profile_allocs.intervals[aprof->num_intervals - 2] / 1024;
-    } else if(profopts.should_profile_extent_size) {
-      return aprof->profile_extent_size.intervals[aprof->num_intervals - 2] / 1024;
-    } else if(profopts.should_profile_rss) {
-      return aprof->profile_rss.intervals[aprof->num_intervals - 2] / 1024;
-    }
-  } else {
-    if(profopts.should_profile_allocs) {
-      return aprof->profile_allocs.peak / 1024;
-    } else if(profopts.should_profile_extent_size) {
-      return aprof->profile_extent_size.peak / 1024;
-    } else if(profopts.should_profile_rss) {
-      return aprof->profile_rss.peak / 1024;
-    }
-  }
-}
-
 void profile_online_arena_init(profile_online_info *info) {
 }
 
@@ -107,146 +30,59 @@ void *profile_online(void *a) {
 }
 
 void profile_online_interval(int s) {
-  size_t i, n, upper_avail, lower_avail,
-         value, weight,
-         event_index;
+  size_t i, n, upper_avail, lower_avail;
   arena_info *arena;
   arena_profile *aprof;
+  struct sicm_device_list *dl;
 
-  /* Sorted sites */
-  tree(valweightptr, size_t) sorted_arenas;
-  tree_it(valweightptr, size_t) it;
-  valweightptr arena_val;
-
-  /* Hotset */
-  tree(size_t, deviceptr) hotset, coldset;
-  tree_it(size_t, deviceptr) hit, tmp_hit;
-  size_t hotset_value, hotset_weight,
-         coldset_value, coldset_weight;
-  char hot, cold_next_site;
+  /* Trees store site information, value is the site ID */
+  tree(site_info_ptr, int) sorted_sites;
+  tree(site_info_ptr, int) hotset;
+  tree_it(site_info_ptr, int) sit, old, new;
 
   /* Look at how much the application has consumed on each tier */
   upper_avail = sicm_avail(tracker.upper_device);
   lower_avail = sicm_avail(tracker.lower_device);
 
-  event_index = prof.profile_online.profile_online_event_index;
-
   if(lower_avail < prof.profile_online.lower_avail_initial) {
     /* The lower tier is now being used, so we need to reconfigure. */
 
-    /* Sort arenas by value/weight in the `sorted_arenas` tree */
-    sorted_arenas = tree_make_c(valweightptr, size_t, &value_per_weight_cmp);
-    arena_arr_for(i) {
+    /* Convert to a tree of sites and generate the new hotset */
+    sorted_sites = sh_convert_to_site_tree(prof.profile);
+    hotset = sh_get_hot_sites(sorted_sites, prof.profile_online.upper_avail_initial);
 
-      value = get_value(i, event_index);
-      weight = get_weight(i);
-
-      if(!weight) continue;
-      if(!value) value = 1;
-
-      arena_val = (valweightptr) orig_malloc(sizeof(valweight));
-      arena_val->value = value;
-      arena_val->weight = weight;
-
-      /* Finally insert into the tree */
-      tree_insert(sorted_arenas, arena_val, i);
-    }
-
-    /* Iterate over the sites and greedily pack them into the hotset.
-     * Also construct a tree of the sites that didn't make it.
-     */
-    hotset_value = 0;
-    hotset_weight = 0;
-    hot = 1;
-    cold_next_site = 0;
-    hotset = tree_make(size_t, deviceptr);
-    coldset = tree_make(size_t, deviceptr);
-    tree_traverse(sorted_arenas, it) {
-      value = get_value(tree_it_val(it), event_index);
-      weight = get_weight(tree_it_val(it));
-
-      if(hot) {
-        hotset_value += value;
-        hotset_weight += weight;
-        tree_insert(hotset, tree_it_val(it), tracker.upper_device);
-      } else {
-        coldset_value += value;
-        coldset_weight += weight;
-        tree_insert(coldset, tree_it_val(it), tracker.upper_device);
-      }
-      if(cold_next_site) {
-        hot = 0;
-        cold_next_site = 0;
-      }
-      if(hotset_weight > prof.profile_online.upper_avail_initial) {
-        cold_next_site = 1;
-      }
-    }
-
-    /* If this is the first interval, just make the previous sets
-     * empty */
-    if(!prof.profile_online.prev_coldset) {
-      prof.profile_online.prev_coldset = tree_make(size_t, deviceptr);
-    }
+    /* If this is the first interval, the previous hotset was the empty set */
     if(!prof.profile_online.prev_hotset) {
-      prof.profile_online.prev_hotset = tree_make(size_t, deviceptr);
+      prof.profile_online.prev_hotset = tree_make(site_info_ptr, int);
     }
 
     if(!profopts.profile_online_nobind) {
-      /* Rebind arenas that are newly in the coldset */
-      tree_traverse(coldset, hit) {
-        tmp_hit = tree_lookup(prof.profile_online.prev_coldset, tree_it_key(hit));
-        if(!tree_it_good(tmp_hit)) {
-          /* The arena is in the current coldset, but not the previous one.
-           * Bind its pages to the lower device.
-           */
-          arena = tracker.arenas[tree_it_key(hit)];
-          if(profopts.profile_online_print_reconfigures) {
-            value = get_value(tree_it_key(hit), event_index);
-            weight = get_weight(tree_it_key(hit));
-            printf("Demoting arena %zu (%zu, %zu): ", tree_it_key(hit), value, weight);
-            for(n = 0; n < arena->num_alloc_sites; n++) {
-              printf("%d ", arena->alloc_sites[n]);
-            }
-            printf("\n");
-          }
-          sicm_arena_set_devices(arena->arena, /* The arena */
-                                 prof.profile_online.lower_dl);           /* The device list */
+      /* Iterate over all of the sites. Rebind if:
+         1. A site wasn't in the previous hotset, but is in the current one.
+         2. A site was in the previous hotset, but now isn't. */
+      tree_traverse(sorted_sites, sit) {
+        /* Look to see if it's in the new or old hotsets.
+           Here, the keys are actually pointers, but they're still
+           unique identifiers, so that's all right. */
+        old = tree_lookup(prof.profile_online.prev_hotset, tree_it_key(sit));
+        new = tree_lookup(hotset, tree_it_key(sit));
+        if(tree_it_good(new) && !tree_it_good(old)) {
+          dl = prof.profile_online.upper_dl;
+        } else if(!tree_it_good(new) && tree_it_good(old)) {
+          dl = prof.profile_online.lower_dl;
         }
-      }
 
-      /* Rebind arenas that are newly in the hotset */
-      tree_traverse(hotset, hit) {
-        tmp_hit = tree_lookup(prof.profile_online.prev_hotset, tree_it_key(hit));
-        if(!tree_it_good(tmp_hit)) {
-          /* The arena is in the current hotset, but not the previous one.
-           * Bind its pages to the upper device.
-           */
-          arena = tracker.arenas[tree_it_key(hit)];
-          if(profopts.profile_online_print_reconfigures) {
-            value = get_value(tree_it_key(hit), event_index);
-            weight = get_weight(tree_it_key(hit));
-            printf("Demoting arena %zu (%zu, %zu): ", tree_it_key(hit), value, weight);
-            for(n = 0; n < arena->num_alloc_sites; n++) {
-              printf("%d ", arena->alloc_sites[n]);
-            }
-            printf("\n");
-          }
-          sicm_arena_set_devices(tracker.arenas[tree_it_key(hit)]->arena, /* The arena */
-                                 prof.profile_online.upper_dl);           /* The device list */
-        }
+        /* Do the actual rebinding. */
+        sicm_arena_set_devices(tree_it_key(sit)->index, dl);
       }
     }
 
-    /* Free the previous trees and set these as the current ones */
+    /* The previous tree can be freed, because we're going to
+       overwrite it with the current one */
     if(prof.profile_online.prev_hotset) {
       tree_free(prof.profile_online.prev_hotset);
     }
     prof.profile_online.prev_hotset = hotset;
-    if(prof.profile_online.prev_coldset) {
-      tree_free(prof.profile_online.prev_coldset);
-    }
-    prof.profile_online.prev_coldset = coldset;
 
     /* Free the sorted_arenas tree */
     tree_traverse(sorted_arenas, it) {
@@ -305,9 +141,9 @@ void profile_online_init() {
     exit(1);
   }
 
-  algo = malloc((strlen("hotset") + 1) * sizeof(char));
+  algo = orig_malloc((strlen("hotset") + 1) * sizeof(char));
   strcpy(algo, "hotset");
-  sort = malloc((strlen("value_per_weight") + 1) * sizeof(char));
+  sort = orig_malloc((strlen("value_per_weight") + 1) * sizeof(char));
   strcpy(sort, "value_per_weight");
 
   /* If we have a previous run's profiling, initialize the packing library with it. */
