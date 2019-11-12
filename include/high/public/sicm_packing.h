@@ -41,7 +41,7 @@ typedef site_profile_info * site_info_ptr; /* Required for tree.h */
 use_tree(site_info_ptr, int);
 
 /* Gets a value from the given arena_profile */
-size_t get_value(arena_profile *aprof) {
+static size_t get_value(arena_profile *aprof) {
   size_t value;
 
   if(sh_value_flag == 0) {
@@ -55,7 +55,7 @@ size_t get_value(arena_profile *aprof) {
 }
 
 /* Gets a weight from the given arena_profile */
-size_t get_weight(arena_profile *aprof) {
+static size_t get_weight(arena_profile *aprof) {
   size_t weight;
 
   if(sh_weight_flag == 0) {
@@ -73,7 +73,7 @@ size_t get_weight(arena_profile *aprof) {
 /* This is the function that tree uses to sort the sites.
    This is run each time the tree compares two site_profile_info structs.
    Slow (since it checks these conditions for every comparison), but simple. */
-int site_tree_cmp(site_info_ptr a, site_info_ptr b) {
+static int site_tree_cmp(site_info_ptr a, site_info_ptr b) {
   int retval;
 
   if(a == b) {
@@ -116,7 +116,7 @@ int site_tree_cmp(site_info_ptr a, site_info_ptr b) {
    and converts it to a tree of allocation sites and their value and weight amounts.
    If the profiling information includes multiple sites per arena, that arena's profiling
    is simply associated with all of the sites in the arena. This may change in the future. */
-tree(site_info_ptr, int) sh_convert_to_site_tree(application_profile *info) {
+static tree(site_info_ptr, int) sh_convert_to_site_tree(application_profile *info) {
   tree(site_info_ptr, int) site_tree;
   tree_it(site_info_ptr, int) sit;
   size_t i;
@@ -170,7 +170,7 @@ tree(site_info_ptr, int) sh_convert_to_site_tree(application_profile *info) {
  * by just iterating over them and finding the GCD of the current
  * GCD and the current value
  */
-size_t get_gcd(tree(site_info_ptr, int) site_tree) {
+static size_t get_gcd(tree(site_info_ptr, int) site_tree) {
   tree_it(site_info_ptr, int) sit;
   size_t gcd, a, b, tmp;
 
@@ -195,7 +195,7 @@ size_t get_gcd(tree(site_info_ptr, int) site_tree) {
   return gcd;
 }
 
-void sh_scale_sites(tree(site_info_ptr, int) site_tree, double scale) {
+static void sh_scale_sites(tree(site_info_ptr, int) site_tree, double scale) {
   tree_it(site_info_ptr, int) sit;
   size_t gcd, multiples, scaled;
 
@@ -221,7 +221,7 @@ void sh_scale_sites(tree(site_info_ptr, int) site_tree, double scale) {
 }
 
 /* Greedy hotset algorithm. Called by sh_get_hot_sites. */
-tree(site_info_ptr, int) get_hotset(tree(site_info_ptr, int) site_tree, uintmax_t capacity) {
+static tree(site_info_ptr, int) get_hotset(tree(site_info_ptr, int) site_tree, uintmax_t capacity) {
   tree(site_info_ptr, int) ret;
   tree_it(site_info_ptr, int) sit;
   char break_next_site;
@@ -256,7 +256,7 @@ tree(site_info_ptr, int) get_hotset(tree(site_info_ptr, int) site_tree, uintmax_
   return ret;
 }
 
-tree(site_info_ptr, int) sh_get_hot_sites(tree(site_info_ptr, int) site_tree, uintmax_t capacity) {
+static tree(site_info_ptr, int) sh_get_hot_sites(tree(site_info_ptr, int) site_tree, uintmax_t capacity) {
   tree(site_info_ptr, int) hot_site_tree;
 
   if(sh_algo_flag == 0) {
@@ -272,7 +272,7 @@ tree(site_info_ptr, int) sh_get_hot_sites(tree(site_info_ptr, int) site_tree, ui
 
 /* Initializes this packing library, sets all of the globals above. Some of the char ** pointers can be pointers to NULL,
    in which case this function will fill them in with a default value. */
-void sh_packing_init(application_profile *info, char **value, char **event, char **weight, char **algo, char **sort, char verbose) {
+static void sh_packing_init(application_profile *info, char **value, char **event, char **weight, char **algo, char **sort, char verbose) {
   size_t i;
 
   if(!info) {

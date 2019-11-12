@@ -14,7 +14,7 @@
 
 /* Iterates over the structure and prints it out so that it can
  * be seamlessly read back in */
-void sh_print_profiling(application_profile *info) {
+static void sh_print_profiling(application_profile *info) {
   size_t i, n, x;
   arena_profile *aprof;
   arena_info *arena;
@@ -88,7 +88,7 @@ void sh_print_profiling(application_profile *info) {
 #endif /* SICM_RUNTIME */
 
 /* Reads the above-printed information back into an application_profile struct. */
-application_profile *sh_parse_profiling(FILE *file) {
+static application_profile *sh_parse_profiling(FILE *file) {
   /* Stores profiling information, returned */
   application_profile *ret;
 
