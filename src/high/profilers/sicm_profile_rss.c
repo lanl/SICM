@@ -83,11 +83,19 @@ void profile_rss_interval(int s) {
   pthread_rwlock_rdlock(&tracker.extents_lock);
 
   /* Zero out the accumulator for each arena */
+  #if 0
   extent_arr_for(tracker.extents, i) {
     arena = (arena_info *) tracker.extents->arr[i].arena;
     if(!arena) continue;
-    aprof = prof.info[arena->index];
+    aprof = prof.profile->arenas[arena->index];
     if(!aprof) continue;
+    aprof->profile_rss.tmp_accumulator = 0;
+  }
+  #endif
+  for(i = 0; i < prof.profile->num_arenas; i++) {
+    aprof = prof.profile->arenas[i];
+    if(!aprof) continue;
+
     aprof->profile_rss.tmp_accumulator = 0;
   }
 
@@ -97,7 +105,7 @@ void profile_rss_interval(int s) {
     end = (uint64_t) tracker.extents->arr[i].end;
     arena = (arena_info *) tracker.extents->arr[i].arena;
     if(!arena) continue;
-    aprof = prof.info[arena->index];
+    aprof = prof.profile->arenas[arena->index];
     if((!aprof) || (!aprof->num_intervals)) continue;
 
     numpages = (end - start) / prof.profile_rss.pagesize;
