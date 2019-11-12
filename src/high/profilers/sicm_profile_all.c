@@ -117,14 +117,14 @@ void profile_all_init() {
   prof.profile_all.metadata = orig_malloc(sizeof(struct perf_event_mmap_page *) * prof.profile->num_profile_all_events);
   for(i = 0; i < prof.profile->num_profile_all_events; i++) {
     prof.profile_all.metadata[i] = mmap(NULL,
-                                        prof.profile_all.pagesize + (prof.profile_all.pagesize * prof.profile_all.max_sample_pages),
+                                        prof.profile_all.pagesize + (prof.profile_all.pagesize * profopts.max_sample_pages),
                                         PROT_READ | PROT_WRITE,
                                         MAP_SHARED,
                                         prof.profile_all.fds[i],
                                         0);
     if(prof.profile_all.metadata[i] == MAP_FAILED) {
       fprintf(stderr, "Failed to mmap room (%zu bytes) for perf samples. Aborting with:\n%s\n",
-              prof.profile_all.pagesize + (prof.profile_all.pagesize * prof.profile_all.max_sample_pages), strerror(errno));
+              prof.profile_all.pagesize + (prof.profile_all.pagesize * profopts.max_sample_pages), strerror(errno));
       exit(1);
     }
   }
@@ -274,9 +274,9 @@ void profile_all_post_interval(arena_profile *aprof) {
   for(i = 0; i < prof.profile->num_profile_all_events; i++) {
     per_event_aprof = &(aprof_all->events[i]);
 
-    per_event_aprof->total += aprof->tmp_accumulator;
+    per_event_aprof->total += aprof_all->tmp_accumulator;
     if(aprof_all->tmp_accumulator > per_event_aprof->peak) {
-      per_event_aprof->peak = aprof->tmp_accumulator;
+      per_event_aprof->peak = aprof_all->tmp_accumulator;
     }
     /* One size_t per interval for this one event */
     per_event_aprof->intervals = (size_t *)orig_realloc(per_event_aprof->intervals, aprof->num_intervals * sizeof(size_t));
