@@ -432,6 +432,8 @@ void *profile_master(void *a) {
 }
 
 void initialize_profiling() {
+  size_t i;
+
   pthread_rwlock_init(&(prof.profile_lock), NULL);
 
   /* Initialize the structs that store the profiling information */
