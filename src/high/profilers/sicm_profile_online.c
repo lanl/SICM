@@ -85,12 +85,12 @@ void profile_online_interval(int s) {
     prof.profile_online.prev_hotset = hotset;
 
     /* Free the sorted_arenas tree */
-    tree_traverse(sorted_arenas, it) {
-      if(tree_it_key(it)) {
-        orig_free(tree_it_key(it));
+    tree_traverse(sorted_sites, sit) {
+      if(tree_it_key(sit)) {
+        orig_free(tree_it_key(sit));
       }
     }
-    tree_free(sorted_arenas);
+    tree_free(sorted_sites);
   }
 
   end_interval();
@@ -146,17 +146,14 @@ void profile_online_init() {
   sort = orig_malloc((strlen("value_per_weight") + 1) * sizeof(char));
   strcpy(sort, "value_per_weight");
 
-  /* If we have a previous run's profiling, initialize the packing library with it. */
   if(profopts.profile_file) {
-    info = sh_parse_profiling(profopts.profile_file);
-    sh_packing_init(info,
+    sh_packing_init(prof.prev_profile,
                     &value,
                     &profopts.profile_all_events[prof.profile_online.profile_online_event_index],
                     &weight,
                     &algo,
                     &sort,
                     1);
-
   }
 
   /* Figure out the amount of free memory that we're starting out with */

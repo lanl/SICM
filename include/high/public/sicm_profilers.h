@@ -79,18 +79,14 @@ typedef struct profile_allocs_data {
 } profile_allocs_data;
 
 /* profile_online */
-typedef struct valweight {
-  size_t value, weight;
-  double value_per_weight;
-} valweight;
-typedef valweight * valweightptr;
-use_tree(valweightptr, size_t);
-use_tree(size_t, deviceptr);
+typedef struct site_profile_info site_profile_info;
+typedef site_profile_info * site_info_ptr;
+use_tree(site_info_ptr, int);
 typedef struct profile_online_data {
   size_t profile_online_event_index;
   size_t lower_avail_initial, upper_avail_initial;
   struct sicm_device_list *upper_dl, *lower_dl;
-  tree(size_t, deviceptr) prev_hotset, prev_coldset;
+  tree(site_info_ptr, int) prev_hotset;
 } profile_online_data;
 
 /********************
