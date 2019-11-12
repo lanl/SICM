@@ -66,7 +66,7 @@ void profile_allocs_post_interval(arena_profile *aprof) {
   /* Store this interval */
   aprof_allocs->intervals =
     (size_t *)orig_realloc(aprof_allocs->intervals, aprof->num_intervals * sizeof(size_t));
-  aprof->intervals[info->num_intervals - 1] = aprof_allocs->tmp_accumulator;
+  aprof_allocs->intervals[aprof->num_intervals - 1] = aprof_allocs->tmp_accumulator;
 }
 
 void profile_allocs_skip_interval(int s) {
