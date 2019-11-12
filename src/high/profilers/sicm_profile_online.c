@@ -38,6 +38,7 @@ void profile_online_interval(int s) {
   /* Trees store site information, value is the site ID */
   tree(site_info_ptr, int) sorted_sites;
   tree(site_info_ptr, int) hotset;
+  tree(site_info_ptr, int) prev_hotset;
   tree_it(site_info_ptr, int) sit, old, new;
 
   /* Look at how much the application has consumed on each tier */
@@ -47,14 +48,15 @@ void profile_online_interval(int s) {
   if(lower_avail < prof.profile_online.lower_avail_initial) {
     /* The lower tier is now being used, so we need to reconfigure. */
 
-    /* Convert to a tree of sites and generate the new hotset */
-    sorted_sites = sh_convert_to_site_tree(prof.profile);
-    hotset = sh_get_hot_sites(sorted_sites, prof.profile_online.upper_avail_initial);
-
     /* If this is the first interval, the previous hotset was the empty set */
     if(!prof.profile_online.prev_hotset) {
       prof.profile_online.prev_hotset = (void *) tree_make(site_info_ptr, int);
     }
+    prev_hotset = (tree(site_info_ptr, int)) prof.profile_online.prev_hotset;
+
+    /* Convert to a tree of sites and generate the new hotset */
+    sorted_sites = sh_convert_to_site_tree(prof.profile);
+    hotset = sh_get_hot_sites(sorted_sites, prof.profile_online.upper_avail_initial);
 
     if(!profopts.profile_online_nobind) {
       /* Iterate over all of the sites. Rebind if:
@@ -64,7 +66,7 @@ void profile_online_interval(int s) {
         /* Look to see if it's in the new or old hotsets.
            Here, the keys are actually pointers, but they're still
            unique identifiers, so that's all right. */
-        old = tree_lookup((tree(site_info_ptr, int)) prof.profile_online.prev_hotset, tree_it_key(sit));
+        old = tree_lookup(prev_hotset, tree_it_key(sit));
         new = tree_lookup(hotset, tree_it_key(sit));
         if(tree_it_good(new) && !tree_it_good(old)) {
           dl = prof.profile_online.upper_dl;
@@ -79,8 +81,8 @@ void profile_online_interval(int s) {
 
     /* The previous tree can be freed, because we're going to
        overwrite it with the current one */
-    if(prof.profile_online.prev_hotset) {
-      tree_free((tree(site_info_ptr, int)) prof.profile_online.prev_hotset);
+    if(prev_hotset) {
+      tree_free(prev_hotset);
     }
     prof.profile_online.prev_hotset = (void *) hotset;
 
@@ -171,7 +173,6 @@ void profile_online_init() {
   prof.profile_online.lower_dl->devices[0] = tracker.lower_device;
 
   prof.profile_online.prev_hotset = NULL;
-  prof.profile_online.prev_coldset = NULL;
 }
 
 void profile_online_deinit() {
