@@ -371,7 +371,7 @@ static void sh_packing_init(application_profile *info, char **value, char **even
   if(sh_verbose_flag) {
     printf("Finished initializing the packing library with the following parameters:\n");
     printf("  Value: %s\n", *value);
-    printf("  Event: %s\n", *event);
+    printf("  Event: %s, index %zu\n", *event, sh_value_event_index);
     printf("  Weight: %s\n", *weight);
     printf("  Algorithm: %s\n", *algo);
     printf("  Sorting Type: %s\n", *sort);
