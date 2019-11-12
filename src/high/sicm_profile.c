@@ -447,11 +447,11 @@ void initialize_profiling() {
   prof.profile->arenas = orig_calloc(tracker.max_arenas, sizeof(arena_profile *));
 
   /* Store the profile_all event strings */
-  prof.num_profile_all_events = profopts.num_profile_all_events;
-  prof.profile_all_events = orig_calloc(prof.num_profile_all_events, sizeof(char *));
+  prof.profile->num_profile_all_events = profopts.num_profile_all_events;
+  prof.profile->profile_all_events = orig_calloc(prof.profile->num_profile_all_events, sizeof(char *));
   for(i = 0; i < profopts.profile_all_events; i++) {
-    prof.profile_all_events[i] = malloc((strlen(profopts.profile_all_events[i]) + 1) * sizeof(char));
-    strcpy(prof.profile_all_events[i], profopts.profile_all_events[i]);
+    prof.profile->profile_all_events[i] = malloc((strlen(profopts.profile_all_events[i]) + 1) * sizeof(char));
+    strcpy(prof.profile->profile_all_events[i], profopts.profile_all_events[i]);
   }
 
   prof.threads_finished = 0;
