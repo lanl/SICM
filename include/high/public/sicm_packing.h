@@ -311,7 +311,7 @@ static void sh_packing_init(application_profile *info, char **value, char **even
     if(*event == NULL) {
       /* Just grab the first event in the value's list of events */
       if(info->num_profile_all_events) {
-        *event = orig_malloc(strlen(info->profile_all_events[0]) * sizeof(char));
+        *event = orig_malloc((strlen(info->profile_all_events[0]) + 1) * sizeof(char));
         strcpy(*event, info->profile_all_events[0]);
       } else {
         fprintf(stderr, "The chosen value profiling has no events to default to. Aborting.\n");
