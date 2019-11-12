@@ -15,15 +15,15 @@ static int global_signal;
 
 /* Returns 0 if "a" is bigger, 1 if "b" is bigger */
 char timespec_cmp(struct timespec *a, struct timespec *b) {
-	if (a->tv_sec == b->tv_sec) {
+  if (a->tv_sec == b->tv_sec) {
     if(a->tv_nsec > b->tv_nsec) {
       return 0;
     } else {
       return 1;
     }
-	} else if(a->tv_sec > b->tv_sec) {
+  } else if(a->tv_sec > b->tv_sec) {
     return 0;
-	} else {
+  } else {
     return 1;
   }
 }
@@ -32,8 +32,7 @@ char timespec_cmp(struct timespec *a, struct timespec *b) {
  * larger than start.
  */
 void timespec_diff(struct timespec *start, struct timespec *stop,
-                   struct timespec *result)
-{
+                   struct timespec *result) {
   if ((stop->tv_nsec - start->tv_nsec) < 0) {
     result->tv_sec = stop->tv_sec - start->tv_sec - 1;
     result->tv_nsec = stop->tv_nsec - start->tv_nsec + 1000000000;
@@ -44,46 +43,59 @@ void timespec_diff(struct timespec *start, struct timespec *stop,
   return;
 }
 
+/* Runs when an arena has already been created, but the runtime library
+   has added an allocation site to the arena. */
+void add_site_profile(int index, int site_id) {
+  arena_profile *aprof;
+  pthread_rwlock_wrlock(&prof.profile_lock);
 
-/* Allocates room for profiling information for this arena.
- * Returns a pointer to the profile_info struct as a void pointer
- * so that the arena can have a pointer to its profiling information.
- * Some profilers use this pointer to get to the profiling information
- * when all they have is a pointer to the arena.
- */
-void *create_profile_arena(int index) {
-  profile_info *profinfo;
+  aprof = prof.profile->arenas[index];
+  aprof->alloc_sites[aprof->num_alloc_sites] = site_id;
+  aprof->num_alloc_sites++;
 
-  pthread_rwlock_wrlock(&prof.info_lock);
+  pthread_rwlock_unlock(&prof.profile_lock);
+}
 
-  profinfo = orig_calloc(1, sizeof(profile_info));
+/* Runs when a new arena is created. Allocates room to store
+   profiling information about this arena. */
+void *create_arena_profile(int index, int site_id) {
+  arena_profile *aprof;
+
+  pthread_rwlock_wrlock(&prof.profile_lock);
+
+  aprof = orig_calloc(1, sizeof(arena_profile));
 
   if(profopts.should_profile_all) {
-    profile_all_arena_init(&(profinfo->profile_all));
+    profile_all_arena_init(&(aprof->profile_all));
   }
   if(profopts.should_profile_rss) {
-    profile_rss_arena_init(&(profinfo->profile_rss));
+    profile_rss_arena_init(&(aprof->profile_rss));
   }
   if(profopts.should_profile_extent_size) {
-    profile_extent_size_arena_init(&(profinfo->profile_extent_size));
+    profile_extent_size_arena_init(&(aprof->profile_extent_size));
   }
   if(profopts.should_profile_allocs) {
-    profile_allocs_arena_init(&(profinfo->profile_allocs));
+    profile_allocs_arena_init(&(aprof->profile_allocs));
   }
   if(profopts.should_profile_online) {
-    profile_online_arena_init(&(profinfo->profile_online));
+    profile_online_arena_init(&(aprof->profile_online));
   }
 
-  profinfo->num_intervals = 0;
-  profinfo->first_interval = 0;
-  prof.info[index] = profinfo;
+  aprof->num_intervals = 0;
+  aprof->first_interval = 0;
+  aprof->index = index;
+  aprof->num_alloc_sites = 1;
+  aprof->alloc_sites = orig_malloc(sizeof(int) * tracker.max_sites_per_arena);
+  aprof->alloc_sites[0] = site_id;
+  prof.profile->arenas[index] = aprof;
+  prof.profile->num_arenas++;
 
-  pthread_rwlock_unlock(&prof.info_lock);
+  pthread_rwlock_unlock(&prof.profile_lock);
 
   /* Return this so that the arena can have a pointer to its profiling
    * information
    */
-  return (void *)prof.info[index];
+  return (void *)prof.profile->arenas[index];
 }
 
 void end_interval() {
@@ -101,16 +113,16 @@ void end_interval() {
  * it does this on every interval.
  */
 void profile_master_interval(int s) {
-	struct timespec start, end, target, actual;
+  struct timespec start, end, target, actual;
   size_t i, n, x;
   char copy;
 
   /* Convenience pointers */
-  profile_info *profinfo;
+  arena_profile *aprof;
   arena_info *arena;
   profile_thread *profthread;
 
-  pthread_rwlock_wrlock(&prof.info_lock);
+  pthread_rwlock_wrlock(&prof.profile_lock);
 
   /* Start time */
   clock_gettime(CLOCK_MONOTONIC, &start);
@@ -118,18 +130,18 @@ void profile_master_interval(int s) {
   /* Increment the interval */
   arena_arr_for(i) {
     arena_check_good(arena, i);
-    profinfo = prof.info[i];
-    if(!profinfo) continue;
+    aprof = prof.profile->arenas[i];
+    if(!aprof) continue;
 
-    if(profinfo->num_intervals == 0) {
+    if(aprof->num_intervals == 0) {
       /* This is the arena's first interval, make note */
-      profinfo->first_interval = prof.cur_interval;
+      aprof->first_interval = prof.cur_interval;
     }
-    profinfo->num_intervals++;
+    aprof->num_intervals++;
   }
 
   if(profopts.should_profile_separate_threads) {
-    /* Notify the threads */
+    /* If we're separating the profiling threads, notify them that an interval has started. */
     for(i = 0; i < prof.num_profile_threads; i++) {
       profthread = &prof.profile_threads[i];
       if(profthread->skipped_intervals == (profthread->skip_intervals - 1)) {
@@ -202,26 +214,25 @@ void profile_master_interval(int s) {
    * this loop maintains the peak, total, and per-interval value.
    */
   arena_arr_for(i) {
-    prof_check_good(arena, profinfo, i);
+    prof_check_good(arena, aprof, i);
 
     if(profopts.should_profile_all) {
-      profile_all_post_interval(profinfo);
+      profile_all_post_interval(aprof);
     }
     if(profopts.should_profile_rss) {
-      profile_rss_post_interval(profinfo);
+      profile_rss_post_interval(aprof);
     }
     if(profopts.should_profile_extent_size) {
-      profile_extent_size_post_interval(profinfo);
+      profile_extent_size_post_interval(aprof);
     }
     if(profopts.should_profile_allocs) {
-      profile_allocs_post_interval(profinfo);
+      profile_allocs_post_interval(aprof);
     }
     if(profopts.should_profile_online) {
-      profile_online_post_interval(profinfo);
+      profile_online_post_interval(aprof);
     }
 
-    /* Check if this arena contains the site that we're tracking,
-     * print out some profiling information if so */
+    /* track_site feature */
     if(tracker.track_site != -1) {
       for(n = 0; n < arena->num_alloc_sites; n++) {
         if(arena->alloc_sites[n] == tracker.track_site) {
@@ -230,16 +241,16 @@ void profile_master_interval(int s) {
           if(profopts.should_profile_all) {
             for(x = 0; x < profopts.num_profile_all_events; x++) {
               fprintf(stderr, "  Event: %s\n", profopts.profile_all_events[x]);
-              fprintf(stderr, "    %zu\n", profinfo->profile_all.events[x].intervals[profinfo->num_intervals - 1]);
+              fprintf(stderr, "    %zu\n", aprof->profile_all.events[x].intervals[aprof->num_intervals - 1]);
             }
           }
           if(profopts.should_profile_extent_size) {
             fprintf(stderr, "  Extent size:\n");
-            fprintf(stderr, "    %zu\n", profinfo->profile_extent_size.intervals[profinfo->num_intervals - 1]);
+            fprintf(stderr, "    %zu\n", aprof->profile_extent_size.intervals[aprof->num_intervals - 1]);
           }
           if(profopts.should_profile_allocs) {
             fprintf(stderr, "  Allocations size:\n");
-            fprintf(stderr, "    %zu\n", profinfo->profile_allocs.intervals[profinfo->num_intervals - 1]);
+            fprintf(stderr, "    %zu\n", aprof->profile_allocs.intervals[aprof->num_intervals - 1]);
           }
           fprintf(stderr, "=====\n");
           break;
@@ -251,7 +262,7 @@ void profile_master_interval(int s) {
   /* Finished handling this interval. Wait for another. */
   prof.cur_interval++;
 
-  pthread_rwlock_unlock(&prof.info_lock);
+  pthread_rwlock_unlock(&prof.profile_lock);
 }
 
 /* Stops the master thread */
@@ -421,15 +432,27 @@ void *profile_master(void *a) {
 }
 
 void initialize_profiling() {
-  pthread_rwlock_init(&(prof.info_lock), NULL);
+  pthread_rwlock_init(&(prof.profile_lock), NULL);
+
+  /* Initialize the structs that store the profiling information */
+  prof.profile = malloc(sizeof(application_profile));
 
   /* If applicable, read in the previous run's profiling information */
   if(profopts.profile_file) {
-    prof.prev_info = sh_parse_profiling(profopts.profile_file);
+    prof.prev_profile = sh_parse_profiling(profopts.profile_file);
   }
 
   /* Allocate room for the per-arena profiling information */
-  prof.info = orig_calloc(tracker.max_arenas, sizeof(profile_info *));
+  prof.profile->num_arenas = 0;
+  prof.profile->arenas = orig_calloc(tracker.max_arenas, sizeof(arena_profile *));
+
+  /* Store the profile_all event strings */
+  prof.num_profile_all_events = profopts.num_profile_all_events;
+  prof.profile_all_events = orig_calloc(prof.num_profile_all_events, sizeof(char *));
+  for(i = 0; i < profopts.profile_all_events; i++) {
+    prof.profile_all_events[i] = malloc((strlen(profopts.profile_all_events[i]) + 1) * sizeof(char));
+    strcpy(prof.profile_all_events[i], profopts.profile_all_events[i]);
+  }
 
   prof.threads_finished = 0;
 
@@ -511,6 +534,6 @@ void sh_stop_profile_master_thread() {
   pthread_kill(prof.master_id, prof.stop_signal);
   pthread_join(prof.master_id, NULL);
 
-  sh_print_profiling(prof.info);
+  sh_print_profiling(prof.profile);
   deinitialize_profiling();
 }

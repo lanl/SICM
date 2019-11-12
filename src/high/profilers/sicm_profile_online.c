@@ -10,6 +10,7 @@
 #include "sicm_runtime.h"
 #include "sicm_profilers.h"
 #include "sicm_profile.h"
+#include "sicm_packing.h"
 
 void profile_online_arena_init(profile_online_info *);
 void profile_online_deinit();
@@ -17,7 +18,7 @@ void profile_online_init();
 void *profile_online(void *);
 void profile_online_interval(int);
 void profile_online_skip_interval(int);
-void profile_online_post_interval(profile_info *);
+void profile_online_post_interval(arena_profile *);
 
 /***
  * Utility functions
@@ -50,48 +51,48 @@ int value_per_weight_cmp(valweightptr a, valweightptr b) {
 
 size_t get_value(size_t index, size_t event_index) {
   arena_info *arena;
-  profile_info *profinfo;
-  per_event_profile_all_info *per_event_profinfo;
+  arena_profile *aprof;
+  per_event_profile_all_info *per_event_aprof;
   size_t value;
 
   arena = tracker.arenas[index];
-  profinfo = prof.info[index];
-  per_event_profinfo = &(profinfo->profile_all.events[event_index]);
+  aprof = prof.profile->arenas[index];
+  per_event_aprof = &(aprof->profile_all.events[event_index]);
 
-  return per_event_profinfo->total;
+  return per_event_aprof->total;
 }
 
 /* Gets weight in kilobytes, to match sicm_avail and sicm_capacity. */
 size_t get_weight(size_t index) {
   arena_info *arena;
-  profile_info *profinfo;
+  arena_profile *aprof;
   size_t weight;
 
   arena = tracker.arenas[index];
-  profinfo = prof.info[index];
+  aprof = prof.profile->arenas[index];
 
-  /* TODO: Speed this up by setting something up (perhaps an offset into profinfo)
+  /* TODO: Speed this up by setting something up (perhaps an offset into aprof)
    * in `profile_online_init`.
    */
-  if(profinfo->num_intervals <= 1) {
+  if(aprof->num_intervals <= 1) {
     return 0;
   }
 
   if(profopts.profile_online_use_last_interval) {
     if(profopts.should_profile_allocs) {
-      return profinfo->profile_allocs.intervals[profinfo->num_intervals - 2] / 1024;
+      return aprof->profile_allocs.intervals[aprof->num_intervals - 2] / 1024;
     } else if(profopts.should_profile_extent_size) {
-      return profinfo->profile_extent_size.intervals[profinfo->num_intervals - 2] / 1024;
+      return aprof->profile_extent_size.intervals[aprof->num_intervals - 2] / 1024;
     } else if(profopts.should_profile_rss) {
-      return profinfo->profile_rss.intervals[profinfo->num_intervals - 2] / 1024;
+      return aprof->profile_rss.intervals[aprof->num_intervals - 2] / 1024;
     }
   } else {
     if(profopts.should_profile_allocs) {
-      return profinfo->profile_allocs.peak / 1024;
+      return aprof->profile_allocs.peak / 1024;
     } else if(profopts.should_profile_extent_size) {
-      return profinfo->profile_extent_size.peak / 1024;
+      return aprof->profile_extent_size.peak / 1024;
     } else if(profopts.should_profile_rss) {
-      return profinfo->profile_rss.peak / 1024;
+      return aprof->profile_rss.peak / 1024;
     }
   }
 }
@@ -110,7 +111,7 @@ void profile_online_interval(int s) {
          value, weight,
          event_index;
   arena_info *arena;
-  profile_info *profinfo;
+  arena_profile *aprof;
 
   /* Sorted sites */
   tree(valweightptr, size_t) sorted_arenas;
@@ -262,23 +263,38 @@ void profile_online_interval(int s) {
 void profile_online_init() {
   size_t i;
   char found;
+  char *weight;
+  char *value;
+  char *algo;
+  char *sort;
 
   /* Determine which type of profiling to use to determine weight. Error if none found. */
-  /* TODO: Set something up so that we don't have to check this every time `get_weight` is called. */
   if(profopts.should_profile_allocs) {
+    weight = malloc((strlen("profile_allocs") + 1) * sizeof(char));
+    strcpy(weight, "profile_allocs");
   } else if(profopts.should_profile_extent_size) {
+    weight = malloc((strlen("profile_extent_size") + 1) * sizeof(char));
+    strcpy(weight, "profile_extent_size");
   } else if(profopts.should_profile_rss) {
+    weight = malloc((strlen("profile_rss") + 1) * sizeof(char));
+    strcpy(weight, "profile_rss");
   } else {
-    fprintf(stderr, "WARNING: SH_PROFILE_ONLINE requires at least one type of weight profiling.\n");
+    fprintf(stderr, "The online approach requires some kind of capacity profiling. Aborting.\n");
+    exit(1);
   }
 
   /* Look for the event that we're supposed to use for value. Error out if it's not found. */
   if(!profopts.should_profile_all) {
-    fprintf(stderr, "WARNING: SH_PROFILE_ONLINE requires SH_PROFILE_ALL.\n");
+    fprintf(stderr, "SH_PROFILE_ONLINE requires SH_PROFILE_ALL. Aborting.\n");
+    exit(1);
   }
+  value = malloc((strlen("profile_all") + 1) * sizeof(char));
+  strcpy(value, "profile_all");
+
+  /* Find the event string and index. The event was required to be set at initialization. */
   found = 0;
-  for(i = 0; i < profopts.num_profile_all_events; i++) {
-    if(strcmp(profopts.profile_all_events[i], profopts.profile_online_event) == 0) {
+  for(i = 0; i < prof.profile->num_profile_all_events; i++) {
+    if(strcmp(prof.profile->profile_all_events[i], profopts.profile_online_event) == 0) {
       found = 1;
       prof.profile_online.profile_online_event_index = i;
       break;
@@ -287,6 +303,24 @@ void profile_online_init() {
   if(!found) {
     fprintf(stderr, "Event specified in SH_PROFILE_ONLINE_EVENT is not listed in SH_PROFILE_ALL_EVENTS. Aborting.\n");
     exit(1);
+  }
+
+  algo = malloc((strlen("hotset") + 1) * sizeof(char));
+  strcpy(algo, "hotset");
+  sort = malloc((strlen("value_per_weight") + 1) * sizeof(char));
+  strcpy(sort, "value_per_weight");
+
+  /* If we have a previous run's profiling, initialize the packing library with it. */
+  if(profopts.profile_file) {
+    info = sh_parse_profiling(profopts.profile_file);
+    sh_packing_init(info,
+                    &value,
+                    &profopts.profile_all_events[prof.profile_online.profile_online_event_index],
+                    &weight,
+                    &algo,
+                    &sort,
+                    1);
+
   }
 
   /* Figure out the amount of free memory that we're starting out with */
@@ -310,7 +344,7 @@ void profile_online_init() {
 void profile_online_deinit() {
 }
 
-void profile_online_post_interval(profile_info *info) {
+void profile_online_post_interval(arena_profile *info) {
 }
 
 void profile_online_skip_interval(int s) {

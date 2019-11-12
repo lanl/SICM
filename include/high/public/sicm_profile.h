@@ -21,36 +21,28 @@
 #include "sicm_profilers.h"
 
 /* Profiling information for one arena */
-typedef struct profile_info {
+typedef struct arena_profile {
   size_t first_interval, num_intervals;
+  unsigned index;
+  int num_alloc_sites, *alloc_sites;
 
   profile_all_info profile_all;
   profile_rss_info profile_rss;
   profile_extent_size_info profile_extent_size;
   profile_allocs_info profile_allocs;
   profile_online_info profile_online;
-} profile_info;
+} arena_profile;
 
-/* Stores information about a previous run's arena.
-   Printed and parsed by sicm_parsing.h. */
-typedef struct prev_profile_info {
-  unsigned index; /* This arena's index into the array of arenas. */
-  int num_alloc_sites, *alloc_sites; /* Array of site IDs in this arena */
-  profile_info info;
-} prev_profile_info;
-
-/* Stores just enough information to recreate a previous run's
-   profiling. This information is printed and read back in by
-   sicm_parsing.h. */
-typedef struct prev_app_info {
+/* Profiling information for a whole application */
+typedef struct application_profile {
   /* Array of arenas and their info */
   size_t num_arenas;
-  prev_profile_info *prev_info_arr;
+  arena_profile **arenas;
 
   /* Array of event strings in the profiling */
   size_t num_profile_all_events;
   char **profile_all_events;
-} prev_app_info;
+} application_profile;
 
 /* Information about a single profiling thread. Used by the
  * master profiling thread to keep track of them. */
@@ -81,12 +73,12 @@ typedef struct profiler {
    */
   int stop_signal, master_signal;
 
-  /* Per-arena profiling information */
-  profile_info **info;
-  pthread_rwlock_t info_lock;
+  /* Profiling information for the currently-running application */
+  application_profile *profile;
+  pthread_rwlock_t profile_lock;
 
-  /* Some previous run's profiling. */
-  prev_profile_info *prev_info;
+  /* Profiling information of the previous run */
+  application_profile *prev_profile;
 
   /* Data for each profile thread */
   profile_all_data profile_all;
@@ -103,9 +95,11 @@ void sh_stop_profile_master_thread();
 
 void end_interval();
 
-void *create_profile_arena(int);
+void *create_arena_profile(int, int);
+void add_site_profile(int, int);
+
 
 #define prof_check_good(a, p, i) \
   a = tracker.arenas[i]; \
-  p = prof.info[i]; \
+  p = prof.profile->arenas[i]; \
   if((!a) || (!p) || !(p->num_intervals)) continue;

@@ -14,47 +14,40 @@
 
 /* Iterates over the structure and prints it out so that it can
  * be seamlessly read back in */
-void sh_print_profiling(profile_info **info) {
-  size_t i, n, x, num_arenas;
-  profile_info *profinfo;
+void sh_print_profiling(application_profile *info) {
+  size_t i, n, x;
+  arena_profile *aprof;
   arena_info *arena;
 
-  /* Figure out how many valid arenas there are. */
-  num_arenas = 0;
-  arena_arr_for(i) {
-    prof_check_good(arena, profinfo, i);
-    num_arenas++;
-  }
-
   printf("===== BEGIN SICM PROFILING INFORMATION =====\n");
-  printf("Number of PROFILE_ALL events: %zu\n", profopts.num_profile_all_events);
-  printf("Number of arenas: %zu\n", num_arenas);
-  arena_arr_for(i) {
-    prof_check_good(arena, profinfo, i);
+  printf("Number of PROFILE_ALL events: %zu\n", info->num_profile_all_events);
+  printf("Number of arenas: %zu\n", info->num_arenas);
+  for(i = 0; i < info->num_arenas; i++) {
+    aprof = info->arenas[i];
 
     /* Arena information and sites that are in this one arena */
-    printf("BEGIN ARENA %u\n", arena->index);
-    printf("  Number of allocation sites: %d\n", arena->num_alloc_sites);
+    printf("BEGIN ARENA %u\n", aprof->index);
+    printf("  Number of allocation sites: %d\n", aprof->num_alloc_sites);
     printf("  Allocation sites: ");
-    for(n = 0; n < arena->num_alloc_sites; n++) {
-      printf("%d ", arena->alloc_sites[n]);
+    for(n = 0; n < aprof->num_alloc_sites; n++) {
+      printf("%d ", aprof->alloc_sites[n]);
     }
     printf("\n");
 
     /* Interval information */
-    printf("  First interval: %zu\n", profinfo->first_interval);
-    printf("  Number of intervals: %zu\n", profinfo->num_intervals);
+    printf("  First interval: %zu\n", aprof->first_interval);
+    printf("  Number of intervals: %zu\n", aprof->num_intervals);
 
     if(profopts.should_profile_all) {
       printf("  BEGIN PROFILE_ALL\n");
-      for(n = 0; n < profopts.num_profile_all_events; n++) {
-        printf("    BEGIN EVENT %s\n", profopts.profile_all_events[n]);
-        printf("      Total: %zu\n", profinfo->profile_all.events[n].total);
-        printf("      Peak: %zu\n", profinfo->profile_all.events[n].peak);
+      for(n = 0; n < info->num_profile_all_events; n++) {
+        printf("    BEGIN EVENT %s\n", info->profile_all_events[n]);
+        printf("      Total: %zu\n", aprof->profile_all.events[n].total);
+        printf("      Peak: %zu\n", aprof->profile_all.events[n].peak);
         if(profopts.should_print_intervals) {
           printf("      Intervals: ");
-          for(x = 0; x < profinfo->num_intervals; x++) {
-            printf("%zu ", profinfo->profile_all.events[n].intervals[x]);
+          for(x = 0; x < aprof->num_intervals; x++) {
+            printf("%zu ", aprof->profile_all.events[n].intervals[x]);
           }
           printf("\n");
         }
@@ -64,11 +57,11 @@ void sh_print_profiling(profile_info **info) {
     }
     if(profopts.should_profile_allocs) {
       printf("  BEGIN PROFILE_ALLOCS\n");
-      printf("    Peak: %zu\n", profinfo->profile_allocs.peak);
+      printf("    Peak: %zu\n", aprof->profile_allocs.peak);
       if(profopts.should_print_intervals) {
         printf("    Intervals: ");
-        for(x = 0; x < profinfo->num_intervals; x++) {
-          printf("%zu ", profinfo->profile_allocs.intervals[x]);
+        for(x = 0; x < aprof->num_intervals; x++) {
+          printf("%zu ", aprof->profile_allocs.intervals[x]);
         }
         printf("\n");
       }
@@ -76,88 +69,28 @@ void sh_print_profiling(profile_info **info) {
     }
     if(profopts.should_profile_extent_size) {
       printf("  BEGIN PROFILE_EXTENT_SIZE\n");
-      printf("    Peak: %zu\n", profinfo->profile_extent_size.peak);
+      printf("    Peak: %zu\n", aprof->profile_extent_size.peak);
       if(profopts.should_print_intervals) {
         printf("    Intervals: ");
-        for(x = 0; x < profinfo->num_intervals; x++) {
-          printf("%zu ", profinfo->profile_extent_size.intervals[x]);
+        for(x = 0; x < aprof->num_intervals; x++) {
+          printf("%zu ", aprof->profile_extent_size.intervals[x]);
         }
         printf("\n");
       }
       printf("  END PROFILE_EXTENT_SIZE\n");
     }
-    printf("END ARENA %u\n", arena->index);
+    printf("END ARENA %u\n", aprof->index);
 
   }
   printf("===== END SICM PROFILING INFORMATION =====\n");
 }
 
-/* Just for debugging, prints out the profiling information that it just read in. */
-void sh_print_prev_profiling(prev_app_info *ret) {
-  size_t i, n, x, num_arenas;
-  profile_info *profinfo;
-  prev_profile_info *arena;
-
-  printf("===== BEGIN SICM PREVIOUS PROFILING INFORMATION =====\n");
-  printf("Number of PROFILE_ALL events: %zu\n", ret->num_profile_all_events);
-  printf("Number of arenas: %zu\n", ret->num_arenas);
-  for(i = 0; i < ret->num_arenas; i++) {
-    arena = &(ret->prev_info_arr[i]);
-    profinfo = &(arena->info);
-    /* Arena information and sites that are in this one arena */
-    printf("BEGIN ARENA %u\n", arena->index);
-    printf("  Number of allocation sites: %d\n", arena->num_alloc_sites);
-    printf("  Allocation sites: ");
-    for(n = 0; n < arena->num_alloc_sites; n++) {
-      printf("%d ", arena->alloc_sites[n]);
-    }
-    printf("\n");
-
-    /* Interval information */
-    printf("  First interval: %zu\n", profinfo->first_interval);
-    printf("  Number of intervals: %zu\n", profinfo->num_intervals);
-
-    if(profopts.should_profile_all) {
-      printf("  BEGIN PROFILE_ALL\n");
-      for(n = 0; n < ret->num_profile_all_events; n++) {
-        printf("    BEGIN EVENT %s\n", ret->profile_all_events[n]);
-        printf("      Total: %zu\n", profinfo->profile_all.events[n].total);
-        printf("      Peak: %zu\n", profinfo->profile_all.events[n].peak);
-        if(profopts.should_print_intervals) {
-          printf("      Intervals: ");
-          for(x = 0; x < profinfo->num_intervals; x++) {
-            printf("%zu ", profinfo->profile_all.events[n].intervals[x]);
-          }
-          printf("\n");
-        }
-        printf("    END EVENT %s\n", ret->profile_all_events[n]);
-      }
-      printf("  END PROFILE_ALL\n");
-    }
-    if(profopts.should_profile_allocs) {
-      printf("  BEGIN PROFILE_ALLOCS\n");
-      printf("    Peak: %zu\n", profinfo->profile_allocs.peak);
-      if(profopts.should_print_intervals) {
-        printf("    Intervals: ");
-        for(x = 0; x < profinfo->num_intervals; x++) {
-          printf("%zu ", profinfo->profile_allocs.intervals[x]);
-        }
-        printf("\n");
-      }
-      printf("  END PROFILE_ALLOCS\n");
-    }
-    printf("END ARENA %u\n", arena->index);
-
-  }
-  printf("===== END SICM PREVIOUS PROFILING INFORMATION =====\n");
-}
-
 #endif /* SICM_RUNTIME */
 
-/* Reads the above-printed information back into an array of prev_profile_info structs. */
-prev_app_info *sh_parse_profiling(FILE *file) {
-  /* Stores all profiling information */
-  prev_app_info *ret;
+/* Reads the above-printed information back into an application_profile struct. */
+application_profile *sh_parse_profiling(FILE *file) {
+  /* Stores profiling information, returned */
+  application_profile *ret;
 
   /* Used to read things in */
   ssize_t read;
@@ -171,7 +104,7 @@ prev_app_info *sh_parse_profiling(FILE *file) {
   int tmp_int, site;
   char *event;
   size_t i;
-  prev_profile_info *cur_arena;
+  arena_profile *cur_arena;
   per_event_profile_all_info *cur_event;
 
   if(!file) {
@@ -195,7 +128,7 @@ prev_app_info *sh_parse_profiling(FILE *file) {
   */
   profile_type = -1;
 
-  ret = malloc(sizeof(prev_app_info));
+  ret = malloc(sizeof(application_profile));
   ret->profile_all_events = NULL;
   len = 0;
   line = NULL;
@@ -225,7 +158,7 @@ prev_app_info *sh_parse_profiling(FILE *file) {
         break;
       } else if(sscanf(line, "Number of arenas: %zu", &num_arenas) == 1) {
         ret->num_arenas = num_arenas;
-        ret->prev_info_arr = calloc(num_arenas, sizeof(prev_profile_info));
+        ret->arenas = calloc(num_arenas, sizeof(arena_profile *));
       } else if(sscanf(line, "Number of PROFILE_ALL events: %zu\n", &tmp_sizet) == 1) {
         ret->num_profile_all_events = tmp_sizet;
       } else if(sscanf(line, "BEGIN ARENA %u", &index) == 1) {
@@ -239,7 +172,8 @@ prev_app_info *sh_parse_profiling(FILE *file) {
           fprintf(stderr, "Too many arenas when parsing profiling info. Aborting.\n");
           exit(1);
         }
-        cur_arena = &(ret->prev_info_arr[cur_arena_index]);
+        cur_arena = malloc(sizeof(arena_profile));
+        ret->arenas[cur_arena_index] = cur_arena;
         cur_arena->index = index;
       } else {
         fprintf(stderr, "Didn't recognize a line in the profiling information at depth %d. Aborting.\n", depth);
@@ -258,9 +192,9 @@ prev_app_info *sh_parse_profiling(FILE *file) {
         depth = 1;
         cur_arena_index++;
       } else if(sscanf(line, "  First interval: %zu", &tmp_sizet)) {
-        cur_arena->info.first_interval = tmp_sizet;
+        cur_arena->first_interval = tmp_sizet;
       } else if(sscanf(line, "  Number of intervals: %zu", &tmp_sizet)) {
-        cur_arena->info.num_intervals = tmp_sizet;
+        cur_arena->num_intervals = tmp_sizet;
       } else if(sscanf(line, "  Number of allocation sites: %d\n", &tmp_int)) {
         cur_arena->num_alloc_sites = tmp_int;
         cur_arena->alloc_sites = malloc(tmp_int * sizeof(int));
@@ -285,10 +219,10 @@ prev_app_info *sh_parse_profiling(FILE *file) {
         if(!(ret->profile_all_events)) {
           ret->profile_all_events = calloc(ret->num_profile_all_events, sizeof(char *));
         }
-        cur_arena->info.profile_all.events = calloc(ret->num_profile_all_events,
+        cur_arena->profile_all.events = calloc(ret->num_profile_all_events,
                                                     sizeof(per_event_profile_all_info));
         cur_event_index = 0;
-        cur_event = &(cur_arena->info.profile_all.events[cur_event_index]);
+        cur_event = &(cur_arena->profile_all.events[cur_event_index]);
       } else if(strcmp(line, "  BEGIN PROFILE_ALLOCS\n") == 0) {
         depth = 3;
         profile_type = 1;
@@ -320,7 +254,7 @@ prev_app_info *sh_parse_profiling(FILE *file) {
           strcpy(ret->profile_all_events[cur_event_index], event);
         }
         free(event);
-        cur_event = &(cur_arena->info.profile_all.events[cur_event_index]);
+        cur_event = &(cur_arena->profile_all.events[cur_event_index]);
         depth = 4;
       } else {
         fprintf(stderr, "Didn't recognize a line in the profiling information at depth %d. Aborting.\n", depth);
@@ -339,18 +273,18 @@ prev_app_info *sh_parse_profiling(FILE *file) {
         /* Up in depth */
         depth = 2;
       } else if(sscanf(line, "    Peak: %zu\n", &tmp_sizet)) {
-        cur_arena->info.profile_allocs.peak = tmp_sizet;
+        cur_arena->profile_allocs.peak = tmp_sizet;
       } else if(strncmp(line, "    Intervals: ", 17) == 0) {
         sscanf(line, "    Intervals: %n", &tmp_int);
         tmpline = line;
         tmpline = tmpline + tmp_int;
         i = 0;
         while(sscanf(tmpline, "%zu %n", &tmp_sizet, &tmp_int) > 0) {
-          if(i == cur_arena->info.num_intervals) {
+          if(i == cur_arena->num_intervals) {
             fprintf(stderr, "There were too many intervals specified. Aborting.\n");
             exit(1);
           }
-          cur_arena->info.profile_allocs.intervals[i] = tmp_sizet;
+          cur_arena->profile_allocs.intervals[i] = tmp_sizet;
           tmpline += tmp_int;
           i++;
         }
@@ -371,18 +305,18 @@ prev_app_info *sh_parse_profiling(FILE *file) {
         /* Up in depth */
         depth = 2;
       } else if(sscanf(line, "    Peak: %zu\n", &tmp_sizet)) {
-        cur_arena->info.profile_extent_size.peak = tmp_sizet;
+        cur_arena->profile_extent_size.peak = tmp_sizet;
       } else if(strncmp(line, "    Intervals: ", 17) == 0) {
         sscanf(line, "    Intervals: %n", &tmp_int);
         tmpline = line;
         tmpline = tmpline + tmp_int;
         i = 0;
         while(sscanf(tmpline, "%zu %n", &tmp_sizet, &tmp_int) > 0) {
-          if(i == cur_arena->info.num_intervals) {
+          if(i == cur_arena->num_intervals) {
             fprintf(stderr, "There were too many intervals specified. Aborting.\n");
             exit(1);
           }
-          cur_arena->info.profile_extent_size.intervals[i] = tmp_sizet;
+          cur_arena->profile_extent_size.intervals[i] = tmp_sizet;
           tmpline += tmp_int;
           i++;
         }
@@ -409,7 +343,7 @@ prev_app_info *sh_parse_profiling(FILE *file) {
         tmpline = tmpline + tmp_int;
         i = 0;
         while(sscanf(tmpline, "%zu %n", &tmp_sizet, &tmp_int) > 0) {
-          if(i == cur_arena->info.num_intervals) {
+          if(i == cur_arena->num_intervals) {
             fprintf(stderr, "There were too many intervals specified. Aborting.\n");
             exit(1);
           }

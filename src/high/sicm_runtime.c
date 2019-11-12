@@ -356,6 +356,7 @@ void sh_create_arena(int index, int id, sicm_device *device) {
     }
     tracker.arenas[index]->alloc_sites[tracker.arenas[index]->num_alloc_sites] = id;
     tracker.arenas[index]->num_alloc_sites++;
+    add_site_profile(index, id); /* Calls into sicm_profile.c to add this site to the arena */
 
     return;
   }
@@ -377,7 +378,7 @@ void sh_create_arena(int index, int id, sicm_device *device) {
   arena->num_alloc_sites = 1;
   arena->info = NULL;
   if(profopts.should_profile) {
-    arena->info = create_profile_arena(index);
+    arena->info = create_arena_profile(index, id);
   }
 
   /* Need to construct a sicm_device_list of one device */

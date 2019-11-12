@@ -14,27 +14,27 @@ tracker_struct tracker = {0};
 
 /* Takes a string as input and outputs which arena layout it is */
 enum arena_layout parse_layout(char *env) {
-	size_t max_chars;
+  size_t max_chars;
 
-	max_chars = 32;
+  max_chars = 32;
 
-	if(strncmp(env, "SHARED_ONE_ARENA", max_chars) == 0) {
-		return SHARED_ONE_ARENA;
-	} else if(strncmp(env, "EXCLUSIVE_ONE_ARENA", max_chars) == 0) {
-		return EXCLUSIVE_ONE_ARENA;
-	} else if(strncmp(env, "SHARED_DEVICE_ARENAS", max_chars) == 0) {
-		return SHARED_DEVICE_ARENAS;
-	} else if(strncmp(env, "EXCLUSIVE_DEVICE_ARENAS", max_chars) == 0) {
-		return EXCLUSIVE_DEVICE_ARENAS;
-	} else if(strncmp(env, "SHARED_SITE_ARENAS", max_chars) == 0) {
-		return SHARED_SITE_ARENAS;
-	} else if(strncmp(env, "EXCLUSIVE_SITE_ARENAS", max_chars) == 0) {
-		return EXCLUSIVE_SITE_ARENAS;
-	} else if(strncmp(env, "EXCLUSIVE_TWO_DEVICE_ARENAS", max_chars) == 0) {
-		return EXCLUSIVE_TWO_DEVICE_ARENAS;
-	} else if(strncmp(env, "EXCLUSIVE_FOUR_DEVICE_ARENAS", max_chars) == 0) {
-		return EXCLUSIVE_FOUR_DEVICE_ARENAS;
-	} else if(strncmp(env, "BIG_SMALL_ARENAS", max_chars) == 0) {
+  if(strncmp(env, "SHARED_ONE_ARENA", max_chars) == 0) {
+    return SHARED_ONE_ARENA;
+  } else if(strncmp(env, "EXCLUSIVE_ONE_ARENA", max_chars) == 0) {
+    return EXCLUSIVE_ONE_ARENA;
+  } else if(strncmp(env, "SHARED_DEVICE_ARENAS", max_chars) == 0) {
+    return SHARED_DEVICE_ARENAS;
+  } else if(strncmp(env, "EXCLUSIVE_DEVICE_ARENAS", max_chars) == 0) {
+    return EXCLUSIVE_DEVICE_ARENAS;
+  } else if(strncmp(env, "SHARED_SITE_ARENAS", max_chars) == 0) {
+    return SHARED_SITE_ARENAS;
+  } else if(strncmp(env, "EXCLUSIVE_SITE_ARENAS", max_chars) == 0) {
+    return EXCLUSIVE_SITE_ARENAS;
+  } else if(strncmp(env, "EXCLUSIVE_TWO_DEVICE_ARENAS", max_chars) == 0) {
+    return EXCLUSIVE_TWO_DEVICE_ARENAS;
+  } else if(strncmp(env, "EXCLUSIVE_FOUR_DEVICE_ARENAS", max_chars) == 0) {
+    return EXCLUSIVE_FOUR_DEVICE_ARENAS;
+  } else if(strncmp(env, "BIG_SMALL_ARENAS", max_chars) == 0) {
     return BIG_SMALL_ARENAS;
   }
 
@@ -109,6 +109,7 @@ void set_options() {
 
   /* See if there's profiling information that we can use later */
   env = getenv("SH_PROFILE_FILE");
+  profopts.profile_file = NULL;
   if(env) {
     profopts.profile_file = fopen(env, "r");
     if(!profopts.profile_file) {
@@ -174,6 +175,9 @@ void set_options() {
     if(env) {
       profopts.profile_online_event = orig_malloc(sizeof(char) * (strlen(env) + 1));
       strcpy(profopts.profile_online_event, env);
+    } else {
+      fprintf(stderr, "SH_PROFILE_ONLINE requires an event to be specified. Aborting.\n");
+      exit(1);
     }
 
     env = getenv("SH_PROFILE_ONLINE_USE_LAST_INTERVAL");

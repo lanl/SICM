@@ -17,7 +17,7 @@ void profile_extent_size_init();
 void *profile_extent_size(void *);
 void profile_extent_size_interval(int);
 void profile_extent_size_skip_interval(int);
-void profile_extent_size_post_interval(profile_info *);
+void profile_extent_size_post_interval(arena_profile *);
 
 void *profile_extent_size(void *a) {
   pthread_setcanceltype(PTHREAD_CANCEL_ASYNCHRONOUS, NULL);
@@ -26,7 +26,7 @@ void *profile_extent_size(void *a) {
 }
 
 void profile_extent_size_interval(int s) {
-  profile_info *profinfo;
+  arena_profile *aprof;
   arena_info *arena;
   size_t i;
   char *start, *end;
@@ -37,22 +37,22 @@ void profile_extent_size_interval(int s) {
   extent_arr_for(tracker.extents, i) {
     arena = (arena_info *) tracker.extents->arr[i].arena;
     if(!arena) continue;
-    profinfo = (profile_info *) prof.info[arena->index];
-    if(!profinfo) continue;
+    aprof = (arena_profile *) prof.profile->arenas[arena->index];
+    if(!aprof) continue;
 
-    profinfo->profile_extent_size.tmp_accumulator = 0;
+    aprof->profile_extent_size.tmp_accumulator = 0;
   }
 
   /* Iterate over the extents and add each of their size to the accumulator */
   extent_arr_for(tracker.extents, i) {
     arena = (arena_info *) tracker.extents->arr[i].arena;
     if(!arena) continue;
-    profinfo = (profile_info *) prof.info[arena->index];
-    if((!profinfo) || (!profinfo->num_intervals)) continue;
+    aprof = (arena_profile *) prof.profile->arenas[arena->index];
+    if((!aprof) || (!aprof->num_intervals)) continue;
 
     start = (char *) tracker.extents->arr[i].start;
     end = (char *) tracker.extents->arr[i].end;
-    profinfo->profile_extent_size.tmp_accumulator += end - start;
+    aprof->profile_extent_size.tmp_accumulator += end - start;
   }
 
   pthread_rwlock_unlock(&tracker.extents_lock);
@@ -60,35 +60,35 @@ void profile_extent_size_interval(int s) {
   end_interval();
 }
 
-void profile_extent_size_post_interval(profile_info *info) {
-  profile_extent_size_info *profinfo;
+void profile_extent_size_post_interval(arena_profile *info) {
+  profile_extent_size_info *aprof;
 
-  profinfo = &(info->profile_extent_size);
+  aprof = &(info->profile_extent_size);
 
   /* Maintain peak */
-  if(profinfo->tmp_accumulator > profinfo->peak) {
-    profinfo->peak = profinfo->tmp_accumulator;
+  if(aprof->tmp_accumulator > aprof->peak) {
+    aprof->peak = aprof->tmp_accumulator;
   }
 
   /* Store this interval */
-  profinfo->intervals =
-    (size_t *)orig_realloc(profinfo->intervals, info->num_intervals * sizeof(size_t));
-  profinfo->intervals[info->num_intervals - 1] = profinfo->tmp_accumulator;
+  aprof->intervals =
+    (size_t *)orig_realloc(aprof->intervals, info->num_intervals * sizeof(size_t));
+  aprof->intervals[info->num_intervals - 1] = aprof->tmp_accumulator;
 }
 
 /* Just copies previous values along */
 void profile_extent_size_skip_interval(int s) {
-  profile_info *profinfo;
+  arena_profile *aprof;
   arena_info *arena;
   size_t i;
 
   arena_arr_for(i) {
-    prof_check_good(arena, profinfo, i);
+    prof_check_good(arena, aprof, i);
 
-    if(profinfo->num_intervals == 1) {
-      profinfo->profile_extent_size.tmp_accumulator = 0;
+    if(aprof->num_intervals == 1) {
+      aprof->profile_extent_size.tmp_accumulator = 0;
     } else {
-      profinfo->profile_extent_size.tmp_accumulator = profinfo->profile_extent_size.intervals[profinfo->num_intervals - 2];
+      aprof->profile_extent_size.tmp_accumulator = aprof->profile_extent_size.intervals[aprof->num_intervals - 2];
     }
   }
 
