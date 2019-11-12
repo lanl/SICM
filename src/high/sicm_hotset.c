@@ -138,7 +138,7 @@ int main(int argc, char **argv) {
   info = sh_parse_profiling(stdin);
 
   /* Initialize the global options */
-  sh_packing_init(info, value, event, weight, algo, sort, verbose);
+  sh_packing_init(info, &value, &event, &weight, &algo, &sort, verbose);
 
   /* For the sake of simplicity, convert the parsed profiling information into simpler trees */
   site_tree = sh_convert_to_site_tree(info);
