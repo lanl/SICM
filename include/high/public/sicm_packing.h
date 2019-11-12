@@ -299,10 +299,10 @@ static void sh_packing_init(application_profile *info, char **value, char **even
   }
 
   /* Set the sh_value_flag */
-  if(strcmp(value, "profile_all") == 0) {
+  if(strcmp(*value, "profile_all") == 0) {
     sh_value_flag = 0;
   } else {
-    fprintf(stderr, "Type of value profiling not recognized. Aborting.\n");
+    fprintf(stderr, "Type of value profiling (%s) not recognized. Aborting.\n", *value);
     exit(1);
   }
 
@@ -320,7 +320,7 @@ static void sh_packing_init(application_profile *info, char **value, char **even
     } else {
       /* The user specified an event, so try to find that specific one */
       for(i = 0; i < info->num_profile_all_events; i++) {
-        if(strcmp(event, info->profile_all_events[i]) == 0) {
+        if(strcmp(*event, info->profile_all_events[i]) == 0) {
           sh_value_event_index = i;
         }
       }
@@ -335,9 +335,9 @@ static void sh_packing_init(application_profile *info, char **value, char **even
   }
 
   /* Set sh_weight_flag */
-  if(strcmp(weight, "profile_allocs") == 0) {
+  if(strcmp(*weight, "profile_allocs") == 0) {
     sh_weight_flag = 0;
-  } else if(strcmp(weight, "profile_extent_size") == 0) {
+  } else if(strcmp(*weight, "profile_extent_size") == 0) {
     sh_weight_flag = 1;
   } else {
     fprintf(stderr, "Type of weight profiling not recognized. Aborting.\n");
@@ -345,7 +345,7 @@ static void sh_packing_init(application_profile *info, char **value, char **even
   }
 
   /* Set sh_algo_flag */
-  if(strcmp(algo, "hotset") == 0) {
+  if(strcmp(*algo, "hotset") == 0) {
     sh_algo_flag = 0;
   } else {
     fprintf(stderr, "Type of packing algorithm not recognized. Aborting.\n");
@@ -353,11 +353,11 @@ static void sh_packing_init(application_profile *info, char **value, char **even
   }
 
   /* Set sh_sort_flag */
-  if(strcmp(sort, "value_per_weight") == 0) {
+  if(strcmp(*sort, "value_per_weight") == 0) {
     sh_sort_flag = 0;
-  } else if(strcmp(sort, "value") == 0) {
+  } else if(strcmp(*sort, "value") == 0) {
     sh_sort_flag = 1;
-  } else if(strcmp(sort, "weight") == 0) {
+  } else if(strcmp(*sort, "weight") == 0) {
     sh_sort_flag = 2;
   } else {
     fprintf(stderr, "Type of sorting not recognized. Aborting.\n");
