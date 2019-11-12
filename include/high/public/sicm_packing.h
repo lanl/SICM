@@ -282,19 +282,19 @@ static void sh_packing_init(application_profile *info, char **value, char **even
 
   /* Set the defaults if any of the dereferenced pointers are NULL */
   if(*value == NULL) {
-    *value = orig_malloc(strlen(DEFAULT_VALUE) * sizeof(char));
+    *value = orig_malloc((strlen(DEFAULT_VALUE) + 1) * sizeof(char));
     strcpy(*value, DEFAULT_VALUE);
   }
   if(*weight == NULL) {
-    *value = orig_malloc(strlen(DEFAULT_WEIGHT) * sizeof(char));
+    *value = orig_malloc((strlen(DEFAULT_WEIGHT) + 1) * sizeof(char));
     strcpy(*value, DEFAULT_WEIGHT);
   }
   if(*algo == NULL) {
-    *value = orig_malloc(strlen(DEFAULT_ALGO) * sizeof(char));
+    *value = orig_malloc((strlen(DEFAULT_ALGO) + 1) * sizeof(char));
     strcpy(*value, DEFAULT_ALGO);
   }
   if(*sort == NULL) {
-    *value = orig_malloc(strlen(DEFAULT_SORT) * sizeof(char));
+    *value = orig_malloc((strlen(DEFAULT_SORT) + 1) * sizeof(char));
     strcpy(*value, DEFAULT_SORT);
   }
 
