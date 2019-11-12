@@ -79,14 +79,13 @@ typedef struct profile_allocs_data {
 } profile_allocs_data;
 
 /* profile_online */
-typedef struct site_profile_info site_profile_info;
-typedef site_profile_info * site_info_ptr;
-use_tree(site_info_ptr, int);
 typedef struct profile_online_data {
   size_t profile_online_event_index;
   size_t lower_avail_initial, upper_avail_initial;
   struct sicm_device_list *upper_dl, *lower_dl;
-  tree(site_info_ptr, int) prev_hotset;
+  void *prev_hotset; /* This is actually a tree from tree.h,
+                        but we store it as a pointer here
+                        to avoid header hell. */
 } profile_online_data;
 
 /********************
