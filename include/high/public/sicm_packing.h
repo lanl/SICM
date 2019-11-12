@@ -133,7 +133,7 @@ static tree(site_info_ptr, int) sh_convert_to_site_tree(application_profile *inf
   /* Iterate over the arenas, create a site_profile_info struct for each site,
      and simply insert them into the tree (which sorts them). */
   for(i = 0; i < info->num_arenas; i++) {
-    aprof = &(info->arenas[i]);
+    aprof = info->arenas[i];
     if(!aprof) continue;
     if(get_weight(aprof) == 0) continue;
 
