@@ -134,10 +134,8 @@ static tree(site_info_ptr, int) sh_convert_to_site_tree(application_profile *inf
      and simply insert them into the tree (which sorts them). */
   for(i = 0; i < info->num_arenas; i++) {
     aprof = &(info->arenas[i]);
-
-    if(get_weight(aprof) == 0) {
-      continue;
-    }
+    if(!aprof) continue;
+    if(get_weight(aprof) == 0) continue;
 
     site = orig_malloc(sizeof(site_profile_info));
     site->value = get_value(aprof);
