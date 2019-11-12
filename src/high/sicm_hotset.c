@@ -54,7 +54,7 @@ int main(int argc, char **argv) {
   double scale = 0.0;
 
   /* The profiling information, as parsed by sicm_parsing.h. */
-  prev_app_info *info;
+  application_profile *info;
   tree(site_info_ptr, int) site_tree;
 
   /* The set of hot sites that we've chosen */
