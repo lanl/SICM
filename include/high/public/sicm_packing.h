@@ -286,16 +286,16 @@ static void sh_packing_init(application_profile *info, char **value, char **even
     strcpy(*value, DEFAULT_VALUE);
   }
   if(*weight == NULL) {
-    *value = orig_malloc((strlen(DEFAULT_WEIGHT) + 1) * sizeof(char));
-    strcpy(*value, DEFAULT_WEIGHT);
+    *weight = orig_malloc((strlen(DEFAULT_WEIGHT) + 1) * sizeof(char));
+    strcpy(*weight, DEFAULT_WEIGHT);
   }
   if(*algo == NULL) {
-    *value = orig_malloc((strlen(DEFAULT_ALGO) + 1) * sizeof(char));
-    strcpy(*value, DEFAULT_ALGO);
+    *algo = orig_malloc((strlen(DEFAULT_ALGO) + 1) * sizeof(char));
+    strcpy(*algo, DEFAULT_ALGO);
   }
   if(*sort == NULL) {
-    *value = orig_malloc((strlen(DEFAULT_SORT) + 1) * sizeof(char));
-    strcpy(*value, DEFAULT_SORT);
+    *sort = orig_malloc((strlen(DEFAULT_SORT) + 1) * sizeof(char));
+    strcpy(*sort, DEFAULT_SORT);
   }
 
   /* Set the sh_value_flag */
