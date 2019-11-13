@@ -75,7 +75,7 @@ void profile_online_interval(int s) {
         }
 
         /* Do the actual rebinding. */
-        sicm_arena_set_devices(tree_it_key(sit)->index, dl);
+        sicm_arena_set_devices(tracker.arenas[tree_it_key(sit)->index]->arena, dl);
       }
     }
 
