@@ -48,6 +48,11 @@ void profile_online_interval(int s) {
   if(lower_avail < prof.profile_online.lower_avail_initial) {
     /* The lower tier is now being used, so we need to reconfigure. */
 
+    /* If we don't make everything default to the lower device from now on,
+       we'd have to continuously check and rebind every site when it pops
+       into existence. */
+    tracker.default_device = tracker.lower_device;
+
     /* If this is the first interval, the previous hotset was the empty set */
     if(!prof.profile_online.prev_hotset) {
       prof.profile_online.prev_hotset = (void *) tree_make(site_info_ptr, int);
@@ -68,6 +73,7 @@ void profile_online_interval(int s) {
            unique identifiers, so that's all right. */
         old = tree_lookup(prev_hotset, tree_it_key(sit));
         new = tree_lookup(hotset, tree_it_key(sit));
+        dl = NULL;
         if(tree_it_good(new) && !tree_it_good(old)) {
           dl = prof.profile_online.upper_dl;
         } else if(!tree_it_good(new) && tree_it_good(old)) {
@@ -75,7 +81,9 @@ void profile_online_interval(int s) {
         }
 
         /* Do the actual rebinding. */
-        sicm_arena_set_devices(tracker.arenas[tree_it_key(sit)->index]->arena, dl);
+        if(!dl) {
+          sicm_arena_set_devices(tracker.arenas[tree_it_key(sit)->index]->arena, dl);
+        }
       }
     }
 
