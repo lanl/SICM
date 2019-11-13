@@ -37,9 +37,12 @@ void profile_online_interval(int s) {
 
   /* Trees store site information, value is the site ID */
   tree(site_info_ptr, int) sorted_sites;
-  tree(site_info_ptr, int) hotset;
-  tree(site_info_ptr, int) prev_hotset;
-  tree_it(site_info_ptr, int) sit, old, new;
+  tree_it(site_info_ptr, int) sit;
+
+  /* Store the sites as keys, values are structs with profiling info */
+  tree(int, site_info_ptr) hotset;
+  tree(int, site_info_ptr) prev_hotset;
+  tree_it(int, site_info_ptr) hit, old, new;
 
   /* Look at how much the application has consumed on each tier */
   upper_avail = sicm_avail(tracker.upper_device) * 1024;
@@ -61,9 +64,9 @@ void profile_online_interval(int s) {
       if(profopts.profile_online_print_reconfigures) {
         printf("There was no previous hotset, so making a blank one.\n");
       }
-      prof.profile_online.prev_hotset = (void *) tree_make(site_info_ptr, int);
+      prof.profile_online.prev_hotset = (void *) tree_make(int, site_info_ptr);
     }
-    prev_hotset = (tree(site_info_ptr, int)) prof.profile_online.prev_hotset;
+    prev_hotset = (tree(int, site_info_ptr)) prof.profile_online.prev_hotset;
 
     /* Convert to a tree of sites and generate the new hotset */
     sorted_sites = sh_convert_to_site_tree(prof.profile);
@@ -71,14 +74,14 @@ void profile_online_interval(int s) {
 
     if(profopts.profile_online_print_reconfigures) {
       printf("Previous hotset: ");
-      tree_traverse(prev_hotset, sit) {
-        printf("%d ", tree_it_val(sit));
+      tree_traverse(prev_hotset, hit) {
+        printf("%d ", tree_it_key(hit));
       }
       printf("\n");
 
       printf("Current hotset: ");
-      tree_traverse(hotset, sit) {
-        printf("%d ", tree_it_val(sit));
+      tree_traverse(hotset, hit) {
+        printf("%d ", tree_it_key(hit));
       }
       printf("\n");
     }
@@ -88,11 +91,9 @@ void profile_online_interval(int s) {
          1. A site wasn't in the previous hotset, but is in the current one.
          2. A site was in the previous hotset, but now isn't. */
       tree_traverse(sorted_sites, sit) {
-        /* Look to see if it's in the new or old hotsets.
-           Here, the keys are actually pointers, but they're still
-           unique identifiers, so that's all right. */
-        old = tree_lookup(prev_hotset, tree_it_key(sit));
-        new = tree_lookup(hotset, tree_it_key(sit));
+        /* Look to see if it's in the new or old hotsets. */
+        old = tree_lookup(prev_hotset, tree_it_val(sit));
+        new = tree_lookup(hotset, tree_it_val(sit));
         dl = NULL;
         if(tree_it_good(new) && !tree_it_good(old)) {
           dl = prof.profile_online.upper_dl;
@@ -119,6 +120,11 @@ void profile_online_interval(int s) {
 
     /* The previous tree can be freed, because we're going to
        overwrite it with the current one */
+    tree_traverse(prev_hotset, hit) {
+      if(tree_it_val(hit)) {
+        orig_free(tree_it_val(hit));
+      }
+    }
     tree_free(prev_hotset);
     prof.profile_online.prev_hotset = (void *) hotset;
 

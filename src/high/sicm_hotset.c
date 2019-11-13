@@ -58,8 +58,8 @@ int main(int argc, char **argv) {
   tree(site_info_ptr, int) site_tree;
 
   /* The set of hot sites that we've chosen */
-  tree(site_info_ptr, int) hot_site_tree;
-  tree_it(site_info_ptr, int) sit;
+  tree(int, site_info_ptr) hot_site_tree;
+  tree_it(int, site_info_ptr) sit;
 
   /* Use getopt to read in the options. */
   option_index = 0;
@@ -157,7 +157,7 @@ int main(int argc, char **argv) {
   /* Print out the guidance file */
   printf("===== GUIDANCE =====\n");
   tree_traverse(hot_site_tree, sit) {
-    printf("%d %ld\n", tree_it_val(sit), node);
+    printf("%d %ld\n", tree_it_key(sit), node);
   }
   printf("===== END GUIDANCE =====\n");
 

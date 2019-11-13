@@ -39,6 +39,7 @@ typedef struct site_profile_info {
 } site_profile_info;
 typedef site_profile_info * site_info_ptr; /* Required for tree.h */
 use_tree(site_info_ptr, int);
+use_tree(int, site_info_ptr);
 
 /* Gets a value from the given arena_profile */
 static size_t get_value(arena_profile *aprof) {
@@ -218,14 +219,15 @@ static void sh_scale_sites(tree(site_info_ptr, int) site_tree, double scale) {
   }
 }
 
-/* Greedy hotset algorithm. Called by sh_get_hot_sites. */
-static tree(site_info_ptr, int) get_hotset(tree(site_info_ptr, int) site_tree, uintmax_t capacity) {
-  tree(site_info_ptr, int) ret;
+/* Greedy hotset algorithm. Called by sh_get_hot_sites.
+   The resulting tree is keyed on the site ID instead of the site_info_ptr. */
+static tree(int, site_info_ptr) get_hotset(tree(site_info_ptr, int) site_tree, uintmax_t capacity) {
+  tree(int, site_info_ptr) ret;
   tree_it(site_info_ptr, int) sit;
   char break_next_site;
   uintmax_t packed_size;
 
-  ret = tree_make(site_info_ptr, int);
+  ret = tree_make(int, site_info_ptr);
 
   /* Iterate over the sites (which have already been sorted), adding them
      greedily, until the capacity is reached. */
@@ -233,7 +235,7 @@ static tree(site_info_ptr, int) get_hotset(tree(site_info_ptr, int) site_tree, u
   packed_size = 0;
   tree_traverse(site_tree, sit) {
     packed_size += tree_it_key(sit)->weight;
-    tree_insert(ret, tree_it_key(sit), tree_it_val(sit));
+    tree_insert(ret, tree_it_val(sit), tree_it_key(sit));
     if(sh_verbose_flag) {
       printf("Inserting %d (val: %zu, weight: %zu, v/w: %lf)\n", tree_it_val(sit),
                                                                    tree_it_key(sit)->value,
@@ -254,8 +256,9 @@ static tree(site_info_ptr, int) get_hotset(tree(site_info_ptr, int) site_tree, u
   return ret;
 }
 
-static tree(site_info_ptr, int) sh_get_hot_sites(tree(site_info_ptr, int) site_tree, uintmax_t capacity) {
-  tree(site_info_ptr, int) hot_site_tree;
+/* Be careful, this function flips around the keys/values for its return value. */
+static tree(int, site_info_ptr) sh_get_hot_sites(tree(site_info_ptr, int) site_tree, uintmax_t capacity) {
+  tree(int, site_info_ptr) hot_site_tree;
 
   if(sh_algo_flag == 0) {
     hot_site_tree = get_hotset(site_tree, capacity);
