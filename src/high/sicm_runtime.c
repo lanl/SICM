@@ -356,7 +356,10 @@ void sh_create_arena(int index, int id, sicm_device *device) {
     }
     tracker.arenas[index]->alloc_sites[tracker.arenas[index]->num_alloc_sites] = id;
     tracker.arenas[index]->num_alloc_sites++;
-    add_site_profile(index, id); /* Calls into sicm_profile.c to add this site to the arena */
+
+    if(profopts.should_profile) {
+      add_site_profile(index, id); /* Calls into sicm_profile.c to add this site to the arena */
+    }
 
     return;
   }
