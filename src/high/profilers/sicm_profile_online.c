@@ -47,6 +47,9 @@ void profile_online_interval(int s) {
 
   if(lower_avail < prof.profile_online.lower_avail_initial) {
     /* The lower tier is now being used, so we need to reconfigure. */
+    if(profopts.print_reconfigures) {
+      printf("Reconfigure %d\n", prof.profile_online.num_reconfigures);
+    }
 
     /* If we don't make everything default to the lower device from now on,
        we'd have to continuously check and rebind every site when it pops
@@ -76,8 +79,14 @@ void profile_online_interval(int s) {
         dl = NULL;
         if(tree_it_good(new) && !tree_it_good(old)) {
           dl = prof.profile_online.upper_dl;
+          if(profopts.print_reconfigures) {
+            printf("Binding site %d to the upper tier.\n", tree_it_val(sit));
+          }
         } else if(!tree_it_good(new) && tree_it_good(old)) {
           dl = prof.profile_online.lower_dl;
+          if(profopts.print_reconfigures) {
+            printf("Binding site %d to the lower tier.\n", tree_it_val(sit));
+          }
         }
 
         /* Do the actual rebinding. */
@@ -85,6 +94,10 @@ void profile_online_interval(int s) {
           sicm_arena_set_devices(tracker.arenas[tree_it_key(sit)->index]->arena, dl);
         }
       }
+    }
+    if(profopts.print_reconfigures) {
+      printf("Reconfigure complete.\n");
+      fflush(stdout);
     }
 
     /* The previous tree can be freed, because we're going to
@@ -166,6 +179,14 @@ void profile_online_init() {
                     1);
   }
 
+  sh_packing_init(prof.profile,
+                  &value,
+                  &profopts.profile_all_events[prof.profile_online.profile_online_event_index],
+                  &weight,
+                  &algo,
+                  &sort,
+                  1);
+
   /* Figure out the amount of free memory that we're starting out with */
   prof.profile_online.upper_avail_initial = sicm_avail(tracker.upper_device);
   prof.profile_online.lower_avail_initial = sicm_avail(tracker.lower_device);
@@ -181,6 +202,8 @@ void profile_online_init() {
   prof.profile_online.lower_dl->devices[0] = tracker.lower_device;
 
   prof.profile_online.prev_hotset = NULL;
+
+  prof.profile_online.num_reconfigures = 0;
 }
 
 void profile_online_deinit() {
