@@ -58,6 +58,9 @@ void profile_online_interval(int s) {
 
     /* If this is the first interval, the previous hotset was the empty set */
     if(!prof.profile_online.prev_hotset) {
+      if(profopts.profile_online_print_reconfigures) {
+        printf("There was no previous hotset, so making a blank one.\n");
+      }
       prof.profile_online.prev_hotset = (void *) tree_make(site_info_ptr, int);
     }
     prev_hotset = (tree(site_info_ptr, int)) prof.profile_online.prev_hotset;
@@ -65,6 +68,20 @@ void profile_online_interval(int s) {
     /* Convert to a tree of sites and generate the new hotset */
     sorted_sites = sh_convert_to_site_tree(prof.profile);
     hotset = sh_get_hot_sites(sorted_sites, prof.profile_online.upper_avail_initial);
+
+    if(profopts.profile_online_print_reconfigures) {
+      printf("Previous hotset: ");
+      tree_traverse(prev_hotset, sit) {
+        printf("%d ", tree_it_val(sit));
+      }
+      printf("\n");
+
+      printf("Current hotset: ");
+      tree_traverse(hotset, sit) {
+        printf("%d ", tree_it_val(sit));
+      }
+      printf("\n");
+    }
 
     if(!profopts.profile_online_nobind) {
       /* Iterate over all of the sites. Rebind if:
@@ -102,9 +119,7 @@ void profile_online_interval(int s) {
 
     /* The previous tree can be freed, because we're going to
        overwrite it with the current one */
-    if(prev_hotset) {
-      tree_free(prev_hotset);
-    }
+    tree_free(prev_hotset);
     prof.profile_online.prev_hotset = (void *) hotset;
 
     /* Free the sorted_arenas tree */
