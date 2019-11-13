@@ -451,7 +451,7 @@ void initialize_profiling() {
   /* Store the profile_all event strings */
   prof.profile->num_profile_all_events = profopts.num_profile_all_events;
   prof.profile->profile_all_events = orig_calloc(prof.profile->num_profile_all_events, sizeof(char *));
-  for(i = 0; i < profopts.profile_all_events; i++) {
+  for(i = 0; i < profopts.num_profile_all_events; i++) {
     prof.profile->profile_all_events[i] = orig_malloc((strlen(profopts.profile_all_events[i]) + 1) * sizeof(char));
     strcpy(prof.profile->profile_all_events[i], profopts.profile_all_events[i]);
   }
