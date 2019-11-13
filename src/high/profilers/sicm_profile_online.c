@@ -42,8 +42,8 @@ void profile_online_interval(int s) {
   tree_it(site_info_ptr, int) sit, old, new;
 
   /* Look at how much the application has consumed on each tier */
-  upper_avail = sicm_avail(tracker.upper_device);
-  lower_avail = sicm_avail(tracker.lower_device);
+  upper_avail = sicm_avail(tracker.upper_device) * 1024;
+  lower_avail = sicm_avail(tracker.lower_device) * 1024;
 
   if(lower_avail < prof.profile_online.lower_avail_initial) {
     /* The lower tier is now being used, so we need to reconfigure. */
@@ -188,8 +188,8 @@ void profile_online_init() {
                   1);
 
   /* Figure out the amount of free memory that we're starting out with */
-  prof.profile_online.upper_avail_initial = sicm_avail(tracker.upper_device);
-  prof.profile_online.lower_avail_initial = sicm_avail(tracker.lower_device);
+  prof.profile_online.upper_avail_initial = sicm_avail(tracker.upper_device) * 1024;
+  prof.profile_online.lower_avail_initial = sicm_avail(tracker.lower_device) * 1024;
 
   /* Since sicm_arena_set_devices accepts a device_list, construct these */
   prof.profile_online.upper_dl = orig_malloc(sizeof(struct sicm_device_list));
