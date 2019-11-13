@@ -120,11 +120,6 @@ void profile_online_interval(int s) {
 
     /* The previous tree can be freed, because we're going to
        overwrite it with the current one */
-    tree_traverse(prev_hotset, hit) {
-      if(tree_it_val(hit)) {
-        orig_free(tree_it_val(hit));
-      }
-    }
     tree_free(prev_hotset);
     prof.profile_online.prev_hotset = (void *) hotset;
 
