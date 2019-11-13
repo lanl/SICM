@@ -80,6 +80,7 @@ typedef struct profile_allocs_data {
 
 /* profile_online */
 typedef struct profile_online_data {
+  size_t num_reconfigures;
   size_t profile_online_event_index;
   size_t lower_avail_initial, upper_avail_initial;
   struct sicm_device_list *upper_dl, *lower_dl;

@@ -47,7 +47,7 @@ void profile_online_interval(int s) {
 
   if(lower_avail < prof.profile_online.lower_avail_initial) {
     /* The lower tier is now being used, so we need to reconfigure. */
-    if(profopts.print_reconfigures) {
+    if(profopts.profile_online_print_reconfigures) {
       printf("Reconfigure %d\n", prof.profile_online.num_reconfigures);
     }
 
@@ -79,12 +79,12 @@ void profile_online_interval(int s) {
         dl = NULL;
         if(tree_it_good(new) && !tree_it_good(old)) {
           dl = prof.profile_online.upper_dl;
-          if(profopts.print_reconfigures) {
+          if(profopts.profile_online_print_reconfigures) {
             printf("Binding site %d to the upper tier.\n", tree_it_val(sit));
           }
         } else if(!tree_it_good(new) && tree_it_good(old)) {
           dl = prof.profile_online.lower_dl;
-          if(profopts.print_reconfigures) {
+          if(profopts.profile_online_print_reconfigures) {
             printf("Binding site %d to the lower tier.\n", tree_it_val(sit));
           }
         }
@@ -95,7 +95,7 @@ void profile_online_interval(int s) {
         }
       }
     }
-    if(profopts.print_reconfigures) {
+    if(profopts.profile_online_print_reconfigures) {
       printf("Reconfigure complete.\n");
       fflush(stdout);
     }
