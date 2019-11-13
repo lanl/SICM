@@ -128,9 +128,13 @@ int main(int argc, char **argv) {
     }
   }
 
-  /* This is the only argument that we can't set a default for */
+  /* These are the only two arguments that we can't set a default for */
   if(capacity == 0) {
     fprintf(stderr, "You didn't specify a capacity to pack into. This is required. Aborting.\n");
+    exit(1);
+  }
+  if(node == -1) {
+    fprintf(stderr, "You didn't specify a node to pack into. This is required. Aborting.\n");
     exit(1);
   }
 
@@ -153,18 +157,18 @@ int main(int argc, char **argv) {
   /* Print out the guidance file */
   printf("===== GUIDANCE =====\n");
   tree_traverse(hot_site_tree, sit) {
-    printf("%d %ld\n", tree_it_val(sit), (int) node);
+    printf("%d %ld\n", tree_it_val(sit), node);
   }
   printf("===== END GUIDANCE =====\n");
 
   /* Print debugging information about how we generated this guidance file
      Here, we'll assume all of these values are valid, so no errors. */
-  printf("Value profiling type: %s", value);
+  printf("Value profiling type: %s\n", value);
   printf("Value event: %s\n", event);
-  printf("Weight profiling type: %s", weight);
+  printf("Weight profiling type: %s\n", weight);
   printf("Capacity that we packed into: %ju\n", capacity);
   printf("NUMA node: %ld\n", node);
   printf("Scale factor: %lf\n", scale);
-  printf("Packing algorithm: %s", algo);
-  printf("Sorting type: %s", sort);
+  printf("Packing algorithm: %s\n", algo);
+  printf("Sorting type: %s\n", sort);
 }
