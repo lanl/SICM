@@ -132,6 +132,7 @@ void profile_online_interval(int s) {
     tree_free(sorted_sites);
   }
 
+  prof.profile_online.num_reconfigures++;
   end_interval();
 }
 
@@ -185,6 +186,8 @@ void profile_online_init() {
   sort = orig_malloc((strlen("value_per_weight") + 1) * sizeof(char));
   strcpy(sort, "value_per_weight");
 
+  /* The previous and current profiling *need* to have the same type of profiling for this
+     to make sense. */
   if(profopts.profile_file) {
     sh_packing_init(prof.prev_profile,
                     &value,
@@ -192,16 +195,15 @@ void profile_online_init() {
                     &weight,
                     &algo,
                     &sort,
-                    1);
+                    0);
   }
-
   sh_packing_init(prof.profile,
                   &value,
                   &profopts.profile_all_events[prof.profile_online.profile_online_event_index],
                   &weight,
                   &algo,
                   &sort,
-                  1);
+                  0);
 
   /* Figure out the amount of free memory that we're starting out with */
   prof.profile_online.upper_avail_initial = sicm_avail(tracker.upper_device) * 1024;
