@@ -180,6 +180,8 @@ typedef struct profiling_options {
   /* Online */
   char *profile_online_event;
   char profile_online_nobind;
+  float profile_online_last_iter_value;
+  float profile_online_last_iter_weight;
 
   /* The device to profile bandwidth on */
   deviceptr profile_one_device;

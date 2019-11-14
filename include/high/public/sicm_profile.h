@@ -77,9 +77,6 @@ typedef struct profiler {
   application_profile *profile;
   pthread_rwlock_t profile_lock;
 
-  /* Profiling information of the previous run */
-  application_profile *prev_profile;
-
   /* Data for each profile thread */
   profile_all_data profile_all;
   profile_rss_data profile_rss;

@@ -439,11 +439,6 @@ void initialize_profiling() {
   /* Initialize the structs that store the profiling information */
   prof.profile = orig_malloc(sizeof(application_profile));
 
-  /* If applicable, read in the previous run's profiling information */
-  if(profopts.profile_input_file) {
-    prof.prev_profile = sh_parse_profiling(profopts.profile_input_file);
-  }
-
   /* Allocate room for the per-arena profiling information */
   prof.profile->num_arenas = 0;
   prof.profile->arenas = orig_calloc(tracker.max_arenas, sizeof(arena_profile *));

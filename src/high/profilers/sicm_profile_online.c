@@ -36,7 +36,9 @@ void profile_online_interval(int s) {
   struct sicm_device_list *dl;
 
   /* Trees store site information, value is the site ID */
+  tree(site_info_ptr, int) last_iter_sorted_sites;
   tree(site_info_ptr, int) sorted_sites;
+  tree(site_info_ptr, int) merged_sorted_sites;
   tree_it(site_info_ptr, int) sit;
 
   /* Store the sites as keys, values are structs with profiling info */
@@ -68,9 +70,19 @@ void profile_online_interval(int s) {
     }
     prev_hotset = (tree(int, site_info_ptr)) prof.profile_online.prev_hotset;
 
+    last_iter_sorted_sites = prof.profile_online.last_iter_sorted_sites;
+
     /* Convert to a tree of sites and generate the new hotset */
     sorted_sites = sh_convert_to_site_tree(prof.profile);
-    hotset = sh_get_hot_sites(sorted_sites, prof.profile_online.upper_avail_initial);
+
+    /* If we have a previous run's profiling, take that into account */
+    if(prof.profile_online.last_iter_sorted_sites) {
+      merged_sorted_sites = sh_merge_site_trees(last_iter_sorted_sites, sorted_sites, profopts.profile_online_last_iter_value, profopts.profile_online_last_iter_weight);
+    } else {
+      merged_sorted_sites = sorted_sites;
+    }
+
+    hotset = sh_get_hot_sites(merged_sorted_sites, prof.profile_online.upper_avail_initial);
 
     if(profopts.profile_online_print_reconfigures) {
       printf("Previous hotset: ");
@@ -123,16 +135,26 @@ void profile_online_interval(int s) {
     tree_free(prev_hotset);
     prof.profile_online.prev_hotset = (void *) hotset;
 
-    /* Free the sorted_arenas tree */
+    /* If applicable, free the merged_sorted_sites tree */
+    if(prof.profile_online.last_iter_sorted_sites) {
+      tree_traverse(merged_sorted_sites, sit) {
+        if(tree_it_key(sit)) {
+          orig_free(tree_it_key(sit));
+        }
+      }
+    }
+
+    /* Free the sorted_sites tree */
     tree_traverse(sorted_sites, sit) {
       if(tree_it_key(sit)) {
         orig_free(tree_it_key(sit));
       }
     }
     tree_free(sorted_sites);
+
+    prof.profile_online.num_reconfigures++;
   }
 
-  prof.profile_online.num_reconfigures++;
   end_interval();
 }
 
@@ -187,15 +209,19 @@ void profile_online_init() {
   strcpy(sort, "value_per_weight");
 
   /* The previous and current profiling *need* to have the same type of profiling for this
-     to make sense. */
+     to make sense. Otherwise, you're just going to get errors. */
+  prof.profile_online.last_iter_profile = NULL;
+  prof.profile_online.last_iter_sorted_sites = NULL;
   if(profopts.profile_input_file) {
-    sh_packing_init(prof.prev_profile,
+    prof.profile_online.last_iter_profile = sh_parse_profiling(profopts.profile_input_file);
+    sh_packing_init(prof.profile_online.last_iter_profile,
                     &value,
                     &profopts.profile_all_events[prof.profile_online.profile_online_event_index],
                     &weight,
                     &algo,
                     &sort,
                     0);
+    prof.profile_online.last_iter_sorted_sites = (void *) sh_convert_to_site_tree(prof.profile_online.last_iter_profile);
   }
   sh_packing_init(prof.profile,
                   &value,

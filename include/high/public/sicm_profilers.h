@@ -79,14 +79,21 @@ typedef struct profile_allocs_data {
 } profile_allocs_data;
 
 /* profile_online */
+typedef struct application_profile application_profile;
 typedef struct profile_online_data {
   size_t num_reconfigures;
   size_t profile_online_event_index;
   size_t lower_avail_initial, upper_avail_initial;
   struct sicm_device_list *upper_dl, *lower_dl;
-  void *prev_hotset; /* This is actually a tree from tree.h,
-                        but we store it as a pointer here
-                        to avoid header hell. */
+
+  /* The hotset from the previous interval */
+  void *prev_hotset;
+
+  /* The previous *run's* sorted sites */
+  void *last_iter_sorted_sites;
+
+  /* The full profiling information from the previous run */
+  application_profile *last_iter_profile;
 } profile_online_data;
 
 /********************

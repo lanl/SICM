@@ -201,6 +201,18 @@ void set_options() {
     if(env) {
       profopts.profile_online_print_reconfigures = 1;
     }
+
+    env = getenv("SH_PROFILE_ONLINE_LAST_ITER_VALUE");
+    profopts.profile_online_last_iter_value = 0;
+    if(env) {
+      profopts.profile_online_last_iter_value = strtof(env, NULL);
+    }
+
+    env = getenv("SH_PROFILE_ONLINE_LAST_ITER_WEIGHT");
+    profopts.profile_online_last_iter_weight = 0;
+    if(env) {
+      profopts.profile_online_last_iter_weight = strtof(env, NULL);
+    }
   }
   if(tracker.log_file) {
     fprintf(tracker.log_file, "SH_PROFILE_ONLINE: %d\n", profopts.should_profile_online);

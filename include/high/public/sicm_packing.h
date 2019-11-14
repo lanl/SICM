@@ -113,6 +113,49 @@ static int site_tree_cmp(site_info_ptr a, site_info_ptr b) {
   return retval;
 }
 
+/* This function merges two site trees (the structure output by sh_convert_to_site_tree).
+   It accepts two trees, a float which determines how highly to consider the value of the first tree,
+   and another float which determines how highly to consider the weights of the first tree.
+   Because this is intended to be used to consider a past run's profiling, only sites that are in
+   the second tree are considered at all. */
+static tree(site_info_ptr, int) sh_merge_site_trees(tree(site_info_ptr, int) first, tree(site_info_ptr, int) second, float value_ratio, float weight_ratio) {
+  tree_it(site_info_ptr, int) sit;
+  tree_it(int, site_info_ptr) fit;
+  tree(int, site_info_ptr) new_first;
+  tree(site_info_ptr, int) merged;
+  site_info_ptr site;
+
+  /* Flip the keys and values around for the first tree */
+  new_first = tree_make(int, site_info_ptr);
+  tree_traverse(first, sit) {
+    tree_insert(new_first, tree_it_val(sit), tree_it_key(sit));
+  }
+
+  /* Create the merged tree now */
+  merged = tree_make_c(site_info_ptr, int, &site_tree_cmp);
+  tree_traverse(second, sit) {
+    fit = tree_lookup(new_first, tree_it_val(sit));
+    if(tree_it_good(fit)) {
+      site = orig_malloc(sizeof(site_profile_info));
+      site->index = tree_it_key(sit)->index;
+      site->value = (tree_it_val(fit)->value * value_ratio) + (tree_it_key(sit)->value * (1 - value_ratio));
+      site->weight = (tree_it_val(fit)->weight * weight_ratio) + (tree_it_key(sit)->weight * (1 - weight_ratio));
+      site->value_per_weight = ((double) site->value) / ((double) site->weight);
+      tree_insert(merged, site, tree_it_val(sit));
+      if(sh_verbose_flag) {
+        printf("(%zu * %f) + (%zu * %f) = %zu\n", tree_it_val(fit)->value, value_ratio, tree_it_key(sit)->value, 1 - value_ratio, site->value);
+      }
+    } else {
+      tree_insert(merged, tree_it_key(sit), tree_it_val(sit));
+    }
+  }
+
+  /* Since this just stores pointers that were also stored in `first`, we don't need
+     to free those up. */
+  tree_free(new_first);
+  return merged;
+}
+
 /* This function iterates over the data structure that stores the profiling information,
    and converts it to a tree of allocation sites and their value and weight amounts.
    If the profiling information includes multiple sites per arena, that arena's profiling
