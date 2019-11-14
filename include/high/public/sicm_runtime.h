@@ -173,8 +173,11 @@ typedef struct profiling_options {
   int sample_freq;
   int max_sample_pages;
 
+  /* Input and output for profiling information */
+  FILE *profile_input_file;
+  FILE *profile_output_file;
+
   /* Online */
-  FILE *profile_file; /* File containing previous run's profiling */
   char *profile_online_event;
   char profile_online_nobind;
 

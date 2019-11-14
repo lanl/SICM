@@ -14,75 +14,75 @@
 
 /* Iterates over the structure and prints it out so that it can
  * be seamlessly read back in */
-static void sh_print_profiling(application_profile *info) {
+static void sh_print_profiling(application_profile *info, FILE *file) {
   size_t i, n, x;
   arena_profile *aprof;
   arena_info *arena;
 
-  printf("===== BEGIN SICM PROFILING INFORMATION =====\n");
-  printf("Number of PROFILE_ALL events: %zu\n", info->num_profile_all_events);
-  printf("Number of arenas: %zu\n", info->num_arenas);
+  fprintf(file, "===== BEGIN SICM PROFILING INFORMATION =====\n");
+  fprintf(file, "Number of PROFILE_ALL events: %zu\n", info->num_profile_all_events);
+  fprintf(file, "Number of arenas: %zu\n", info->num_arenas);
   for(i = 0; i < info->num_arenas; i++) {
     aprof = info->arenas[i];
 
     /* Arena information and sites that are in this one arena */
-    printf("BEGIN ARENA %u\n", aprof->index);
-    printf("  Number of allocation sites: %d\n", aprof->num_alloc_sites);
-    printf("  Allocation sites: ");
+    fprintf(file, "BEGIN ARENA %u\n", aprof->index);
+    fprintf(file, "  Number of allocation sites: %d\n", aprof->num_alloc_sites);
+    fprintf(file, "  Allocation sites: ");
     for(n = 0; n < aprof->num_alloc_sites; n++) {
-      printf("%d ", aprof->alloc_sites[n]);
+      fprintf(file, "%d ", aprof->alloc_sites[n]);
     }
-    printf("\n");
+    fprintf(file, "\n");
 
     /* Interval information */
-    printf("  First interval: %zu\n", aprof->first_interval);
-    printf("  Number of intervals: %zu\n", aprof->num_intervals);
+    fprintf(file, "  First interval: %zu\n", aprof->first_interval);
+    fprintf(file, "  Number of intervals: %zu\n", aprof->num_intervals);
 
     if(profopts.should_profile_all) {
-      printf("  BEGIN PROFILE_ALL\n");
+      fprintf(file, "  BEGIN PROFILE_ALL\n");
       for(n = 0; n < info->num_profile_all_events; n++) {
-        printf("    BEGIN EVENT %s\n", info->profile_all_events[n]);
-        printf("      Total: %zu\n", aprof->profile_all.events[n].total);
-        printf("      Peak: %zu\n", aprof->profile_all.events[n].peak);
+        fprintf(file, "    BEGIN EVENT %s\n", info->profile_all_events[n]);
+        fprintf(file, "      Total: %zu\n", aprof->profile_all.events[n].total);
+        fprintf(file, "      Peak: %zu\n", aprof->profile_all.events[n].peak);
         if(profopts.should_print_intervals) {
-          printf("      Intervals: ");
+          fprintf(file, "      Intervals: ");
           for(x = 0; x < aprof->num_intervals; x++) {
-            printf("%zu ", aprof->profile_all.events[n].intervals[x]);
+            fprintf(file, "%zu ", aprof->profile_all.events[n].intervals[x]);
           }
-          printf("\n");
+          fprintf(file, "\n");
         }
-        printf("    END EVENT %s\n", profopts.profile_all_events[n]);
+        fprintf(file, "    END EVENT %s\n", profopts.profile_all_events[n]);
       }
-      printf("  END PROFILE_ALL\n");
+      fprintf(file, "  END PROFILE_ALL\n");
     }
     if(profopts.should_profile_allocs) {
-      printf("  BEGIN PROFILE_ALLOCS\n");
-      printf("    Peak: %zu\n", aprof->profile_allocs.peak);
+      fprintf(file, "  BEGIN PROFILE_ALLOCS\n");
+      fprintf(file, "    Peak: %zu\n", aprof->profile_allocs.peak);
       if(profopts.should_print_intervals) {
-        printf("    Intervals: ");
+        fprintf(file, "    Intervals: ");
         for(x = 0; x < aprof->num_intervals; x++) {
-          printf("%zu ", aprof->profile_allocs.intervals[x]);
+          fprintf(file, "%zu ", aprof->profile_allocs.intervals[x]);
         }
-        printf("\n");
+        fprintf(file, "\n");
       }
-      printf("  END PROFILE_ALLOCS\n");
+      fprintf(file, "  END PROFILE_ALLOCS\n");
     }
     if(profopts.should_profile_extent_size) {
-      printf("  BEGIN PROFILE_EXTENT_SIZE\n");
-      printf("    Peak: %zu\n", aprof->profile_extent_size.peak);
+      fprintf(file, "  BEGIN PROFILE_EXTENT_SIZE\n");
+      fprintf(file, "    Peak: %zu\n", aprof->profile_extent_size.peak);
       if(profopts.should_print_intervals) {
-        printf("    Intervals: ");
+        fprintf(file, "    Intervals: ");
         for(x = 0; x < aprof->num_intervals; x++) {
-          printf("%zu ", aprof->profile_extent_size.intervals[x]);
+          fprintf(file, "%zu ", aprof->profile_extent_size.intervals[x]);
         }
-        printf("\n");
+        fprintf(file, "\n");
       }
-      printf("  END PROFILE_EXTENT_SIZE\n");
+      fprintf(file, "  END PROFILE_EXTENT_SIZE\n");
     }
-    printf("END ARENA %u\n", aprof->index);
+    fprintf(file, "END ARENA %u\n", aprof->index);
 
   }
-  printf("===== END SICM PROFILING INFORMATION =====\n");
+  fprintf(file, "===== END SICM PROFILING INFORMATION =====\n");
 }
 
 #endif /* SICM_RUNTIME */

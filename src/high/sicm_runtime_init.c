@@ -108,12 +108,22 @@ void set_options() {
   ssize_t len;
 
   /* See if there's profiling information that we can use later */
-  env = getenv("SH_PROFILE_FILE");
-  profopts.profile_file = NULL;
+  env = getenv("SH_PROFILE_INPUT_FILE");
+  profopts.profile_input_file = NULL;
   if(env) {
-    profopts.profile_file = fopen(env, "r");
-    if(!profopts.profile_file) {
-      fprintf(stderr, "Failed to open profile file. Aborting.\n");
+    profopts.profile_input_file = fopen(env, "r");
+    if(!profopts.profile_input_file) {
+      fprintf(stderr, "Failed to open profile input file. Aborting.\n");
+      exit(1);
+    }
+  }
+
+  env = getenv("SH_PROFILE_OUTPUT_FILE");
+  profopts.profile_output_file = NULL;
+  if(env) {
+    profopts.profile_output_file = fopen(env, "w");
+    if(!profopts.profile_output_file) {
+      fprintf(stderr, "Failed to open profile output file. Aborting.\n");
       exit(1);
     }
   }

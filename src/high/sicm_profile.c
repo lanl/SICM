@@ -440,8 +440,8 @@ void initialize_profiling() {
   prof.profile = orig_malloc(sizeof(application_profile));
 
   /* If applicable, read in the previous run's profiling information */
-  if(profopts.profile_file) {
-    prof.prev_profile = sh_parse_profiling(profopts.profile_file);
+  if(profopts.profile_input_file) {
+    prof.prev_profile = sh_parse_profiling(profopts.profile_input_file);
   }
 
   /* Allocate room for the per-arena profiling information */
@@ -536,6 +536,8 @@ void sh_stop_profile_master_thread() {
   pthread_kill(prof.master_id, prof.stop_signal);
   pthread_join(prof.master_id, NULL);
 
-  sh_print_profiling(prof.profile);
+  if(profopts.profile_output_file) {
+    sh_print_profiling(prof.profile, profopts.profile_output_file);
+  }
   deinitialize_profiling();
 }
