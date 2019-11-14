@@ -220,7 +220,7 @@ void profile_online_init() {
                     &weight,
                     &algo,
                     &sort,
-                    0);
+                    profopts.profile_online_print_reconfigures);
     prof.profile_online.last_iter_sorted_sites = (void *) sh_convert_to_site_tree(prof.profile_online.last_iter_profile);
   }
   sh_packing_init(prof.profile,
@@ -229,7 +229,7 @@ void profile_online_init() {
                   &weight,
                   &algo,
                   &sort,
-                  0);
+                  profopts.profile_online_print_reconfigures);
 
   /* Figure out the amount of free memory that we're starting out with */
   prof.profile_online.upper_avail_initial = sicm_avail(tracker.upper_device) * 1024;
