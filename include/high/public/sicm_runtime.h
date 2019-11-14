@@ -125,7 +125,7 @@ typedef struct tracker_struct {
 } tracker_struct;
 
 #define arena_arr_for(i) \
-  for(i = 0; i < tracker.max_index; i++)
+  for(i = 0; i <= tracker.max_index; i++)
 
 #define arena_check_good(a, i) \
   a = tracker.arenas[i]; \
