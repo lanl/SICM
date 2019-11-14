@@ -188,7 +188,7 @@ void profile_online_init() {
 
   /* The previous and current profiling *need* to have the same type of profiling for this
      to make sense. */
-  if(profopts.profile_file) {
+  if(profopts.profile_input_file) {
     sh_packing_init(prof.prev_profile,
                     &value,
                     &profopts.profile_all_events[prof.profile_online.profile_online_event_index],
