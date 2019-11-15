@@ -147,7 +147,7 @@ static tree(site_info_ptr, int) sh_merge_site_trees(tree(site_info_ptr, int) fir
     } else {
       site->value = tree_it_key(sit)->value;
       site->weight = tree_it_key(sit)->weight;
-      tree_insert(merged, tree_it_key(sit), tree_it_val(sit));
+      tree_insert(merged, site, tree_it_val(sit));
       printf("WARNING: Didn't find site %d in the previous run's profiling.\n", tree_it_val(sit));
     }
     site->value_per_weight = ((double) site->value) / ((double) site->weight);
