@@ -135,19 +135,22 @@ static tree(site_info_ptr, int) sh_merge_site_trees(tree(site_info_ptr, int) fir
   merged = tree_make_c(site_info_ptr, int, &site_tree_cmp);
   tree_traverse(second, sit) {
     fit = tree_lookup(new_first, tree_it_val(sit));
+    site = orig_malloc(sizeof(site_profile_info));
+    site->index = tree_it_key(sit)->index;
     if(tree_it_good(fit)) {
-      site = orig_malloc(sizeof(site_profile_info));
-      site->index = tree_it_key(sit)->index;
       site->value = (tree_it_val(fit)->value * value_ratio) + (tree_it_key(sit)->value * (1 - value_ratio));
       site->weight = (tree_it_val(fit)->weight * weight_ratio) + (tree_it_key(sit)->weight * (1 - weight_ratio));
-      site->value_per_weight = ((double) site->value) / ((double) site->weight);
       tree_insert(merged, site, tree_it_val(sit));
       if(sh_verbose_flag) {
         printf("(%zu * %f) + (%zu * %f) = %zu\n", tree_it_val(fit)->value, value_ratio, tree_it_key(sit)->value, 1 - value_ratio, site->value);
       }
     } else {
+      site->value = tree_it_key(sit)->value;
+      site->weight = tree_it_key(sit)->weight;
       tree_insert(merged, tree_it_key(sit), tree_it_val(sit));
+      printf("WARNING: Didn't find site %d in the previous run's profiling.\n", tree_it_val(sit));
     }
+    site->value_per_weight = ((double) site->value) / ((double) site->weight);
   }
 
   /* Since this just stores pointers that were also stored in `first`, we don't need
