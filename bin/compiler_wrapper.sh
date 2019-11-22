@@ -19,7 +19,7 @@ CXX_COMPILER="${CXX_COMPILER:-clang++}"
 FORT_COMPILER="${FORT_COMPILER:-flang}"
 LD_WRAPPER="${LD_WRAPPER:-${DIR}/ld_wrapper.sh}"
 DEFAULT_COMPILER="${DEFAULT_COMPILER:-${C_COMPILER}}"
-COMPILER=""
+COMPILER="${C_COMPILER}" # We default to the C compiler unless a file extension tells us otherwise
 OBJECT_FILES=""
 
 # The original arguments to the compiler
