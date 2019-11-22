@@ -57,7 +57,7 @@ for word in $ARGS; do
   elif [[ "$word" =~ ^\-c$ ]]; then
     # If it's `-c`, then we don't link
     ONLY_COMPILE=true
-  elif [[ "$word" =~ ^\-M ]]; then
+  elif [[ "$word" =~ ^\-M$ ]]; then
     # The user is trying to preprocess or generate deps
     DEFAULT_COMPILER=true
   elif [[ "$word" =~ ^\-x$ ]]; then
