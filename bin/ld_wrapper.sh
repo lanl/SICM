@@ -13,7 +13,7 @@ flock 200
 pid=$$
 echo $pid 1>&200
 
-# Gets the location of the script to find Compass
+# Gets the location of the script to find Compass, SICM, etc.
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null && pwd )"
 LIB_DIR="$DIR/../lib"
 LLVMPATH="${LLVMPATH:- }"
@@ -21,6 +21,7 @@ LLVMLINK="${LLVMLINK:-llvm-link}"
 LLVMOPT="${LLVMOPT:-opt}"
 LD_COMPILER="${LD_COMPILER:-clang}"
 LD_LINKER="${LD_LINKER:-clang}"
+LINK_SICM="-L${LIB_DIR} -lsicm_runtime -Wl,-rpath,${LIB_DIR}"
 
 # Layers of context. Defaults to 3.
 SH_CONTEXT="${SH_CONTEXT:-3}"
@@ -83,11 +84,12 @@ if [[ $OUTPUT_FILE == "" ]]; then
   OUTPUT_FILE="a.out"
   LINKARGS="$LINKARGS -o $OUTPUT_FILE"
 fi
-LINKARGS="$LINKARGS -L${LIB_DIR} -lsicm_runtime -Wl,-rpath,${LIB_DIR}"
+LINKARGS="$LINKARGS ${LINK_SICM}"
 
-# If we're going to skip going to IR
+# If we're not going to IR, then we can just link without transforming
+# or linking the IR together. Just call the system linker.
 if [[ $NO_IR != " " ]]; then
-  ${LLVMPATH}${LD_LINKER} $ARGS -L${LIB_DIR} -lsicm_runtime -Wl,-rpath,${LIB_DIR}
+  ${LLVMPATH}${LD_LINKER} $ARGS ${LINK_SICM}
   exit $?
 fi
 
