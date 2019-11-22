@@ -44,6 +44,9 @@ for word in $ARGS; do
     # Reading from stdin, this is unsupported, so call the normal compiler
     # and exit
     DEFAULT_COMPILER=true
+  elif [[ "$word" =~ ^\-v$ ]]; then
+    # The user is just trying to get a version string
+    DEFAULT_COMPILER=true
   elif [[ "$word" =~ ^\-o$ ]]; then
     # Remove "-o [outputfile]" from the arguments
     PREV="$word"
