@@ -3,26 +3,35 @@
 # ld_wrapper.sh. It wraps the `ar` utility, and can be used in a build
 # system that uses `ar` to archive a bunch of `.o` files, then links
 # those together into the final executable.
-# It works by simply archiving both the `.o` files that it was given,
-# as well as the accompanying `.bc` files. These `.bc` files should
-# have been output by `compiler_wrapper.sh`. Then, `ld_wrapper.sh`
-# will extract these `.bc` files from the archive, transform them,
-# recompile them into `.o` files, and re-archive them.
-# It also includes the `.args` files in the archive, so that `ld_wrapper.sh`
-# knows which arguments to use when recompiling the object files.
+
+# This should eventually be replaced by a proper `ar` wrapper that actually
+# archives the files that it needs. `ranlib` would also have to have a wrapper
+# in that case. However, for now, it simply creates a
+# newline-separated list of files (extensions removed) that are "in the archive."
+# When the ld_wrapper.sh script sees this file, it will transform, compile,
+# and link all of these files together.
 
 ARGS=("$@")
 OBJECTFILES=""
+START_OF_OBJECTFILES="2"
+AR_FILE_INDEX="1"
 
+# First check if the second argument is a `.a` file. This it he most usual case.
 if [[ ! ${ARGS[1]} =~ (.*)\.a$ ]]; then
-  echo "The AR wrapper didn't get a '.a' file as its output argument. Aborting."
-  exit 1
+  START_OF_OBJECTFILES="1"
+  AR_FILE_INDEX="0"
+  # If not, check the first argument. It's valid to call `ar` without any arguments
+  # other than the `.a` file and the list of files that you want to archive.
+  if [[ ! ${ARGS[0]} =~ (.*)\.a$ ]]; then
+    echo "The AR wrapper didn't get a '.a' file as its output argument. Aborting."
+    exit 1
+  fi
 fi
 
-AR_FILE="${ARGS[1]}"
+AR_FILE="${ARGS[${AR_FILE_INDEX}]}"
 
 echo -n "" > $AR_FILE
-for word in ${ARGS[@]:2}; do
+for word in ${ARGS[@]:${START_OF_OBJECTFILES}}; do
   if [[ "$word" =~ (.*)\.o$ ]]; then
     # Found an object file. Grab its .bc and .args files and archive them, too.
     FILE=${BASH_REMATCH[1]}
