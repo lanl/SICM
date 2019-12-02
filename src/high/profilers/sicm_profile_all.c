@@ -87,8 +87,7 @@ void profile_all_init() {
   int cpu, group_fd;
   unsigned long flags;
 
-  printf("Master TID: %lu\n", (unsigned long) syscall(SYS_gettid));
-
+  prof.profile_all.tid = (unsigned long) syscall(SYS_gettid);
   prof.profile_all.pagesize = (size_t) sysconf(_SC_PAGESIZE);
 
   /* Allocate perf structs */
@@ -234,8 +233,7 @@ void profile_all_interval(int s) {
       sample = (struct sample *) (begin + 8);
       addr = (void *) (sample->addr);
 
-      if(addr) {
-
+      if(addr && (sample->tid != prof.profile_all.tid)) {
         printf("TID: %lu\n", (unsigned long) sample->tid);
         /* Search for which extent it goes into */
         extent_arr_for(tracker.extents, n) {

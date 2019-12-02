@@ -40,6 +40,7 @@ typedef struct profile_all_info {
   /* profile_all */
   per_event_profile_all_info *events;
   size_t tmp_accumulator;
+  unsigned long tid;
 } profile_all_info;
 typedef struct profile_rss_info {
   /* profile_rss */
