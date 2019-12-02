@@ -87,6 +87,8 @@ void profile_all_init() {
   int cpu, group_fd;
   unsigned long flags;
 
+  printf("Master TID: %lu\n", (unsigned long) gettid());
+
   prof.profile_all.pagesize = (size_t) sysconf(_SC_PAGESIZE);
 
   /* Allocate perf structs */
