@@ -45,7 +45,7 @@ void sh_get_event() {
 
     /* If we're profiling all, set some additional options. */
     if(profopts.should_profile_all) {
-      prof.profile_all.pes[i]->sample_type = PERF_SAMPLE_ADDR;
+      prof.profile_all.pes[i]->sample_type = PERF_SAMPLE_TID | PERF_SAMPLE_ADDR;
       prof.profile_all.pes[i]->sample_period = profopts.sample_freq;
       prof.profile_all.pes[i]->mmap = 1;
       prof.profile_all.pes[i]->disabled = 1;

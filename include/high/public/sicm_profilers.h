@@ -15,6 +15,7 @@ extern profiling_options profopts;
  * Utilities
  ********************/
 struct __attribute__ ((__packed__)) sample {
+    uint32_t pid, tid;
     uint64_t addr;
 };
 union pfn_t {
