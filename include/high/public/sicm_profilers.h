@@ -40,7 +40,6 @@ typedef struct profile_all_info {
   /* profile_all */
   per_event_profile_all_info *events;
   size_t tmp_accumulator;
-  unsigned long tid;
 } profile_all_info;
 typedef struct profile_rss_info {
   /* profile_rss */
@@ -67,6 +66,7 @@ typedef struct profile_all_data {
   struct perf_event_mmap_page **metadata;
   int *fds;
   size_t pagesize;
+  unsigned long tid;
 } profile_all_data;
 typedef struct profile_rss_data {
   /* profile_rss */
