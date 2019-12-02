@@ -196,7 +196,6 @@ void profile_all_interval(int s) {
       aprof->profile_all.tmp_accumulator = 0;
     }
 
-#if 0
     /* Wait for the perf buffer to be ready */
     pfd.fd = prof.profile_all.fds[i];
     pfd.events = POLLIN;
@@ -211,7 +210,6 @@ void profile_all_interval(int s) {
       fprintf(stderr, "Error occurred polling. Aborting.\n");
       exit(1);
     }
-#endif
 
     /* Get ready to read */
     head = prof.profile_all.metadata[i]->data_head;
