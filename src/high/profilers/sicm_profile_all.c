@@ -222,6 +222,8 @@ void profile_all_interval(int s) {
     begin = base + tail % buf_size;
     end = base + head % buf_size;
 
+    printf("===== NEW SAMPLE BATCH =====\n");
+
     /* Read all of the samples */
     pthread_rwlock_rdlock(&tracker.extents_lock);
     while(begin <= (end - 8)) {
@@ -254,6 +256,8 @@ void profile_all_interval(int s) {
       }
     }
     pthread_rwlock_unlock(&tracker.extents_lock);
+
+    fflush(stdout);
 
     /* Let perf know that we've read this far */
     prof.profile_all.metadata[i]->data_tail = head;
