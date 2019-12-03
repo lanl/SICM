@@ -301,13 +301,6 @@ void profile_all_interval(int s) {
     }
   }
 
-  for(x = 0; x < prof.profile->num_profile_all_events; x++) {
-    for(i = 0; i < profopts.num_profile_all_cpus; i++) {
-      printf("%zu ", prof.profile_all.per_cpu_total[i][x]);
-    }
-    printf("\n");
-  }
-
   end_interval();
 }
 
