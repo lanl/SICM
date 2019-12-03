@@ -62,9 +62,11 @@ typedef struct profile_online_info {
  ********************/
 typedef struct profile_all_data {
   /* profile_all */
-  struct perf_event_attr **pes; /* Array of pe structs, for multiple events */
-  struct perf_event_mmap_page **metadata;
-  int *fds;
+  /* For each of these arrays, the first dimension is per-cpu,
+   * and the second dimension is per-event. */
+  struct perf_event_attr ***pes;
+  struct perf_event_mmap_page ***metadata;
+  int **fds;
   size_t pagesize;
   unsigned long tid;
 } profile_all_data;
