@@ -102,7 +102,7 @@ void profile_all_init() {
   sh_get_event();
 
   /* Open all perf file descriptors */
-  pid = 0;
+  pid = getpid();
   cpu = -1;
   group_fd = -1;
   flags = 0;
