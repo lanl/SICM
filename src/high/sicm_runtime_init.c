@@ -331,6 +331,18 @@ void set_options() {
   }
   if(profopts.should_profile_all) {
 
+    env = getenv("SH_PROFILE_ALL_CPUS");
+    profopts.num_profile_all_cpus = 0;
+    profopts.profile_all_cpus = NULL;
+    if(env) {
+      while((str = strtok(env, ",")) != NULL) {
+        profopts.num_profile_all_cpus++;
+        profopts.profile_all_cpus = orig_realloc(profopts.profile_all_cpus, sizeof(int) * profopts.num_profile_all_cpus);
+        profopts.profile_all_cpus[profopts.num_profile_all_cpus - 1] = (int) strtol(str, NULL, 10);
+        env = NULL;
+      }
+    }
+
     env = getenv("SH_PROFILE_ALL_EVENTS");
     profopts.num_profile_all_events = 0;
     profopts.profile_all_events = NULL;

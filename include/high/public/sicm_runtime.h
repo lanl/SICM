@@ -187,6 +187,10 @@ typedef struct profiling_options {
   /* The device to profile bandwidth on */
   deviceptr profile_one_device;
 
+  /* Array of cpu numbers for profile_all */
+  size_t num_profile_all_cpus;
+  int *profile_all_cpus;
+
   /* Array of strings for profile_all events */
   size_t num_profile_all_events;
   char **profile_all_events;
