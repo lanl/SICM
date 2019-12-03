@@ -218,7 +218,7 @@ void profile_all_interval(int s) {
     buf_size = prof.profile_all.pagesize * profopts.max_sample_pages;
     asm volatile("" ::: "memory"); /* Block after reading data_head, per perf docs */
 
-    printf("%p -> %p\n", head, tail);
+    printf("%"PRIu64" -> %"PRIu64"\n", head, tail);
 
     base = (char *)prof.profile_all.metadata[i] + prof.profile_all.pagesize;
     begin = base + tail % buf_size;
