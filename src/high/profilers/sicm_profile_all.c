@@ -239,7 +239,6 @@ void profile_all_interval(int s) {
 
 //      if(addr && (sample->tid != prof.profile_all.tid)) {
       if(addr) {
-        printf("TID: %lu\n", (unsigned long) sample->tid);
         /* Search for which extent it goes into */
         extent_arr_for(tracker.extents, n) {
           if(!tracker.extents->arr[n].start && !tracker.extents->arr[n].end) continue;
