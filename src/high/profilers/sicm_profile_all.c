@@ -99,6 +99,17 @@ void profile_all_init() {
     prof.profile_all.per_cpu_total[n] = malloc(sizeof(size_t) * prof.profile->num_profile_all_events);
   }
 
+  /* This array is for storing the per-cpu, per-event data_head values. Instead of calling `poll`, we
+     can see if the current data_head value is different from the previous one, and when it is,
+     we know we have some new values to read. */
+  prof.profile_all.prev_head = malloc(sizeof(uint64_t *) * profopts.num_profile_all_cpus);
+  for(n = 0; n < profopts.num_profile_all_cpus; n++) {
+    prof.profile_all.prev_head[n] = malloc(sizeof(uint64_t) * prof.profile->num_profile_all_events);
+    for(i = 0; i < prof.profile->num_profile_all_events; i++) {
+      prof.profile_all.prev_head[n][i] = 0;
+    }
+  }
+
   /* Allocate perf structs */
   prof.profile_all.pes = orig_malloc(sizeof(struct perf_event_attr **) * profopts.num_profile_all_cpus);
   prof.profile_all.fds = orig_malloc(sizeof(int *) * profopts.num_profile_all_cpus);
@@ -218,6 +229,7 @@ void profile_all_interval(int s) {
         aprof->profile_all.events[i].tmp_accumulator = 0;
       }
 
+#if 0
       /* Wait for the perf buffer to be ready */
       pfd.fd = prof.profile_all.fds[x][i];
       pfd.events = POLLIN;
@@ -232,9 +244,16 @@ void profile_all_interval(int s) {
         fprintf(stderr, "Error occurred polling. Aborting.\n");
         exit(1);
       }
+      #endif
 
-      /* Get ready to read */
+      /* Grab the head. If the head is the same as the previous one, we can just
+         move on to the next event; the buffer isn't ready to read yet. */
       head = prof.profile_all.metadata[x][i]->data_head;
+      if(head == prof.profile_all.prev_head[x][i]) {
+        continue;
+      }
+      prof.profile_all.prev_head[x][i] = head;
+
       tail = prof.profile_all.metadata[x][i]->data_tail;
       buf_size = prof.profile_all.pagesize * profopts.max_sample_pages;
       asm volatile("" ::: "memory"); /* Block after reading data_head, per perf docs */
