@@ -197,7 +197,6 @@ void profile_all_interval(int s) {
       aprof->profile_all.tmp_accumulator = 0;
     }
 
-#if 0
     /* Wait for the perf buffer to be ready */
     pfd.fd = prof.profile_all.fds[i];
     pfd.events = POLLIN;
@@ -212,13 +211,14 @@ void profile_all_interval(int s) {
       fprintf(stderr, "Error occurred polling. Aborting.\n");
       exit(1);
     }
-#endif
 
     /* Get ready to read */
     head = prof.profile_all.metadata[i]->data_head;
     tail = prof.profile_all.metadata[i]->data_tail;
     buf_size = prof.profile_all.pagesize * profopts.max_sample_pages;
     asm volatile("" ::: "memory"); /* Block after reading data_head, per perf docs */
+
+    printf("%p -> %p\n", head, tail);
 
     base = (char *)prof.profile_all.metadata[i] + prof.profile_all.pagesize;
     begin = base + tail % buf_size;
