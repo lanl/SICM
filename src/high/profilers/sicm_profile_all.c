@@ -123,7 +123,7 @@ void profile_all_init() {
   }
 
   /* mmap the perf file descriptors */
-  prof.profile_all.metadata = orig_malloc(sizeof(struct perf_event_mmap_page **) * prof.profile->num_profile_all_cpus);
+  prof.profile_all.metadata = orig_malloc(sizeof(struct perf_event_mmap_page **) * profopts.num_profile_all_cpus);
   for(n = 0; n < profopts.num_profile_all_cpus; n++) {
     prof.profile_all.metadata[n] = orig_malloc(sizeof(struct perf_event_mmap_page *) * prof.profile->num_profile_all_events);
     for(i = 0; i < prof.profile->num_profile_all_events; i++) {
