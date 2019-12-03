@@ -127,7 +127,12 @@ void profile_all_init() {
 
   /* Open all perf file descriptors */
   for(n = 0; n < profopts.num_profile_all_cpus; n++) {
-    pid = -1;
+    /* A value of -1 for both `pid` and `cpu` is not valid. */
+    if(profopts.profile_all_cpus[n] == -1) {
+      pid = 0;
+    } else {
+      pid = -1;
+    }
     cpu = profopts.profile_all_cpus[n];
     group_fd = -1;
     flags = 0;
