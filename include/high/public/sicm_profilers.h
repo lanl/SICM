@@ -67,6 +67,7 @@ typedef struct profile_all_data {
   struct perf_event_attr ***pes;
   struct perf_event_mmap_page ***metadata;
   int **fds;
+  size_t **per_cpu_total;
   size_t pagesize;
   unsigned long tid;
 } profile_all_data;

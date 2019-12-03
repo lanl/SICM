@@ -92,6 +92,13 @@ void profile_all_init() {
   prof.profile_all.tid = (unsigned long) syscall(SYS_gettid);
   prof.profile_all.pagesize = (size_t) sysconf(_SC_PAGESIZE);
 
+  /* We'll use these to store a per-cpu count of accesses. This is
+     used for making sure that each thread gets an approximately even number of accesses. */
+  prof.profile_all.per_cpu_total = malloc(sizeof(size_t *) * profopts.num_profile_all_cpus);
+  for(n = 0; n < profopts.num_profile_all_cpus; n++) {
+    prof.profile_all.per_cpu_total[n] = malloc(sizeof(size_t) * prof.profile->num_profile_all_events);
+  }
+
   /* Allocate perf structs */
   prof.profile_all.pes = orig_malloc(sizeof(struct perf_event_attr **) * profopts.num_profile_all_cpus);
   prof.profile_all.fds = orig_malloc(sizeof(int *) * profopts.num_profile_all_cpus);
@@ -195,15 +202,16 @@ void profile_all_interval(int s) {
   size_t i, n, x;
   arena_profile *aprof;
   per_event_profile_all_info *per_event_aprof;
-  size_t total_samples;
   struct pollfd pfd;
 
   /* Outer loop loops over the events */
   for(x = 0; x < profopts.num_profile_all_cpus; x++) {
     for(i = 0; i < prof.profile->num_profile_all_events; i++) {
 
+      /* Clear this CPU and event's total */
+      prof.profile_all.per_cpu_total[x][i] = 0;
+
       /* Loop over all arenas and clear their accumulators */
-      total_samples = 0;
       arena_arr_for(n) {
         prof_check_good(arena, aprof, n);
 
@@ -231,13 +239,9 @@ void profile_all_interval(int s) {
       buf_size = prof.profile_all.pagesize * profopts.max_sample_pages;
       asm volatile("" ::: "memory"); /* Block after reading data_head, per perf docs */
 
-      printf("%"PRIu64" -> %"PRIu64"\n", head, tail);
-
       base = (char *)prof.profile_all.metadata[x][i] + prof.profile_all.pagesize;
       begin = base + tail % buf_size;
       end = base + head % buf_size;
-
-      printf("===== NEW SAMPLE BATCH =====\n");
 
       /* Read all of the samples */
       pthread_rwlock_rdlock(&tracker.extents_lock);
@@ -251,14 +255,13 @@ void profile_all_interval(int s) {
         addr = (void *) (sample->addr);
 
         if(addr) {
-          printf("TID: %lu\n", (unsigned long) sample->tid);
           /* Search for which extent it goes into */
           extent_arr_for(tracker.extents, n) {
             if(!tracker.extents->arr[n].start && !tracker.extents->arr[n].end) continue;
             arena = (arena_info *)tracker.extents->arr[n].arena;
             if((addr >= tracker.extents->arr[n].start) && (addr <= tracker.extents->arr[n].end) && arena) {
               prof.profile->arenas[arena->index]->profile_all.events[i].tmp_accumulator++;
-              total_samples++;
+              prof.profile_all.per_cpu_total[x][i]++;
             }
           }
         }
@@ -272,13 +275,18 @@ void profile_all_interval(int s) {
       }
       pthread_rwlock_unlock(&tracker.extents_lock);
 
-      fflush(stdout);
-
       /* Let perf know that we've read this far */
       prof.profile_all.metadata[x][i]->data_tail = head;
       __sync_synchronize();
 
     }
+  }
+
+  for(x = 0; x < prof.profile->num_profile_all_events; x++) {
+    for(i = 0; i < profopts.num_profile_all_cpus; i++) {
+      printf("%zu ", prof.profile_all.per_cpu_total[i][x]);
+    }
+    printf("\n");
   }
 
   end_interval();
