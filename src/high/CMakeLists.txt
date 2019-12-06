@@ -24,7 +24,6 @@ target_include_directories(sicm_hotset PUBLIC ${CMAKE_SOURCE_DIR}/include/low/pu
 ####################
 #     jemalloc     #
 ####################
-find_package(Jemalloc REQUIRED)
 target_include_directories(sicm_high PRIVATE ${JEMALLOC_INCLUDE_DIR})
 target_link_libraries(sicm_high ${JEMALLOC_LIBRARIES})
 target_include_directories(sicm_dump_info PRIVATE ${JEMALLOC_INCLUDE_DIR})
