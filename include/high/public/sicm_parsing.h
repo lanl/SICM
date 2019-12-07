@@ -137,6 +137,7 @@ static application_profile *sh_parse_profiling(FILE *file) {
      0: profile_all
      1: profile_allocs
      2: profile_extent_size
+     3: profile_rss
   */
   profile_type = -1;
 
@@ -347,7 +348,7 @@ static application_profile *sh_parse_profiling(FILE *file) {
        2. An array of interval values
        3. The end of this profiling block
     */
-    } else if((depth == 3) && (profile_type == 2)) {
+    } else if((depth == 3) && (profile_type == 3)) {
       if(strcmp(line, "  END PROFILE_RSS\n") == 0) {
         /* Up in depth */
         depth = 2;
