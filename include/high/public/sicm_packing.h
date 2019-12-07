@@ -25,7 +25,8 @@
 static char sh_verbose_flag = 0;  /* 0 for not verbose, 1 for verbose */
 static char sh_value_flag = 0;    /* 0 for profile_all */
 static char sh_weight_flag = 0;   /* 0 for profile_allocs,
-                                     1 for profile_extent_size */
+                                     1 for profile_extent_size,
+                                     2 for profile_rss */
 static char sh_algo_flag = 0;     /* 0 for hotset */
 static char sh_sort_flag = 0;     /* 0 for `value_per_weight`,
                                      1 for `value`,
@@ -67,6 +68,8 @@ static size_t get_weight(arena_profile *aprof) {
     weight = aprof->profile_allocs.peak;
   } else if(sh_weight_flag == 1) {
     weight = aprof->profile_extent_size.peak;
+  } else if(sh_weight_flag == 2) {
+    weight = aprof->profile_rss.peak;
   } else {
     fprintf(stderr, "Invalid weight type detected. Aborting.\n");
     exit(1);
@@ -390,6 +393,8 @@ static void sh_packing_init(application_profile *info, char **value, char **even
     sh_weight_flag = 0;
   } else if(strcmp(*weight, "profile_extent_size") == 0) {
     sh_weight_flag = 1;
+  } else if(strcmp(*weight, "profile_rss") == 0) {
+    sh_weight_flag = 2;
   } else {
     fprintf(stderr, "Type of weight profiling not recognized. Aborting.\n");
     exit(1);

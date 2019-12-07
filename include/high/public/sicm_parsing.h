@@ -67,6 +67,18 @@ static void sh_print_profiling(application_profile *info, FILE *file) {
       }
       fprintf(file, "  END PROFILE_ALLOCS\n");
     }
+    if(profopts.should_profile_rss) {
+      fprintf(file, "  BEGIN PROFILE_RSS\n");
+      fprintf(file, "    Peak: %zu\n", aprof->profile_rss.peak);
+      if(profopts.should_print_intervals) {
+        fprintf(file, "    Intervals: ");
+        for(x = 0; x < aprof->num_intervals; x++) {
+          fprintf(file, "%zu ", aprof->profile_rss.intervals[x]);
+        }
+        fprintf(file, "\n");
+      }
+      fprintf(file, "  END PROFILE_RSS\n");
+    }
     if(profopts.should_profile_extent_size) {
       fprintf(file, "  BEGIN PROFILE_EXTENT_SIZE\n");
       fprintf(file, "    Peak: %zu\n", aprof->profile_extent_size.peak);
@@ -229,6 +241,9 @@ static application_profile *sh_parse_profiling(FILE *file) {
       } else if(strcmp(line, "  BEGIN PROFILE_EXTENT_SIZE\n") == 0) {
         depth = 3;
         profile_type = 2;
+      } else if(strcmp(line, "  BEGIN PROFILE_RSS\n") == 0) {
+        depth = 3;
+        profile_type = 3;
       } else {
         fprintf(stderr, "Didn't recognize a line in the profiling information at depth %d. Aborting.\n", depth);
         fprintf(stderr, "Line: %s\n", line);
@@ -317,6 +332,38 @@ static application_profile *sh_parse_profiling(FILE *file) {
             exit(1);
           }
           cur_arena->profile_extent_size.intervals[i] = tmp_sizet;
+          tmpline += tmp_int;
+          i++;
+        }
+      } else {
+        fprintf(stderr, "Didn't recognize a line in the profiling information at depth %d. Aborting.\n", depth);
+        fprintf(stderr, "Line: %s\n", line);
+        exit(1);
+      }
+
+    /* PROFILE_RSS.
+       Looking for:
+       1. A peak
+       2. An array of interval values
+       3. The end of this profiling block
+    */
+    } else if((depth == 3) && (profile_type == 2)) {
+      if(strcmp(line, "  END PROFILE_RSS\n") == 0) {
+        /* Up in depth */
+        depth = 2;
+      } else if(sscanf(line, "    Peak: %zu\n", &tmp_sizet)) {
+        cur_arena->profile_rss.peak = tmp_sizet;
+      } else if(strncmp(line, "    Intervals: ", 17) == 0) {
+        sscanf(line, "    Intervals: %n", &tmp_int);
+        tmpline = line;
+        tmpline = tmpline + tmp_int;
+        i = 0;
+        while(sscanf(tmpline, "%zu %n", &tmp_sizet, &tmp_int) > 0) {
+          if(i == cur_arena->num_intervals) {
+            fprintf(stderr, "There were too many intervals specified. Aborting.\n");
+            exit(1);
+          }
+          cur_arena->profile_rss.intervals[i] = tmp_sizet;
           tmpline += tmp_int;
           i++;
         }
