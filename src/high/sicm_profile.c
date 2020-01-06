@@ -179,6 +179,18 @@ void profile_master_interval(int s) {
   } else {
     /* If we're not separating the profiling threads, just call these functions
      * from the current thread. */
+    for(i = 0; i < prof.num_profile_threads; i++) {
+      profthread = &prof.profile_threads[i];
+      if(profthread->skipped_intervals == (profthread->skip_intervals - 1)) {
+        /* This thread doesn't get skipped */
+        (*profthread->interval_func)(0);
+        profthread->skipped_intervals = 0;
+      } else {
+        /* This thread gets skipped */
+        (*profthread->skip_interval_func)(0);
+        profthread->skipped_intervals++;
+      }
+    }
     if(profopts.should_profile_all) {
       profile_all_interval(0);
     }
@@ -299,31 +311,35 @@ void setup_profile_thread(void *(*main)(void *), /* Spinning loop function */
   prof.profile_threads = orig_realloc(prof.profile_threads, sizeof(profile_thread) * prof.num_profile_threads);
   profthread = &(prof.profile_threads[prof.num_profile_threads - 1]);
 
-  /* Start the thread */
-  pthread_create(&(profthread->id), NULL, main, NULL);
+  if(profopts.should_profile_separate_threads) {
+    /* Start the thread */
+    pthread_create(&(profthread->id), NULL, main, NULL);
 
-  /* Set up the signal handler */
-  profthread->signal = global_signal;
-	sa.sa_flags = 0;
-  sa.sa_handler = interval;
-  sigemptyset(&sa.sa_mask);
-  if(sigaction(profthread->signal, &sa, NULL) == -1) {
-    fprintf(stderr, "Error creating signal handler for signal %d. Aborting: %s\n", profthread->signal, strerror(errno));
-    exit(1);
+    /* Set up the signal handler */
+    profthread->signal = global_signal;
+  	sa.sa_flags = 0;
+    sa.sa_handler = interval;
+    sigemptyset(&sa.sa_mask);
+    if(sigaction(profthread->signal, &sa, NULL) == -1) {
+      fprintf(stderr, "Error creating signal handler for signal %d. Aborting: %s\n", profthread->signal, strerror(errno));
+      exit(1);
+    }
+    global_signal++;
+
+    /* Set up the signal handler for what gets called if we're skipping this interval */
+    profthread->skip_signal = global_signal;
+  	sa.sa_flags = 0;
+    sa.sa_handler = skip_interval;
+    sigemptyset(&sa.sa_mask);
+    if(sigaction(profthread->skip_signal, &sa, NULL) == -1) {
+      fprintf(stderr, "Error creating signal handler for signal %d. Aborting: %s\n", profthread->skip_signal, strerror(errno));
+      exit(1);
+    }
+    global_signal++;
   }
-  global_signal++;
 
-  /* Set up the signal handler for what gets called if we're skipping this interval */
-  profthread->skip_signal = global_signal;
-	sa.sa_flags = 0;
-  sa.sa_handler = skip_interval;
-  sigemptyset(&sa.sa_mask);
-  if(sigaction(profthread->skip_signal, &sa, NULL) == -1) {
-    fprintf(stderr, "Error creating signal handler for signal %d. Aborting: %s\n", profthread->skip_signal, strerror(errno));
-    exit(1);
-  }
-  global_signal++;
-
+  profthread->interval_func = interval;
+  profthread->skip_interval_func = skip_interval;
   profthread->skipped_intervals = 0;
   profthread->skip_intervals = skip_intervals;
 }
@@ -341,38 +357,35 @@ void *profile_master(void *a) {
   sigset_t mask;
   pid_t tid;
 
-  if(profopts.should_profile_separate_threads) {
-    /* Only do this if we're running every profiling thread in a separate pthread. */
-    if(profopts.should_profile_all) {
-      setup_profile_thread(&profile_all,
-                           &profile_all_interval,
-                           &profile_all_skip_interval,
-                           profopts.profile_all_skip_intervals);
-    }
-    if(profopts.should_profile_rss) {
-      setup_profile_thread(&profile_rss,
-                           &profile_rss_interval,
-                           &profile_rss_skip_interval,
-                           profopts.profile_rss_skip_intervals);
-    }
-    if(profopts.should_profile_extent_size) {
-      setup_profile_thread(&profile_extent_size,
-                           &profile_extent_size_interval,
-                           &profile_extent_size_skip_interval,
-                           profopts.profile_extent_size_skip_intervals);
-    }
-    if(profopts.should_profile_allocs) {
-      setup_profile_thread(&profile_allocs,
-                           &profile_allocs_interval,
-                           &profile_allocs_skip_interval,
-                           profopts.profile_allocs_skip_intervals);
-    }
-    if(profopts.should_profile_online) {
-      setup_profile_thread(&profile_online,
-                           &profile_online_interval,
-                           &profile_online_skip_interval,
-                           profopts.profile_online_skip_intervals);
-    }
+  if(profopts.should_profile_all) {
+    setup_profile_thread(&profile_all,
+                          &profile_all_interval,
+                          &profile_all_skip_interval,
+                          profopts.profile_all_skip_intervals);
+  }
+  if(profopts.should_profile_rss) {
+    setup_profile_thread(&profile_rss,
+                          &profile_rss_interval,
+                          &profile_rss_skip_interval,
+                          profopts.profile_rss_skip_intervals);
+  }
+  if(profopts.should_profile_extent_size) {
+    setup_profile_thread(&profile_extent_size,
+                          &profile_extent_size_interval,
+                          &profile_extent_size_skip_interval,
+                          profopts.profile_extent_size_skip_intervals);
+  }
+  if(profopts.should_profile_allocs) {
+    setup_profile_thread(&profile_allocs,
+                          &profile_allocs_interval,
+                          &profile_allocs_skip_interval,
+                          profopts.profile_allocs_skip_intervals);
+  }
+  if(profopts.should_profile_online) {
+    setup_profile_thread(&profile_online,
+                          &profile_online_interval,
+                          &profile_online_skip_interval,
+                          profopts.profile_online_skip_intervals);
   }
 
   /* Initialize synchronization primitives */
