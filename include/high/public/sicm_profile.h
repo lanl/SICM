@@ -51,8 +51,8 @@ typedef struct profile_thread {
   int signal, skip_signal;
   unsigned long skip_intervals; /* Number of intervals we should skip */
   unsigned long skipped_intervals; /* Number of intervals we have skipped */
-  void (*interval_func)(int), /* Per-interval function */
-  void (*skip_interval_func)(int), /* Per-interval skip function */
+  void (*interval_func)(int); /* Per-interval function */
+  void (*skip_interval_func)(int); /* Per-interval skip function */
 } profile_thread;
 
 typedef struct profiler {
