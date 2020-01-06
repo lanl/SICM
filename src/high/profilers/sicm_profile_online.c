@@ -95,8 +95,8 @@ void profile_online_interval(int s) {
         fprintf(profopts.profile_online_output_file, "  Upper avail: %zu\n", upper_avail);
         fprintf(profopts.profile_online_output_file, "  Lower avail: %zu\n", lower_avail);
         fprintf(profopts.profile_online_output_file, "  Sites: ");
-        tree_traverse(hotset, sit) {
-          fprintf(profopts.profile_online_output_file, "%d ", tree_it_key(sit));
+        tree_traverse(hotset, new) {
+          fprintf(profopts.profile_online_output_file, "%d ", tree_it_key(new));
         }
         fprintf(profopts.profile_online_output_file, "\n");
       }
