@@ -94,6 +94,11 @@ void profile_online_interval(int s) {
         fprintf(profopts.profile_online_output_file, "===== BEGIN RECONFIGURE %d =====\n", prof.profile_online.num_reconfigures);
         fprintf(profopts.profile_online_output_file, "  Upper avail: %zu\n", upper_avail);
         fprintf(profopts.profile_online_output_file, "  Lower avail: %zu\n", lower_avail);
+        fprintf(profopts.profile_online_output_file, "  Sites: ");
+        tree_traverse(hotset, sit) {
+          fprintf(profopts.profile_online_output_file, "%d ", tree_it_key(sit));
+        }
+        fprintf(profopts.profile_online_output_file, "\n");
       }
     }
 
