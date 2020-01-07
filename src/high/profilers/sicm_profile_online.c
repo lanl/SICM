@@ -104,6 +104,21 @@ void profile_online_interval(int s) {
           fprintf(profopts.profile_online_output_file, "%d ", tree_it_val(sit));
         }
         fprintf(profopts.profile_online_output_file, "\n");
+        fprintf(profopts.profile_online_output_file, "  Values: ");
+        tree_traverse(merged_sorted_sites, sit) {
+          fprintf(profopts.profile_online_output_file, "%zu ", tree_it_key(sit)->value);
+        }
+        fprintf(profopts.profile_online_output_file, "\n");
+        fprintf(profopts.profile_online_output_file, "  Weights: ");
+        tree_traverse(merged_sorted_sites, sit) {
+          fprintf(profopts.profile_online_output_file, "%zu ", tree_it_key(sit)->weight);
+        }
+        fprintf(profopts.profile_online_output_file, "\n");
+        fprintf(profopts.profile_online_output_file, "  V/W: ");
+        tree_traverse(merged_sorted_sites, sit) {
+          fprintf(profopts.profile_online_output_file, "%lf ", tree_it_key(sit)->value_per_weight);
+        }
+        fprintf(profopts.profile_online_output_file, "\n");
       }
     }
 
