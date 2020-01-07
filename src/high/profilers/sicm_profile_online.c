@@ -98,6 +98,7 @@ void profile_online_interval(int s) {
         tree_traverse(hotset, new) {
           fprintf(profopts.profile_online_output_file, "%d ", tree_it_key(new));
         }
+        fprintf(profopts.profile_online_output_file, "\n");
         fprintf(profopts.profile_online_output_file, "  Sorted sites: ");
         tree_traverse(merged_sorted_sites, sit) {
           fprintf(profopts.profile_online_output_file, "%d ", tree_it_val(sit));
