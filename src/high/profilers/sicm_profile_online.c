@@ -30,11 +30,12 @@ void *profile_online(void *a) {
 }
 
 void profile_online_interval(int s) {
-  size_t i, n, upper_avail, lower_avail, num_rebinds;
+  size_t i, n, upper_avail, lower_avail, num_rebinds,
+         total_value;
   arena_info *arena;
   arena_profile *aprof;
   struct sicm_device_list *dl;
-  char will_rebind;
+  char will_rebind, past_grace_period;
 
   /* Trees store site information, value is the site ID */
   tree(site_info_ptr, int) sorted_sites;
@@ -122,7 +123,19 @@ void profile_online_interval(int s) {
       }
     }
 
-    if(!profopts.profile_online_nobind) {
+    /* Calculate how much total value is distributed across the sites. Just checks to make sure
+       there's enough to get out of the grace period. */
+    past_grace_period = 0;
+    total_value = 0;
+    tree_traverse(merged_sorted_sites, sit) {
+      total_value += tree_it_key(sit)->value;
+      if(total_value >= profopts.profile_online_grace_accesses) {
+        past_grace_period = 1;
+        break;
+      }
+    }
+
+    if(!profopts.profile_online_nobind && past_grace_period) {
       /* Iterate over all of the sites. Rebind if:
          1. A site wasn't in the previous hotset, but is in the current one.
          2. A site was in the previous hotset, but now isn't. */

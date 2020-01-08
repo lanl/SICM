@@ -179,6 +179,14 @@ void set_options() {
       }
     }
 
+    /* Grace period at the beginning of a run. Until this number of profiling accesses is reached,
+       the profile_online won't rebind any sites. */
+    env = getenv("SH_PROFILE_ONLINE_GRACE_ACCESSES");
+    profopts.profile_online_grace_accesses = 0;
+    if(env) {
+      profopts.profile_online_grace_accesses = strtoul(env, NULL, 0);
+    }
+
     /* Purely to measure the overhead of the online approach without doing any special binding */
     env = getenv("SH_PROFILE_ONLINE_NOBIND");
     profopts.profile_online_nobind = 0;

@@ -183,6 +183,7 @@ typedef struct profiling_options {
   char profile_online_nobind;
   float profile_online_last_iter_value;
   float profile_online_last_iter_weight;
+  unsigned long profile_online_grace_accesses;
 
   /* The device to profile bandwidth on */
   deviceptr profile_one_device;
