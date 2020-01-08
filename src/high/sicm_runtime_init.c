@@ -241,6 +241,7 @@ void set_options() {
       fprintf(tracker.log_file, "SH_PROFILE_ONLINE_EVENT: %s\n", profopts.profile_online_event);
     }
     fprintf(tracker.log_file, "SH_PROFILE_ONLINE_USE_LAST_INTERVAL: %d\n", profopts.profile_online_use_last_interval);
+    fprintf(tracker.log_file, "SH_PROFILE_ONLINE_GRACE_ACCESSES: %lu\n", profopts.profile_online_grace_accesses);
   }
 
   env = getenv("SH_TRACK_SITE");
