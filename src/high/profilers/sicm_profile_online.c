@@ -165,6 +165,12 @@ void profile_online_interval(int s) {
           }
         }
       }
+    } else {
+      if(profopts.profile_online_output_file) {
+        fprintf(profopts.profile_online_output_file, "Not rebinding any sites: ");
+        fprintf(profopts.profile_online_output_file, "%d ", profopts.profile_online_nobind);
+        fprintf(profopts.profile_online_output_file, "%d\n", past_grace_period);
+      }
     }
 
     if(profopts.profile_online_output_file && will_rebind) {
