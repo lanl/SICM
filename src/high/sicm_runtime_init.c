@@ -165,7 +165,8 @@ void set_options() {
   env = getenv("SH_PROFILE_ONLINE");
   profopts.should_profile_online = 0;
   profopts.profile_online_skip_intervals = 0;
-  profopts.profile_online_event = NULL;
+  profopts.profile_online_events = NULL;
+  profopts.num_profile_online_events = 0;
   if(env) {
     profopts.should_profile_online = 1;
 
@@ -245,8 +246,10 @@ void set_options() {
   if(tracker.log_file) {
     fprintf(tracker.log_file, "SH_PROFILE_ONLINE: %d\n", profopts.should_profile_online);
     fprintf(tracker.log_file, "SH_PROFILE_ONLINE_SKIP_INTERVALS: %d\n", profopts.profile_online_skip_intervals);
-    if(profopts.profile_online_event) {
-      fprintf(tracker.log_file, "SH_PROFILE_ONLINE_EVENTS: %s\n", profopts.profile_online_events);
+    if(profopts.num_profile_online_events) {
+      for(i = 0; i < profopts.num_profile_online_events; i++) {
+        fprintf(tracker.log_file, "SH_PROFILE_ONLINE_EVENT: %s\n", profopts.profile_online_events[i]);
+      }
     }
     fprintf(tracker.log_file, "SH_PROFILE_ONLINE_USE_LAST_INTERVAL: %d\n", profopts.profile_online_use_last_interval);
     fprintf(tracker.log_file, "SH_PROFILE_ONLINE_GRACE_ACCESSES: %lu\n", profopts.profile_online_grace_accesses);
