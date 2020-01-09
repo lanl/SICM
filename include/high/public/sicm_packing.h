@@ -330,7 +330,7 @@ static tree(int, site_info_ptr) sh_get_hot_sites(tree(site_info_ptr, int) site_t
 /* Initializes this packing library, sets all of the globals above. Some of the char ** pointers can be pointers to NULL,
    in which case this function will fill them in with a default value. */
 static void sh_packing_init(application_profile *info, char **value, char **events, size_t num_events, char **weight, char **algo, char **sort, char verbose) {
-  size_t i;
+  size_t i, n;
 
   if(!info) {
     fprintf(stderr, "Can't initialize the packing library without some profiling information. Aborting.\n");
