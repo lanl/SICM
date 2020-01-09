@@ -389,7 +389,7 @@ static void sh_packing_init(application_profile *info, char **value, char **even
         }
       }
       if(sh_num_value_event_indices != num_events) {
-        fprintf(stderr, "Unable to find the event '%s' in the profiling. Aborting.\n", event);
+        fprintf(stderr, "Unable to find an event in the profiling. Aborting.\n");
         exit(1);
       }
     }
