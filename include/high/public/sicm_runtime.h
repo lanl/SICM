@@ -179,7 +179,8 @@ typedef struct profiling_options {
   FILE *profile_online_output_file; /* For the verbose online approach */
 
   /* Online */
-  char *profile_online_event;
+  size_t num_profile_online_events;
+  char **profile_online_events; /* Array of strings of events */
   char profile_online_nobind;
   float profile_online_last_iter_value;
   float profile_online_last_iter_weight;

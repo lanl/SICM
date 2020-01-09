@@ -285,6 +285,7 @@ void profile_all_interval(int s) {
             arena = (arena_info *)tracker.extents->arr[n].arena;
             if((addr >= tracker.extents->arr[n].start) && (addr <= tracker.extents->arr[n].end) && arena) {
               prof.profile->arenas[arena->index]->profile_all.events[i].tmp_accumulator++;
+              prof.profile->arenas[arena->index]->profile_all.events[i].total++;
               prof.profile_all.per_cpu_total[x][i]++;
             }
           }

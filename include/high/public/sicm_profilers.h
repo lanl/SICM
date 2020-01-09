@@ -29,8 +29,7 @@ union pfn_t {
   } obj;
 };
 typedef struct per_event_profile_all_info {
-  size_t total, peak, *intervals,
-         tmp_accumulator;
+  size_t total, peak, tmp_accumulator, *intervals;
 } per_event_profile_all_info;
 void sh_get_event();
 

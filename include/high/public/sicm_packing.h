@@ -31,7 +31,8 @@ static char sh_algo_flag = 0;     /* 0 for hotset */
 static char sh_sort_flag = 0;     /* 0 for `value_per_weight`,
                                      1 for `value`,
                                      2 for `weight` */
-static size_t sh_value_event_index = SIZE_MAX; /* Index into the array of events to use for value */
+static size_t *sh_value_event_indices = NULL; /* Index into the array of events to use for value */
+static size_t sh_num_value_event_indices = 0;
 
 typedef struct site_profile_info {
   size_t value, weight;
@@ -48,10 +49,13 @@ use_tree(int, site_info_ptr);
 
 /* Gets a value from the given arena_profile */
 static size_t get_value(arena_profile *aprof) {
-  size_t value;
+  size_t value, i;
 
+  value = 0;
   if(sh_value_flag == 0) {
-    value = aprof->profile_all.events[sh_value_event_index].total;
+    for(i = 0; i < sh_num_value_event_indices; i++) {
+      value += aprof->profile_all.events[sh_value_event_indices[i]].total;
+    }
   } else {
     fprintf(stderr, "Invalid value type detected. Aborting.\n");
     exit(1);
@@ -325,7 +329,7 @@ static tree(int, site_info_ptr) sh_get_hot_sites(tree(site_info_ptr, int) site_t
 
 /* Initializes this packing library, sets all of the globals above. Some of the char ** pointers can be pointers to NULL,
    in which case this function will fill them in with a default value. */
-static void sh_packing_init(application_profile *info, char **value, char **event, char **weight, char **algo, char **sort, char verbose) {
+static void sh_packing_init(application_profile *info, char **value, char **events, size_t num_events, char **weight, char **algo, char **sort, char verbose) {
   size_t i;
 
   if(!info) {
@@ -361,24 +365,30 @@ static void sh_packing_init(application_profile *info, char **value, char **even
 
   /* Figure out which index the chosen event is */
   if(sh_value_flag == 0) {
-    if(*event == NULL) {
+    if(*events == NULL) {
       /* Just grab the first event in the value's list of events */
       if(info->num_profile_all_events) {
-        *event = orig_malloc((strlen(info->profile_all_events[0]) + 1) * sizeof(char));
-        strcpy(*event, info->profile_all_events[0]);
-        sh_value_event_index = 0;
+        events[0] = orig_malloc((strlen(info->profile_all_events[0]) + 1) * sizeof(char));
+        strcpy(events[0], info->profile_all_events[0]);
+        sh_num_value_event_indices = 1;
+        sh_value_event_indices = malloc(sizeof(size_t));
+        sh_value_event_indices[0] = 0;
       } else {
         fprintf(stderr, "The chosen value profiling has no events to default to. Aborting.\n");
         exit(1);
       }
     } else {
       /* The user specified an event, so try to find that specific one */
-      for(i = 0; i < info->num_profile_all_events; i++) {
-        if(strcmp(*event, info->profile_all_events[i]) == 0) {
-          sh_value_event_index = i;
+      for(i = 0; i < num_events; i++) {
+        for(n = 0; n < info->num_profile_all_events; n++) {
+          if(strcmp(events[i], info->profile_all_events[n]) == 0) {
+            sh_num_value_event_indices++;
+            sh_value_event_indices = realloc(sh_value_event_indices, sizeof(size_t) * sh_num_value_event_indices);
+            sh_value_event_indices[sh_num_value_event_indices - 1] = n;
+          }
         }
       }
-      if(sh_value_event_index == SIZE_MAX) {
+      if(sh_num_value_event_indices != num_events) {
         fprintf(stderr, "Unable to find the event '%s' in the profiling. Aborting.\n", event);
         exit(1);
       }
@@ -427,7 +437,9 @@ static void sh_packing_init(application_profile *info, char **value, char **even
   if(sh_verbose_flag) {
     printf("Finished initializing the packing library with the following parameters:\n");
     printf("  Value: %s\n", *value);
-    printf("  Event: %s, index %zu\n", *event, sh_value_event_index);
+    for(i = 0; i < sh_num_value_event_indices; i++) {
+      printf("  Event: '%s', index %zu\n", sh_value_event_indices[i], i);
+    }
     printf("  Weight: %s\n", *weight);
     printf("  Algorithm: %s\n", *algo);
     printf("  Sorting Type: %s\n", *sort);

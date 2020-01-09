@@ -206,7 +206,7 @@ void profile_online_interval(int s) {
 }
 
 void profile_online_init() {
-  size_t i;
+  size_t i, n;
   char found;
   char *weight;
   char *value;
@@ -236,17 +236,18 @@ void profile_online_init() {
   value = malloc((strlen("profile_all") + 1) * sizeof(char));
   strcpy(value, "profile_all");
 
-  /* Find the event string and index. The event was required to be set at initialization. */
+  /* Find the event string and make sure that the event is available. */
   found = 0;
-  for(i = 0; i < prof.profile->num_profile_all_events; i++) {
-    if(strcmp(prof.profile->profile_all_events[i], profopts.profile_online_event) == 0) {
-      found = 1;
-      prof.profile_online.profile_online_event_index = i;
-      break;
+  for(i = 0; i < profopts.num_profile_online_events; i++) {
+    for(n = 0; n < prof.profile->num_profile_all_events; n++) {
+      if(strcmp(prof.profile->profile_all_events[n], profopts.profile_online_events[i]) == 0) {
+        found++;
+        break;
+      }
     }
   }
-  if(!found) {
-    fprintf(stderr, "Event specified in SH_PROFILE_ONLINE_EVENT is not listed in SH_PROFILE_ALL_EVENTS. Aborting.\n");
+  if(found != profopts.num_profile_online_events) {
+    fprintf(stderr, "At least one of the events in SH_PROFILE_ONLINE_EVENTS wasn't found in SH_PROFILE_ALL_EVENTS. Aborting.\n");
     exit(1);
   }
 
@@ -263,7 +264,8 @@ void profile_online_init() {
     prof.profile_online.last_iter_profile = sh_parse_profiling(profopts.profile_input_file);
     sh_packing_init(prof.profile_online.last_iter_profile,
                     &value,
-                    &profopts.profile_all_events[prof.profile_online.profile_online_event_index],
+                    profopts.profile_online_events,
+                    profopts.num_profile_online_events,
                     &weight,
                     &algo,
                     &sort,
@@ -272,7 +274,8 @@ void profile_online_init() {
   } else {
     sh_packing_init(prof.profile,
                     &value,
-                    &profopts.profile_all_events[prof.profile_online.profile_online_event_index],
+                    profopts.profile_online_events,
+                    profopts.num_profile_online_events,
                     &weight,
                     &algo,
                     &sort,

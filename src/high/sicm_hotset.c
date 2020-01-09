@@ -50,7 +50,7 @@ int main(int argc, char **argv) {
   char *weight = NULL;
   char *algo = NULL;
   char *sort = NULL;
-  char *event = NULL;
+  char *events = NULL;
   double scale = 0.0;
 
   /* The profiling information, as parsed by sicm_parsing.h. */
@@ -83,8 +83,8 @@ int main(int argc, char **argv) {
         break;
       case 'e':
         /* event */
-        event = malloc((strlen(optarg) + 1) * sizeof(char));
-        strcpy(event, optarg);
+        events = malloc((strlen(optarg) + 1) * sizeof(char));
+        strcpy(events, optarg);
         break;
       case 'w':
         /* weight */
@@ -142,7 +142,7 @@ int main(int argc, char **argv) {
   info = sh_parse_profiling(stdin);
 
   /* Initialize the global options */
-  sh_packing_init(info, &value, &event, &weight, &algo, &sort, verbose);
+  sh_packing_init(info, &value, &events, 1, &weight, &algo, &sort, verbose);
 
   /* For the sake of simplicity, convert the parsed profiling information into simpler trees */
   site_tree = sh_convert_to_site_tree(info);
@@ -164,7 +164,7 @@ int main(int argc, char **argv) {
   /* Print debugging information about how we generated this guidance file
      Here, we'll assume all of these values are valid, so no errors. */
   printf("Value profiling type: %s\n", value);
-  printf("Value event: %s\n", event);
+  printf("Value event: %s\n", events);
   printf("Weight profiling type: %s\n", weight);
   printf("Capacity that we packed into: %ju\n", capacity);
   printf("NUMA node: %ld\n", node);

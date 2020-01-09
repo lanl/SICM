@@ -200,13 +200,21 @@ void set_options() {
       profopts.profile_online_skip_intervals = strtoul(env, NULL, 0);
     }
 
-    env = getenv("SH_PROFILE_ONLINE_EVENT");
-    profopts.profile_online_event = NULL;
+    env = getenv("SH_PROFILE_ONLINE_EVENTS");
+    profopts.num_profile_online_events = 0;
+    profopts.profile_online_events = NULL;
     if(env) {
-      profopts.profile_online_event = orig_malloc(sizeof(char) * (strlen(env) + 1));
-      strcpy(profopts.profile_online_event, env);
-    } else {
-      fprintf(stderr, "SH_PROFILE_ONLINE requires an event to be specified. Aborting.\n");
+      /* Parse out the events into an array */
+      while((str = strtok(env, ",")) != NULL) {
+        profopts.num_profile_online_events++;
+        profopts.profile_online_events = orig_realloc(profopts.profile_online_events, sizeof(char *) * profopts.num_profile_online_events);
+        profopts.profile_online_events[profopts.num_profile_online_events - 1] = orig_malloc(sizeof(char) * (strlen(str) + 1));
+        strcpy(profopts.profile_online_events[profopts.num_profile_online_events - 1], str);
+        env = NULL;
+      }
+    }
+    if(profopts.num_profile_online_events == 0) {
+      fprintf(stderr, "No online events given. Can't proceed. Aborting.\n");
       exit(1);
     }
 
@@ -238,7 +246,7 @@ void set_options() {
     fprintf(tracker.log_file, "SH_PROFILE_ONLINE: %d\n", profopts.should_profile_online);
     fprintf(tracker.log_file, "SH_PROFILE_ONLINE_SKIP_INTERVALS: %d\n", profopts.profile_online_skip_intervals);
     if(profopts.profile_online_event) {
-      fprintf(tracker.log_file, "SH_PROFILE_ONLINE_EVENT: %s\n", profopts.profile_online_event);
+      fprintf(tracker.log_file, "SH_PROFILE_ONLINE_EVENTS: %s\n", profopts.profile_online_events);
     }
     fprintf(tracker.log_file, "SH_PROFILE_ONLINE_USE_LAST_INTERVAL: %d\n", profopts.profile_online_use_last_interval);
     fprintf(tracker.log_file, "SH_PROFILE_ONLINE_GRACE_ACCESSES: %lu\n", profopts.profile_online_grace_accesses);
