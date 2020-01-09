@@ -22,7 +22,7 @@ class SicmHigh(CMakePackage):
     depends_on('jemalloc@5.2.0+je')
     #depends_on('jemalloc@5.1.0+je')
     depends_on('numactl')
-    depends_on('libpfm4')
+    depends_on('libpfm4@develop')
 
     def cmake_args(self):
         args = ['-DSICM_BUILD_HIGH_LEVEL=True']
