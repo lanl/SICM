@@ -180,6 +180,19 @@ void set_options() {
       }
     }
 
+    env = getenv("SH_PROFILE_ONLINE_WEIGHTS");
+    profopts.profile_online_weights = NULL;
+    profopts.num_profile_online_weights = 0;
+    if(env) {
+      /* Parse out the events into an array */
+      while((str = strtok(env, ",")) != NULL) {
+        profopts.num_profile_online_weights++;
+        profopts.profile_online_weights = orig_realloc(profopts.profile_online_weights, sizeof(float) * profopts.num_profile_online_weights);
+        profopts.profile_online_weights[profopts.num_profile_online_weights - 1] = strtof(str, NULL);
+        env = NULL;
+      }
+    }
+
     /* Grace period at the beginning of a run. Until this number of profiling accesses is reached,
        the profile_online won't rebind any sites. */
     env = getenv("SH_PROFILE_ONLINE_GRACE_ACCESSES");

@@ -269,6 +269,7 @@ void profile_online_init() {
                     &weight,
                     &algo,
                     &sort,
+                    profopts.profile_online_weights,
                     profopts.profile_online_debug);
     prof.profile_online.last_iter_sorted_sites = sh_convert_to_site_tree(prof.profile_online.last_iter_profile);
   } else {
@@ -279,6 +280,7 @@ void profile_online_init() {
                     &weight,
                     &algo,
                     &sort,
+                    profopts.profile_online_weights,
                     profopts.profile_online_debug);
   }
 

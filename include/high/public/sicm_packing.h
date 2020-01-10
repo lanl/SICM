@@ -33,6 +33,7 @@ static char sh_sort_flag = 0;     /* 0 for `value_per_weight`,
                                      2 for `weight` */
 static size_t *sh_value_event_indices = NULL; /* Index into the array of events to use for value */
 static size_t sh_num_value_event_indices = 0;
+static float *sh_weights = NULL; /* Array of floats to multiply each event's value by */
 
 typedef struct site_profile_info {
   size_t value, weight;
@@ -54,7 +55,7 @@ static size_t get_value(arena_profile *aprof) {
   value = 0;
   if(sh_value_flag == 0) {
     for(i = 0; i < sh_num_value_event_indices; i++) {
-      value += aprof->profile_all.events[sh_value_event_indices[i]].total;
+      value += aprof->profile_all.events[sh_value_event_indices[i]].total * sh_weights[i];
     }
   } else {
     fprintf(stderr, "Invalid value type detected. Aborting.\n");
@@ -329,7 +330,15 @@ static tree(int, site_info_ptr) sh_get_hot_sites(tree(site_info_ptr, int) site_t
 
 /* Initializes this packing library, sets all of the globals above. Some of the char ** pointers can be pointers to NULL,
    in which case this function will fill them in with a default value. */
-static void sh_packing_init(application_profile *info, char **value, char **events, size_t num_events, char **weight, char **algo, char **sort, char verbose) {
+static void sh_packing_init(application_profile *info,
+                            char **value, /* A pointer to a string that's what type of profiling to use for determining the value */
+                            char **events,
+                            size_t num_events,
+                            char **weight,
+                            char **algo,
+                            char **sort,
+                            float *weights, /* Array of floats (same size as num_events) to multiply each events' values by */
+                            char verbose) {
   size_t i, n;
 
   if(!info) {
@@ -361,6 +370,18 @@ static void sh_packing_init(application_profile *info, char **value, char **even
   } else {
     fprintf(stderr, "Type of value profiling (%s) not recognized. Aborting.\n", *value);
     exit(1);
+  }
+
+  /* Copy the array of floats into the global pointer */
+  sh_weights = malloc(sizeof(float) * num_events);
+  if(weights) {
+    for(i = 0; i < num_events; i++) {
+      sh_weights[i] = weights[i];
+    }
+  } else {
+    for(i = 0; i < num_events; i++) {
+      sh_weights[i] = 1.0;
+    }
   }
 
   /* Figure out which index the chosen event is */

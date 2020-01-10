@@ -181,6 +181,8 @@ typedef struct profiling_options {
   /* Online */
   size_t num_profile_online_events;
   char **profile_online_events; /* Array of strings of events */
+  size_t num_profile_online_weights;
+  float *profile_online_weights;
   char profile_online_nobind;
   float profile_online_last_iter_value;
   float profile_online_last_iter_weight;
