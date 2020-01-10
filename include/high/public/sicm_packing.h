@@ -55,8 +55,10 @@ static size_t get_value(arena_profile *aprof) {
   value = 0;
   if(sh_value_flag == 0) {
     for(i = 0; i < sh_num_value_event_indices; i++) {
-      value += aprof->profile_all.events[sh_value_event_indices[i]].total * sh_weights[i];
+      value += (aprof->profile_all.events[sh_value_event_indices[i]].total * sh_weights[i]);
+      printf("(%zu * %f) ", aprof->profile_all.events[sh_value_event_indices[i]].total, sh_weights[i]);
     }
+    printf("= %zu\n", value);
   } else {
     fprintf(stderr, "Invalid value type detected. Aborting.\n");
     exit(1);
