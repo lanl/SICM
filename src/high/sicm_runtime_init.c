@@ -264,6 +264,12 @@ void set_options() {
         fprintf(tracker.log_file, "SH_PROFILE_ONLINE_EVENT: %s\n", profopts.profile_online_events[i]);
       }
     }
+    if(profopts.num_profile_online_weights) {
+      fprintf(tracker.log_file, "SH_PROFILE_ONLINE_WEIGHTS: ");
+      for(i = 0; i < profopts.num_profile_online_weights; i++) {
+        fprintf(tracker.log_file, "%f ", profopts.profile_online_weights[i]);
+      }
+    }
     fprintf(tracker.log_file, "SH_PROFILE_ONLINE_USE_LAST_INTERVAL: %d\n", profopts.profile_online_use_last_interval);
     fprintf(tracker.log_file, "SH_PROFILE_ONLINE_GRACE_ACCESSES: %lu\n", profopts.profile_online_grace_accesses);
   }
