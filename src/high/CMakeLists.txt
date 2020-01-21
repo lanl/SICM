@@ -68,6 +68,7 @@ target_include_directories(sicm_compass PRIVATE ${LLVM_INCLUDE_DIR})
 target_link_libraries(sicm_compass ${LLVM_LIBRARIES})
 target_include_directories(sicm_rdspy PRIVATE ${LLVM_INCLUDE_DIR})
 target_link_libraries(sicm_rdspy ${LLVM_LIBRARIES})
+set(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} -fno-rtti")
 
 ####################
 #        rt        #
