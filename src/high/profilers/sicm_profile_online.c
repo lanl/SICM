@@ -5,6 +5,7 @@
 #include <sys/syscall.h>
 #include <errno.h>
 #include <sys/types.h>
+#include <time.h>
 
 #define SICM_RUNTIME 1
 #include "sicm_runtime.h"
@@ -93,6 +94,7 @@ void profile_online_interval(int s) {
 
       if(will_rebind) {
         fprintf(profopts.profile_online_output_file, "===== BEGIN RECONFIGURE %d =====\n", prof.profile_online.num_reconfigures);
+        fprintf(profopts.profile_online_output_file, "  Timestamp: %ld\n", time(NULL));
         fprintf(profopts.profile_online_output_file, "  Upper avail: %zu\n", upper_avail);
         fprintf(profopts.profile_online_output_file, "  Lower avail: %zu\n", lower_avail);
         fprintf(profopts.profile_online_output_file, "  Hot sites: ");
@@ -301,9 +303,16 @@ void profile_online_init() {
   prof.profile_online.prev_hotset = NULL;
 
   prof.profile_online.num_reconfigures = 0;
+
+  if(profopts.profile_online_output_file) {
+    fprintf(profopts.profile_online_output_file, "Online init: %ld", time(NULL));
+  }
 }
 
 void profile_online_deinit() {
+  if(profopts.profile_online_output_file) {
+    fprintf(profopts.profile_online_output_file, "Online deinit: %ld", time(NULL));
+  }
 }
 
 void profile_online_post_interval(arena_profile *info) {
