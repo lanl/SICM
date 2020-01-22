@@ -305,13 +305,13 @@ void profile_online_init() {
   prof.profile_online.num_reconfigures = 0;
 
   if(profopts.profile_online_output_file) {
-    fprintf(profopts.profile_online_output_file, "Online init: %ld", time(NULL));
+    fprintf(profopts.profile_online_output_file, "Online init: %ld\n", time(NULL));
   }
 }
 
 void profile_online_deinit() {
   if(profopts.profile_online_output_file) {
-    fprintf(profopts.profile_online_output_file, "Online deinit: %ld", time(NULL));
+    fprintf(profopts.profile_online_output_file, "Online deinit: %ld\n", time(NULL));
   }
 }
 
