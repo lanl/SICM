@@ -460,8 +460,8 @@ static void sh_packing_init(application_profile *info,
   if(sh_verbose_flag) {
     printf("Finished initializing the packing library with the following parameters:\n");
     printf("  Value: %s\n", *value);
-    for(i = 0; i < sh_num_value_event_indices; i++) {
-      printf("  Event: '%s', index %zu\n", sh_value_event_indices[i], i);
+    for(i = 0; i < num_events; i++) {
+      printf("  Event: '%s', index %zu\n", events[i], i);
     }
     printf("  Weight: %s\n", *weight);
     printf("  Algorithm: %s\n", *algo);
