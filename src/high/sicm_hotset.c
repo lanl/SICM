@@ -140,6 +140,12 @@ int main(int argc, char **argv) {
     fprintf(stderr, "You didn't specify a node to pack into. This is required. Aborting.\n");
     exit(1);
   }
+  if(num_events == 0) {
+    /* Here, the user didn't specify any events. Just set this to one, and let the `events` array be NULL */
+    events = malloc(sizeof(char *) * 1);
+    events[0] = NULL;
+    num_events = 1;
+  }
 
   /* Parse profiling information */
   info = sh_parse_profiling(stdin);
