@@ -4,7 +4,7 @@
 # configuration settings.
 spack:
   # add package specs to the `specs` list
-  specs: [sicm-high%gcc@7.2.0, sicm-high-memsys%gcc@7.2.0]
+  specs: [sicm-high%gcc@7.2.0, sicm-high-memsys%gcc@7.2.0, sicm-high%gcc@7.2.0 ^python@2.7.16]
   mirrors: {}
   modules:
     enable: []
