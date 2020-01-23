@@ -16,7 +16,7 @@ sl_node_handle *lat_sort(sl_node_handle *node, size_t n);
 void * node_alloc(sl_node_handle node, size_t n);
 
 int main(int argc, char **argv) {
-    int             n_nodes, i;
+    int             n_nodes;
     sl_node_handle *nodes,
                    *nodes_sorted_by_latency;
     void           *my_mem;
@@ -64,13 +64,13 @@ int lat_cmp(const void *a, const void *b) {
 
     cpu_to_a = sl_edge(cpu_node, *(sl_node_handle*)a);
     lat_a    = cpu_to_a ? sl_edge_latency(cpu_to_a) : -1;
-    if (lat_a == -1) {
+    if (lat_a == -1 || sl_node_kind(*(sl_node_handle*)a) != SL_NODE_MEM) {
         lat_a = INT64_MAX;
     }
 
     cpu_to_b = sl_edge(cpu_node, *(sl_node_handle*)b);
     lat_b    = cpu_to_b ? sl_edge_latency(cpu_to_b) : -1;
-    if (lat_b == -1) {
+    if (lat_b == -1 || sl_node_kind(*(sl_node_handle*)b) != SL_NODE_MEM) {
         lat_b = INT64_MAX;
     }
 
