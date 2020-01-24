@@ -31,6 +31,7 @@ static struct option long_options[] = {
   {"sort", required_argument, NULL, 'o'},   /* How should we sort the sites? Possibilities are
                                                `value_per_weight`, `value`, and `weight`. Defaults
                                                to `value_per_weight`. */
+  {"multiplier", required_argument, NULL, 'm'}, /* The multiplier to multiply an event by */
   {0, 0, 0, 0}
 };
 
@@ -51,8 +52,10 @@ int main(int argc, char **argv) {
   char *algo = NULL;
   char *sort = NULL;
   char **events = NULL;
+  float *multipliers = NULL;
   double scale = 0.0;
   size_t num_events = 0;
+  size_t num_multipliers = 0;
 
   /* The profiling information, as parsed by sicm_parsing.h. */
   application_profile *info;
@@ -65,7 +68,7 @@ int main(int argc, char **argv) {
   /* Use getopt to read in the options. */
   option_index = 0;
   while(1) {
-    c = getopt_long(argc, argv, "vl:e:w:a:c:n:s:o:", long_options, &option_index);
+    c = getopt_long(argc, argv, "vl:e:w:a:c:n:s:o:m:", long_options, &option_index);
     if(c == -1) {
       break;
     }
@@ -122,6 +125,13 @@ int main(int argc, char **argv) {
         sort = malloc((strlen(optarg) + 1) * sizeof(char));
         strcpy(sort, optarg);
         break;
+      case 'm':
+        /* multiplier */
+        num_multipliers++;
+        multipliers = realloc(multipliers, num_multipliers * sizeof(float));
+        endptr = NULL;
+        multipliers[num_multipliers - 1] = strtod(optarg, &endptr);
+        break;
       case '?':
         /* We're relying on getopt_long to print an error message. */
         break;
@@ -146,12 +156,17 @@ int main(int argc, char **argv) {
     events[0] = NULL;
     num_events = 1;
   }
+  if((num_multipliers != 0) && (num_multipliers != num_events)) {
+    /* The user specified multipliers, but didn't specify the right amount. */
+    fprintf(stderr, "You specified multipliers, but didn't specify the same amount as you did events. Aborting.\n");
+    exit(1);
+  }
 
   /* Parse profiling information */
   info = sh_parse_profiling(stdin);
 
   /* Initialize the global options */
-  sh_packing_init(info, &value, events, num_events, &weight, &algo, &sort, NULL, verbose);
+  sh_packing_init(info, &value, events, num_events, &weight, &algo, &sort, multipliers, verbose);
 
   /* For the sake of simplicity, convert the parsed profiling information into simpler trees */
   site_tree = sh_convert_to_site_tree(info);
