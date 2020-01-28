@@ -180,6 +180,7 @@ typedef struct profiling_options {
 
   /* Online */
   size_t num_profile_online_events;
+  float profile_online_reconf_weight_ratio;
   char **profile_online_events; /* Array of strings of events */
   size_t num_profile_online_weights;
   float *profile_online_weights;
