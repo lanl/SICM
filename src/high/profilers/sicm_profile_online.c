@@ -119,7 +119,7 @@ void profile_online_interval(int s) {
         1. In the new hotset and not in the old.
         2. In the old hotset and not in the new. */
       dl = NULL;
-      if((tree_it_good(new) && !tree_it_good(old)) {
+      if(tree_it_good(new) && !tree_it_good(old)) {
         dl = prof.profile_online.upper_dl;
       } else if(!tree_it_good(new) && tree_it_good(old)) {
         dl = prof.profile_online.lower_dl;
