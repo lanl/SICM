@@ -170,6 +170,12 @@ void set_options() {
   if(env) {
     profopts.should_profile_online = 1;
 
+    env = getenv("SH_PROFILE_ONLINE_RECONF_WEIGHT_RATIO");
+    profopts.profile_online_reconf_weight_ratio = 0.0;
+    if(env) {
+      profopts.profile_online_reconf_weight_ratio = strtof(env, NULL);
+    }
+
     env = getenv("SH_PROFILE_ONLINE_OUTPUT_FILE");
     profopts.profile_online_output_file = NULL;
     if(env) {

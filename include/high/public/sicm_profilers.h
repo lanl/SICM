@@ -101,14 +101,14 @@ typedef struct profile_online_data {
   size_t lower_avail_initial, upper_avail_initial;
   struct sicm_device_list *upper_dl, *lower_dl;
 
+  /* If the upper tier has been under contention */
+  char upper_contention;
+
   /* The hotset from the previous interval */
   tree(int, site_info_ptr) prev_hotset;
 
-  /* The previous *run's* sorted sites */
-  tree(site_info_ptr, int) last_iter_sorted_sites;
-
-  /* The full profiling information from the previous run */
-  application_profile *last_iter_profile;
+  /* Optional offline list of sorted sites */
+  tree(site_info_ptr, int) offline_sorted_sites;
 } profile_online_data;
 
 /********************
