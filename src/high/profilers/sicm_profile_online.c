@@ -97,7 +97,7 @@ void profile_online_interval(int s) {
     total_sites++;
 
     if((tree_it_good(new) && !tree_it_good(old)) ||
-       (!tree_it_good(new) && tree_it_good(old)) {
+       (!tree_it_good(new) && tree_it_good(old))) {
       site_weight_to_rebind += tree_it_key(sit)->weight;
       site_value_to_rebind += tree_it_key(sit)->value;
       num_sites_to_rebind++;
