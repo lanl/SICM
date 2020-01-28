@@ -108,7 +108,7 @@ void profile_online_interval(int s) {
   if((!profopts.profile_online_nobind) &&
      (prof.profile_online.upper_contention) &&
      (total_site_value > profopts.profile_online_grace_accesses) &&
-     ((site_weight_to_rebind / total_site_weight) >= profopts.profile_online_reconf_weight_ratio) {
+     ((site_weight_to_rebind / total_site_weight) >= profopts.profile_online_reconf_weight_ratio)) {
     /* Do a full rebind */
     full_rebind = 1;
     tree_traverse(merged_sorted_sites, sit) {
