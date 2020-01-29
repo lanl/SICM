@@ -141,11 +141,11 @@ void profile_online_interval(int s) {
       } else if(!tree_it_good(new) && tree_it_good(old)) {
         dl = prof.profile_online.lower_dl;
       } else {
-        tree_insert(site_tiers, tree_it_val(sit), prof.profile_online.lower_dl);
+        tree_insert(prof.profile_online.site_tiers, tree_it_val(sit), prof.profile_online.lower_dl);
       }
 
       if(dl) {
-        tree_insert(site_tiers, tree_it_val(sit), dl);
+        tree_insert(prof.profile_online.site_tiers, tree_it_val(sit), dl);
         retval = sicm_arena_set_devices(tracker.arenas[tree_it_key(sit)->index]->arena, dl);
         if(retval == -EINVAL) {
           fprintf(stderr, "Rebinding arena %d failed in SICM.\n", tree_it_key(sit)->index);
@@ -191,7 +191,7 @@ void profile_online_interval(int s) {
     }
     fprintf(profopts.profile_online_output_file, "\n");
     fprintf(profopts.profile_online_output_file, "  DRAM sites: ");
-    tree_traverse(site_tiers, tit) {
+    tree_traverse(prof.profile_online.site_tiers, tit) {
       fprintf(profopts.profile_online_output_file, "%d ", tree_it_key(tit));
     }
     fprintf(profopts.profile_online_output_file, "\n");
