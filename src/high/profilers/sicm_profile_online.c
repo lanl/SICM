@@ -56,7 +56,7 @@ void profile_online_interval(int s) {
   /* Store the sites as keys, values are structs with profiling info */
   tree(int, site_info_ptr) hotset;
   tree(int, site_info_ptr) prev_hotset;
-  tree_it(int, site_info_ptr) hit, old, new;
+  tree_it(int, site_info_ptr) old, new;
 
   /* Look at how much the application has consumed on each tier */
   upper_avail = sicm_avail(tracker.upper_device) * 1024;
