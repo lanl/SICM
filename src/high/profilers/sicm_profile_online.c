@@ -35,8 +35,12 @@ void profile_online_interval(int s) {
          i, n;
   arena_info *arena;
   arena_profile *aprof;
-  struct sicm_device_list *dl;
+  sicm_dev_ptr dl;
   int retval;
+
+  /* Iterators for the trees in the profile_online_data struct */
+  tree_it(int, sicm_dev_ptr) tit;
+  tree_it(int, size_t) hit;
 
   /* Stats */
   size_t total_site_weight, site_weight_to_rebind,
@@ -57,7 +61,7 @@ void profile_online_interval(int s) {
   /* Look at how much the application has consumed on each tier */
   upper_avail = sicm_avail(tracker.upper_device) * 1024;
   lower_avail = sicm_avail(tracker.lower_device) * 1024;
-  if(lower_avail < prof.profile_online.lower_avail_initial) {
+  if(lower_avail < prof.profile_online.lower_avail_initial && (!prof.profile_online.upper_contention)) {
     /* If the lower tier is being used, we're going to assume that the
        upper tier is under contention. Trip a flag and let the online
        approach take over. */
@@ -96,8 +100,21 @@ void profile_online_interval(int s) {
     total_site_value += tree_it_key(sit)->value;
     total_sites++;
 
+    if(tree_it_good(new)) {
+      /* Maintain the tree which stores the number of hot intervals that a site has had */
+      hit = tree_lookup(prof.profile_online.site_hot_intervals, tree_it_val(sit));
+      if(tree_it_good(hit)) {
+        tree_insert(prof.profile_online.site_hot_intervals, tree_it_val(sit), tree_it_val(hit) + 1);
+      } else {
+        tree_insert(prof.profile_online.site_hot_intervals, tree_it_val(sit), 1);
+      }
+    } else {
+      tree_insert(prof.profile_online.site_hot_intervals, tree_it_val(sit), 0);
+    }
+
     if((tree_it_good(new) && !tree_it_good(old)) ||
        (!tree_it_good(new) && tree_it_good(old))) {
+      /* The site will be rebound if a full rebind happens */
       site_weight_to_rebind += tree_it_key(sit)->weight;
       site_value_to_rebind += tree_it_key(sit)->value;
       num_sites_to_rebind++;
@@ -123,9 +140,12 @@ void profile_online_interval(int s) {
         dl = prof.profile_online.upper_dl;
       } else if(!tree_it_good(new) && tree_it_good(old)) {
         dl = prof.profile_online.lower_dl;
+      } else {
+        tree_insert(site_tiers, tree_it_val(sit), prof.profile_online.lower_dl);
       }
 
       if(dl) {
+        tree_insert(site_tiers, tree_it_val(sit), dl);
         retval = sicm_arena_set_devices(tracker.arenas[tree_it_key(sit)->index]->arena, dl);
         if(retval == -EINVAL) {
           fprintf(stderr, "Rebinding arena %d failed in SICM.\n", tree_it_key(sit)->index);
@@ -135,7 +155,21 @@ void profile_online_interval(int s) {
       }
     }
   } else {
-    /* Barring a full rebind, do we need to rebind any specific sites? */
+    if(profopts.profile_online_hot_intervals) {
+      /* If the user specified a number of intervals, rebind the sites that
+         have been hot for that amount of intervals */
+      tree_traverse(merged_sorted_sites, sit) {
+        hit = tree_lookup(prof.profile_online.site_hot_intervals, tree_it_val(sit));
+        if(tree_it_val(hit) == profopts.profile_online_hot_intervals) {
+          retval = sicm_arena_set_devices(tracker.arenas[tree_it_key(sit)->index]->arena, prof.profile_online.upper_dl);
+          if(retval == -EINVAL) {
+            fprintf(stderr, "Rebinding arena %d failed in SICM.\n", tree_it_key(sit)->index);
+          } else if(retval != 0) {
+            fprintf(stderr, "Rebinding arena %d failed internally.\n", tree_it_key(sit)->index);
+          }
+        }
+      }
+    }
   }
 
   if(profopts.profile_online_output_file) {
@@ -149,9 +183,16 @@ void profile_online_interval(int s) {
     } else {
       fprintf(profopts.profile_online_output_file, "  Full rebind: no\n");
     }
+    fprintf(profopts.profile_online_output_file, "  Weight rebound: %zu\n", site_weight_to_rebind);
+    fprintf(profopts.profile_online_output_file, "  Value rebound: %zu\n", site_value_to_rebind);
     fprintf(profopts.profile_online_output_file, "  Hot sites: ");
     tree_traverse(hotset, new) {
       fprintf(profopts.profile_online_output_file, "%d ", tree_it_key(new));
+    }
+    fprintf(profopts.profile_online_output_file, "\n");
+    fprintf(profopts.profile_online_output_file, "  DRAM sites: ");
+    tree_traverse(site_tiers, tit) {
+      fprintf(profopts.profile_online_output_file, "%d ", tree_it_key(tit));
     }
     fprintf(profopts.profile_online_output_file, "\n");
     fprintf(profopts.profile_online_output_file, "  Sorted sites: ");
@@ -298,6 +339,8 @@ void profile_online_init() {
   prof.profile_online.prev_hotset = NULL;
   prof.profile_online.num_reconfigures = 0;
   prof.profile_online.upper_contention = 0;
+  prof.profile_online.site_tiers = (void *) tree_make(int, sicm_dev_ptr);
+  prof.profile_online.site_hot_intervals = (void *) tree_make(int, size_t);
 
   if(profopts.profile_online_output_file) {
     fprintf(profopts.profile_online_output_file, "Online init: %ld\n", time(NULL));

@@ -186,10 +186,6 @@ static tree(site_info_ptr, int) sh_convert_to_site_tree(application_profile *inf
 
   site_tree = tree_make_c(site_info_ptr, int, &site_tree_cmp);
 
-  if(sh_verbose_flag) {
-    printf("Generating a tree of sorted sites.\n");
-  }
-
   /* Iterate over the arenas, create a site_profile_info struct for each site,
      and simply insert them into the tree (which sorts them). */
   for(i = 0; i < info->num_arenas; i++) {
@@ -209,6 +205,7 @@ static tree(site_info_ptr, int) sh_convert_to_site_tree(application_profile *inf
       memcpy(site_copy, site, sizeof(site_profile_info));
       tree_insert(site_tree, site_copy, aprof->alloc_sites[n]);
     }
+    orig_free(site);
   }
 
   if(sh_verbose_flag) {

@@ -170,6 +170,12 @@ void set_options() {
   if(env) {
     profopts.should_profile_online = 1;
 
+    env = getenv("SH_PROFILE_ONLINE_HOT_INTERVALS");
+    profopts.profile_online_hot_intervals = 0;
+    if(env) {
+      profopts.profile_online_hot_intervals = strtoul(env, NULL, 0);
+    }
+
     env = getenv("SH_PROFILE_ONLINE_RECONF_WEIGHT_RATIO");
     profopts.profile_online_reconf_weight_ratio = 0.0;
     if(env) {

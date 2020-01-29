@@ -93,19 +93,28 @@ typedef site_profile_info * site_info_ptr;
 #define SICM_PACKING
 use_tree(site_info_ptr, int);
 use_tree(int, site_info_ptr);
+use_tree(int, sicm_dev_ptr);
+use_tree(int, size_t);
 #endif
 
+typedef struct sicm_device_list * sicm_dev_ptr;
 typedef struct profile_online_data {
   size_t num_reconfigures;
   size_t profile_online_event_index;
   size_t lower_avail_initial, upper_avail_initial;
-  struct sicm_device_list *upper_dl, *lower_dl;
+  sicm_dev_ptr upper_dl, lower_dl;
 
   /* If the upper tier has been under contention */
   char upper_contention;
 
   /* The hotset from the previous interval */
   tree(int, site_info_ptr) prev_hotset;
+
+  /* Which device each site is supposed to be bound to */
+  tree(int, sicm_dev_ptr) site_tiers;
+
+  /* The number of intervals this site has been hot for */
+  tree(int, size_t) site_hot_intervals;
 
   /* Optional offline list of sorted sites */
   tree(site_info_ptr, int) offline_sorted_sites;
