@@ -58,6 +58,12 @@ void profile_online_interval(int s) {
   tree(int, site_info_ptr) prev_hotset;
   tree_it(int, site_info_ptr) old, new;
 
+  if(profopts.profile_online_output_file) {
+    /* Print out some initial debugging info */
+    fprintf(profopts.profile_online_output_file, "===== BEGIN RECONFIGURE %d =====\n", prof.profile_online.num_reconfigures);
+    fprintf(profopts.profile_online_output_file, "  Beginning timestamp: %ld\n", time(NULL));
+  }
+
   /* Look at how much the application has consumed on each tier */
   upper_avail = sicm_avail(tracker.upper_device) * 1024;
   lower_avail = sicm_avail(tracker.lower_device) * 1024;
@@ -127,7 +133,6 @@ void profile_online_interval(int s) {
      (total_site_value > profopts.profile_online_grace_accesses) &&
      ((site_weight_to_rebind / total_site_weight) >= profopts.profile_online_reconf_weight_ratio)) {
     /* Do a full rebind */
-    full_rebind = 1;
     tree_traverse(merged_sorted_sites, sit) {
       old = tree_lookup(prev_hotset, tree_it_val(sit));
       new = tree_lookup(hotset, tree_it_val(sit));
@@ -145,6 +150,8 @@ void profile_online_interval(int s) {
       }
 
       if(dl) {
+        /* This only counts as a full rebind if a site is actually moved */
+        full_rebind = 1;
         tree_insert(prof.profile_online.site_tiers, tree_it_val(sit), dl);
         retval = sicm_arena_set_devices(tracker.arenas[tree_it_key(sit)->index]->arena, dl);
         if(retval == -EINVAL) {
@@ -174,8 +181,7 @@ void profile_online_interval(int s) {
 
   if(profopts.profile_online_output_file) {
     /* Print out as much debugging information as we can. */
-    fprintf(profopts.profile_online_output_file, "===== BEGIN RECONFIGURE %d =====\n", prof.profile_online.num_reconfigures);
-    fprintf(profopts.profile_online_output_file, "  Timestamp: %ld\n", time(NULL));
+    fprintf(profopts.profile_online_output_file, "  Ending timestamp: %ld\n", time(NULL));
     fprintf(profopts.profile_online_output_file, "  Upper avail: %zu\n", upper_avail);
     fprintf(profopts.profile_online_output_file, "  Lower avail: %zu\n", lower_avail);
     if(full_rebind) {
