@@ -198,7 +198,9 @@ void profile_online_interval(int s) {
     fprintf(profopts.profile_online_output_file, "\n");
     fprintf(profopts.profile_online_output_file, "  DRAM sites: ");
     tree_traverse(prof.profile_online.site_tiers, tit) {
-      fprintf(profopts.profile_online_output_file, "%d ", tree_it_key(tit));
+      if(tree_it_val(tit) == prof.profile_online.upper_dl) {
+        fprintf(profopts.profile_online_output_file, "%d ", tree_it_key(tit));
+      }
     }
     fprintf(profopts.profile_online_output_file, "\n");
     fprintf(profopts.profile_online_output_file, "  Sorted sites: ");
