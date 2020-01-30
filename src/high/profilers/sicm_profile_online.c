@@ -202,6 +202,11 @@ void profile_online_interval(int s) {
     fprintf(profopts.profile_online_output_file, "  Ending timestamp: %ld\n", time(NULL));
     fprintf(profopts.profile_online_output_file, "  Upper avail: %zu\n", upper_avail);
     fprintf(profopts.profile_online_output_file, "  Lower avail: %zu\n", lower_avail);
+    if(prof.profile_online.upper_contention) {
+      fprintf(profopts.profile_online_output_file, "  Upper contention: yes\n");
+    } else {
+      fprintf(profopts.profile_online_output_file, "  Upper contention: no\n");
+    }
     if(full_rebind) {
       fprintf(profopts.profile_online_output_file, "  Full rebind: yes\n");
     } else {
@@ -209,8 +214,13 @@ void profile_online_interval(int s) {
     }
     fprintf(profopts.profile_online_output_file, "  Weight difference: %zu\n", site_weight_diff);
     fprintf(profopts.profile_online_output_file, "  Value difference: %zu\n", site_value_diff);
+    fprintf(profopts.profile_online_output_file, "  Sites difference: %zu\n", num_sites_diff);
     fprintf(profopts.profile_online_output_file, "  Weight to rebind: %zu\n", site_weight_to_rebind);
     fprintf(profopts.profile_online_output_file, "  Value to rebind: %zu\n", site_value_to_rebind);
+    fprintf(profopts.profile_online_output_file, "  Sites to rebind: %zu\n", num_sites_to_rebind);
+    fprintf(profopts.profile_online_output_file, "  Total weight: %zu\n", total_site_weight);
+    fprintf(profopts.profile_online_output_file, "  Total value: %zu\n", total_site_value);
+    fprintf(profopts.profile_online_output_file, "  Total sites: %zu\n", total_sites);
     fprintf(profopts.profile_online_output_file, "  Hot sites: ");
     tree_traverse(hotset, new) {
       fprintf(profopts.profile_online_output_file, "%d ", tree_it_key(new));
