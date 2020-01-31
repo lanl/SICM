@@ -147,10 +147,20 @@ void profile_online_interval(int s) {
     /* Calculate what would have to be rebound if the current hotset were to trigger a full rebind */
     tit = tree_lookup(prof.profile_online.site_tiers, tree_it_val(sit));
     if((!tree_it_good(tit) && tree_it_good(new)) ||
-        (tree_it_good(tit) && tree_it_good(new) && (tree_it_val(tit) == prof.profile_online.lower_dl)) ||
-        (tree_it_good(tit) && !tree_it_good(new) && (tree_it_val(tit) == prof.profile_online.upper_dl))) {
+       (tree_it_good(tit) && tree_it_good(new) && (tree_it_val(tit) == prof.profile_online.lower_dl)) ||
+       (tree_it_good(tit) && !tree_it_good(new) && (tree_it_val(tit) == prof.profile_online.upper_dl))) {
         /* If the site is in the hotset, but not in the upper tier, OR
            if the site is not in the hotset, but in the upper tier */
+        if(profopts.profile_online_output_file) {
+          fprintf(profopts.profile_online_output_file, "  Rebinding site %d: ", tree_it_val(sit));
+          fprintf(profopts.profile_online_output_file, "%d ", tree_it_good(tit));
+          fprintf(profopts.profile_online_output_file, "%d ", tree_it_good(new));
+          if(tree_it_val(tit) == prof.profile_online.lower_dl) {
+            fprintf(profopts.profile_online_output_file, "AEP\n");
+          } else {
+            fprintf(profopts.profile_online_output_file, "DRAM\n");
+          }
+        }
         site_weight_to_rebind += tree_it_key(sit)->weight;
         site_value_to_rebind += tree_it_key(sit)->value;
         num_sites_to_rebind++;
