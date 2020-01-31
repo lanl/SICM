@@ -187,10 +187,15 @@ void profile_online_interval(int s) {
         /* The site is in AEP (or isn't in site_tiers yet), and is in the hotset. */
         dl = prof.profile_online.upper_dl;
       } else if(tree_it_good(tit) && !tree_it_good(new) && (tree_it_val(tit) == prof.profile_online.upper_dl)) {
+        /* The site is in DRAM and isn't in the hotset */
         dl = prof.profile_online.lower_dl;
       } else {
-        /* Just to make sure that we're keeping track of all sites appropriately */
-        tree_insert(site_tiers_tmp, tree_it_val(sit), prof.profile_online.lower_dl);
+        /* We're not going to rebind this site, but let's make sure we keep track of which tier it's in */
+        if(!tree_it_good(tit) || (tree_it_good(tit) && (tree_it_val(tit) == prof.profile_online.lower_dl))) {
+          tree_insert(site_tiers_tmp, tree_it_val(sit), prof.profile_online.lower_dl);
+        } else {
+          tree_insert(site_tiers_tmp, tree_it_val(sit), prof.profile_online.upper_dl);
+        }
       }
 
       if(dl) {
