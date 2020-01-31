@@ -155,10 +155,10 @@ void profile_online_interval(int s) {
           fprintf(profopts.profile_online_output_file, "  Rebinding site %d: ", tree_it_val(sit));
           fprintf(profopts.profile_online_output_file, "%d ", tree_it_good(tit));
           fprintf(profopts.profile_online_output_file, "%d ", tree_it_good(new));
-          if(tree_it_val(tit) == prof.profile_online.lower_dl) {
-            fprintf(profopts.profile_online_output_file, "AEP\n");
-          } else {
+          if(tree_it_good(tit) && (tree_it_val(tit) == prof.profile_online.upper_dl)) {
             fprintf(profopts.profile_online_output_file, "DRAM\n");
+          } else {
+            fprintf(profopts.profile_online_output_file, "AEP\n");
           }
         }
         site_weight_to_rebind += tree_it_key(sit)->weight;
