@@ -119,6 +119,7 @@ void profile_online_interval(int s) {
   tree_traverse(merged_sorted_sites, sit) {
     old = tree_lookup(prev_hotset, tree_it_val(sit));
     new = tree_lookup(hotset, tree_it_val(sit));
+    tit = tree_lookup(prof.profile_online.site_tiers, tree_it_val(sit));
 
     total_site_weight += tree_it_key(sit)->weight;
     total_site_value += tree_it_key(sit)->value;
@@ -146,14 +147,13 @@ void profile_online_interval(int s) {
     }
 
     /* Calculate what would have to be rebound if the current hotset were to trigger a full rebind */
-    tit = tree_lookup(prof.profile_online.site_tiers, tree_it_val(sit));
     if((!tree_it_good(tit) && tree_it_good(new)) ||
        (tree_it_good(tit) && tree_it_good(new) && (tree_it_val(tit) == prof.profile_online.lower_dl)) ||
        (tree_it_good(tit) && !tree_it_good(new) && (tree_it_val(tit) == prof.profile_online.upper_dl))) {
         /* If the site is in the hotset, but not in the upper tier, OR
            if the site is not in the hotset, but in the upper tier */
         if(profopts.profile_online_output_file) {
-          fprintf(profopts.profile_online_output_file, "  Rebinding site %d: ", tree_it_val(sit));
+          fprintf(profopts.profile_online_output_file, "  Due to rebind site %d: ", tree_it_val(sit));
           fprintf(profopts.profile_online_output_file, "%d ", tree_it_good(tit));
           fprintf(profopts.profile_online_output_file, "%d ", tree_it_good(new));
           if(tree_it_good(tit) && (tree_it_val(tit) == prof.profile_online.upper_dl)) {
@@ -184,6 +184,7 @@ void profile_online_interval(int s) {
       dl = NULL;
       if((!tree_it_good(tit) && tree_it_good(new)) ||
          (tree_it_good(tit) && tree_it_good(new) && (tree_it_val(tit) == prof.profile_online.lower_dl))) {
+        /* The site is in AEP (or isn't in site_tiers yet), and is in the hotset. */
         dl = prof.profile_online.upper_dl;
       } else if(tree_it_good(tit) && !tree_it_good(new) && (tree_it_val(tit) == prof.profile_online.upper_dl)) {
         dl = prof.profile_online.lower_dl;
@@ -194,6 +195,16 @@ void profile_online_interval(int s) {
 
       if(dl) {
         /* This only counts as a full rebind if a site is actually moved */
+        if(profopts.profile_online_output_file) {
+          fprintf(profopts.profile_online_output_file, "  Rebinding site %d: ", tree_it_val(sit));
+          fprintf(profopts.profile_online_output_file, "%d ", tree_it_good(tit));
+          fprintf(profopts.profile_online_output_file, "%d ", tree_it_good(new));
+          if(tree_it_good(tit) && (tree_it_val(tit) == prof.profile_online.upper_dl)) {
+            fprintf(profopts.profile_online_output_file, "DRAM\n");
+          } else {
+            fprintf(profopts.profile_online_output_file, "AEP\n");
+          }
+        }
         full_rebind = 1;
         tree_insert(site_tiers_tmp, tree_it_val(sit), dl);
         retval = sicm_arena_set_devices(tracker.arenas[tree_it_key(sit)->index]->arena, dl);
