@@ -41,6 +41,7 @@ void profile_online_interval(int s) {
   /* Iterators for the trees in the profile_online_data struct */
   tree_it(int, sicm_dev_ptr) tit;
   tree_it(int, size_t) hit;
+  tree(int, sicm_dev_ptr) site_tiers_tmp;
 
   /* Stats */
   size_t total_site_weight, total_site_value, total_sites, /* Totals */
@@ -168,12 +169,14 @@ void profile_online_interval(int s) {
   }
 
   full_rebind = 0;
+  site_tiers_tmp = NULL;
   if(!profopts.profile_online_nobind &&
      prof.profile_online.upper_contention &&
      (total_site_value > profopts.profile_online_grace_accesses) &&
      ((((float) site_weight_to_rebind) / ((float) total_site_weight)) >= profopts.profile_online_reconf_weight_ratio)) {
     /* Do a full rebind. Take the difference between what's currently on the devices (site_tiers),
        and what the hotset says should be on there. */
+    site_tiers_tmp = tree_make(int, sicm_dev_ptr);
     tree_traverse(merged_sorted_sites, sit) {
       new = tree_lookup(hotset, tree_it_val(sit));
       tit = tree_lookup(prof.profile_online.site_tiers, tree_it_val(sit));
@@ -186,13 +189,13 @@ void profile_online_interval(int s) {
         dl = prof.profile_online.upper_dl;
       } else {
         /* Just to make sure that we're keeping track of all sites appropriately */
-        tree_insert(prof.profile_online.site_tiers, tree_it_val(sit), prof.profile_online.lower_dl);
+        tree_insert(site_tiers_tmp, tree_it_val(sit), prof.profile_online.lower_dl);
       }
 
       if(dl) {
         /* This only counts as a full rebind if a site is actually moved */
         full_rebind = 1;
-        tree_insert(prof.profile_online.site_tiers, tree_it_val(sit), dl);
+        tree_insert(site_tiers_tmp, tree_it_val(sit), dl);
         retval = sicm_arena_set_devices(tracker.arenas[tree_it_key(sit)->index]->arena, dl);
         if(retval == -EINVAL) {
           fprintf(stderr, "Rebinding arena %d failed in SICM.\n", tree_it_key(sit)->index);
@@ -289,6 +292,12 @@ void profile_online_interval(int s) {
     }
   }
   tree_free(sorted_sites);
+
+  /* If we made a site_tiers_tmp, it's the new one */
+  if(site_tiers_tmp) {
+    tree_free(prof.profile_online.site_tiers);
+    prof.profile_online.site_tiers = site_tiers_tmp;
+  }
 
   /* Maintain the previous hotset */
   prof.profile_online.prev_hotset = (void *) hotset;
