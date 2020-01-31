@@ -186,7 +186,7 @@ void profile_online_interval(int s) {
          (tree_it_good(tit) && tree_it_good(new) && (tree_it_val(tit) == prof.profile_online.lower_dl))) {
         dl = prof.profile_online.upper_dl;
       } else if(tree_it_good(tit) && !tree_it_good(new) && (tree_it_val(tit) == prof.profile_online.upper_dl)) {
-        dl = prof.profile_online.upper_dl;
+        dl = prof.profile_online.lower_dl;
       } else {
         /* Just to make sure that we're keeping track of all sites appropriately */
         tree_insert(site_tiers_tmp, tree_it_val(sit), prof.profile_online.lower_dl);
