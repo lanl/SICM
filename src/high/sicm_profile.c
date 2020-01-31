@@ -191,21 +191,6 @@ void profile_master_interval(int s) {
         profthread->skipped_intervals++;
       }
     }
-    if(profopts.should_profile_all) {
-      profile_all_interval(0);
-    }
-    if(profopts.should_profile_rss) {
-      profile_rss_interval(0);
-    }
-    if(profopts.should_profile_extent_size) {
-      profile_extent_size_interval(0);
-    }
-    if(profopts.should_profile_allocs) {
-      profile_allocs_interval(0);
-    }
-    if(profopts.should_profile_online) {
-      profile_online_interval(0);
-    }
   }
 
   /* End time */
