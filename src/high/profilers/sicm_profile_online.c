@@ -61,7 +61,7 @@ void profile_online_interval(int s) {
 
   if(profopts.profile_online_output_file) {
     /* Print out some initial debugging info */
-    fprintf(profopts.profile_online_output_file, "===== BEGIN RECONFIGURE %d =====\n", prof.profile_online.num_reconfigures);
+    fprintf(profopts.profile_online_output_file, "===== BEGIN RECONFIGURE %zu =====\n", prof.profile_online.num_reconfigures);
     fprintf(profopts.profile_online_output_file, "  Beginning timestamp: %ld\n", time(NULL));
     fprintf(profopts.profile_online_output_file, "  DRAM sites: ");
     tree_traverse(prof.profile_online.site_tiers, tit) {
@@ -289,7 +289,7 @@ void profile_online_interval(int s) {
       fprintf(profopts.profile_online_output_file, "%lf ", tree_it_key(sit)->value_per_weight);
     }
     fprintf(profopts.profile_online_output_file, "\n");
-    fprintf(profopts.profile_online_output_file, "===== END RECONFIGURE %d =====\n", prof.profile_online.num_reconfigures);
+    fprintf(profopts.profile_online_output_file, "===== END RECONFIGURE %zu =====\n", prof.profile_online.num_reconfigures);
   }
 
   /* Free everything up */
