@@ -62,6 +62,20 @@ void profile_online_interval(int s) {
     /* Print out some initial debugging info */
     fprintf(profopts.profile_online_output_file, "===== BEGIN RECONFIGURE %d =====\n", prof.profile_online.num_reconfigures);
     fprintf(profopts.profile_online_output_file, "  Beginning timestamp: %ld\n", time(NULL));
+    fprintf(profopts.profile_online_output_file, "  DRAM sites: ");
+    tree_traverse(prof.profile_online.site_tiers, tit) {
+      if(tree_it_val(tit) == prof.profile_online.upper_dl) {
+        fprintf(profopts.profile_online_output_file, "%d ", tree_it_key(tit));
+      }
+    }
+    fprintf(profopts.profile_online_output_file, "\n");
+    fprintf(profopts.profile_online_output_file, "  AEP sites: ");
+    tree_traverse(prof.profile_online.site_tiers, tit) {
+      if(tree_it_val(tit) == prof.profile_online.lower_dl) {
+        fprintf(profopts.profile_online_output_file, "%d ", tree_it_key(tit));
+      }
+    }
+    fprintf(profopts.profile_online_output_file, "\n");
   }
 
   /* Look at how much the application has consumed on each tier */
@@ -224,20 +238,6 @@ void profile_online_interval(int s) {
     fprintf(profopts.profile_online_output_file, "  Hot sites: ");
     tree_traverse(hotset, new) {
       fprintf(profopts.profile_online_output_file, "%d ", tree_it_key(new));
-    }
-    fprintf(profopts.profile_online_output_file, "\n");
-    fprintf(profopts.profile_online_output_file, "  DRAM sites: ");
-    tree_traverse(prof.profile_online.site_tiers, tit) {
-      if(tree_it_val(tit) == prof.profile_online.upper_dl) {
-        fprintf(profopts.profile_online_output_file, "%d ", tree_it_key(tit));
-      }
-    }
-    fprintf(profopts.profile_online_output_file, "\n");
-    fprintf(profopts.profile_online_output_file, "  AEP sites: ");
-    tree_traverse(prof.profile_online.site_tiers, tit) {
-      if(tree_it_val(tit) == prof.profile_online.lower_dl) {
-        fprintf(profopts.profile_online_output_file, "%d ", tree_it_key(tit));
-      }
     }
     fprintf(profopts.profile_online_output_file, "\n");
     fprintf(profopts.profile_online_output_file, "  Sorted sites: ");
