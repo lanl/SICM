@@ -219,6 +219,10 @@ void profile_master_interval(int s) {
     fprintf(profopts.profile_output_file, "WARNING: Interval (%ld.%09ld) went over the time limit (%ld.%09ld).\n",
             actual.tv_sec, actual.tv_nsec,
             target.tv_sec, target.tv_nsec);
+  } else if(profopts.profile_output_file) {
+    fprintf(profopts.profile_output_file, "Interval (%ld.%09ld) went under the time limit (%ld.%09ld).\n",
+            actual.tv_sec, actual.tv_nsec,
+            target.tv_sec, target.tv_nsec);
   }
 
   /* Keep track of this interval's profiling values.
