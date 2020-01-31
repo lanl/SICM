@@ -144,10 +144,10 @@ void profile_online_interval(int s) {
   }
 
   full_rebind = 0;
-  if((!profopts.profile_online_nobind) &&
-     (prof.profile_online.upper_contention) &&
+  if(!profopts.profile_online_nobind &&
+     prof.profile_online.upper_contention &&
      (total_site_value > profopts.profile_online_grace_accesses) &&
-     ((site_weight_to_rebind / total_site_weight) >= profopts.profile_online_reconf_weight_ratio)) {
+     ((((float) site_weight_to_rebind) / ((float) total_site_weight)) >= profopts.profile_online_reconf_weight_ratio)) {
     /* Do a full rebind. Take the difference between what's currently on the devices (site_tiers),
        and what the hotset says should be on there. */
     tree_traverse(merged_sorted_sites, sit) {
