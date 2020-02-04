@@ -35,23 +35,12 @@ static void sh_print_profiling(application_profile *info, size_t num_profiles, F
       }
       fprintf(file, "\n");
 
-      /* Interval information */
-      fprintf(file, "  First interval: %zu\n", aprof->first_interval);
-      fprintf(file, "  Number of intervals: %zu\n", aprof->num_intervals);
-
       if(profopts.should_profile_all) {
         fprintf(file, "  BEGIN PROFILE_ALL\n");
         for(n = 0; n < info->num_profile_all_events; n++) {
           fprintf(file, "    BEGIN EVENT %s\n", info->profile_all_events[n]);
           fprintf(file, "      Total: %zu\n", aprof->profile_all.events[n].total);
           fprintf(file, "      Peak: %zu\n", aprof->profile_all.events[n].peak);
-          if(profopts.should_print_intervals) {
-            fprintf(file, "      Intervals: ");
-            for(x = 0; x < aprof->num_intervals; x++) {
-              fprintf(file, "%zu ", aprof->profile_all.events[n].intervals[x]);
-            }
-            fprintf(file, "\n");
-          }
           fprintf(file, "    END EVENT %s\n", profopts.profile_all_events[n]);
         }
         fprintf(file, "  END PROFILE_ALL\n");
@@ -59,37 +48,16 @@ static void sh_print_profiling(application_profile *info, size_t num_profiles, F
       if(profopts.should_profile_allocs) {
         fprintf(file, "  BEGIN PROFILE_ALLOCS\n");
         fprintf(file, "    Peak: %zu\n", aprof->profile_allocs.peak);
-        if(profopts.should_print_intervals) {
-          fprintf(file, "    Intervals: ");
-          for(x = 0; x < aprof->num_intervals; x++) {
-            fprintf(file, "%zu ", aprof->profile_allocs.intervals[x]);
-          }
-          fprintf(file, "\n");
-        }
         fprintf(file, "  END PROFILE_ALLOCS\n");
       }
       if(profopts.should_profile_rss) {
         fprintf(file, "  BEGIN PROFILE_RSS\n");
         fprintf(file, "    Peak: %zu\n", aprof->profile_rss.peak);
-        if(profopts.should_print_intervals) {
-          fprintf(file, "    Intervals: ");
-          for(x = 0; x < aprof->num_intervals; x++) {
-            fprintf(file, "%zu ", aprof->profile_rss.intervals[x]);
-          }
-          fprintf(file, "\n");
-        }
         fprintf(file, "  END PROFILE_RSS\n");
       }
       if(profopts.should_profile_extent_size) {
         fprintf(file, "  BEGIN PROFILE_EXTENT_SIZE\n");
         fprintf(file, "    Peak: %zu\n", aprof->profile_extent_size.peak);
-        if(profopts.should_print_intervals) {
-          fprintf(file, "    Intervals: ");
-          for(x = 0; x < aprof->num_intervals; x++) {
-            fprintf(file, "%zu ", aprof->profile_extent_size.intervals[x]);
-          }
-          fprintf(file, "\n");
-        }
         fprintf(file, "  END PROFILE_EXTENT_SIZE\n");
       }
       fprintf(file, "END ARENA %u\n", aprof->index);
@@ -211,10 +179,6 @@ static application_profile *sh_parse_profiling(FILE *file) {
         /* Up in depth */
         depth = 1;
         cur_arena_index++;
-      } else if(sscanf(line, "  First interval: %zu", &tmp_sizet)) {
-        cur_arena->first_interval = tmp_sizet;
-      } else if(sscanf(line, "  Number of intervals: %zu", &tmp_sizet)) {
-        cur_arena->num_intervals = tmp_sizet;
       } else if(sscanf(line, "  Number of allocation sites: %d\n", &tmp_int)) {
         cur_arena->num_alloc_sites = tmp_int;
         cur_arena->alloc_sites = orig_malloc(tmp_int * sizeof(int));
@@ -297,20 +261,6 @@ static application_profile *sh_parse_profiling(FILE *file) {
         depth = 2;
       } else if(sscanf(line, "    Peak: %zu\n", &tmp_sizet)) {
         cur_arena->profile_allocs.peak = tmp_sizet;
-      } else if(strncmp(line, "    Intervals: ", 17) == 0) {
-        sscanf(line, "    Intervals: %n", &tmp_int);
-        tmpline = line;
-        tmpline = tmpline + tmp_int;
-        i = 0;
-        while(sscanf(tmpline, "%zu %n", &tmp_sizet, &tmp_int) > 0) {
-          if(i == cur_arena->num_intervals) {
-            fprintf(stderr, "There were too many intervals specified. Aborting.\n");
-            exit(1);
-          }
-          cur_arena->profile_allocs.intervals[i] = tmp_sizet;
-          tmpline += tmp_int;
-          i++;
-        }
       } else {
         fprintf(stderr, "Didn't recognize a line in the profiling information at depth %d. Aborting.\n", depth);
         fprintf(stderr, "Line: %s\n", line);
@@ -329,20 +279,6 @@ static application_profile *sh_parse_profiling(FILE *file) {
         depth = 2;
       } else if(sscanf(line, "    Peak: %zu\n", &tmp_sizet)) {
         cur_arena->profile_extent_size.peak = tmp_sizet;
-      } else if(strncmp(line, "    Intervals: ", 17) == 0) {
-        sscanf(line, "    Intervals: %n", &tmp_int);
-        tmpline = line;
-        tmpline = tmpline + tmp_int;
-        i = 0;
-        while(sscanf(tmpline, "%zu %n", &tmp_sizet, &tmp_int) > 0) {
-          if(i == cur_arena->num_intervals) {
-            fprintf(stderr, "There were too many intervals specified. Aborting.\n");
-            exit(1);
-          }
-          cur_arena->profile_extent_size.intervals[i] = tmp_sizet;
-          tmpline += tmp_int;
-          i++;
-        }
       } else {
         fprintf(stderr, "Didn't recognize a line in the profiling information at depth %d. Aborting.\n", depth);
         fprintf(stderr, "Line: %s\n", line);
@@ -361,20 +297,6 @@ static application_profile *sh_parse_profiling(FILE *file) {
         depth = 2;
       } else if(sscanf(line, "    Peak: %zu\n", &tmp_sizet)) {
         cur_arena->profile_rss.peak = tmp_sizet;
-      } else if(strncmp(line, "    Intervals: ", 17) == 0) {
-        sscanf(line, "    Intervals: %n", &tmp_int);
-        tmpline = line;
-        tmpline = tmpline + tmp_int;
-        i = 0;
-        while(sscanf(tmpline, "%zu %n", &tmp_sizet, &tmp_int) > 0) {
-          if(i == cur_arena->num_intervals) {
-            fprintf(stderr, "There were too many intervals specified. Aborting.\n");
-            exit(1);
-          }
-          cur_arena->profile_rss.intervals[i] = tmp_sizet;
-          tmpline += tmp_int;
-          i++;
-        }
       } else {
         fprintf(stderr, "Didn't recognize a line in the profiling information at depth %d. Aborting.\n", depth);
         fprintf(stderr, "Line: %s\n", line);
@@ -392,20 +314,6 @@ static application_profile *sh_parse_profiling(FILE *file) {
         cur_event->total = tmp_sizet;
       } else if(sscanf(line, "      Peak: %zu\n", &tmp_sizet)) {
         cur_event->peak = tmp_sizet;
-      } else if(strncmp(line, "      Intervals: ", 17) == 0) {
-        sscanf(line, "      Intervals: %n", &tmp_int);
-        tmpline = line;
-        tmpline = tmpline + tmp_int;
-        i = 0;
-        while(sscanf(tmpline, "%zu %n", &tmp_sizet, &tmp_int) > 0) {
-          if(i == cur_arena->num_intervals) {
-            fprintf(stderr, "There were too many intervals specified. Aborting.\n");
-            exit(1);
-          }
-          cur_event->intervals[i] = tmp_sizet;
-          tmpline += tmp_int;
-          i++;
-        }
       } else if(sscanf(line, "    END EVENT %ms\n", &event) == 1) {
         /* Up in depth */
         orig_free(event);
