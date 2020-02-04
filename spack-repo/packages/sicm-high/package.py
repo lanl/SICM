@@ -26,7 +26,7 @@ class SicmHigh(CMakePackage):
     depends_on('libpfm4@develop')
 
     def cmake_args(self):
-        args = ['-DSICM_BUILD_HIGH_LEVEL=True']
+        args = ['-DSICM_BUILD_HIGH_LEVEL=True', ' -DCMAKE_BUILD_TYPE=RelWithDebInfo']
         return args
 
     # Run "make test" after the install target.
