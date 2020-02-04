@@ -46,28 +46,6 @@ void *profile_rss(void *a) {
 
 /* Just copies the previous value */
 void profile_rss_skip_interval(int s) {
-  arena_profile *aprof;
-  arena_info *arena;
-  size_t i;
-
-  pthread_rwlock_rdlock(&tracker.extents_lock);
-
-  extent_arr_for(tracker.extents, i) {
-    arena = (arena_info *) tracker.extents->arr[i].arena;
-    if(!arena) continue;
-    aprof = prof.profile->arenas[arena->index];
-    if((!aprof) || (!aprof->num_intervals)) continue;
-
-    aprof->profile_rss.intervals = (size_t *)orig_realloc(aprof->profile_rss.intervals, aprof->num_intervals * sizeof(size_t));
-    if(aprof->num_intervals == 1) {
-      aprof->profile_rss.intervals[aprof->num_intervals - 1] = 0;
-    } else {
-      aprof->profile_rss.intervals[aprof->num_intervals - 1] = aprof->profile_rss.intervals[aprof->num_intervals - 2];
-    }
-  }
-
-  pthread_rwlock_unlock(&tracker.extents_lock);
-
   end_interval();
 }
 
