@@ -143,7 +143,7 @@ static application_profile *sh_parse_profiling(FILE *file) {
       if(strncmp(line, "===== END INTERVAL\n", 18) == 0) {
         /* Up in depth */
         depth = 0;
-        break;
+        continue;
       } else if(sscanf(line, "Number of arenas: %zu", &num_arenas) == 1) {
         ret->intervals[cur_interval].num_arenas = num_arenas;
         ret->intervals[cur_interval].arenas = orig_calloc(num_arenas, sizeof(arena_profile *));
