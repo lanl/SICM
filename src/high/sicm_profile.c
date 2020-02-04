@@ -220,32 +220,6 @@ void profile_master_interval(int s) {
     if(profopts.should_profile_online) {
       profile_online_post_interval(aprof);
     }
-
-    /* track_site feature */
-    if(tracker.track_site != -1) {
-      for(n = 0; n < arena->num_alloc_sites; n++) {
-        if(arena->alloc_sites[n] == tracker.track_site) {
-          fprintf(stderr, "=====\n");
-          fprintf(stderr, "Site %d\n", tracker.track_site);
-          if(profopts.should_profile_all) {
-            for(x = 0; x < profopts.num_profile_all_events; x++) {
-              fprintf(stderr, "  Event: %s\n", profopts.profile_all_events[x]);
-              fprintf(stderr, "    %zu\n", aprof->profile_all.events[x].intervals[aprof->num_intervals - 1]);
-            }
-          }
-          if(profopts.should_profile_extent_size) {
-            fprintf(stderr, "  Extent size:\n");
-            fprintf(stderr, "    %zu\n", aprof->profile_extent_size.intervals[aprof->num_intervals - 1]);
-          }
-          if(profopts.should_profile_allocs) {
-            fprintf(stderr, "  Allocations size:\n");
-            fprintf(stderr, "    %zu\n", aprof->profile_allocs.intervals[aprof->num_intervals - 1]);
-          }
-          fprintf(stderr, "=====\n");
-          break;
-        }
-      }
-    }
   }
 
   /* Finished handling this interval. Wait for another. */

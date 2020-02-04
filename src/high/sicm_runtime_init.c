@@ -287,15 +287,6 @@ void set_options() {
     fprintf(tracker.log_file, "SH_PROFILE_ONLINE_GRACE_ACCESSES: %lu\n", profopts.profile_online_grace_accesses);
   }
 
-  env = getenv("SH_TRACK_SITE");
-  tracker.track_site = -1;
-  if(env) {
-    tracker.track_site = strtol(env, NULL, 0);
-  }
-  if(tracker.log_file) {
-    fprintf(tracker.log_file, "SH_TRACK_SITE: %d\n", tracker.track_site);
-  }
-
   /* Get the arena layout */
   env = getenv("SH_ARENA_LAYOUT");
   if(env) {

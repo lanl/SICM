@@ -104,5 +104,5 @@ void add_site_profile(int, int);
 
 #define prof_check_good(a, p, i) \
   a = tracker.arenas[i]; \
-  p = prof.profile->arenas[i]; \
-  if((!a) || (!p) || !(p->num_intervals)) continue;
+  p = prof.profile->intervals[prof.profile->num_intervals - 1].arenas[i]; \
+  if((!a) || (!p)) continue;
