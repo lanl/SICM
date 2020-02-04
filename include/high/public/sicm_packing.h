@@ -460,7 +460,7 @@ static void sh_packing_init(application_profile *info,
   } else if(strcmp(*sort, "weight") == 0) {
     sh_sort_flag = 2;
   } else {
-    fprintf(stderr, "Type of sorting not recognized. Aborting.\n");
+    fprintf(stderr, "Type of sorting not recognized: '%s'. Aborting.\n", *sort);
     exit(1);
   }
 
