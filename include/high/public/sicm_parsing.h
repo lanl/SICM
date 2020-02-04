@@ -20,7 +20,7 @@ static void sh_print_profiling(application_profile *info, FILE *file) {
   arena_info *arena;
 
   for(cur_interval = 0; cur_interval < info->num_intervals; cur_interval++) {
-    fprintf(file, "===== BEGIN SICM PROFILING INFORMATION =====\n");
+    fprintf(file, "===== BEGIN INTERVAL %zu PROFILING =====\n", cur_interval);
     fprintf(file, "Number of PROFILE_ALL events: %zu\n", info->num_profile_all_events);
     fprintf(file, "Number of arenas: %zu\n", info->intervals[cur_interval].num_arenas);
     for(i = 0; i < info->intervals[cur_interval].num_arenas; i++) {
@@ -63,7 +63,7 @@ static void sh_print_profiling(application_profile *info, FILE *file) {
       fprintf(file, "END ARENA %u\n", aprof->index);
 
     }
-    fprintf(file, "===== END SICM PROFILING INFORMATION =====\n");
+    fprintf(file, "===== END INTERVAL PROFILING =====\n");
   }
 }
 
@@ -125,7 +125,7 @@ static application_profile *sh_parse_profiling(FILE *file) {
 
     /* Here, we want to look for profiling information output */
     if(depth == 0) {
-      if(strcmp(line, "===== BEGIN SICM PROFILING INFORMATION =====\n") == 0) {
+      if(strncmp(line, "===== BEGIN INTERVAL", 20) == 0) {
         depth = 1;
         num_arenas = 0;
         ret->num_intervals++;
@@ -140,7 +140,7 @@ static application_profile *sh_parse_profiling(FILE *file) {
        3. The end of profiling information
     */
     } else if(depth == 1) {
-      if(strcmp(line, "===== END SICM PROFILING INFORMATION =====\n") == 0) {
+      if(strncmp(line, "===== END INTERVAL\n", 18) == 0) {
         /* Up in depth */
         depth = 0;
         break;
