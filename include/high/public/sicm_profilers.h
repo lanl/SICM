@@ -29,7 +29,7 @@ union pfn_t {
   } obj;
 };
 typedef struct per_event_profile_all_info {
-  size_t total, peak, tmp_accumulator, *intervals;
+  size_t total, peak, current;
 } per_event_profile_all_info;
 void sh_get_event();
 
@@ -42,15 +42,15 @@ typedef struct profile_all_info {
 } profile_all_info;
 typedef struct profile_rss_info {
   /* profile_rss */
-  size_t peak, *intervals, tmp_accumulator;
+  size_t peak, current;
 } profile_rss_info;
 typedef struct profile_extent_size_info {
   /* profile_extent_size */
-  size_t peak, *intervals, tmp_accumulator;
+  size_t peak, current
 } profile_extent_size_info;
 typedef struct profile_allocs_info {
   /* profile_allocs */
-  size_t peak, *intervals, tmp_accumulator;
+  size_t peak, current;
 } profile_allocs_info;
 typedef struct profile_online_info {
   /* profile_online */
@@ -66,7 +66,6 @@ typedef struct profile_all_data {
   struct perf_event_attr ***pes;
   struct perf_event_mmap_page ***metadata;
   int **fds;
-  size_t **per_cpu_total;
   uint64_t **prev_head;
   size_t pagesize;
   unsigned long tid;

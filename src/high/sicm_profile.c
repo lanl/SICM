@@ -49,7 +49,7 @@ void add_site_profile(int index, int site_id) {
   arena_profile *aprof;
   pthread_rwlock_wrlock(&prof.profile_lock);
 
-  aprof = prof.profile->arenas[index];
+  aprof = prof.profile->intervals[prof.profile->num_intervals - 1].arenas[index];
   aprof->alloc_sites[aprof->num_alloc_sites] = site_id;
   aprof->num_alloc_sites++;
 
@@ -58,7 +58,7 @@ void add_site_profile(int index, int site_id) {
 
 /* Runs when a new arena is created. Allocates room to store
    profiling information about this arena. */
-void *create_arena_profile(int index, int site_id) {
+void create_arena_profile(int index, int site_id) {
   arena_profile *aprof;
 
   pthread_rwlock_wrlock(&prof.profile_lock);
@@ -81,21 +81,14 @@ void *create_arena_profile(int index, int site_id) {
     profile_online_arena_init(&(aprof->profile_online));
   }
 
-  aprof->num_intervals = 0;
-  aprof->first_interval = 0;
   aprof->index = index;
   aprof->num_alloc_sites = 1;
   aprof->alloc_sites = orig_malloc(sizeof(int) * tracker.max_sites_per_arena);
   aprof->alloc_sites[0] = site_id;
-  prof.profile->arenas[index] = aprof;
-  prof.profile->num_arenas++;
+  prof.profile->intervals[prof.profile->num_intervals].arenas[index] = aprof;
+  prof.profile->intervals[prof.profile->num_intervals].num_arenas++;
 
   pthread_rwlock_unlock(&prof.profile_lock);
-
-  /* Return this so that the arena can have a pointer to its profiling
-   * information
-   */
-  return (void *)prof.profile->arenas[index];
 }
 
 void end_interval() {
@@ -128,17 +121,12 @@ void profile_master_interval(int s) {
   clock_gettime(CLOCK_MONOTONIC, &start);
 
   /* Increment the interval */
-  arena_arr_for(i) {
-    arena_check_good(arena, i);
-    aprof = prof.profile->arenas[i];
-    if(!aprof) continue;
+  prof.profile->num_intervals++;
+  prof.profile->intervals = realloc(prof.profile->intervals, prof.profile->num_intervals * sizeof(interval_profile));
 
-    if(aprof->num_intervals == 0) {
-      /* This is the arena's first interval, make note */
-      aprof->first_interval = prof.cur_interval;
-    }
-    aprof->num_intervals++;
-  }
+  /* Allocate room for the per-arena profiling information for this one interval */
+  prof.profile->intervals[prof.profile->num_intervals - 1].num_arenas = 0;
+  prof.profile->intervals[prof.profile->num_intervals - 1].arenas = orig_calloc(tracker.max_arenas, sizeof(arena_profile *));
 
   if(profopts.should_profile_separate_threads) {
     /* If we're separating the profiling threads, notify them that an interval has started. */
@@ -441,9 +429,9 @@ void initialize_profiling() {
   /* Initialize the structs that store the profiling information */
   prof.profile = orig_malloc(sizeof(application_profile));
 
-  /* Allocate room for the per-arena profiling information */
-  prof.profile->num_arenas = 0;
-  prof.profile->arenas = orig_calloc(tracker.max_arenas, sizeof(arena_profile *));
+  /* We'll add profiling to this array when an interval happens */
+  prof.profile->num_intervals = 0;
+  prof.profile->intervals = NULL;
 
   /* Store the profile_all event strings */
   prof.profile->num_profile_all_events = profopts.num_profile_all_events;

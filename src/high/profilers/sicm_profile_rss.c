@@ -21,7 +21,6 @@ void profile_rss_post_interval(arena_profile *);
 
 void profile_rss_arena_init(profile_rss_info *info) {
   info->peak = 0;
-  info->intervals = NULL;
 }
 
 void profile_rss_deinit() {
@@ -82,21 +81,15 @@ void profile_rss_interval(int s) {
   /* Grab the lock for the extents array */
   pthread_rwlock_rdlock(&tracker.extents_lock);
 
-  /* Zero out the accumulator for each arena */
-  #if 0
-  extent_arr_for(tracker.extents, i) {
-    arena = (arena_info *) tracker.extents->arr[i].arena;
-    if(!arena) continue;
-    aprof = prof.profile->arenas[arena->index];
-    if(!aprof) continue;
-    aprof->profile_rss.tmp_accumulator = 0;
-  }
-  #endif
-  for(i = 0; i < prof.profile->num_arenas; i++) {
-    aprof = prof.profile->arenas[i];
-    if(!aprof) continue;
-
-    aprof->profile_rss.tmp_accumulator = 0;
+  /* Copy the total and peak over to the new interval, but zero out the current */
+  if(prof.profile->num_intervals >= 2) {
+    profile_rss_info *last_interval, this_interval;
+    last_interval = &(prof.profile->intervals[prof.profile->num_intervals - 2]
+                      .arenas[arena->index]->profile_rss);
+    this_interval = &(prof.profile->intervals[prof.profile->num_intervals - 1]
+                      .arenas[arena->index]->profile_rss);
+    memcpy(this_interval, last_interval, sizeof(profile_rss_info));
+    this_interval->current = 0;
   }
 
   /* Iterate over the chunks */
@@ -105,8 +98,9 @@ void profile_rss_interval(int s) {
     end = (uint64_t) tracker.extents->arr[i].end;
     arena = (arena_info *) tracker.extents->arr[i].arena;
     if(!arena) continue;
-    aprof = prof.profile->arenas[arena->index];
-    if((!aprof) || (!aprof->num_intervals)) continue;
+    aprof = prof.profile->intervals[prof.profile->num_intervals - 1]
+                .arenas[arena->index];
+    if(!aprof) continue;
 
     numpages = (end - start) / prof.profile_rss.pagesize;
     prof.profile_rss.pfndata = (union pfn_t *) orig_realloc(prof.profile_rss.pfndata, numpages * prof.profile_rss.addrsize);
@@ -133,7 +127,7 @@ void profile_rss_interval(int s) {
       if(!(prof.profile_rss.pfndata[n].obj.present)) {
         continue;
       }
-      aprof->profile_rss.tmp_accumulator += prof.profile_rss.pagesize;
+      aprof->profile_rss.current += prof.profile_rss.pagesize;
     }
   }
 
@@ -148,11 +142,7 @@ void profile_rss_post_interval(arena_profile *info) {
   aprof = &(info->profile_rss);
 
   /* Maintain the peak for this arena */
-  if(aprof->tmp_accumulator > aprof->peak) {
-    aprof->peak = aprof->tmp_accumulator;
+  if(aprof->current > aprof->peak) {
+    aprof->peak = aprof->current;
   }
-
-  /* Store this interval's value */
-  aprof->intervals = (size_t *)orig_realloc(aprof->intervals, info->num_intervals * sizeof(size_t));
-  aprof->intervals[info->num_intervals - 1] = aprof->tmp_accumulator;
 }

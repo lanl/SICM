@@ -21,8 +21,7 @@ void profile_allocs_post_interval(arena_profile *);
 
 void profile_allocs_arena_init(profile_allocs_info *info) {
   info->peak = 0;
-  info->intervals = NULL;
-  info->tmp_accumulator = 0;
+  info->current = 0;
 }
 
 void *profile_allocs(void *a) {
@@ -39,7 +38,7 @@ void profile_allocs_interval(int s) {
   /* Iterate over the arenas and set their size to the tmp_accumulator */
   arena_arr_for(i) {
     prof_check_good(arena, aprof, i);
-    aprof->profile_allocs.tmp_accumulator = arena->size;
+    aprof->profile_allocs.current = arena->size;
   }
 
   end_interval();
@@ -59,14 +58,9 @@ void profile_allocs_post_interval(arena_profile *aprof) {
   aprof_allocs = &(aprof->profile_allocs);
 
   /* Maintain peak */
-  if(aprof_allocs->tmp_accumulator > aprof_allocs->peak) {
-    aprof_allocs->peak = aprof_allocs->tmp_accumulator;
+  if(aprof_allocs->current > aprof_allocs->peak) {
+    aprof_allocs->peak = aprof_allocs->current;
   }
-
-  /* Store this interval */
-  aprof_allocs->intervals =
-    (size_t *)orig_realloc(aprof_allocs->intervals, aprof->num_intervals * sizeof(size_t));
-  aprof_allocs->intervals[aprof->num_intervals - 1] = aprof_allocs->tmp_accumulator;
 }
 
 void profile_allocs_skip_interval(int s) {

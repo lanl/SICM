@@ -67,7 +67,6 @@ void profile_all_arena_init(profile_all_info *info) {
   for(i = 0; i < prof.profile->num_profile_all_events; i++) {
     info->events[i].total = 0;
     info->events[i].peak = 0;
-    info->events[i].intervals = NULL;
   }
 }
 
@@ -91,13 +90,6 @@ void profile_all_init() {
 
   prof.profile_all.tid = (unsigned long) syscall(SYS_gettid);
   prof.profile_all.pagesize = (size_t) sysconf(_SC_PAGESIZE);
-
-  /* We'll use these to store a per-cpu count of accesses. This is
-     used for making sure that each thread gets an approximately even number of accesses. */
-  prof.profile_all.per_cpu_total = malloc(sizeof(size_t *) * profopts.num_profile_all_cpus);
-  for(n = 0; n < profopts.num_profile_all_cpus; n++) {
-    prof.profile_all.per_cpu_total[n] = malloc(sizeof(size_t) * prof.profile->num_profile_all_events);
-  }
 
   /* This array is for storing the per-cpu, per-event data_head values. Instead of calling `poll`, we
      can see if the current data_head value is different from the previous one, and when it is,
@@ -184,25 +176,6 @@ void *profile_all(void *a) {
 
 /* Just copies the previous value */
 void profile_all_skip_interval(int s) {
-  arena_profile *aprof;
-  arena_info *arena;
-  per_event_profile_all_info *per_event_aprof;
-  size_t i, n;
-
-  for(i = 0; i < prof.profile->num_profile_all_events; i++) {
-    arena_arr_for(n) {
-      prof_check_good(arena, aprof, n);
-
-      per_event_aprof->intervals = (size_t *)orig_realloc(per_event_aprof->intervals, aprof->num_intervals * sizeof(size_t));
-      if(aprof->num_intervals == 1) {
-        per_event_aprof->intervals[aprof->num_intervals - 1] = 0;
-      } else {
-        per_event_aprof->intervals[aprof->num_intervals - 1] = per_event_aprof->intervals[aprof->num_intervals - 2];
-        per_event_aprof->total += per_event_aprof->intervals[aprof->num_intervals - 1];
-      }
-    }
-  }
-
   end_interval();
 }
 
@@ -220,21 +193,35 @@ void profile_all_interval(int s) {
   per_event_profile_all_info *per_event_aprof;
   struct pollfd pfd;
 
-  /* Outer loop loops over the events */
+  /* Copy over the last interval's profiling. Then zero out the current value,
+     leaving only the peak and total. */
+  if(prof.profile->num_intervals >= 2) {
+    profile_all_info *last_interval, this_interval;
+    last_interval = &(prof.profile->intervals[prof.profile->num_intervals - 2]
+                      .arenas[arena->index]->profile_all);
+    this_interval = &(prof.profile->intervals[prof.profile->num_intervals - 1]
+                      .arenas[arena->index]->profile_all);
+    memcpy(this_interval->events,
+           last_interval->events,
+           prof.profile->num_profile_all_events * sizeof(per_event_profile_all_info));
+    for(i = 0; i < prof.profile->num_profile_all_events; i++) {
+      this_interval->events[i].current = 0;
+    }
+  }
+
+  /* Loops over all CPUs */
   for(x = 0; x < profopts.num_profile_all_cpus; x++) {
+    /* Loops over all PROFILE_ALL events */
     for(i = 0; i < prof.profile->num_profile_all_events; i++) {
 
-      /* Clear this CPU and event's total */
-      prof.profile_all.per_cpu_total[x][i] = 0;
-
+#if 0
       /* Loop over all arenas and clear their accumulators */
       arena_arr_for(n) {
         prof_check_good(arena, aprof, n);
 
-        aprof->profile_all.events[i].tmp_accumulator = 0;
+        aprof->profile_all.events[i].current = 0;
       }
 
-#if 0
       /* Wait for the perf buffer to be ready */
       pfd.fd = prof.profile_all.fds[x][i];
       pfd.events = POLLIN;
@@ -249,7 +236,7 @@ void profile_all_interval(int s) {
         fprintf(stderr, "Error occurred polling. Aborting.\n");
         exit(1);
       }
-      #endif
+#endif
 
       /* Grab the head. If the head is the same as the previous one, we can just
          move on to the next event; the buffer isn't ready to read yet. */
@@ -284,9 +271,12 @@ void profile_all_interval(int s) {
             if(!tracker.extents->arr[n].start && !tracker.extents->arr[n].end) continue;
             arena = (arena_info *)tracker.extents->arr[n].arena;
             if((addr >= tracker.extents->arr[n].start) && (addr <= tracker.extents->arr[n].end) && arena) {
-              prof.profile->arenas[arena->index]->profile_all.events[i].tmp_accumulator++;
-              prof.profile->arenas[arena->index]->profile_all.events[i].total++;
-              prof.profile_all.per_cpu_total[x][i]++;
+
+              /* Okay, record this accesses in this interval's arena's profiling information */
+              prof.profile->intervals[prof.profile->num_intervals - 1]
+                  .arenas[arena->index]->profile_all.events[i].current++;
+              prof.profile->intervals[prof.profile->num_intervals - 1]
+                  .arenas[arena->index]->profile_all.events[i].total++;
             }
           }
         }
@@ -315,17 +305,12 @@ void profile_all_post_interval(arena_profile *aprof) {
   profile_all_info *aprof_all;
   size_t i;
 
+  /* All we need to do here is maintain the peak */
   aprof_all = &(aprof->profile_all);
-
   for(i = 0; i < prof.profile->num_profile_all_events; i++) {
     per_event_aprof = &(aprof_all->events[i]);
-
-    per_event_aprof->total += aprof_all->events[i].tmp_accumulator;
-    if(aprof_all->events[i].tmp_accumulator > per_event_aprof->peak) {
-      per_event_aprof->peak = aprof_all->events[i].tmp_accumulator;
+    if(aprof_all->events[i].current > per_event_aprof->peak) {
+      per_event_aprof->peak = aprof_all->events[i].current;
     }
-    /* One size_t per interval for this one event */
-    per_event_aprof->intervals = (size_t *)orig_realloc(per_event_aprof->intervals, aprof->num_intervals * sizeof(size_t));
-    per_event_aprof->intervals[aprof->num_intervals - 1] = aprof_all->events[i].tmp_accumulator;
   }
 }

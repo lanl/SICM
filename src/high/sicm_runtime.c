@@ -381,7 +381,7 @@ void sh_create_arena(int index, int id, sicm_device *device) {
   arena->num_alloc_sites = 1;
   arena->info = NULL;
   if(profopts.should_profile) {
-    arena->info = create_arena_profile(index, id);
+    create_arena_profile(index, id);
   }
 
   /* Need to construct a sicm_device_list of one device */

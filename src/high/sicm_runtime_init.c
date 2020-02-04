@@ -147,11 +147,11 @@ void set_options() {
     fflush(stdout);
   }
 
-  /* Should we print the per-interval profiling information, or just the aggregated profiling? */
-  env = getenv("SH_PRINT_INTERVALS");
-  profopts.should_print_intervals = 0;
+  /* Should we generate and attempt to use per-interval profiling information? */
+  env = getenv("SH_PROFILE_INTERVALS");
+  profopts.profile_intervals = 0;
   if(env) {
-    profopts.should_print_intervals = 1;
+    profopts.profile_intervals = 1;
   }
 
   /* Should we split each type of profiling into its own thread? */

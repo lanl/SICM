@@ -179,17 +179,20 @@ static tree(site_info_ptr, int) sh_merge_site_trees(tree(site_info_ptr, int) fir
 static tree(site_info_ptr, int) sh_convert_to_site_tree(application_profile *info) {
   tree(site_info_ptr, int) site_tree;
   tree_it(site_info_ptr, int) sit;
-  size_t i;
+  size_t i, cur_interval;
   int n;
   site_info_ptr site, site_copy;
   arena_profile *aprof;
 
   site_tree = tree_make_c(site_info_ptr, int, &site_tree_cmp);
 
+  /* We'll only look at the total value and weight, in the last interval */
+  cur_interval = info->num_intervals - 1;
+
   /* Iterate over the arenas, create a site_profile_info struct for each site,
      and simply insert them into the tree (which sorts them). */
-  for(i = 0; i < info->num_arenas; i++) {
-    aprof = info->arenas[i];
+  for(i = 0; i < info->intervals[cur_interval].num_arenas; i++) {
+    aprof = info->intervals[cur_interval].arenas[i];
     if(!aprof) continue;
     if(get_weight(aprof) == 0) continue;
 

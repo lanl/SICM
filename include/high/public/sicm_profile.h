@@ -22,7 +22,6 @@
 
 /* Profiling information for one arena */
 typedef struct arena_profile {
-  size_t first_interval, num_intervals;
   unsigned index;
   int num_alloc_sites, *alloc_sites;
 
@@ -33,15 +32,20 @@ typedef struct arena_profile {
   profile_online_info profile_online;
 } arena_profile;
 
-/* Profiling information for a whole application */
-typedef struct application_profile {
+typedef struct interval_profile {
   /* Array of arenas and their info */
   size_t num_arenas;
   arena_profile **arenas;
+} interval_profile;
+
+/* Profiling information for a whole application */
+typedef struct application_profile {
+  size_t num_intervals, num_profile_all_events;
 
   /* Array of event strings in the profiling */
-  size_t num_profile_all_events;
   char **profile_all_events;
+
+  interval_profile *intervals;
 } application_profile;
 
 /* Information about a single profiling thread. Used by the
@@ -94,7 +98,7 @@ void sh_stop_profile_master_thread();
 
 void end_interval();
 
-void *create_arena_profile(int, int);
+void create_arena_profile(int, int);
 void add_site_profile(int, int);
 
 
