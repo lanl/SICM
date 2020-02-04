@@ -14,12 +14,12 @@
 
 /* Iterates over the structure and prints it out so that it can
  * be seamlessly read back in */
-static void sh_print_profiling(application_profile *info, size_t num_profiles, FILE *file) {
+static void sh_print_profiling(application_profile *info, FILE *file) {
   size_t i, n, x, cur_interval;
   arena_profile *aprof;
   arena_info *arena;
 
-  for(cur_interval = 0; cur_interval < num_profiles; cur_interval++) {
+  for(cur_interval = 0; cur_interval < info->num_intervals; cur_interval++) {
     fprintf(file, "===== BEGIN SICM PROFILING INFORMATION =====\n");
     fprintf(file, "Number of PROFILE_ALL events: %zu\n", info->num_profile_all_events);
     fprintf(file, "Number of arenas: %zu\n", info->intervals[cur_interval].num_arenas);
