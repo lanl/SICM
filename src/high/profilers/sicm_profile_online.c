@@ -382,8 +382,8 @@ void profile_online_init() {
     offline_profile = sh_parse_profiling(profopts.profile_input_file);
     sh_packing_init(offline_profile,
                     &value,
-                    profopts.profile_online_events,
-                    profopts.num_profile_online_events,
+                    &profopts.profile_online_events,
+                    &profopts.num_profile_online_events,
                     &weight,
                     &algo,
                     &sort,
@@ -393,8 +393,8 @@ void profile_online_init() {
   } else {
     sh_packing_init(prof.profile,
                     &value,
-                    profopts.profile_online_events,
-                    profopts.num_profile_online_events,
+                    &profopts.profile_online_events,
+                    &profopts.num_profile_online_events,
                     &weight,
                     &algo,
                     &sort,

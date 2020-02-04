@@ -334,8 +334,8 @@ static tree(int, site_info_ptr) sh_get_hot_sites(tree(site_info_ptr, int) site_t
    in which case this function will fill them in with a default value. */
 static void sh_packing_init(application_profile *info,
                             char **value, /* A pointer to a string that's what type of profiling to use for determining the value */
-                            char **events,
-                            size_t num_events,
+                            char ***events, /* Pointer to array of 'char *' */
+                            size_t *num_events,
                             char **weight,
                             char **algo,
                             char **sort,
@@ -374,44 +374,43 @@ static void sh_packing_init(application_profile *info,
     exit(1);
   }
 
-  /* Copy the array of floats into the global pointer */
-  sh_weights = malloc(sizeof(float) * num_events);
-  if(weights) {
-    for(i = 0; i < num_events; i++) {
-      sh_weights[i] = weights[i];
-    }
-  } else {
-    for(i = 0; i < num_events; i++) {
-      sh_weights[i] = 1.0;
-    }
-  }
-
   /* Figure out which index the chosen event is */
   if(sh_value_flag == 0) {
     if(*events == NULL) {
-      /* Just grab the first event in the value's list of events */
+      /* Use all of the events */
       if(info->num_profile_all_events) {
-        events[0] = orig_malloc((strlen(info->profile_all_events[0]) + 1) * sizeof(char));
-        strcpy(events[0], info->profile_all_events[0]);
-        sh_num_value_event_indices = 1;
-        sh_value_event_indices = malloc(sizeof(size_t));
-        sh_value_event_indices[0] = 0;
+        *events = orig_malloc(sizeof(char *) * info->num_profile_all_events);
+        for(i = 0; i < info->num_profile_all_events; i++) {
+          sh_num_value_event_indices++;
+          sh_value_event_indices = realloc(sh_value_event_indices, sizeof(size_t) * sh_num_value_event_indices);
+          sh_value_event_indices[sh_num_value_event_indices - 1] = i;
+          *(events)[i] = orig_malloc((strlen(info->profile_all_events[i]) + 1) * sizeof(char));
+          strcpy(*(events)[i], info->profile_all_events[i]);
+        }
+        if(!num_events) {
+          num_events = orig_malloc(sizeof(size_t));
+        }
+        *num_events = info->num_profile_all_events;
       } else {
         fprintf(stderr, "The chosen value profiling has no events to default to. Aborting.\n");
         exit(1);
       }
     } else {
+      if(!num_events) {
+        fprintf(stderr, "You specified events, but not a number of them. Aborting.\n");
+        exit(1);
+      }
       /* The user specified an event, so try to find that specific one */
-      for(i = 0; i < num_events; i++) {
+      for(i = 0; i < *num_events; i++) {
         for(n = 0; n < info->num_profile_all_events; n++) {
-          if(strcmp(events[i], info->profile_all_events[n]) == 0) {
+          if(strcmp(*(events)[i], info->profile_all_events[n]) == 0) {
             sh_num_value_event_indices++;
             sh_value_event_indices = realloc(sh_value_event_indices, sizeof(size_t) * sh_num_value_event_indices);
             sh_value_event_indices[sh_num_value_event_indices - 1] = n;
           }
         }
       }
-      if(sh_num_value_event_indices != num_events) {
+      if(sh_num_value_event_indices != *num_events) {
         fprintf(stderr, "Unable to find an event in the profiling. Aborting.\n");
         exit(1);
       }
@@ -419,6 +418,18 @@ static void sh_packing_init(application_profile *info,
   } else {
     fprintf(stderr, "Invalid value profiling detected. Aborting.\n");
     exit(1);
+  }
+
+  /* Copy the array of floats into the global pointer */
+  sh_weights = malloc(sizeof(float) * (*num_events));
+  if(weights) {
+    for(i = 0; i < (*num_events); i++) {
+      sh_weights[i] = weights[i];
+    }
+  } else {
+    for(i = 0; i < (*num_events); i++) {
+      sh_weights[i] = 1.0;
+    }
   }
 
   /* Set sh_weight_flag */
@@ -460,8 +471,8 @@ static void sh_packing_init(application_profile *info,
   if(sh_verbose_flag) {
     printf("Finished initializing the packing library with the following parameters:\n");
     printf("  Value: %s\n", *value);
-    for(i = 0; i < num_events; i++) {
-      printf("  Event: '%s', index %zu\n", events[i], i);
+    for(i = 0; i < (*num_events); i++) {
+      printf("  Event: '%s', index %zu\n", *(events)[i], i);
     }
     printf("  Weight: %s\n", *weight);
     printf("  Algorithm: %s\n", *algo);
