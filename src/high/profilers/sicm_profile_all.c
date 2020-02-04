@@ -196,7 +196,7 @@ void profile_all_interval(int s) {
   /* Copy over the last interval's profiling. Then zero out the current value,
      leaving only the peak and total. */
   if(prof.profile->num_intervals >= 2) {
-    profile_all_info *last_interval, this_interval;
+    profile_all_info *last_interval, *this_interval;
     last_interval = &(prof.profile->intervals[prof.profile->num_intervals - 2]
                       .arenas[arena->index]->profile_all);
     this_interval = &(prof.profile->intervals[prof.profile->num_intervals - 1]

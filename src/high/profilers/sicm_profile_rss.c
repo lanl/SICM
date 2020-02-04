@@ -83,7 +83,7 @@ void profile_rss_interval(int s) {
 
   /* Copy the total and peak over to the new interval, but zero out the current */
   if(prof.profile->num_intervals >= 2) {
-    profile_rss_info *last_interval, this_interval;
+    profile_rss_info *last_interval, *this_interval;
     last_interval = &(prof.profile->intervals[prof.profile->num_intervals - 2]
                       .arenas[arena->index]->profile_rss);
     this_interval = &(prof.profile->intervals[prof.profile->num_intervals - 1]
