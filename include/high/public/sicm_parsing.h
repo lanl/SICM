@@ -117,10 +117,6 @@ static application_profile *sh_parse_profiling(FILE *file) {
   ret->intervals = NULL;
   len = 0;
   line = NULL;
-  cur_arena = NULL;
-  cur_event = NULL;
-  cur_arena_index = 0;
-  cur_event_index = 0;
   while(read = getline(&line, &len, file) != -1) {
 
     /* Here, we want to look for profiling information output */
@@ -131,6 +127,10 @@ static application_profile *sh_parse_profiling(FILE *file) {
         ret->num_intervals++;
         ret->intervals = realloc(ret->intervals, ret->num_intervals * sizeof(interval_profile));
         cur_interval = ret->num_intervals - 1;
+        cur_arena = NULL;
+        cur_event = NULL;
+        cur_arena_index = 0;
+        cur_event_index = 0;
       }
 
     /* At this level, we're looking for three things:
@@ -157,7 +157,8 @@ static application_profile *sh_parse_profiling(FILE *file) {
           exit(1);
         }
         if((cur_arena_index > num_arenas - 1)) {
-          fprintf(stderr, "Too many arenas when parsing profiling info. Aborting.\n");
+          fprintf(stderr, "Too many arenas (index %zu, max %zu) when parsing profiling info. Aborting.\n",
+                  cur_arena_index, num_arenas - 1);
           exit(1);
         }
         cur_arena = orig_malloc(sizeof(arena_profile));
