@@ -216,7 +216,9 @@ void profile_master_interval(int s) {
                                     prof.profile->num_intervals * sizeof(interval_profile));
   arena_arr_for(i) {
     prof_check_good(arena, aprof, i);
-    memcpy(prof.profile->intervals[prof.profile->num_intervals -1].arenas[i],
+    prof.profile->intervals[prof.profile->num_intervals - 1].arenas =
+      orig_calloc(tracker.max_arenas, sizeof(arena_profile *));
+    memcpy(prof.profile->intervals[prof.profile->num_intervals - 1].arenas[i],
            aprof,
            sizeof(arena_profile));
   }
