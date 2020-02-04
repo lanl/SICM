@@ -50,7 +50,7 @@ void profile_extent_size_interval(int s) {
     if(!arena) continue;
     aprof = (arena_profile *) prof.profile->intervals[prof.profile->num_intervals - 1]
                                   .arenas[arena->index];
-    if((!aprof) || (!aprof->num_intervals)) continue;
+    if(!aprof) continue;
 
     start = (char *) tracker.extents->arr[i].start;
     end = (char *) tracker.extents->arr[i].end;
