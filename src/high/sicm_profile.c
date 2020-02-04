@@ -85,8 +85,8 @@ void create_arena_profile(int index, int site_id) {
   aprof->num_alloc_sites = 1;
   aprof->alloc_sites = orig_malloc(sizeof(int) * tracker.max_sites_per_arena);
   aprof->alloc_sites[0] = site_id;
-  prof.profile->intervals[prof.profile->num_intervals].arenas[index] = aprof;
-  prof.profile->intervals[prof.profile->num_intervals].num_arenas++;
+  prof.profile->intervals[prof.profile->num_intervals - 1].arenas[index] = aprof;
+  prof.profile->intervals[prof.profile->num_intervals - 1].num_arenas++;
 
   pthread_rwlock_unlock(&prof.profile_lock);
 }
