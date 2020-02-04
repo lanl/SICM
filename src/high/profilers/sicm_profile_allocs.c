@@ -64,19 +64,5 @@ void profile_allocs_post_interval(arena_profile *aprof) {
 }
 
 void profile_allocs_skip_interval(int s) {
-  arena_info *arena;
-  arena_profile *aprof;
-  size_t i;
-
-  arena_arr_for(i) {
-    prof_check_good(arena, aprof, i);
-
-    if(aprof->num_intervals == 1) {
-      aprof->profile_allocs.tmp_accumulator = 0;
-    } else {
-      aprof->profile_allocs.tmp_accumulator = aprof->profile_allocs.intervals[aprof->num_intervals - 2];
-    }
-  }
-
   end_interval();
 }
