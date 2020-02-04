@@ -362,6 +362,7 @@ static void sh_packing_init(application_profile *info,
     strcpy(*algo, DEFAULT_ALGO);
   }
   if(*sort == NULL) {
+    printf("Hey, we're here\n");
     *sort = orig_malloc((strlen(DEFAULT_SORT) + 1) * sizeof(char));
     strcpy(*sort, DEFAULT_SORT);
   }
