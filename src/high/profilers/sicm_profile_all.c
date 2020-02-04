@@ -193,19 +193,11 @@ void profile_all_interval(int s) {
   per_event_profile_all_info *per_event_aprof;
   struct pollfd pfd;
 
-  /* Copy over the last interval's profiling. Then zero out the current value,
-     leaving only the peak and total. */
-  if(prof.profile->num_intervals >= 2) {
-    profile_all_info *last_interval, *this_interval;
-    last_interval = &(prof.profile->intervals[prof.profile->num_intervals - 2]
-                      .arenas[arena->index]->profile_all);
-    this_interval = &(prof.profile->intervals[prof.profile->num_intervals - 1]
-                      .arenas[arena->index]->profile_all);
-    memcpy(this_interval->events,
-           last_interval->events,
-           prof.profile->num_profile_all_events * sizeof(per_event_profile_all_info));
-    for(i = 0; i < prof.profile->num_profile_all_events; i++) {
-      this_interval->events[i].current = 0;
+  /* Loop over all arenas and clear their accumulators */
+  for(i = 0; i < prof.profile->num_profile_all_events; i++) {
+    arena_arr_for(n) {
+      prof_check_good(arena, aprof, n);
+      aprof->profile_all.events[i].current = 0;
     }
   }
 
@@ -215,13 +207,6 @@ void profile_all_interval(int s) {
     for(i = 0; i < prof.profile->num_profile_all_events; i++) {
 
 #if 0
-      /* Loop over all arenas and clear their accumulators */
-      arena_arr_for(n) {
-        prof_check_good(arena, aprof, n);
-
-        aprof->profile_all.events[i].current = 0;
-      }
-
       /* Wait for the perf buffer to be ready */
       pfd.fd = prof.profile_all.fds[x][i];
       pfd.events = POLLIN;
@@ -272,11 +257,9 @@ void profile_all_interval(int s) {
             arena = (arena_info *)tracker.extents->arr[n].arena;
             if((addr >= tracker.extents->arr[n].start) && (addr <= tracker.extents->arr[n].end) && arena) {
 
-              /* Okay, record this accesses in this interval's arena's profiling information */
-              prof.profile->intervals[prof.profile->num_intervals - 1]
-                  .arenas[arena->index]->profile_all.events[i].current++;
-              prof.profile->intervals[prof.profile->num_intervals - 1]
-                  .arenas[arena->index]->profile_all.events[i].total++;
+              /* Record this access */
+              prof.profile->arenas[arena->index]->profile_all.events[i].current++;
+              prof.profile->arenas[arena->index]->profile_all.events[i].total++;
             }
           }
         }

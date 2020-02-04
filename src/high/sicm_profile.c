@@ -49,7 +49,7 @@ void add_site_profile(int index, int site_id) {
   arena_profile *aprof;
   pthread_rwlock_wrlock(&prof.profile_lock);
 
-  aprof = prof.profile->intervals[prof.profile->num_intervals - 1].arenas[index];
+  aprof = prof.profile->arenas[index];
   aprof->alloc_sites[aprof->num_alloc_sites] = site_id;
   aprof->num_alloc_sites++;
 
@@ -85,8 +85,8 @@ void create_arena_profile(int index, int site_id) {
   aprof->num_alloc_sites = 1;
   aprof->alloc_sites = orig_malloc(sizeof(int) * tracker.max_sites_per_arena);
   aprof->alloc_sites[0] = site_id;
-  prof.profile->intervals[prof.profile->num_intervals - 1].arenas[index] = aprof;
-  prof.profile->intervals[prof.profile->num_intervals - 1].num_arenas++;
+  prof.profile->arenas[index] = aprof;
+  prof.profile->num_arenas++;
 
   pthread_rwlock_unlock(&prof.profile_lock);
 }
@@ -119,14 +119,6 @@ void profile_master_interval(int s) {
 
   /* Start time */
   clock_gettime(CLOCK_MONOTONIC, &start);
-
-  /* Increment the interval */
-  prof.profile->num_intervals++;
-  prof.profile->intervals = realloc(prof.profile->intervals, prof.profile->num_intervals * sizeof(interval_profile));
-
-  /* Allocate room for the per-arena profiling information for this one interval */
-  prof.profile->intervals[prof.profile->num_intervals - 1].num_arenas = 0;
-  prof.profile->intervals[prof.profile->num_intervals - 1].arenas = orig_calloc(tracker.max_arenas, sizeof(arena_profile *));
 
   if(profopts.should_profile_separate_threads) {
     /* If we're separating the profiling threads, notify them that an interval has started. */
@@ -198,10 +190,6 @@ void profile_master_interval(int s) {
             target.tv_sec, target.tv_nsec);
   }
 
-  /* Keep track of this interval's profiling values.
-   * The profiling threads fill the value `tmp_accumulator`, and
-   * this loop maintains the peak, total, and per-interval value.
-   */
   arena_arr_for(i) {
     prof_check_good(arena, aprof, i);
 
@@ -220,6 +208,17 @@ void profile_master_interval(int s) {
     if(profopts.should_profile_online) {
       profile_online_post_interval(aprof);
     }
+  }
+
+  /* Store this past interval's profiling information */
+  prof.profile->num_intervals++;
+  prof.profile->intervals = realloc(prof.profile->intervals,
+                                    prof.profile->num_intervals * sizeof(interval_profile));
+  arena_arr_for(i) {
+    prof_check_good(arena, aprof, i);
+    memcpy(prof.profile->intervals[prof.profile->num_intervals -1].arenas[i],
+           aprof,
+           sizeof(arena_profile));
   }
 
   /* Finished handling this interval. Wait for another. */
@@ -268,7 +267,7 @@ void setup_profile_thread(void *(*main)(void *), /* Spinning loop function */
 
     /* Set up the signal handler */
     profthread->signal = global_signal;
-  	sa.sa_flags = 0;
+    sa.sa_flags = 0;
     sa.sa_handler = interval;
     sigemptyset(&sa.sa_mask);
     if(sigaction(profthread->signal, &sa, NULL) == -1) {
@@ -279,7 +278,7 @@ void setup_profile_thread(void *(*main)(void *), /* Spinning loop function */
 
     /* Set up the signal handler for what gets called if we're skipping this interval */
     profthread->skip_signal = global_signal;
-  	sa.sa_flags = 0;
+    sa.sa_flags = 0;
     sa.sa_handler = skip_interval;
     sigemptyset(&sa.sa_mask);
     if(sigaction(profthread->skip_signal, &sa, NULL) == -1) {
@@ -289,10 +288,10 @@ void setup_profile_thread(void *(*main)(void *), /* Spinning loop function */
     global_signal++;
   }
 
-  profthread->interval_func = interval;
+  profthread->interval_func      = interval;
   profthread->skip_interval_func = skip_interval;
-  profthread->skipped_intervals = 0;
-  profthread->skip_intervals = skip_intervals;
+  profthread->skipped_intervals  = 0;
+  profthread->skip_intervals     = skip_intervals;
 }
 
 /* This is the Master thread, it keeps track of intervals
@@ -374,9 +373,9 @@ void *profile_master(void *a) {
   }
 
   /* Set the timer */
-  its.it_value.tv_sec = profopts.profile_rate_nseconds / 1000000000;
-  its.it_value.tv_nsec = profopts.profile_rate_nseconds % 1000000000;
-  its.it_interval.tv_sec = its.it_value.tv_sec;
+  its.it_value.tv_sec     = profopts.profile_rate_nseconds / 1000000000;
+  its.it_value.tv_nsec    = profopts.profile_rate_nseconds % 1000000000;
+  its.it_interval.tv_sec  = its.it_value.tv_sec;
   its.it_interval.tv_nsec = its.it_value.tv_nsec;
   if(timer_settime(prof.timerid, 0, &its, NULL) == -1) {
     fprintf(stderr, "Error setting the timer. Aborting.\n");
@@ -406,6 +405,10 @@ void initialize_profiling() {
   /* We'll add profiling to this array when an interval happens */
   prof.profile->num_intervals = 0;
   prof.profile->intervals = NULL;
+
+  /* Stores the current interval's profiling */
+  prof.profile->num_arenas = 0;
+  prof.profile->arenas = orig_calloc(tracker.max_arenas, sizeof(arena_profile *));
 
   /* Store the profile_all event strings */
   prof.profile->num_profile_all_events = profopts.num_profile_all_events;

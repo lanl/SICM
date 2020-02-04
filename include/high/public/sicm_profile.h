@@ -40,7 +40,11 @@ typedef struct interval_profile {
 
 /* Profiling information for a whole application */
 typedef struct application_profile {
-  size_t num_intervals, num_profile_all_events;
+  size_t num_intervals, num_profile_all_events,
+         num_arenas;
+
+  /* Array of the last interval's arenas */
+  arena_profile **arenas;
 
   /* Array of event strings in the profiling */
   char **profile_all_events;
@@ -104,5 +108,5 @@ void add_site_profile(int, int);
 
 #define prof_check_good(a, p, i) \
   a = tracker.arenas[i]; \
-  p = prof.profile->intervals[prof.profile->num_intervals - 1].arenas[i]; \
+  p = prof.profile->arenas[i]; \
   if((!a) || (!p)) continue;
