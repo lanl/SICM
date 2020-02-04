@@ -46,7 +46,7 @@ typedef struct profile_rss_info {
 } profile_rss_info;
 typedef struct profile_extent_size_info {
   /* profile_extent_size */
-  size_t peak, current
+  size_t peak, current;
 } profile_extent_size_info;
 typedef struct profile_allocs_info {
   /* profile_allocs */
