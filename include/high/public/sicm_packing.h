@@ -413,12 +413,12 @@ static void sh_packing_init(application_profile *info,
         exit(1);
       }
     } else {
-      if(!num_events) {
+      if(!(*num_events)) {
         fprintf(stderr, "You specified events, but not a number of them. Aborting.\n");
         exit(1);
       }
       /* The user specified an event, so try to find that specific one */
-      for(i = 0; i < *num_events; i++) {
+      for(i = 0; i < (*num_events); i++) {
         for(n = 0; n < info->num_profile_all_events; n++) {
           if(strcmp(*(events)[i], info->profile_all_events[n]) == 0) {
             sh_num_value_event_indices++;
