@@ -419,7 +419,7 @@ static void sh_packing_init(application_profile *info,
       /* The user specified an event, so try to find that specific one */
       for(i = 0; i < (*num_events); i++) {
         for(n = 0; n < info->num_profile_all_events; n++) {
-          if(strcmp(*(events)[i], info->profile_all_events[n]) == 0) {
+          if(strcmp((*events)[i], info->profile_all_events[n]) == 0) {
             sh_num_value_event_indices++;
             sh_value_event_indices = realloc(sh_value_event_indices, sizeof(size_t) * sh_num_value_event_indices);
             sh_value_event_indices[sh_num_value_event_indices - 1] = n;
@@ -488,7 +488,7 @@ static void sh_packing_init(application_profile *info,
     printf("Finished initializing the packing library with the following parameters:\n");
     printf("  Value: %s\n", *value);
     for(i = 0; i < (*num_events); i++) {
-      printf("  Event: '%s', index %zu\n", *(events)[i], i);
+      printf("  Event: '%s', index %zu\n", (*events)[i], i);
     }
     printf("  Weight: %s\n", *weight);
     printf("  Algorithm: %s\n", *algo);
