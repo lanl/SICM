@@ -496,7 +496,6 @@ void deinitialize_profiling() {
   }
 }
 
-
 void sh_stop_profile_master_thread() {
   /* Tell the master thread to stop */
   pthread_kill(prof.master_id, prof.stop_signal);
