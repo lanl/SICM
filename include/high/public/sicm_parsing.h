@@ -266,6 +266,8 @@ static application_profile *sh_parse_profiling(FILE *file) {
         depth = 2;
       } else if(sscanf(line, "    Peak: %zu\n", &tmp_sizet)) {
         cur_arena->profile_allocs.peak = tmp_sizet;
+      } else if(sscanf(line, "    Current: %zu\n", &tmp_sizet)) {
+        cur_arena->profile_allocs.current = tmp_sizet;
       } else {
         fprintf(stderr, "Didn't recognize a line in the profiling information at depth %d. Aborting.\n", depth);
         fprintf(stderr, "Line: %s\n", line);
@@ -284,6 +286,8 @@ static application_profile *sh_parse_profiling(FILE *file) {
         depth = 2;
       } else if(sscanf(line, "    Peak: %zu\n", &tmp_sizet)) {
         cur_arena->profile_extent_size.peak = tmp_sizet;
+      } else if(sscanf(line, "    Current: %zu\n", &tmp_sizet)) {
+        cur_arena->profile_extent_size.current = tmp_sizet;
       } else {
         fprintf(stderr, "Didn't recognize a line in the profiling information at depth %d. Aborting.\n", depth);
         fprintf(stderr, "Line: %s\n", line);
@@ -302,6 +306,8 @@ static application_profile *sh_parse_profiling(FILE *file) {
         depth = 2;
       } else if(sscanf(line, "    Peak: %zu\n", &tmp_sizet)) {
         cur_arena->profile_rss.peak = tmp_sizet;
+      } else if(sscanf(line, "    Current: %zu\n", &tmp_sizet)) {
+        cur_arena->profile_rss.current = tmp_sizet;
       } else {
         fprintf(stderr, "Didn't recognize a line in the profiling information at depth %d. Aborting.\n", depth);
         fprintf(stderr, "Line: %s\n", line);
