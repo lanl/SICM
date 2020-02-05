@@ -391,6 +391,8 @@ static void sh_packing_init(application_profile *info,
     exit(1);
   }
 
+  sh_num_value_event_indices = 0;
+
   /* Figure out which index the chosen event is */
   if((sh_value_flag == 0) || (sh_value_flag == 1)) {
     if(*events == NULL) {
@@ -403,9 +405,6 @@ static void sh_packing_init(application_profile *info,
           sh_value_event_indices[sh_num_value_event_indices - 1] = i;
           (*events)[i] = orig_malloc((strlen(info->profile_all_events[i]) + 1) * sizeof(char));
           strcpy((*events)[i], info->profile_all_events[i]);
-        }
-        if(!num_events) {
-          num_events = orig_malloc(sizeof(size_t));
         }
         *num_events = info->num_profile_all_events;
       } else {
