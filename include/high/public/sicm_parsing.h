@@ -40,6 +40,7 @@ static void sh_print_profiling(application_profile *info, FILE *file) {
         for(n = 0; n < info->num_profile_all_events; n++) {
           fprintf(file, "    BEGIN EVENT %s\n", info->profile_all_events[n]);
           fprintf(file, "      Total: %zu\n", aprof->profile_all.events[n].total);
+          fprintf(file, "      Current: %zu\n", aprof->profile_all.events[n].current);
           fprintf(file, "      Peak: %zu\n", aprof->profile_all.events[n].peak);
           fprintf(file, "    END EVENT %s\n", profopts.profile_all_events[n]);
         }
@@ -48,16 +49,19 @@ static void sh_print_profiling(application_profile *info, FILE *file) {
       if(profopts.should_profile_allocs) {
         fprintf(file, "  BEGIN PROFILE_ALLOCS\n");
         fprintf(file, "    Peak: %zu\n", aprof->profile_allocs.peak);
+        fprintf(file, "    Current: %zu\n", aprof->profile_allocs.current);
         fprintf(file, "  END PROFILE_ALLOCS\n");
       }
       if(profopts.should_profile_rss) {
         fprintf(file, "  BEGIN PROFILE_RSS\n");
         fprintf(file, "    Peak: %zu\n", aprof->profile_rss.peak);
+        fprintf(file, "    Current: %zu\n", aprof->profile_rss.current);
         fprintf(file, "  END PROFILE_RSS\n");
       }
       if(profopts.should_profile_extent_size) {
         fprintf(file, "  BEGIN PROFILE_EXTENT_SIZE\n");
         fprintf(file, "    Peak: %zu\n", aprof->profile_extent_size.peak);
+        fprintf(file, "    Current: %zu\n", aprof->profile_extent_size.current);
         fprintf(file, "  END PROFILE_EXTENT_SIZE\n");
       }
       fprintf(file, "END ARENA %u\n", aprof->index);
@@ -315,6 +319,8 @@ static application_profile *sh_parse_profiling(FILE *file) {
         cur_event->total = tmp_sizet;
       } else if(sscanf(line, "      Peak: %zu\n", &tmp_sizet)) {
         cur_event->peak = tmp_sizet;
+      } else if(sscanf(line, "      Current: %zu\n", &tmp_sizet)) {
+        cur_event->current = tmp_sizet;
       } else if(sscanf(line, "    END EVENT %ms\n", &event) == 1) {
         /* Up in depth */
         orig_free(event);
