@@ -176,7 +176,7 @@ static tree(site_info_ptr, int) sh_merge_site_trees(tree(site_info_ptr, int) fir
    and converts it to a tree of allocation sites and their value and weight amounts.
    If the profiling information includes multiple sites per arena, that arena's profiling
    is simply associated with all of the sites in the arena. This may change in the future. */
-static tree(site_info_ptr, int) sh_convert_to_site_tree(application_profile *info) {
+static tree(site_info_ptr, int) sh_convert_to_site_tree(application_profile *info, size_t interval) {
   tree(site_info_ptr, int) site_tree;
   tree_it(site_info_ptr, int) sit;
   size_t i, cur_interval;
@@ -186,8 +186,7 @@ static tree(site_info_ptr, int) sh_convert_to_site_tree(application_profile *inf
 
   site_tree = tree_make_c(site_info_ptr, int, &site_tree_cmp);
 
-  /* We'll only look at the total value and weight, in the last interval */
-  cur_interval = info->num_intervals - 1;
+  cur_interval = interval;
 
   /* Iterate over the arenas, create a site_profile_info struct for each site,
      and simply insert them into the tree (which sorts them). */
@@ -222,6 +221,19 @@ static tree(site_info_ptr, int) sh_convert_to_site_tree(application_profile *inf
   }
 
   return site_tree;
+}
+
+/* Just flips a site tree (as returned by sh_convert_to_site_tree, etc.) */
+static tree(int, site_info_ptr) sh_flip_site_tree(tree(site_info_ptr, int) site_tree) {
+  tree(int, site_info_ptr) flipped;
+  tree_it(site_info_ptr, int) it;
+
+  flipped = tree_make(int, site_info_ptr);
+  tree_traverse(site_tree, it) {
+    tree_insert(flipped, tree_it_val(it), tree_it_key(it));
+  }
+
+  return flipped;
 }
 
 /* Gets the greatest common divisor of all given sites' sizes

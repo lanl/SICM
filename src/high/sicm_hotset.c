@@ -169,7 +169,7 @@ int main(int argc, char **argv) {
   sh_packing_init(info, &value, &events, &num_events, &weight, &algo, &sort, multipliers, verbose);
 
   /* For the sake of simplicity, convert the parsed profiling information into simpler trees */
-  site_tree = sh_convert_to_site_tree(info);
+  site_tree = sh_convert_to_site_tree(info, info->num_intervals - 1);
 
   /* Scale the weight of each site down by this factor */
   if(scale) {

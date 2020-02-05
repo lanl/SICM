@@ -97,7 +97,7 @@ void profile_online_interval(int s) {
   prev_hotset = (tree(int, site_info_ptr)) prof.profile_online.prev_hotset;
 
   /* Convert to a tree of sites and generate the new hotset */
-  sorted_sites = sh_convert_to_site_tree(prof.profile);
+  sorted_sites = sh_convert_to_site_tree(prof.profile, prof.profile->num_intervals - 1);
   if(prof.profile_online.offline_sorted_sites) {
     /* If we have a previous run's profiling, take that into account */
     merged_sorted_sites = sh_merge_site_trees(prof.profile_online.offline_sorted_sites, sorted_sites, profopts.profile_online_last_iter_value, profopts.profile_online_last_iter_weight);
@@ -389,7 +389,7 @@ void profile_online_init() {
                     &sort,
                     profopts.profile_online_weights,
                     profopts.profile_online_debug);
-    prof.profile_online.offline_sorted_sites = sh_convert_to_site_tree(offline_profile);
+    prof.profile_online.offline_sorted_sites = sh_convert_to_site_tree(offline_profile, offline_profile->num_intervals - 1);
   } else {
     sh_packing_init(prof.profile,
                     &value,
