@@ -378,6 +378,8 @@ static void sh_packing_init(application_profile *info,
     exit(1);
   }
 
+    printf("!!! 1 %s\n", *sort);
+
   /* Figure out which index the chosen event is */
   if(sh_value_flag == 0) {
     if(*events == NULL) {
@@ -424,6 +426,8 @@ static void sh_packing_init(application_profile *info,
     exit(1);
   }
 
+    printf("!!! 2 %s\n", *sort);
+
   /* Copy the array of floats into the global pointer */
   sh_weights = malloc(sizeof(float) * (*num_events));
   if(weights) {
@@ -436,6 +440,8 @@ static void sh_packing_init(application_profile *info,
     }
   }
 
+    printf("!!! 3 %s\n", *sort);
+
   /* Set sh_weight_flag */
   if(strcmp(*weight, "profile_allocs") == 0) {
     sh_weight_flag = 0;
@@ -447,6 +453,8 @@ static void sh_packing_init(application_profile *info,
     fprintf(stderr, "Type of weight profiling not recognized. Aborting.\n");
     exit(1);
   }
+
+    printf("!!! 4 %s\n", *sort);
 
   /* Set sh_algo_flag */
   if(strcmp(*algo, "hotset") == 0) {
