@@ -10,8 +10,6 @@
 #include "sicm_tree.h"
 #include "sicm_profile.h"
 
-#ifdef SICM_RUNTIME
-
 /* Iterates over the structure and prints it out so that it can
  * be seamlessly read back in */
 static void sh_print_profiling(application_profile *info, FILE *file) {
@@ -70,8 +68,6 @@ static void sh_print_profiling(application_profile *info, FILE *file) {
     fprintf(file, "===== END INTERVAL PROFILING =====\n");
   }
 }
-
-#endif /* SICM_RUNTIME */
 
 /* Reads the above-printed information back into an application_profile struct. */
 static application_profile *sh_parse_profiling(FILE *file) {
