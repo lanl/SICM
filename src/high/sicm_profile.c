@@ -161,6 +161,7 @@ void profile_master_interval(int s) {
      * from the current thread. */
     for(i = 0; i < prof.num_profile_threads; i++) {
       profthread = &prof.profile_threads[i];
+      printf("Running a thread with skip intervals: %lu\n", profthread->skip_intervals);
       if(profthread->skipped_intervals == (profthread->skip_intervals - 1)) {
         /* This thread doesn't get skipped */
         (*profthread->interval_func)(0);
