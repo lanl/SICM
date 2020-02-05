@@ -58,7 +58,7 @@ static size_t get_value(arena_profile *aprof) {
     for(i = 0; i < sh_num_value_event_indices; i++) {
       value += (aprof->profile_all.events[sh_value_event_indices[i]].total * sh_weights[i]);
     }
-  else if(sh_value_flag == 1) {
+  } else if(sh_value_flag == 1) {
     for(i = 0; i < sh_num_value_event_indices; i++) {
       value += (aprof->profile_all.events[sh_value_event_indices[i]].current * sh_weights[i]);
     }
@@ -384,7 +384,7 @@ static void sh_packing_init(application_profile *info,
   /* Set the sh_value_flag */
   if(strcmp(*value, "profile_all") == 0) {
     sh_value_flag = 0;
-  else if(strcmp(*value, "profile_all_current") == 0) {
+  } else if(strcmp(*value, "profile_all_current") == 0) {
     sh_value_flag = 1;
   } else {
     fprintf(stderr, "Type of value profiling (%s) not recognized. Aborting.\n", *value);
