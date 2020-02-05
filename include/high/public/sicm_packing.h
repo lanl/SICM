@@ -390,8 +390,8 @@ static void sh_packing_init(application_profile *info,
           sh_num_value_event_indices++;
           sh_value_event_indices = realloc(sh_value_event_indices, sizeof(size_t) * sh_num_value_event_indices);
           sh_value_event_indices[sh_num_value_event_indices - 1] = i;
-          *(events)[i] = orig_malloc((strlen(info->profile_all_events[i]) + 1) * sizeof(char));
-          strcpy(*(events)[i], info->profile_all_events[i]);
+          (*events)[i] = orig_malloc((strlen(info->profile_all_events[i]) + 1) * sizeof(char));
+          strcpy((*events)[i], info->profile_all_events[i]);
         }
         if(!num_events) {
           num_events = orig_malloc(sizeof(size_t));
