@@ -23,7 +23,8 @@
 
 /* Default values for all options */
 static char sh_verbose_flag = 0;  /* 0 for not verbose, 1 for verbose */
-static char sh_value_flag = 0;    /* 0 for profile_all */
+static char sh_value_flag = 0;    /* 0 for profile_all total,
+                                     1 for profile_all current value */
 static char sh_weight_flag = 0;   /* 0 for profile_allocs,
                                      1 for profile_extent_size,
                                      2 for profile_rss */
@@ -56,9 +57,11 @@ static size_t get_value(arena_profile *aprof) {
   if(sh_value_flag == 0) {
     for(i = 0; i < sh_num_value_event_indices; i++) {
       value += (aprof->profile_all.events[sh_value_event_indices[i]].total * sh_weights[i]);
-      //printf("(%zu * %f) ", aprof->profile_all.events[sh_value_event_indices[i]].total, sh_weights[i]);
     }
-    //printf("= %zu\n", value);
+  else if(sh_value_flag == 1) {
+    for(i = 0; i < sh_num_value_event_indices; i++) {
+      value += (aprof->profile_all.events[sh_value_event_indices[i]].current * sh_weights[i]);
+    }
   } else {
     fprintf(stderr, "Invalid value type detected. Aborting.\n");
     exit(1);
@@ -381,13 +384,15 @@ static void sh_packing_init(application_profile *info,
   /* Set the sh_value_flag */
   if(strcmp(*value, "profile_all") == 0) {
     sh_value_flag = 0;
+  else if(strcmp(*value, "profile_all_current") == 0) {
+    sh_value_flag = 1;
   } else {
     fprintf(stderr, "Type of value profiling (%s) not recognized. Aborting.\n", *value);
     exit(1);
   }
 
   /* Figure out which index the chosen event is */
-  if(sh_value_flag == 0) {
+  if((sh_value_flag == 0) || (sh_value_flag == 1)) {
     if(*events == NULL) {
       /* Use all of the events */
       if(info->num_profile_all_events) {
