@@ -366,6 +366,8 @@ static void sh_packing_init(application_profile *info,
     printf("%s\n", DEFAULT_SORT);
     *sort = orig_malloc((strlen(DEFAULT_SORT) + 1) * sizeof(char));
     strcpy(*sort, DEFAULT_SORT);
+    printf("%p\n", *sort);
+    printf("%s\n", *sort);
   }
 
   /* Set the sh_value_flag */
