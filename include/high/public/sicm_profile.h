@@ -105,13 +105,12 @@ void end_interval();
 void create_arena_profile(int, int);
 void add_site_profile(int, int);
 
-
 #define prof_check_good(a, p, i) \
   a = tracker.arenas[i]; \
   p = prof.profile->arenas[i]; \
   if((!a) || (!p)) continue;
 
-void copy_arena_profile(arena_profile *dst, arena_profile *src) {
+static inline void copy_arena_profile(arena_profile *dst, arena_profile *src) {
   memcpy(dst, src, sizeof(arena_profile));
   dst->alloc_sites = orig_malloc(sizeof(int) * dst->num_alloc_sites);
   memcpy(dst->alloc_sites, src->alloc_sites, sizeof(int) * dst->num_alloc_sites);
