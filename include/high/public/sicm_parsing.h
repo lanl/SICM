@@ -33,6 +33,7 @@ static void sh_print_profiling(application_profile *info, FILE *file) {
       }
       fprintf(file, "\n");
 
+#ifdef SICM_RUNTIME
       if(profopts.should_profile_all) {
         fprintf(file, "  BEGIN PROFILE_ALL\n");
         for(n = 0; n < info->num_profile_all_events; n++) {
@@ -40,7 +41,7 @@ static void sh_print_profiling(application_profile *info, FILE *file) {
           fprintf(file, "      Total: %zu\n", aprof->profile_all.events[n].total);
           fprintf(file, "      Current: %zu\n", aprof->profile_all.events[n].current);
           fprintf(file, "      Peak: %zu\n", aprof->profile_all.events[n].peak);
-          fprintf(file, "    END EVENT %s\n", profopts.profile_all_events[n]);
+          fprintf(file, "    END EVENT %s\n", info->profile_all_events[n]);
         }
         fprintf(file, "  END PROFILE_ALL\n");
       }
@@ -62,8 +63,31 @@ static void sh_print_profiling(application_profile *info, FILE *file) {
         fprintf(file, "    Current: %zu\n", aprof->profile_extent_size.current);
         fprintf(file, "  END PROFILE_EXTENT_SIZE\n");
       }
-      fprintf(file, "END ARENA %u\n", aprof->index);
+#else
+      fprintf(file, "  BEGIN PROFILE_ALL\n");
+      for(n = 0; n < info->num_profile_all_events; n++) {
+        fprintf(file, "    BEGIN EVENT %s\n", info->profile_all_events[n]);
+        fprintf(file, "      Total: %zu\n", aprof->profile_all.events[n].total);
+        fprintf(file, "      Current: %zu\n", aprof->profile_all.events[n].current);
+        fprintf(file, "      Peak: %zu\n", aprof->profile_all.events[n].peak);
+        fprintf(file, "    END EVENT %s\n", info->profile_all_events[n]);
+      }
+      fprintf(file, "  END PROFILE_ALL\n");
+      fprintf(file, "  BEGIN PROFILE_ALLOCS\n");
+      fprintf(file, "    Peak: %zu\n", aprof->profile_allocs.peak);
+      fprintf(file, "    Current: %zu\n", aprof->profile_allocs.current);
+      fprintf(file, "  END PROFILE_ALLOCS\n");
+      fprintf(file, "  BEGIN PROFILE_RSS\n");
+      fprintf(file, "    Peak: %zu\n", aprof->profile_rss.peak);
+      fprintf(file, "    Current: %zu\n", aprof->profile_rss.current);
+      fprintf(file, "  END PROFILE_RSS\n");
+      fprintf(file, "  BEGIN PROFILE_EXTENT_SIZE\n");
+      fprintf(file, "    Peak: %zu\n", aprof->profile_extent_size.peak);
+      fprintf(file, "    Current: %zu\n", aprof->profile_extent_size.current);
+      fprintf(file, "  END PROFILE_EXTENT_SIZE\n");
+#endif
 
+      fprintf(file, "END ARENA %u\n", aprof->index);
     }
     fprintf(file, "===== END INTERVAL PROFILING =====\n");
   }
