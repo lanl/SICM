@@ -110,3 +110,11 @@ void add_site_profile(int, int);
   a = tracker.arenas[i]; \
   p = prof.profile->arenas[i]; \
   if((!a) || (!p)) continue;
+
+void copy_arena_profile(arena_profile *dst, arena_profile *src) {
+  memcpy(dst, src, sizeof(arena_profile));
+  dst->alloc_sites = orig_malloc(sizeof(int) * dst->num_alloc_sites);
+  memcpy(dst->alloc_sites, src->alloc_sites, sizeof(int) * dst->num_alloc_sites);
+  dst->profile_all.events = orig_malloc(sizeof(per_event_profile_all_info) * dst->num_profile_all_events);
+  memcpy(dst->profile_all.events, src->profile_all.events, sizeof(per_event_profile_all_info) * dst->num_profile_all_events);
+}
