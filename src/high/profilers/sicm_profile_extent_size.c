@@ -31,33 +31,25 @@ void profile_extent_size_interval(int s) {
   size_t i;
   char *start, *end;
 
-  printf("Waiting on lock\n");
   pthread_rwlock_rdlock(&tracker.extents_lock);
-  printf("got lock\n");
 
   /* Zero out the accumulator for each arena */
   extent_arr_for(tracker.extents, i) {
     arena = (arena_info *) tracker.extents->arr[i].arena;
-    printf("%p\n", arena);
     if(!arena) continue;
     aprof = (arena_profile *) prof.profile->arenas[arena->index];
-    printf("%p\n", aprof);
     if(!aprof) continue;
 
-    printf("Clearing out arena %d\n", arena->index);
     aprof->profile_extent_size.current = 1234;
   }
 
   /* Iterate over the extents and add each of their size to the accumulator */
   extent_arr_for(tracker.extents, i) {
     arena = (arena_info *) tracker.extents->arr[i].arena;
-    printf("%p\n", arena);
     if(!arena) continue;
     aprof = (arena_profile *) prof.profile->arenas[arena->index];
-    printf("%p\n", aprof);
     if(!aprof) continue;
 
-    printf("Adding value to arena %d\n", arena->index);
     start = (char *) tracker.extents->arr[i].start;
     end = (char *) tracker.extents->arr[i].end;
     aprof->profile_extent_size.current += end - start;
