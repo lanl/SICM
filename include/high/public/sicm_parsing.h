@@ -23,6 +23,7 @@ static void sh_print_profiling(application_profile *info, FILE *file) {
     fprintf(file, "Number of arenas: %zu\n", info->intervals[cur_interval].num_arenas);
     for(i = 0; i < info->intervals[cur_interval].num_arenas; i++) {
       aprof = info->intervals[cur_interval].arenas[i];
+      if(!aprof) continue;
 
       /* Arena information and sites that are in this one arena */
       fprintf(file, "BEGIN ARENA %u\n", aprof->index);
