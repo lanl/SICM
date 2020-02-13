@@ -24,7 +24,7 @@ void profile_online_post_interval(arena_profile *);
 /* At the beginning of an interval, keeps track of stats and figures out what
    should happen during rebind. */
 tree(site_info_ptr, int) prepare_stats() {
-  size_t upper_avail, lower_avail;
+  size_t upper_avail, lower_avail, num_hot_intervals;
   char dev, hot, prev_hot;
   int index;
 
@@ -152,7 +152,7 @@ void profile_online_interval(int s) {
   arena_profile *aprof;
   sicm_dev_ptr dl;
   int retval, index;
-  char full_rebind, dev, hot;
+  char full_rebind, dev, hot, prev_hot;
 
   tree(site_info_ptr, int) sorted_sites;
   tree_it(site_info_ptr, int) sit;
