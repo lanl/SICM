@@ -25,7 +25,7 @@ void profile_online_post_interval(arena_profile *);
    should happen during rebind. */
 void prepare_stats() {
   size_t upper_avail, lower_avail;
-  char dev, hot;
+  char dev, hot, prev_hot;
   int index;
 
   /* Trees and iterators to interface with the parsing/packing libraries */
@@ -87,7 +87,7 @@ void prepare_stats() {
     index = tree_it_key(sit)->index;
     dev = get_arena_online_prof(index)->dev;
     hot = get_arena_online_prof(index)->hot;
-    prev_hot = get_prev_arena_prof(index)->hot;
+    prev_hot = get_prev_arena_online_prof(index)->hot;
 
     prof.profile_online.total_site_weight += tree_it_key(sit)->weight;
     prof.profile_online.total_site_value += tree_it_key(sit)->value;
@@ -153,7 +153,7 @@ void profile_online_interval(int s) {
       index = tree_it_key(sit)->index;
       dev = get_arena_online_prof(index)->dev;
       hot = get_arena_online_prof(index)->hot;
-      prev_hot = get_prev_arena_prof(index)->hot;
+      prev_hot = get_prev_arena_online_prof(index)->hot;
 
       dl = NULL;
       if(((dev == -1) && hot) ||
