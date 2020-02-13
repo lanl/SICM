@@ -49,8 +49,7 @@ tree(site_info_ptr, int) prepare_stats() {
   }
 
   /* Convert to a tree of sites and generate the new hotset */
-  sorted_sites = sh_convert_to_site_tree(prof.profile,
-                                         prof.profile->num_intervals - 1);
+  sorted_sites = sh_convert_to_site_tree(prof.profile, 0);
   if(prof.profile_online.offline_sorted_sites) {
     /* If we have a previous run's profiling, take that into account */
     merged_sorted_sites = sh_merge_site_trees(prof.profile_online.offline_sorted_sites,
