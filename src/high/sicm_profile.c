@@ -409,8 +409,8 @@ void initialize_profiling() {
   /* We'll add profiling to this array when an interval happens */
   prof.profile->num_intervals = 0;
   prof.profile->intervals = NULL;
-  prof.profile->cur_interval = NULL;
-  prof.profile->prev_interval = NULL;
+  prof.cur_interval = NULL;
+  prof.prev_interval = NULL;
 
   /* Stores the current interval's profiling */
   prof.profile->num_arenas = 0;
