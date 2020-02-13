@@ -182,19 +182,29 @@ static tree(site_info_ptr, int) sh_merge_site_trees(tree(site_info_ptr, int) fir
 static tree(site_info_ptr, int) sh_convert_to_site_tree(application_profile *info, size_t interval) {
   tree(site_info_ptr, int) site_tree;
   tree_it(site_info_ptr, int) sit;
-  size_t i, cur_interval;
+  size_t i, num_arenas;
   int n;
   site_info_ptr site, site_copy;
   arena_profile *aprof;
 
   site_tree = tree_make_c(site_info_ptr, int, &site_tree_cmp);
 
-  cur_interval = interval;
+  if(interval) {
+    num_arenas = info->intervals[interval].num_arenas;
+  } else {
+    /* If the interval is zero, just get the current profiling info.
+       Only the SICM runtime library should use this. */
+    num_arenas = info->num_arenas;
+  }
 
   /* Iterate over the arenas, create a site_profile_info struct for each site,
      and simply insert them into the tree (which sorts them). */
-  for(i = 0; i < info->intervals[cur_interval].num_arenas; i++) {
-    aprof = info->intervals[cur_interval].arenas[i];
+  for(i = 0; i < num_arenas; i++) {
+    if(interval) {
+      aprof = info->intervals[cur_interval].arenas[i];
+    } else {
+      aprof = info->arenas[i];
+    }
     if(!aprof) continue;
     if(get_weight(aprof) == 0) continue;
 
