@@ -129,8 +129,10 @@ static inline void copy_arena_profile(arena_profile *dst, arena_profile *src) {
 #define get_arena_all_prof(i) \
   (&(get_arena_prof(i)->profile_all))
 
+/* Since the profiling library stores an interval after it happens,
+   the "previous interval" is actually the last one recorded */
 #define get_prev_arena_prof(i) \
-  prof.prev_interval->arenas[i]
+  prof.cur_interval->arenas[i]
 
 #define get_prev_arena_online_prof(i) \
   (&(get_prev_arena_prof(i)->profile_online))
