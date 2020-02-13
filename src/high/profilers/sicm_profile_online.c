@@ -153,6 +153,7 @@ void profile_online_interval(int s) {
   sicm_dev_ptr dl;
   int retval, index;
   char full_rebind, dev, hot, prev_hot;
+  size_t num_hot_intervals;
 
   tree(site_info_ptr, int) sorted_sites;
   tree_it(site_info_ptr, int) sit;
