@@ -127,7 +127,7 @@ static inline void copy_arena_profile(arena_profile *dst, arena_profile *src) {
   (&(get_arena_prof(i)->profile_online))
 
 #define get_arena_all_prof(i) \
-  (&(get_arean_prof(i)->profile_all))
+  (&(get_arena_prof(i)->profile_all))
 
 #define get_prev_arena_prof(i) \
   prof.prev_interval->arenas[i]
