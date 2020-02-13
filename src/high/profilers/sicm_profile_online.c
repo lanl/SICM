@@ -23,7 +23,7 @@ void profile_online_post_interval(arena_profile *);
 
 /* At the beginning of an interval, keeps track of stats and figures out what
    should happen during rebind. */
-void prepare_stats() {
+tree(site_info_ptr, int) prepare_stats() {
   size_t upper_avail, lower_avail;
   char dev, hot, prev_hot;
   int index;
@@ -120,6 +120,18 @@ void prepare_stats() {
         prof.profile_online.num_sites_to_rebind++;
     }
   }
+
+  /* Free everything up */
+  if(prof.profile_online.offline_sorted_sites) {
+    tree_traverse(sorted_sites, sit) {
+      if(tree_it_key(sit)) {
+        orig_free(tree_it_key(sit));
+      }
+    }
+    tree_free(sorted_sites);
+  }
+
+  return merged_sorted_sites;
 }
 
 /* Initializes the profiling information for one arena for one interval */
@@ -142,6 +154,11 @@ void profile_online_interval(int s) {
   int retval;
   char full_rebind, dev, hot;
 
+  tree(site_info_ptr, int) sorted_sites;
+  tree_it(site_info_ptr, int) sit;
+
+  sorted_sites = prepare_stats();
+
   full_rebind = 0;
   if(!profopts.profile_online_nobind &&
      prof.profile_online.upper_contention &&
@@ -149,7 +166,7 @@ void profile_online_interval(int s) {
      ((((float) prof.profile_online.site_weight_to_rebind) / ((float) prof.profile_online.total_site_weight)) >= profopts.profile_online_reconf_weight_ratio)) {
     /* Do a full rebind. Take the difference between what's currently on the devices (site_tiers),
        and what the hotset says should be on there. */
-    tree_traverse(merged_sorted_sites, sit) {
+    tree_traverse(sorted_sites, sit) {
       index = tree_it_key(sit)->index;
       dev = get_arena_online_prof(index)->dev;
       hot = get_arena_online_prof(index)->hot;
@@ -182,7 +199,7 @@ void profile_online_interval(int s) {
     if(profopts.profile_online_hot_intervals) {
       /* If the user specified a number of intervals, rebind the sites that
          have been hot for that amount of intervals */
-      tree_traverse(merged_sorted_sites, sit) {
+      tree_traverse(sorted_sites, sit) {
         index = tree_it_key(sit)->index;
         num_hot_intervals = get_arena_online_prof(index)->num_hot_intervals;
         if(num_hot_intervals == profopts.profile_online_hot_intervals) {
@@ -199,15 +216,6 @@ void profile_online_interval(int s) {
     }
   }
 
-  /* Free everything up */
-  if(prof.profile_online.offline_sorted_sites) {
-    tree_traverse(merged_sorted_sites, sit) {
-      if(tree_it_key(sit)) {
-        orig_free(tree_it_key(sit));
-      }
-    }
-    tree_free(merged_sorted_sites);
-  }
   tree_traverse(sorted_sites, sit) {
     if(tree_it_key(sit)) {
       orig_free(tree_it_key(sit));
