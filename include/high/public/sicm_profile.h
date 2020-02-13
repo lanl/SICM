@@ -127,6 +127,6 @@ static inline void copy_arena_profile(arena_profile *dst, arena_profile *src) {
   prof.prev_interval->arenas[i]
 
 #define get_arena_profile_all_event_prof(i, n) \
-  &(get_arena_prof(i)->profile_all.events[n])
+  (&(get_arena_prof(i)->profile_all.events[n]))
 
 
