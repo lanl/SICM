@@ -86,7 +86,7 @@ tree(site_info_ptr, int) prepare_stats() {
     index = tree_it_key(sit)->index;
     dev = get_arena_online_prof(index)->dev;
     hot = get_arena_online_prof(index)->hot;
-    if(get_prev_arena_online_prof(index)) {
+    if(prof.profile->num_intervals) {
       prev_hot = get_prev_arena_online_prof(index)->hot;
     } else {
       prev_hot = 0;
@@ -174,7 +174,7 @@ void profile_online_interval(int s) {
       index = tree_it_key(sit)->index;
       dev = get_arena_online_prof(index)->dev;
       hot = get_arena_online_prof(index)->hot;
-      if(get_prev_arena_online_prof(index)) {
+      if(prof.profile->num_intervals) {
         prev_hot = get_prev_arena_online_prof(index)->hot;
       } else {
         prev_hot = 0;
