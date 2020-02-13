@@ -201,7 +201,7 @@ static tree(site_info_ptr, int) sh_convert_to_site_tree(application_profile *inf
      and simply insert them into the tree (which sorts them). */
   for(i = 0; i < num_arenas; i++) {
     if(interval) {
-      aprof = info->intervals[cur_interval].arenas[i];
+      aprof = info->intervals[interval].arenas[i];
     } else {
       aprof = info->arenas[i];
     }
