@@ -67,9 +67,9 @@ void prepare_stats() {
   tree_traverse(merged_sorted_sites, sit) {
     hit = tree_lookup(hotset, tree_it_val(sit));
     if(tree_it_good(hit)) {
-      get_arena_prof(tree_it_key(sit)->index)->hot = 1;
+      get_arena_online_prof(tree_it_key(sit)->index)->hot = 1;
     } else {
-      get_arena_prof(tree_it_key(sit)->index)->hot = 0;
+      get_arena_online_prof(tree_it_key(sit)->index)->hot = 0;
     }
   }
 
@@ -85,8 +85,8 @@ void prepare_stats() {
   prof.profile_online.num_sites_to_rebind   = 0;
   tree_traverse(merged_sorted_sites, sit) {
     index = tree_it_key(sit)->index;
-    dev = get_arena_prof(index)->dev;
-    hot = get_arena_prof(index)->hot;
+    dev = get_arena_online_prof(index)->dev;
+    hot = get_arena_online_prof(index)->hot;
     prev_hot = get_prev_arena_prof(index)->hot;
 
     prof.profile_online.total_site_weight += tree_it_key(sit)->weight;
@@ -94,9 +94,9 @@ void prepare_stats() {
     prof.profile_online.total_sites++;
 
     if(hot) {
-      get_arena_prof(index)->num_hot_intervals++;
+      get_arena_online_prof(index)->num_hot_intervals++;
     } else {
-      get_arena_prof(index)->num_hot_intervals = 0;
+      get_arena_online_prof(index)->num_hot_intervals = 0;
     }
 
     /* Differences between hotsets */
@@ -151,8 +151,8 @@ void profile_online_interval(int s) {
        and what the hotset says should be on there. */
     tree_traverse(merged_sorted_sites, sit) {
       index = tree_it_key(sit)->index;
-      dev = get_arena_prof(index)->dev;
-      hot = get_arena_prof(index)->hot;
+      dev = get_arena_online_prof(index)->dev;
+      hot = get_arena_online_prof(index)->hot;
       prev_hot = get_prev_arena_prof(index)->hot;
 
       dl = NULL;
@@ -160,11 +160,11 @@ void profile_online_interval(int s) {
          ((dev == 0) && hot)) {
         /* The site is in AEP, and is in the hotset. */
         dl = prof.profile_online.upper_dl;
-        get_arena_prof(index)->dev = 1;
+        get_arena_online_prof(index)->dev = 1;
       } else if((dev == 1) && (hot == 0)) {
         /* The site is in DRAM and isn't in the hotset */
         dl = prof.profile_online.lower_dl;
-        get_arena_prof(index)->dev = 0;
+        get_arena_online_prof(index)->dev = 0;
       }
 
       if(dl) {
@@ -184,9 +184,9 @@ void profile_online_interval(int s) {
          have been hot for that amount of intervals */
       tree_traverse(merged_sorted_sites, sit) {
         index = tree_it_key(sit)->index;
-        num_hot_intervals = get_arena_prof(index)->num_hot_intervals;
+        num_hot_intervals = get_arena_online_prof(index)->num_hot_intervals;
         if(num_hot_intervals == profopts.profile_online_hot_intervals) {
-          get_arena_prof(index)->dev = 1;
+          get_arena_online_prof(index)->dev = 1;
           retval = sicm_arena_set_devices(tracker.arenas[index]->arena,
                                           prof.profile_online.upper_dl);
           if(retval == -EINVAL) {

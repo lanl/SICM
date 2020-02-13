@@ -123,10 +123,15 @@ static inline void copy_arena_profile(arena_profile *dst, arena_profile *src) {
 #define get_arena_prof(i) \
   prof.profile->arenas[i]
 
+#define get_arena_online_prof(i) \
+  (&(prof.profile->arenas[i]->profile_online))
+
+#define get_arena_all_prof(i) \
+  (&(prof.profile->arenas[i]->profile_all))
+
 #define get_prev_arena_prof(i) \
   prof.prev_interval->arenas[i]
 
 #define get_arena_profile_all_event_prof(i, n) \
-  (&(get_arena_prof(i)->profile_all.events[n]))
-
+  (&(get_arena_all_prof(i)->events[n]))
 
