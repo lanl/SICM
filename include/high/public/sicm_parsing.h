@@ -369,7 +369,7 @@ static application_profile *sh_parse_profiling(FILE *file) {
       } else if(sscanf(line, "    Hot: %d\n", &tmp_int)) {
         cur_arena->profile_online.hot = tmp_int;
       } else if(sscanf(line, "    Hot Intervals: %zu\n", &tmp_sizet)) {
-        cur_arena->profile_online.current = tmp_sizet;
+        cur_arena->profile_online.num_hot_intervals = tmp_sizet;
       } else {
         fprintf(stderr, "Didn't recognize a line in the profiling information at depth %d. Aborting.\n", depth);
         fprintf(stderr, "Line: %s\n", line);
@@ -379,8 +379,8 @@ static application_profile *sh_parse_profiling(FILE *file) {
     /* Looking for:
        1. A total
        2. A peak
-       3. An array of interval values
-       4. The end of this event block
+       3. A current value.
+       4. The end of this event block.
     */
     } else if((depth == 4) && (profile_type == 0)) {
       if(sscanf(line, "      Total: %zu\n", &tmp_sizet)) {
