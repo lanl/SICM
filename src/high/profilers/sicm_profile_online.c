@@ -151,7 +151,7 @@ void profile_online_interval(int s) {
   arena_info *arena;
   arena_profile *aprof;
   sicm_dev_ptr dl;
-  int retval;
+  int retval, index;
   char full_rebind, dev, hot;
 
   tree(site_info_ptr, int) sorted_sites;
