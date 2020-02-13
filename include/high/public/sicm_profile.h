@@ -72,8 +72,10 @@ typedef struct profiler {
   profile_thread *profile_threads;
   size_t num_profile_threads;
 
+  /* Convenience pointers */
+  interval_profile *cur_interval, *prev_interval;
+
   /* Sync the threads */
-  size_t cur_interval;
   pthread_mutex_t mtx;
   pthread_cond_t cond;
   char threads_finished;
@@ -105,11 +107,6 @@ void end_interval();
 void create_arena_profile(int, int);
 void add_site_profile(int, int);
 
-#define prof_check_good(a, p, i) \
-  a = tracker.arenas[i]; \
-  p = prof.profile->arenas[i]; \
-  if((!a) || (!p)) continue;
-
 static inline void copy_arena_profile(arena_profile *dst, arena_profile *src) {
   memcpy(dst, src, sizeof(arena_profile));
   dst->alloc_sites = orig_malloc(sizeof(int) * dst->num_alloc_sites);
@@ -117,3 +114,19 @@ static inline void copy_arena_profile(arena_profile *dst, arena_profile *src) {
   dst->profile_all.events = orig_malloc(sizeof(per_event_profile_all_info) * prof.profile->num_profile_all_events);
   memcpy(dst->profile_all.events, src->profile_all.events, sizeof(per_event_profile_all_info) * prof.profile->num_profile_all_events);
 }
+
+#define prof_check_good(a, p, i) \
+  a = tracker.arenas[i]; \
+  p = prof.profile->arenas[i]; \
+  if((!a) || (!p)) continue;
+
+#define get_arena_prof(i) \
+  prof.profile->arenas[i]
+
+#define get_prev_arena_prof(i) \
+  prof.prev_interval->arenas[i]
+
+#define get_arena_profile_all_event_prof(i, n) \
+  &(get_arena_prof(i)->profile_all.events[n])
+
+

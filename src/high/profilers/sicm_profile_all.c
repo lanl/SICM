@@ -258,8 +258,8 @@ void profile_all_interval(int s) {
             if((addr >= tracker.extents->arr[n].start) && (addr <= tracker.extents->arr[n].end) && arena) {
 
               /* Record this access */
-              prof.profile->arenas[arena->index]->profile_all.events[i].current++;
-              prof.profile->arenas[arena->index]->profile_all.events[i].total++;
+              get_arena_profile_all_event_prof(arena->index, i)->current++;
+              get_arena_profile_all_event_prof(arena->index, i)->total++;
             }
           }
         }

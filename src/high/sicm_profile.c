@@ -211,11 +211,15 @@ void profile_master_interval(int s) {
   }
 
   /* Store this past interval's profiling information */
+  if(prof.profile->num_intervals) {
+    prof.prev_interval = &(prof.profile->intervals[prof.profile->num_intervals - 1]);
+  }
   prof.profile->num_intervals++;
   prof.profile->intervals = orig_realloc(prof.profile->intervals,
                                          prof.profile->num_intervals * sizeof(interval_profile));
   prof.profile->intervals[prof.profile->num_intervals - 1].arenas =
     orig_calloc(tracker.max_arenas, sizeof(arena_profile *));
+  prof.cur_interval = &(prof.profile->intervals[prof.profile->num_intervals - 1]);
   arena_arr_for(i) {
     prof_check_good(arena, aprof, i);
     prof.profile->intervals[prof.profile->num_intervals - 1].num_arenas = prof.profile->num_arenas;
@@ -224,9 +228,6 @@ void profile_master_interval(int s) {
            prof.profile->intervals[prof.profile->num_intervals - 1].arenas[i],
            aprof);
   }
-
-  /* Finished handling this interval. Wait for another. */
-  prof.cur_interval++;
 
   pthread_rwlock_unlock(&prof.profile_lock);
 }
@@ -345,7 +346,6 @@ void *profile_master(void *a) {
   /* Initialize synchronization primitives */
   pthread_mutex_init(&prof.mtx, NULL);
   pthread_cond_init(&prof.cond, NULL);
-  prof.cur_interval = 0;
 
   /* Set up a signal handler for the master */
   sa.sa_flags = 0;
@@ -409,6 +409,8 @@ void initialize_profiling() {
   /* We'll add profiling to this array when an interval happens */
   prof.profile->num_intervals = 0;
   prof.profile->intervals = NULL;
+  prof.profile->cur_interval = NULL;
+  prof.profile->prev_interval = NULL;
 
   /* Stores the current interval's profiling */
   prof.profile->num_arenas = 0;

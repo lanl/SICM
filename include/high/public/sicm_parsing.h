@@ -10,7 +10,8 @@
 #include "sicm_tree.h"
 #include "sicm_profile.h"
 
-/* Iterates over the structure and prints it out so that it can
+/* Iterates over the application_profile
+   structure and prints it out so that it can
  * be seamlessly read back in */
 static void sh_print_profiling(application_profile *info, FILE *file) {
   size_t i, n, x, cur_interval;

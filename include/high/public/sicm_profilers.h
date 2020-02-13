@@ -54,6 +54,10 @@ typedef struct profile_allocs_info {
 } profile_allocs_info;
 typedef struct profile_online_info {
   /* profile_online */
+  char dev; /* The device it was on at the end of the interval.
+               0 for lower, 1 for upper, -1 for not yet set. */
+  char hot; /* Whether it was hot or not. -1 for not yet set. */
+  size_t num_hot_intervals; /* How long it's been hot, as of this interval. */
 } profile_online_info;
 
 /********************
@@ -103,17 +107,13 @@ typedef struct profile_online_data {
   size_t lower_avail_initial, upper_avail_initial;
   sicm_dev_ptr upper_dl, lower_dl;
 
+  /* Stats used to determine if we should rebind or not */
+  size_t total_site_weight, total_site_value, total_sites,
+         site_weight_diff, site_value_diff, num_sites_diff,
+         site_weight_to_rebind, site_value_to_rebind, num_sites_to_rebind;
+
   /* If the upper tier has been under contention */
   char upper_contention;
-
-  /* The hotset from the previous interval */
-  tree(int, site_info_ptr) prev_hotset;
-
-  /* Which device each site is supposed to be bound to */
-  tree(int, sicm_dev_ptr) site_tiers;
-
-  /* The number of intervals this site has been hot for */
-  tree(int, size_t) site_hot_intervals;
 
   /* Optional offline list of sorted sites */
   tree(site_info_ptr, int) offline_sorted_sites;
