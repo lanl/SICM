@@ -43,6 +43,8 @@ typedef struct application_profile {
   size_t num_intervals, num_profile_all_events,
          num_arenas;
 
+  size_t upper_capacity, lower_capacity;
+
   /* Array of the last interval's arenas */
   arena_profile **arenas;
 

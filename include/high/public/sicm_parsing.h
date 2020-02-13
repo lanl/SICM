@@ -22,6 +22,7 @@ static void sh_print_profiling(application_profile *info, FILE *file) {
     fprintf(file, "===== BEGIN INTERVAL %zu PROFILING =====\n", cur_interval);
     fprintf(file, "Number of PROFILE_ALL events: %zu\n", info->num_profile_all_events);
     fprintf(file, "Number of arenas: %zu\n", info->intervals[cur_interval].num_arenas);
+    fprintf(file, "Upper Capacity: %zu\n", info->upper_capacity);
     for(i = 0; i < info->intervals[cur_interval].num_arenas; i++) {
       aprof = info->intervals[cur_interval].arenas[i];
       if(!aprof) continue;
@@ -148,6 +149,7 @@ static application_profile *sh_parse_profiling(FILE *file) {
      1: profile_allocs
      2: profile_extent_size
      3: profile_rss
+     4: profile_online
   */
   profile_type = -1;
 

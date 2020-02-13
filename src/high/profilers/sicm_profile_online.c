@@ -62,7 +62,7 @@ tree(site_info_ptr, int) prepare_stats() {
 
   /* Calculate the hotset, then mark each arena's hotness */
   hotset = sh_get_hot_sites(merged_sorted_sites,
-                            prof.profile_online.upper_avail_initial);
+                            prof.profile->upper_capacity);
   tree_traverse(merged_sorted_sites, sit) {
     hit = tree_lookup(hotset, tree_it_val(sit));
     if(tree_it_good(hit)) {
@@ -318,8 +318,8 @@ void profile_online_init() {
   }
 
   /* Figure out the amount of free memory that we're starting out with */
-  prof.profile_online.upper_avail_initial = sicm_avail(tracker.upper_device) * 1024;
-  prof.profile_online.lower_avail_initial = sicm_avail(tracker.lower_device) * 1024;
+  prof.profile->upper_capacity = sicm_avail(tracker.upper_device) * 1024;
+  prof.profile->lower_capacity = sicm_avail(tracker.lower_device) * 1024;
 
   /* Since sicm_arena_set_devices accepts a device_list, construct these */
   prof.profile_online.upper_dl = orig_malloc(sizeof(struct sicm_device_list));
