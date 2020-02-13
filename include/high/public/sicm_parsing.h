@@ -23,6 +23,7 @@ static void sh_print_profiling(application_profile *info, FILE *file) {
     fprintf(file, "Number of PROFILE_ALL events: %zu\n", info->num_profile_all_events);
     fprintf(file, "Number of arenas: %zu\n", info->intervals[cur_interval].num_arenas);
     fprintf(file, "Upper Capacity: %zu\n", info->upper_capacity);
+    fprintf(file, "Lower Capacity: %zu\n", info->lower_capacity);
     for(i = 0; i < info->intervals[cur_interval].num_arenas; i++) {
       aprof = info->intervals[cur_interval].arenas[i];
       if(!aprof) continue;
@@ -191,6 +192,10 @@ static application_profile *sh_parse_profiling(FILE *file) {
         ret->intervals[cur_interval].arenas = orig_calloc(num_arenas, sizeof(arena_profile *));
       } else if(sscanf(line, "Number of PROFILE_ALL events: %zu\n", &tmp_sizet) == 1) {
         ret->num_profile_all_events = tmp_sizet;
+      } else if(sscanf(line, "Upper Capacity: %zu\n", &tmp_sizet) == 1) {
+        ret->upper_capacity = tmp_sizet;
+      } else if(sscanf(line, "Lower Capacity: %zu\n", &tmp_sizet) == 1) {
+        ret->lower_capacity = tmp_sizet;
       } else if(sscanf(line, "BEGIN ARENA %u", &index) == 1) {
         /* Down in depth */
         depth = 2;
