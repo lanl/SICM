@@ -40,6 +40,7 @@ typedef struct site_profile_info {
   size_t value, weight;
   double value_per_weight;
   int index;
+  char dev;
 } site_profile_info;
 typedef site_profile_info * site_info_ptr; /* Required for tree.h */
 
@@ -213,6 +214,7 @@ static tree(site_info_ptr, int) sh_convert_to_site_tree(application_profile *inf
     site->weight = get_weight(aprof);
     site->value_per_weight = ((double) site->value) / ((double) site->weight);
     site->index = aprof->index;
+    site->dev = aprof->profile_online.dev;
 
     for(n = 0; n < aprof->num_alloc_sites; n++) {
       /* We make a copy of this struct for each site to aid freeing this up in the future */
