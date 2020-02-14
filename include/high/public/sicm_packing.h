@@ -37,10 +37,10 @@ static size_t sh_num_value_event_indices = 0;
 static float *sh_weights = NULL; /* Array of floats to multiply each event's value by */
 
 typedef struct site_profile_info {
-  size_t value, weight;
+  size_t value, weight, num_hot_intervals;
   double value_per_weight;
   int index;
-  char dev;
+  char dev, hot;
 } site_profile_info;
 typedef site_profile_info * site_info_ptr; /* Required for tree.h */
 
@@ -215,6 +215,8 @@ static tree(site_info_ptr, int) sh_convert_to_site_tree(application_profile *inf
     site->value_per_weight = ((double) site->value) / ((double) site->weight);
     site->index = aprof->index;
     site->dev = aprof->profile_online.dev;
+    site->hot = aprof->profile_online.hot;
+    site->num_hot_intervals = aprof->profile_online.num_hot_intervals;
 
     for(n = 0; n < aprof->num_alloc_sites; n++) {
       /* We make a copy of this struct for each site to aid freeing this up in the future */
