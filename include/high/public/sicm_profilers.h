@@ -104,7 +104,6 @@ use_tree(int, size_t);
 typedef struct profile_online_data {
   size_t num_reconfigures;
   size_t profile_online_event_index;
-  size_t lower_avail_initial, upper_avail_initial;
   sicm_dev_ptr upper_dl, lower_dl;
 
   /* Stats used to determine if we should rebind or not */

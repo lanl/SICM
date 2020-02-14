@@ -39,7 +39,7 @@ tree(site_info_ptr, int) prepare_stats() {
   upper_avail = sicm_avail(tracker.upper_device) * 1024;
   lower_avail = sicm_avail(tracker.lower_device) * 1024;
 
-  if(lower_avail < prof.profile_online.lower_avail_initial && (!prof.profile_online.upper_contention)) {
+  if((lower_avail < prof.profile->lower_capacity) && (!prof.profile_online.upper_contention)) {
     /* If the lower tier is being used, we're going to assume that the
        upper tier is under contention. Trip a flag and let the online
        approach take over. Begin defaulting all new allocations to the lower
