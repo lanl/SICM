@@ -98,8 +98,8 @@ static void sh_print_profiling(application_profile *info, FILE *file) {
       fprintf(file, "    Current: %zu\n", aprof->profile_extent_size.current);
       fprintf(file, "  END PROFILE_EXTENT_SIZE\n");
       fprintf(file, "  BEGIN PROFILE_ONLINE\n");
-      fprintf(file, "    Device: \d\n", aprof->profile_online.dev);
-      fprintf(file, "    Hot: \d\n", aprof->profile_online.hot);
+      fprintf(file, "    Device: %d\n", aprof->profile_online.dev);
+      fprintf(file, "    Hot: %d\n", aprof->profile_online.hot);
       fprintf(file, "    Hot Intervals: %zu\n",
               aprof->profile_online.num_hot_intervals);
       fprintf(file, "  END PROFILE_ONLINE\n");
