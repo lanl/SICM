@@ -344,6 +344,35 @@ static tree(int, site_info_ptr) get_hotset(tree(site_info_ptr, int) site_tree, u
   return ret;
 }
 
+/* Same as `sh_get_hot_sites`, but gives back `num_sites` number of top sites, instead of
+   using some maximum capacity. */
+static tree(int, site_info_ptr) sh_get_top_sites(tree(site_info_ptr, int) site_tree, uintmax_t num_sites) {
+  tree(int, site_info_ptr) ret;
+  tree_it(site_info_ptr, int) sit;
+  uintmax_t cur_sites;
+
+  ret = tree_make(int, site_info_ptr);
+
+  /* Iterate over the sites (which have already been sorted), adding them
+     greedily, until the number of sites has been reached. */
+  cur_sites = 0;
+  tree_traverse(site_tree, sit) {
+    tree_insert(ret, tree_it_val(sit), tree_it_key(sit));
+    cur_sites++;
+    if(sh_verbose_flag) {
+      printf("Inserting %d (val: %zu, weight: %zu, v/w: %lf)\n", tree_it_val(sit),
+                                                                   tree_it_key(sit)->value,
+                                                                   tree_it_key(sit)->weight,
+                                                                   tree_it_key(sit)->value_per_weight);
+    }
+    if(cur_sites == num_sites) {
+      break;
+    }
+  }
+
+  return ret;
+}
+
 /* Be careful, this function flips around the keys/values for its return value. */
 static tree(int, site_info_ptr) sh_get_hot_sites(tree(site_info_ptr, int) site_tree, uintmax_t capacity) {
   tree(int, site_info_ptr) hot_site_tree;
