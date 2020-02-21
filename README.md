@@ -22,63 +22,44 @@ to make use of it. An online approach is planned.
 
 ## Dependencies
 
-The only dependency that you will need for the low-level interface is
-`jemalloc`. The build system will automatically look in `/usr` for this
-dependency, but if you want to provide a custom location, you can pass the
-`--with-jemalloc` argument to `configure`.
+The only dependencies that you will need for the low-level interface
+are `libnuma` and `jemalloc`. We require that `jemalloc` be
+configured with the `je_` prefix (using the `--with-jemalloc-prefix` flag).
+`CMake` will use `pkg-config` to find `jemalloc`.
 
 For the high-level interface, you need an installation of LLVM. LLVM 4.0 and
 later have been tested, although 3.9 may possibly work. For the profiling, you
 will also need an installation of `libpfm`, which is a small helper library for
-`perf` that is available on most distributions. These two dependencies are
-found automatically, but again, the user can specify `--with-llvm=` and
-`--with-libpfm` to use a custom location.
+`perf` that is available on most distributions. 
 
-`jemalloc` and `llvm` can be installed by running `install_deps.sh` with
-the appropriate command line options. In order to assist with the automation
-of building and running SNAP, `OpenMPI-3.1.1` can also be installed through
-this script.
+Additionally, several other packages are required, and can be installed through a package manager:
 
-As an example for using your package manager to install the dependencies,
-Ubuntu Trusty requires the following packages.  You can replace the GCC version
-with whichever you want, or use Clang instead.
-```
-g++-8
-gfortran-8
-libhwloc-dev
-libiomp-dev
-libnuma-dev
-libpfm4
-libpfm4-dev
-llvm-3.9-dev
-numactl
-```
-If you have a version of LLVM newer than 3.9, you can likely omit `libiomp-dev`
-in exchange for the builtin OpenMP implementation.
+### Binaries
+- A modern C compiler
+- A modern C++ compiler
+- A modern Fortran compiler
+- CMake 3.0+
+- Make
+- numactl
+- automake + friends (if jemalloc needs to be built)
 
-On Debian Stable (9.5.0 at time of writing), the required packages (for both
-low- and high-level interfaces) are:
-```
-autoconf
-automake
-g++
-gcc
-gfortran
-git
-libnuma-dev
-libpfm4-dev
-libtool
-libtool-bin
-llvm-4.0
-llvm-4.0-dev
-make
-```
+### Development Libraries
+These packages are usually named `lib*-dev` or `lib*-devel`:
+
+- numa
+
+Additional packages are required for the high level interface:
+- hwloc
+- llvm
+- omp (if OpenMP is not available by default on your compilers)
+- pfm4
 
 ## Compilation
 ```
+export PKG_CONFIG_PATH=<jemalloc prefix>/lib/pkgconfig:$PKG_CONFIG_PATH
 mkdir build
 cd build
-cmake .. -DCMAKE_INSTALL_PREFIX=<prefix> -DJEMALLOC_INCLUDE_DIR=<jemalloc_prefix>/include -DJEMALLOC_LIBRARIES=<jemalloc_prefix>/lib/libjemalloc.so
+cmake .. -DCMAKE_INSTALL_PREFIX=<prefix>
 make
 make install
 ```
