@@ -7,4 +7,4 @@ Description: Simplified Interface to Complex Memory
 URL: https://github.com/lanl/SICM
 Version: Git Master
 Cflags: -I${includedir}
-Libs: -L${libdir} -lsicm -L@JEMALLOC_ROOT_DIR@/lib -ljemalloc
+Libs: -L${libdir} -lsicm @JEMALLOC_LDFLAGS@
