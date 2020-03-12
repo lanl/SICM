@@ -1,0 +1,136 @@
+diff --git a/include/legacy-util-api.h b/include/legacy-util-api.h
+index f4fa9a261..f6b4f3014 100644
+--- a/include/legacy-util-api.h
++++ b/include/legacy-util-api.h
+@@ -1,5 +1,5 @@
+ /*
+- * Copyright (c) 2017, NVIDIA CORPORATION.  All rights reserved.
++ * Copyright (c) 2016-2019, NVIDIA CORPORATION.  All rights reserved.
+  *
+  * Licensed under the Apache License, Version 2.0 (the "License");
+  * you may not use this file except in compliance with the License.
+@@ -88,7 +88,7 @@ char *mkperm(char *pattern, const char *oldext, const char *newext);
+ #define ASMFILE		".s"		/* asm source */
+ 
+ /* Measures user+system CPU milliseconds that elapse between calls. */
+-unsigned long getcpu(void);
++unsigned long get_rutime(void);
+ 
+ #ifdef __cplusplus
+ }
+diff --git a/lib/scutil/cpu-stopwatch.c b/lib/scutil/cpu-stopwatch.c
+index a2ea16a51..69ffc728b 100644
+--- a/lib/scutil/cpu-stopwatch.c
++++ b/lib/scutil/cpu-stopwatch.c
+@@ -1,5 +1,5 @@
+ /*
+- * Copyright (c) 2017, NVIDIA CORPORATION.  All rights reserved.
++ * Copyright (c) 2016-2019, NVIDIA CORPORATION.  All rights reserved.
+  *
+  * Licensed under the Apache License, Version 2.0 (the "License");
+  * you may not use this file except in compliance with the License.
+@@ -26,7 +26,7 @@
+ #include "scutil.h"
+ 
+ unsigned long
+-getcpu(void)
++get_rutime(void)
+ {
+   static long ticks_per_second = -1;
+   static unsigned long last = 0;
+diff --git a/tools/flang1/flang1exe/main.c b/tools/flang1/flang1exe/main.c
+index 90005bd0b..1a8b7cf3b 100644
+--- a/tools/flang1/flang1exe/main.c
++++ b/tools/flang1/flang1exe/main.c
+@@ -156,7 +156,7 @@ int
+ main(int argc, char *argv[])
+ {
+   int savescope, savecurrmod = 0;
+-  getcpu();
++  get_rutime();
+   init(argc, argv); /* initialize */
+   if (gbl.fn == NULL)
+     gbl.fn = gbl.src_file;
+@@ -208,7 +208,7 @@ main(int argc, char *argv[])
+         gbl.func_count == 0) {
+       ipa_export_highpoint();
+     }
+-    xtimes[0] += getcpu();
++    xtimes[0] += get_rutime();
+     if (ipa_export_file && ipa_import_mode) {
+       ipa_import();
+       if (gbl.eof_flag & 2)
+@@ -237,7 +237,7 @@ main(int argc, char *argv[])
+       }
+     }
+     TR1("- after semant");
+-    xtimes[1] += getcpu();
++    xtimes[1] += get_rutime();
+     DUMP("parser");
+     if (gbl.rutype == RU_BDATA) {
+       /* a module? */
+@@ -521,7 +521,7 @@ main(int argc, char *argv[])
+ 
+     if (flg.xref) {
+       xref(); /* write cross reference map */
+-      xtimes[7] += getcpu();
++      xtimes[7] += get_rutime();
+     }
+     skip_compile:
+     (void)summary(FALSE, FALSE);
+diff --git a/tools/flang2/flang2exe/main.cpp b/tools/flang2/flang2exe/main.cpp
+index 08f166764..d770ae2bf 100644
+--- a/tools/flang2/flang2exe/main.cpp
++++ b/tools/flang2/flang2exe/main.cpp
+@@ -202,7 +202,7 @@ process_input(char *argv0, bool *need_cuda_constructor)
+     if (malloc_verify() != 1)
+       interr("main: malloc_verify failsB", errno, ERR_Fatal);
+ #endif
+-  xtimes[0] += getcpu();
++  xtimes[0] += get_rutime();
+   /* don't increment if it is outlined function because it
+    * uses STATICS/BSS from host routine.
+    */
+@@ -223,7 +223,7 @@ process_input(char *argv0, bool *need_cuda_constructor)
+     }
+ 
+   is_constructor = gbl.cuda_constructor;
+-  xtimes[1] += getcpu();
++  xtimes[1] += get_rutime();
+   DUMP("upper");
+ 
+   if (gbl.cuda_constructor) {
+@@ -332,13 +332,13 @@ process_input(char *argv0, bool *need_cuda_constructor)
+         TR("F90 SCHEDULER begins\n");
+         DUMP("before-schedule");
+         schedule();
+-        xtimes[5] += getcpu();
++        xtimes[5] += get_rutime();
+         DUMP("schedule");
+       } /* CUDAG(GBL_CURRFUNC) & CUDA_HOST */
+     }
+     TR("F90 ASSEMBLER begins\n");
+     assemble();
+-    xtimes[6] += getcpu();
++    xtimes[6] += get_rutime();
+     upper_save_syminfo();
+   }
+   if (DBGBIT(5, 4))
+@@ -367,7 +367,7 @@ process_input(char *argv0, bool *need_cuda_constructor)
+ 
+   if (flg.xref) {
+     xref(); /* write cross reference map */
+-    xtimes[7] += getcpu();
++    xtimes[7] += get_rutime();
+   }
+   (void)summary(false, 0);
+   cg_llvm_fnend();
+@@ -390,7 +390,7 @@ main(int argc, char *argv[])
+   bool need_constructor = false;
+   int accel_cnt, accel_vendor = 0;
+ 
+-  getcpu();
++  get_rutime();
+   init(argc, argv);
+ 
+   saveoptflag = flg.opt;
