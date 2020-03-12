@@ -135,3 +135,5 @@ echo "$COMMANDS" | xargs -I CMD --max-procs=64 bash -c CMD
 
 # Now finally link the transformed '.o' files
 ${LLVMPATH}${LD_LINKER} $LINKER_INPUT_FILES $LINKARGS
+
+rm $PIDFILE
