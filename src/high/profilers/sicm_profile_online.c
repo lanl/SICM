@@ -13,6 +13,11 @@
 #include "sicm_profile.h"
 #include "sicm_packing.h"
 
+/* Include the various online implementations */
+#include "sicm_profile_online_utils.h"
+#include "sicm_profile_online_orig.h"
+#include "sicm_profile_online_ski.h"
+
 void profile_online_arena_init(profile_online_info *);
 void profile_online_deinit();
 void profile_online_init();
@@ -21,7 +26,76 @@ void profile_online_interval(int);
 void profile_online_skip_interval(int);
 void profile_online_post_interval(arena_profile *);
 
+/* At the beginning of an interval, keeps track of stats and figures out what
+   should happen during rebind. */
+tree(site_info_ptr, int) prepare_stats() {
+  size_t upper_avail, lower_avail;
+
+  /* Trees and iterators to interface with the parsing/packing libraries */
+  tree(site_info_ptr, int) sorted_sites;
+  tree(site_info_ptr, int) merged_sorted_sites;
+  tree(int, site_info_ptr) hotset;
+  tree_it(int, site_info_ptr) hit;
+  tree_it(site_info_ptr, int) sit;
+
+  /* Look at how much the application has consumed on each tier */
+  upper_avail = sicm_avail(tracker.upper_device) * 1024;
+  lower_avail = sicm_avail(tracker.lower_device) * 1024;
+
+  if((lower_avail < prof.profile->lower_capacity) && (!prof.profile_online.upper_contention)) {
+    /* If the lower tier is being used, we're going to assume that the
+       upper tier is under contention. Trip a flag and let the online
+       approach take over. Begin defaulting all new allocations to the lower
+       tier. */
+    prof.profile_online.upper_contention = 1;
+    tracker.default_device = tracker.lower_device;
+  }
+
+  /* Convert to a tree of sites */
+  sorted_sites = sh_convert_to_site_tree(prof.profile, 0);
+
+  /* If we've got offline profiling, use it */
+  if(prof.profile_online.offline_sorted_sites) {
+    /* If we have a previous run's profiling, take that into account */
+    merged_sorted_sites = sh_merge_site_trees(prof.profile_online.offline_sorted_sites,
+                                              sorted_sites,
+                                              profopts.profile_online_last_iter_value,
+                                              profopts.profile_online_last_iter_weight);
+  } else {
+    merged_sorted_sites = sorted_sites;
+  }
+
+  /* Calculate the hotset, then mark each arena's hotness
+     in the profiling so that it'll be recorded for this interval */
+  hotset = sh_get_hot_sites(merged_sorted_sites,
+                            prof.profile->upper_capacity);
+  tree_traverse(merged_sorted_sites, sit) {
+    hit = tree_lookup(hotset, tree_it_val(sit));
+    if(tree_it_good(hit)) {
+      get_arena_online_prof(tree_it_key(sit)->index)->hot = 1;
+    } else {
+      get_arena_online_prof(tree_it_key(sit)->index)->hot = 0;
+    }
+  }
+
+  /* Free up the offline profile, but not the online one */
+  if(prof.profile_online.offline_sorted_sites) {
+    tree_traverse(sorted_sites, sit) {
+      if(tree_it_key(sit)) {
+        orig_free(tree_it_key(sit));
+      }
+    }
+    tree_free(sorted_sites);
+  }
+
+  return merged_sorted_sites;
+}
+
+/* Initializes the profiling information for one arena for one interval */
 void profile_online_arena_init(profile_online_info *info) {
+  info->dev = -1;
+  info->hot = -1;
+  info->num_hot_intervals = 0;
 }
 
 void *profile_online(void *a) {
@@ -31,293 +105,27 @@ void *profile_online(void *a) {
 }
 
 void profile_online_interval(int s) {
-  size_t upper_avail, lower_avail,
-         i, n;
-  arena_info *arena;
-  arena_profile *aprof;
-  sicm_dev_ptr dl;
-  int retval;
-
-  /* Iterators for the trees in the profile_online_data struct */
-  tree_it(int, sicm_dev_ptr) tit;
-  tree_it(int, size_t) hit;
-  tree(int, sicm_dev_ptr) site_tiers_tmp;
-
-  /* Stats */
-  size_t total_site_weight, total_site_value, total_sites, /* Totals */
-         site_weight_diff, site_value_diff, num_sites_diff, /* Differences since last interval */
-         site_weight_to_rebind, site_value_to_rebind, num_sites_to_rebind; /* Differences between what's actually bound */
-  char full_rebind;
-
-  /* Trees store site information, value is the site ID */
   tree(site_info_ptr, int) sorted_sites;
-  tree(site_info_ptr, int) merged_sorted_sites;
   tree_it(site_info_ptr, int) sit;
 
-  /* Store the sites as keys, values are structs with profiling info */
-  tree(int, site_info_ptr) hotset;
-  tree(int, site_info_ptr) prev_hotset;
-  tree_it(int, site_info_ptr) old, new;
-
-  if(profopts.profile_online_output_file) {
-    /* Print out some initial debugging info */
-    fprintf(profopts.profile_online_output_file, "===== BEGIN RECONFIGURE %zu =====\n", prof.profile_online.num_reconfigures);
-    fprintf(profopts.profile_online_output_file, "  Beginning timestamp: %ld\n", time(NULL));
-    fprintf(profopts.profile_online_output_file, "  DRAM sites: ");
-    tree_traverse(prof.profile_online.site_tiers, tit) {
-      if(tree_it_val(tit) == prof.profile_online.upper_dl) {
-        fprintf(profopts.profile_online_output_file, "%d ", tree_it_key(tit));
-      }
-    }
-    fprintf(profopts.profile_online_output_file, "\n");
-    fprintf(profopts.profile_online_output_file, "  AEP sites: ");
-    tree_traverse(prof.profile_online.site_tiers, tit) {
-      if(tree_it_val(tit) == prof.profile_online.lower_dl) {
-        fprintf(profopts.profile_online_output_file, "%d ", tree_it_key(tit));
-      }
-    }
-    fprintf(profopts.profile_online_output_file, "\n");
-  }
-
-  /* Look at how much the application has consumed on each tier */
-  upper_avail = sicm_avail(tracker.upper_device) * 1024;
-  lower_avail = sicm_avail(tracker.lower_device) * 1024;
-  if(lower_avail < prof.profile_online.lower_avail_initial && (!prof.profile_online.upper_contention)) {
-    /* If the lower tier is being used, we're going to assume that the
-       upper tier is under contention. Trip a flag and let the online
-       approach take over. */
-    prof.profile_online.upper_contention = 1;
-    tracker.default_device = tracker.lower_device;
-  }
-
-  /* Maintain the previous hotset */
-  if(!prof.profile_online.prev_hotset) {
-    prof.profile_online.prev_hotset = (void *) tree_make(int, site_info_ptr);
-  }
-  prev_hotset = (tree(int, site_info_ptr)) prof.profile_online.prev_hotset;
-
-  /* Convert to a tree of sites and generate the new hotset */
-  sorted_sites = sh_convert_to_site_tree(prof.profile, prof.profile->num_intervals - 1);
-  if(prof.profile_online.offline_sorted_sites) {
-    /* If we have a previous run's profiling, take that into account */
-    merged_sorted_sites = sh_merge_site_trees(prof.profile_online.offline_sorted_sites, sorted_sites, profopts.profile_online_last_iter_value, profopts.profile_online_last_iter_weight);
+  /* Call the appropriate strategy */
+  sorted_sites = prepare_stats();
+  if(profopts.profile_online_ski) {
+    prepare_stats_ski(sorted_sites);
+    profile_online_interval_ski(sorted_sites);
   } else {
-    merged_sorted_sites = sorted_sites;
-  }
-  hotset = sh_get_hot_sites(merged_sorted_sites, prof.profile_online.upper_avail_initial);
-
-  /* Calculate the stats */
-  total_site_weight = 0;
-  total_site_value = 0;
-  total_sites = 0;
-  site_weight_diff = 0;
-  site_value_diff = 0;
-  num_sites_diff = 0;
-  site_weight_to_rebind = 0;
-  site_value_to_rebind = 0;
-  num_sites_to_rebind = 0;
-  tree_traverse(merged_sorted_sites, sit) {
-    old = tree_lookup(prev_hotset, tree_it_val(sit));
-    new = tree_lookup(hotset, tree_it_val(sit));
-    tit = tree_lookup(prof.profile_online.site_tiers, tree_it_val(sit));
-
-    total_site_weight += tree_it_key(sit)->weight;
-    total_site_value += tree_it_key(sit)->value;
-    total_sites++;
-
-    /* Maintain the tree which stores the number of hot intervals that a site has had */
-    if(tree_it_good(new)) {
-      hit = tree_lookup(prof.profile_online.site_hot_intervals, tree_it_val(sit));
-      if(tree_it_good(hit)) {
-        tree_insert(prof.profile_online.site_hot_intervals, tree_it_val(sit), tree_it_val(hit) + 1);
-      } else {
-        tree_insert(prof.profile_online.site_hot_intervals, tree_it_val(sit), 1);
-      }
-    } else {
-      tree_insert(prof.profile_online.site_hot_intervals, tree_it_val(sit), 0);
-    }
-
-    /* Maintain the hotset differences */
-    if((tree_it_good(new) && !tree_it_good(old)) ||
-       (!tree_it_good(new) && tree_it_good(old))) {
-      /* The site will be rebound if a full rebind happens */
-      site_weight_diff += tree_it_key(sit)->weight;
-      site_value_diff += tree_it_key(sit)->value;
-      num_sites_diff++;
-    }
-
-    /* Calculate what would have to be rebound if the current hotset were to trigger a full rebind */
-    if((!tree_it_good(tit) && tree_it_good(new)) ||
-       (tree_it_good(tit) && tree_it_good(new) && (tree_it_val(tit) == prof.profile_online.lower_dl)) ||
-       (tree_it_good(tit) && !tree_it_good(new) && (tree_it_val(tit) == prof.profile_online.upper_dl))) {
-        /* If the site is in the hotset, but not in the upper tier, OR
-           if the site is not in the hotset, but in the upper tier */
-        if(profopts.profile_online_output_file) {
-          fprintf(profopts.profile_online_output_file, "  Due to rebind site %d: ", tree_it_val(sit));
-          fprintf(profopts.profile_online_output_file, "%d ", tree_it_good(tit));
-          fprintf(profopts.profile_online_output_file, "%d ", tree_it_good(new));
-          if(tree_it_good(tit) && (tree_it_val(tit) == prof.profile_online.upper_dl)) {
-            fprintf(profopts.profile_online_output_file, "DRAM\n");
-          } else {
-            fprintf(profopts.profile_online_output_file, "AEP\n");
-          }
-        }
-        site_weight_to_rebind += tree_it_key(sit)->weight;
-        site_value_to_rebind += tree_it_key(sit)->value;
-        num_sites_to_rebind++;
-    }
+    /* Default to the original strategy */
+    prepare_stats_orig(sorted_sites);
+    profile_online_interval_orig(sorted_sites);
   }
 
-  full_rebind = 0;
-  site_tiers_tmp = NULL;
-  if(!profopts.profile_online_nobind &&
-     prof.profile_online.upper_contention &&
-     (total_site_value > profopts.profile_online_grace_accesses) &&
-     ((((float) site_weight_to_rebind) / ((float) total_site_weight)) >= profopts.profile_online_reconf_weight_ratio)) {
-    /* Do a full rebind. Take the difference between what's currently on the devices (site_tiers),
-       and what the hotset says should be on there. */
-    site_tiers_tmp = tree_make(int, sicm_dev_ptr);
-    tree_traverse(merged_sorted_sites, sit) {
-      new = tree_lookup(hotset, tree_it_val(sit));
-      tit = tree_lookup(prof.profile_online.site_tiers, tree_it_val(sit));
-
-      dl = NULL;
-      if((!tree_it_good(tit) && tree_it_good(new)) ||
-         (tree_it_good(tit) && tree_it_good(new) && (tree_it_val(tit) == prof.profile_online.lower_dl))) {
-        /* The site is in AEP (or isn't in site_tiers yet), and is in the hotset. */
-        dl = prof.profile_online.upper_dl;
-      } else if(tree_it_good(tit) && !tree_it_good(new) && (tree_it_val(tit) == prof.profile_online.upper_dl)) {
-        /* The site is in DRAM and isn't in the hotset */
-        dl = prof.profile_online.lower_dl;
-      } else {
-        /* We're not going to rebind this site, but let's make sure we keep track of which tier it's in */
-        if(!tree_it_good(tit) || (tree_it_good(tit) && (tree_it_val(tit) == prof.profile_online.lower_dl))) {
-          tree_insert(site_tiers_tmp, tree_it_val(sit), prof.profile_online.lower_dl);
-        } else {
-          tree_insert(site_tiers_tmp, tree_it_val(sit), prof.profile_online.upper_dl);
-        }
-      }
-
-      if(dl) {
-        /* This only counts as a full rebind if a site is actually moved */
-        if(profopts.profile_online_output_file) {
-          fprintf(profopts.profile_online_output_file, "  Rebinding site %d: ", tree_it_val(sit));
-          fprintf(profopts.profile_online_output_file, "%d ", tree_it_good(tit));
-          fprintf(profopts.profile_online_output_file, "%d ", tree_it_good(new));
-          if(tree_it_good(tit) && (tree_it_val(tit) == prof.profile_online.upper_dl)) {
-            fprintf(profopts.profile_online_output_file, "DRAM\n");
-          } else {
-            fprintf(profopts.profile_online_output_file, "AEP\n");
-          }
-        }
-        full_rebind = 1;
-        tree_insert(site_tiers_tmp, tree_it_val(sit), dl);
-        retval = sicm_arena_set_devices(tracker.arenas[tree_it_key(sit)->index]->arena, dl);
-        if(retval == -EINVAL) {
-          fprintf(stderr, "Rebinding arena %d failed in SICM.\n", tree_it_key(sit)->index);
-        } else if(retval != 0) {
-          fprintf(stderr, "Rebinding arena %d failed internally.\n", tree_it_key(sit)->index);
-        }
-      }
-    }
-  } else {
-    /* No full rebind, but we can bind specific sites if the conditions are right */
-    if(profopts.profile_online_hot_intervals) {
-      /* If the user specified a number of intervals, rebind the sites that
-         have been hot for that amount of intervals */
-      tree_traverse(merged_sorted_sites, sit) {
-        hit = tree_lookup(prof.profile_online.site_hot_intervals, tree_it_val(sit));
-        if(tree_it_val(hit) == profopts.profile_online_hot_intervals) {
-          tree_insert(prof.profile_online.site_tiers, tree_it_val(sit), prof.profile_online.upper_dl);
-          retval = sicm_arena_set_devices(tracker.arenas[tree_it_key(sit)->index]->arena, prof.profile_online.upper_dl);
-          if(retval == -EINVAL) {
-            fprintf(stderr, "Rebinding arena %d failed in SICM.\n", tree_it_key(sit)->index);
-          } else if(retval != 0) {
-            fprintf(stderr, "Rebinding arena %d failed internally.\n", tree_it_key(sit)->index);
-          }
-        }
-      }
-    }
-  }
-
-  if(profopts.profile_online_output_file) {
-    /* Print out as much debugging information as we can. */
-    fprintf(profopts.profile_online_output_file, "  Ending timestamp: %ld\n", time(NULL));
-    fprintf(profopts.profile_online_output_file, "  Upper avail: %zu\n", upper_avail);
-    fprintf(profopts.profile_online_output_file, "  Lower avail: %zu\n", lower_avail);
-    if(prof.profile_online.upper_contention) {
-      fprintf(profopts.profile_online_output_file, "  Upper contention: yes\n");
-    } else {
-      fprintf(profopts.profile_online_output_file, "  Upper contention: no\n");
-    }
-    if(full_rebind) {
-      fprintf(profopts.profile_online_output_file, "  Full rebind: yes\n");
-    } else {
-      fprintf(profopts.profile_online_output_file, "  Full rebind: no\n");
-    }
-    fprintf(profopts.profile_online_output_file, "  Weight difference: %zu\n", site_weight_diff);
-    fprintf(profopts.profile_online_output_file, "  Value difference: %zu\n", site_value_diff);
-    fprintf(profopts.profile_online_output_file, "  Sites difference: %zu\n", num_sites_diff);
-    fprintf(profopts.profile_online_output_file, "  Weight to rebind: %zu\n", site_weight_to_rebind);
-    fprintf(profopts.profile_online_output_file, "  Value to rebind: %zu\n", site_value_to_rebind);
-    fprintf(profopts.profile_online_output_file, "  Sites to rebind: %zu\n", num_sites_to_rebind);
-    fprintf(profopts.profile_online_output_file, "  Total weight: %zu\n", total_site_weight);
-    fprintf(profopts.profile_online_output_file, "  Total value: %zu\n", total_site_value);
-    fprintf(profopts.profile_online_output_file, "  Total sites: %zu\n", total_sites);
-    fprintf(profopts.profile_online_output_file, "  Hot sites: ");
-    tree_traverse(hotset, new) {
-      fprintf(profopts.profile_online_output_file, "%d ", tree_it_key(new));
-    }
-    fprintf(profopts.profile_online_output_file, "\n");
-    fprintf(profopts.profile_online_output_file, "  Sorted sites: ");
-    tree_traverse(merged_sorted_sites, sit) {
-      fprintf(profopts.profile_online_output_file, "%d ", tree_it_val(sit));
-    }
-    fprintf(profopts.profile_online_output_file, "\n");
-    fprintf(profopts.profile_online_output_file, "  Values: ");
-    tree_traverse(merged_sorted_sites, sit) {
-      fprintf(profopts.profile_online_output_file, "%zu ", tree_it_key(sit)->value);
-    }
-    fprintf(profopts.profile_online_output_file, "\n");
-    fprintf(profopts.profile_online_output_file, "  Weights: ");
-    tree_traverse(merged_sorted_sites, sit) {
-      fprintf(profopts.profile_online_output_file, "%zu ", tree_it_key(sit)->weight);
-    }
-    fprintf(profopts.profile_online_output_file, "\n");
-    fprintf(profopts.profile_online_output_file, "  V/W: ");
-    tree_traverse(merged_sorted_sites, sit) {
-      fprintf(profopts.profile_online_output_file, "%lf ", tree_it_key(sit)->value_per_weight);
-    }
-    fprintf(profopts.profile_online_output_file, "\n");
-    fprintf(profopts.profile_online_output_file, "===== END RECONFIGURE %zu =====\n", prof.profile_online.num_reconfigures);
-  }
-
-  /* Free everything up */
-  tree_free(prev_hotset);
-  if(prof.profile_online.offline_sorted_sites) {
-    tree_traverse(merged_sorted_sites, sit) {
-      if(tree_it_key(sit)) {
-        orig_free(tree_it_key(sit));
-      }
-    }
-    tree_free(merged_sorted_sites);
-  }
+  /* Free up what we allocated */
   tree_traverse(sorted_sites, sit) {
     if(tree_it_key(sit)) {
       orig_free(tree_it_key(sit));
     }
   }
   tree_free(sorted_sites);
-
-  /* If we made a site_tiers_tmp, it's the new one */
-  if(site_tiers_tmp) {
-    tree_free(prof.profile_online.site_tiers);
-    prof.profile_online.site_tiers = site_tiers_tmp;
-  }
-
-  /* Maintain the previous hotset */
-  prof.profile_online.prev_hotset = (void *) hotset;
-  prof.profile_online.num_reconfigures++;
 
   end_interval();
 }
@@ -388,7 +196,7 @@ void profile_online_init() {
                     &algo,
                     &sort,
                     profopts.profile_online_weights,
-                    profopts.profile_online_debug);
+                    0);
     prof.profile_online.offline_sorted_sites = sh_convert_to_site_tree(offline_profile, offline_profile->num_intervals - 1);
   } else {
     sh_packing_init(prof.profile,
@@ -399,12 +207,12 @@ void profile_online_init() {
                     &algo,
                     &sort,
                     profopts.profile_online_weights,
-                    profopts.profile_online_debug);
+                    0);
   }
 
   /* Figure out the amount of free memory that we're starting out with */
-  prof.profile_online.upper_avail_initial = sicm_avail(tracker.upper_device) * 1024;
-  prof.profile_online.lower_avail_initial = sicm_avail(tracker.lower_device) * 1024;
+  prof.profile->upper_capacity = sicm_avail(tracker.upper_device) * 1024;
+  prof.profile->lower_capacity = sicm_avail(tracker.lower_device) * 1024;
 
   /* Since sicm_arena_set_devices accepts a device_list, construct these */
   prof.profile_online.upper_dl = orig_malloc(sizeof(struct sicm_device_list));
@@ -416,21 +224,16 @@ void profile_online_init() {
   prof.profile_online.lower_dl->devices = orig_malloc(sizeof(deviceptr));
   prof.profile_online.lower_dl->devices[0] = tracker.lower_device;
 
-  prof.profile_online.prev_hotset = NULL;
   prof.profile_online.num_reconfigures = 0;
   prof.profile_online.upper_contention = 0;
-  prof.profile_online.site_tiers = (void *) tree_make(int, sicm_dev_ptr);
-  prof.profile_online.site_hot_intervals = (void *) tree_make(int, size_t);
 
-  if(profopts.profile_online_output_file) {
-    fprintf(profopts.profile_online_output_file, "Online init: %ld\n", time(NULL));
+  /* Initialize the strategy-specific stuff */
+  if(profopts.profile_online_orig) {
+    profile_online_init_orig();
   }
 }
 
 void profile_online_deinit() {
-  if(profopts.profile_online_output_file) {
-    fprintf(profopts.profile_online_output_file, "Online deinit: %ld\n", time(NULL));
-  }
 }
 
 void profile_online_post_interval(arena_profile *info) {

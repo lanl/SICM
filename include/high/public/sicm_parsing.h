@@ -10,7 +10,8 @@
 #include "sicm_tree.h"
 #include "sicm_profile.h"
 
-/* Iterates over the structure and prints it out so that it can
+/* Iterates over the application_profile
+   structure and prints it out so that it can
  * be seamlessly read back in */
 static void sh_print_profiling(application_profile *info, FILE *file) {
   size_t i, n, x, cur_interval;
@@ -21,6 +22,8 @@ static void sh_print_profiling(application_profile *info, FILE *file) {
     fprintf(file, "===== BEGIN INTERVAL %zu PROFILING =====\n", cur_interval);
     fprintf(file, "Number of PROFILE_ALL events: %zu\n", info->num_profile_all_events);
     fprintf(file, "Number of arenas: %zu\n", info->intervals[cur_interval].num_arenas);
+    fprintf(file, "Upper Capacity: %zu\n", info->upper_capacity);
+    fprintf(file, "Lower Capacity: %zu\n", info->lower_capacity);
     for(i = 0; i < info->intervals[cur_interval].num_arenas; i++) {
       aprof = info->intervals[cur_interval].arenas[i];
       if(!aprof) continue;
@@ -64,6 +67,14 @@ static void sh_print_profiling(application_profile *info, FILE *file) {
         fprintf(file, "    Current: %zu\n", aprof->profile_extent_size.current);
         fprintf(file, "  END PROFILE_EXTENT_SIZE\n");
       }
+      if(profopts.should_profile_online) {
+        fprintf(file, "  BEGIN PROFILE_ONLINE\n");
+        fprintf(file, "    Device: %d\n", aprof->profile_online.dev);
+        fprintf(file, "    Hot: %d\n", aprof->profile_online.hot);
+        fprintf(file, "    Hot Intervals: %zu\n",
+                aprof->profile_online.num_hot_intervals);
+        fprintf(file, "  END PROFILE_ONLINE\n");
+      }
 #else
       fprintf(file, "  BEGIN PROFILE_ALL\n");
       for(n = 0; n < info->num_profile_all_events; n++) {
@@ -86,6 +97,12 @@ static void sh_print_profiling(application_profile *info, FILE *file) {
       fprintf(file, "    Peak: %zu\n", aprof->profile_extent_size.peak);
       fprintf(file, "    Current: %zu\n", aprof->profile_extent_size.current);
       fprintf(file, "  END PROFILE_EXTENT_SIZE\n");
+      fprintf(file, "  BEGIN PROFILE_ONLINE\n");
+      fprintf(file, "    Device: %d\n", aprof->profile_online.dev);
+      fprintf(file, "    Hot: %d\n", aprof->profile_online.hot);
+      fprintf(file, "    Hot Intervals: %zu\n",
+              aprof->profile_online.num_hot_intervals);
+      fprintf(file, "  END PROFILE_ONLINE\n");
 #endif
 
       fprintf(file, "END ARENA %u\n", aprof->index);
@@ -133,6 +150,7 @@ static application_profile *sh_parse_profiling(FILE *file) {
      1: profile_allocs
      2: profile_extent_size
      3: profile_rss
+     4: profile_online
   */
   profile_type = -1;
 
@@ -174,6 +192,10 @@ static application_profile *sh_parse_profiling(FILE *file) {
         ret->intervals[cur_interval].arenas = orig_calloc(num_arenas, sizeof(arena_profile *));
       } else if(sscanf(line, "Number of PROFILE_ALL events: %zu\n", &tmp_sizet) == 1) {
         ret->num_profile_all_events = tmp_sizet;
+      } else if(sscanf(line, "Upper Capacity: %zu\n", &tmp_sizet) == 1) {
+        ret->upper_capacity = tmp_sizet;
+      } else if(sscanf(line, "Lower Capacity: %zu\n", &tmp_sizet) == 1) {
+        ret->lower_capacity = tmp_sizet;
       } else if(sscanf(line, "BEGIN ARENA %u", &index) == 1) {
         /* Down in depth */
         depth = 2;
@@ -242,6 +264,9 @@ static application_profile *sh_parse_profiling(FILE *file) {
       } else if(strcmp(line, "  BEGIN PROFILE_RSS\n") == 0) {
         depth = 3;
         profile_type = 3;
+      } else if(strcmp(line, "  BEGIN PROFILE_ONLINE\n") == 0) {
+        depth = 3;
+        profile_type = 4;
       } else {
         fprintf(stderr, "Didn't recognize a line in the profiling information at depth %d. Aborting.\n", depth);
         fprintf(stderr, "Line: %s\n", line);
@@ -277,9 +302,9 @@ static application_profile *sh_parse_profiling(FILE *file) {
 
     /* PROFILE_ALLOCS.
        Looking for:
-       1. A peak
-       2. An array of interval values
-       3. The end of this profiling block
+       1. A peak.
+       2. A current value.
+       3. The end of this profiling block.
     */
     } else if((depth == 3) && (profile_type == 1)) {
       if(strcmp(line, "  END PROFILE_ALLOCS\n") == 0) {
@@ -297,9 +322,9 @@ static application_profile *sh_parse_profiling(FILE *file) {
 
     /* PROFILE_EXTENT_SIZE.
        Looking for:
-       1. A peak
-       2. An array of interval values
-       3. The end of this profiling block
+       1. A peak.
+       2. A current value.
+       3. The end of this profiling block.
     */
     } else if((depth == 3) && (profile_type == 2)) {
       if(strcmp(line, "  END PROFILE_EXTENT_SIZE\n") == 0) {
@@ -317,9 +342,9 @@ static application_profile *sh_parse_profiling(FILE *file) {
 
     /* PROFILE_RSS.
        Looking for:
-       1. A peak
-       2. An array of interval values
-       3. The end of this profiling block
+       1. A peak.
+       2. A current value.
+       3. The end of this profiling block.
     */
     } else if((depth == 3) && (profile_type == 3)) {
       if(strcmp(line, "  END PROFILE_RSS\n") == 0) {
@@ -335,11 +360,34 @@ static application_profile *sh_parse_profiling(FILE *file) {
         exit(1);
       }
 
+    /* PROFILE_ONLINE.
+       Looking for:
+       1. A device
+       2. A binary hotness value.
+       3. A number of hot intervals.
+       4. The end of this profiling block.
+    */
+    } else if((depth == 3) && (profile_type == 4)) {
+      if(strcmp(line, "  END PROFILE_ONLINE\n") == 0) {
+        /* Up in depth */
+        depth = 2;
+      } else if(sscanf(line, "    Device: %d\n", &tmp_int)) {
+        cur_arena->profile_online.dev = tmp_int;
+      } else if(sscanf(line, "    Hot: %d\n", &tmp_int)) {
+        cur_arena->profile_online.hot = tmp_int;
+      } else if(sscanf(line, "    Hot Intervals: %zu\n", &tmp_sizet)) {
+        cur_arena->profile_online.num_hot_intervals = tmp_sizet;
+      } else {
+        fprintf(stderr, "Didn't recognize a line in the profiling information at depth %d. Aborting.\n", depth);
+        fprintf(stderr, "Line: %s\n", line);
+        exit(1);
+      }
+
     /* Looking for:
        1. A total
        2. A peak
-       3. An array of interval values
-       4. The end of this event block
+       3. A current value.
+       4. The end of this event block.
     */
     } else if((depth == 4) && (profile_type == 0)) {
       if(sscanf(line, "      Total: %zu\n", &tmp_sizet)) {

@@ -37,9 +37,11 @@ static size_t sh_num_value_event_indices = 0;
 static float *sh_weights = NULL; /* Array of floats to multiply each event's value by */
 
 typedef struct site_profile_info {
-  size_t value, weight;
+  size_t value, weight, num_hot_intervals,
+         *value_arr, num_values;
   double value_per_weight;
   int index;
+  char dev, hot;
 } site_profile_info;
 typedef site_profile_info * site_info_ptr; /* Required for tree.h */
 
@@ -50,24 +52,28 @@ use_tree(int, site_info_ptr);
 #endif
 
 /* Gets a value from the given arena_profile */
-static size_t get_value(arena_profile *aprof) {
-  size_t value, i;
+static void set_value(arena_profile *aprof, site_info_ptr site) {
+  size_t i, tmp;
 
-  value = 0;
+  site->value = 0;
+  site->num_values = sh_num_value_event_indices;
+  site->value_arr = malloc(sizeof(size_t) * site->num_values);
   if(sh_value_flag == 0) {
-    for(i = 0; i < sh_num_value_event_indices; i++) {
-      value += (aprof->profile_all.events[sh_value_event_indices[i]].total * sh_weights[i]);
+    for(i = 0; i < site->num_values; i++) {
+      tmp = (aprof->profile_all.events[sh_value_event_indices[i]].total * sh_weights[i]);
+      site->value += tmp;
+      site->value_arr[i] = tmp;
     }
   } else if(sh_value_flag == 1) {
     for(i = 0; i < sh_num_value_event_indices; i++) {
-      value += (aprof->profile_all.events[sh_value_event_indices[i]].current * sh_weights[i]);
+      tmp = (aprof->profile_all.events[sh_value_event_indices[i]].current * sh_weights[i]);
+      site->value += tmp;
+      site->value_arr[i] = tmp;
     }
   } else {
     fprintf(stderr, "Invalid value type detected. Aborting.\n");
     exit(1);
   }
-
-  return value;
 }
 
 /* Gets a weight from the given arena_profile */
@@ -182,27 +188,40 @@ static tree(site_info_ptr, int) sh_merge_site_trees(tree(site_info_ptr, int) fir
 static tree(site_info_ptr, int) sh_convert_to_site_tree(application_profile *info, size_t interval) {
   tree(site_info_ptr, int) site_tree;
   tree_it(site_info_ptr, int) sit;
-  size_t i, cur_interval;
+  size_t i, num_arenas;
   int n;
   site_info_ptr site, site_copy;
   arena_profile *aprof;
 
   site_tree = tree_make_c(site_info_ptr, int, &site_tree_cmp);
 
-  cur_interval = interval;
+  if(interval) {
+    num_arenas = info->intervals[interval].num_arenas;
+  } else {
+    /* If the interval is zero, just get the current profiling info.
+       Only the SICM runtime library should use this. */
+    num_arenas = info->num_arenas;
+  }
 
   /* Iterate over the arenas, create a site_profile_info struct for each site,
      and simply insert them into the tree (which sorts them). */
-  for(i = 0; i < info->intervals[cur_interval].num_arenas; i++) {
-    aprof = info->intervals[cur_interval].arenas[i];
+  for(i = 0; i < num_arenas; i++) {
+    if(interval) {
+      aprof = info->intervals[interval].arenas[i];
+    } else {
+      aprof = info->arenas[i];
+    }
     if(!aprof) continue;
     if(get_weight(aprof) == 0) continue;
 
     site = orig_malloc(sizeof(site_profile_info));
-    site->value = get_value(aprof);
+    set_value(aprof, site);
     site->weight = get_weight(aprof);
     site->value_per_weight = ((double) site->value) / ((double) site->weight);
     site->index = aprof->index;
+    site->dev = aprof->profile_online.dev;
+    site->hot = aprof->profile_online.hot;
+    site->num_hot_intervals = aprof->profile_online.num_hot_intervals;
 
     for(n = 0; n < aprof->num_alloc_sites; n++) {
       /* We make a copy of this struct for each site to aid freeing this up in the future */
@@ -323,6 +342,35 @@ static tree(int, site_info_ptr) get_hotset(tree(site_info_ptr, int) site_tree, u
       if(sh_verbose_flag) {
         printf("Packed size is %ju, capacity is %ju. That's the last site.\n", packed_size, capacity);
       }
+      break;
+    }
+  }
+
+  return ret;
+}
+
+/* Same as `sh_get_hot_sites`, but gives back `num_sites` number of top sites, instead of
+   using some maximum capacity. */
+static tree(int, site_info_ptr) sh_get_top_sites(tree(site_info_ptr, int) site_tree, uintmax_t num_sites) {
+  tree(int, site_info_ptr) ret;
+  tree_it(site_info_ptr, int) sit;
+  uintmax_t cur_sites;
+
+  ret = tree_make(int, site_info_ptr);
+
+  /* Iterate over the sites (which have already been sorted), adding them
+     greedily, until the number of sites has been reached. */
+  cur_sites = 0;
+  tree_traverse(site_tree, sit) {
+    tree_insert(ret, tree_it_val(sit), tree_it_key(sit));
+    cur_sites++;
+    if(sh_verbose_flag) {
+      printf("Inserting %d (val: %zu, weight: %zu, v/w: %lf)\n", tree_it_val(sit),
+                                                                   tree_it_key(sit)->value,
+                                                                   tree_it_key(sit)->weight,
+                                                                   tree_it_key(sit)->value_per_weight);
+    }
+    if(cur_sites == num_sites) {
       break;
     }
   }
