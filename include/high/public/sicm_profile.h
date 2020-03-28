@@ -17,6 +17,11 @@
 #include <errno.h>
 #include <poll.h>
 
+char timespec_cmp(struct timespec *a, struct timespec *b);
+void timespec_diff(struct timespec *start,
+                   struct timespec *stop,
+                   struct timespec *result);
+
 #include "sicm_runtime.h"
 #include "sicm_profilers.h"
 
@@ -36,20 +41,24 @@ typedef struct interval_profile {
   /* Array of arenas and their info */
   size_t num_arenas;
   arena_profile **arenas;
+  
+  /* profile_one doesn't do any per-arena profiling */
+  profile_one_info profile_one;
 } interval_profile;
 
 /* Profiling information for a whole application */
 typedef struct application_profile {
   size_t num_intervals, num_profile_all_events,
-         num_arenas;
+         num_profile_one_events;
 
   size_t upper_capacity, lower_capacity;
 
   /* Array of the last interval's arenas */
-  arena_profile **arenas;
+  interval_profile this_interval;
 
   /* Array of event strings in the profiling */
   char **profile_all_events;
+  char **profile_one_events;
 
   interval_profile *intervals;
 } application_profile;
@@ -97,6 +106,7 @@ typedef struct profiler {
   profile_extent_size_data profile_extent_size;
   profile_allocs_data profile_allocs;
   profile_online_data profile_online;
+  profile_one_data profile_one;
 } profiler;
 
 extern profiler prof;
@@ -109,6 +119,12 @@ void end_interval();
 void create_arena_profile(int, int);
 void add_site_profile(int, int);
 
+/* Given an arena and index, check to make sure it's not NULL */
+#define prof_check_good(a, p, i) \
+  a = tracker.arenas[i]; \
+  p = prof.profile->this_interval.arenas[i]; \
+  if((!a) || (!p)) continue;
+
 static inline void copy_arena_profile(arena_profile *dst, arena_profile *src) {
   memcpy(dst, src, sizeof(arena_profile));
   dst->alloc_sites = orig_malloc(sizeof(int) * dst->num_alloc_sites);
@@ -117,19 +133,62 @@ static inline void copy_arena_profile(arena_profile *dst, arena_profile *src) {
   memcpy(dst->profile_all.events, src->profile_all.events, sizeof(per_event_profile_all_info) * prof.profile->num_profile_all_events);
 }
 
-#define prof_check_good(a, p, i) \
-  a = tracker.arenas[i]; \
-  p = prof.profile->arenas[i]; \
-  if((!a) || (!p)) continue;
+/* Copies an interval profile from the current one
+   (stored in pro.profile->this_interval)
+   into the array of intervals
+   (prof.profile->intervals). */
+static inline void copy_interval_profile(size_t index) {
+  arena_profile *aprof;
+  arena_info *arena;
+  interval_profile *interval, *this_interval;
+  size_t size, i;
+  
+  /* Allocate room for the interval that just finished */
+  prof.profile->intervals = orig_realloc(prof.profile->intervals,
+                                         (index + 1) * sizeof(interval_profile));
+                                         
+  /* Convenience pointers. We want to copy the contents of
+     `this_interval` into `interval`. */
+  interval = &(prof.profile->intervals[index]);
+  this_interval = &(prof.profile->this_interval);
+                                         
+  /* Copy the interval_profile from this_interval to intervals[index] */
+  interval->num_arenas =
+    this_interval->num_arenas;
+  interval->arenas =
+    orig_calloc(tracker.max_arenas, sizeof(arena_profile *));
+    
+  /* Copy profile_one profiling info, too */
+  size = profopts.num_profile_one_events * sizeof(per_event_profile_one_info);
+  interval->profile_one.events = orig_malloc(size);
+  memcpy(interval->profile_one.events,
+         this_interval->profile_one.events,
+         size);
+  
+  /* Iterate over all of the arenas in the interval, and copy them too */
+  arena_arr_for(i) {
+    prof_check_good(arena, aprof, i);
+    interval->arenas[i] = orig_malloc(sizeof(arena_profile));
+    copy_arena_profile(
+           interval->arenas[i],
+           aprof);
+  }
+}
 
 #define get_arena_prof(i) \
-  prof.profile->arenas[i]
-
+  prof.profile->this_interval.arenas[i]
+  
+#define get_profile_one_prof() \
+  (&(prof.profile->this_interval.profile_one))
+  
 #define get_arena_online_prof(i) \
   (&(get_arena_prof(i)->profile_online))
 
 #define get_arena_all_prof(i) \
   (&(get_arena_prof(i)->profile_all))
+  
+#define get_arena_rss_prof(i) \
+  (&(get_arena_prof(i)->profile_rss))
 
 /* Since the profiling library stores an interval after it happens,
    the "previous interval" is actually the last one recorded */
@@ -141,4 +200,7 @@ static inline void copy_arena_profile(arena_profile *dst, arena_profile *src) {
 
 #define get_arena_profile_all_event_prof(i, n) \
   (&(get_arena_all_prof(i)->events[n]))
-
+  
+#define get_profile_one_event_prof(i) \
+  (&(get_profile_one_prof()->events[i]))
+  

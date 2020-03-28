@@ -49,7 +49,7 @@ void add_site_profile(int index, int site_id) {
   arena_profile *aprof;
   pthread_rwlock_wrlock(&prof.profile_lock);
 
-  aprof = prof.profile->arenas[index];
+  aprof = get_arena_prof(index);
   aprof->alloc_sites[aprof->num_alloc_sites] = site_id;
   aprof->num_alloc_sites++;
 
@@ -81,12 +81,13 @@ void create_arena_profile(int index, int site_id) {
     profile_online_arena_init(&(aprof->profile_online));
   }
 
+  /* Creates a profile for this arena at the current interval */
   aprof->index = index;
   aprof->num_alloc_sites = 1;
   aprof->alloc_sites = orig_malloc(sizeof(int) * tracker.max_sites_per_arena);
   aprof->alloc_sites[0] = site_id;
-  prof.profile->arenas[index] = aprof;
-  prof.profile->num_arenas++;
+  prof.profile->this_interval.arenas[index] = aprof;
+  prof.profile->this_interval.num_arenas++;
 
   pthread_rwlock_unlock(&prof.profile_lock);
 }
@@ -210,25 +211,22 @@ void profile_master_interval(int s) {
       profile_online_post_interval(aprof);
     }
   }
+  if(profopts.should_profile_one) {
+    profile_one_post_interval();
+  }
 
-  /* Store this past interval's profiling information */
   if(prof.profile->num_intervals) {
+    /* If we've had at least one interval of profiling already,
+       store that pointer in `prev_interval` */
     prof.prev_interval = &(prof.profile->intervals[prof.profile->num_intervals - 1]);
   }
+  
+  /* Increment the interval and store the interval that just happened */
   prof.profile->num_intervals++;
-  prof.profile->intervals = orig_realloc(prof.profile->intervals,
-                                         prof.profile->num_intervals * sizeof(interval_profile));
-  prof.profile->intervals[prof.profile->num_intervals - 1].arenas =
-    orig_calloc(tracker.max_arenas, sizeof(arena_profile *));
+  copy_interval_profile(prof.profile->num_intervals - 1);
+  
+  /* Store the current interval in this pointer */
   prof.cur_interval = &(prof.profile->intervals[prof.profile->num_intervals - 1]);
-  arena_arr_for(i) {
-    prof_check_good(arena, aprof, i);
-    prof.profile->intervals[prof.profile->num_intervals - 1].num_arenas = prof.profile->num_arenas;
-    prof.profile->intervals[prof.profile->num_intervals - 1].arenas[i] = orig_malloc(sizeof(arena_profile));
-    copy_arena_profile(
-           prof.profile->intervals[prof.profile->num_intervals - 1].arenas[i],
-           aprof);
-  }
 
   pthread_rwlock_unlock(&prof.profile_lock);
 }
@@ -315,33 +313,39 @@ void *profile_master(void *a) {
 
   if(profopts.should_profile_all) {
     setup_profile_thread(&profile_all,
-                          &profile_all_interval,
-                          &profile_all_skip_interval,
-                          profopts.profile_all_skip_intervals);
+                         &profile_all_interval,
+                         &profile_all_skip_interval,
+                         profopts.profile_all_skip_intervals);
+  }
+  if(profopts.should_profile_one) {
+    setup_profile_thread(&profile_one,
+                         &profile_one_interval,
+                         &profile_one_skip_interval,
+                         profopts.profile_one_skip_intervals);
   }
   if(profopts.should_profile_rss) {
     setup_profile_thread(&profile_rss,
-                          &profile_rss_interval,
-                          &profile_rss_skip_interval,
-                          profopts.profile_rss_skip_intervals);
+                         &profile_rss_interval,
+                         &profile_rss_skip_interval,
+                         profopts.profile_rss_skip_intervals);
   }
   if(profopts.should_profile_extent_size) {
     setup_profile_thread(&profile_extent_size,
-                          &profile_extent_size_interval,
-                          &profile_extent_size_skip_interval,
-                          profopts.profile_extent_size_skip_intervals);
+                         &profile_extent_size_interval,
+                         &profile_extent_size_skip_interval,
+                         profopts.profile_extent_size_skip_intervals);
   }
   if(profopts.should_profile_allocs) {
     setup_profile_thread(&profile_allocs,
-                          &profile_allocs_interval,
-                          &profile_allocs_skip_interval,
-                          profopts.profile_allocs_skip_intervals);
+                         &profile_allocs_interval,
+                         &profile_allocs_skip_interval,
+                         profopts.profile_allocs_skip_intervals);
   }
   if(profopts.should_profile_online) {
     setup_profile_thread(&profile_online,
-                          &profile_online_interval,
-                          &profile_online_skip_interval,
-                          profopts.profile_online_skip_intervals);
+                         &profile_online_interval,
+                         &profile_online_skip_interval,
+                         profopts.profile_online_skip_intervals);
   }
 
   /* Initialize synchronization primitives */
@@ -414,8 +418,8 @@ void initialize_profiling() {
   prof.prev_interval = NULL;
 
   /* Stores the current interval's profiling */
-  prof.profile->num_arenas = 0;
-  prof.profile->arenas = orig_calloc(tracker.max_arenas, sizeof(arena_profile *));
+  prof.profile->this_interval.num_arenas = 0;
+  prof.profile->this_interval.arenas = orig_calloc(tracker.max_arenas, sizeof(arena_profile *));
 
   /* Store the profile_all event strings */
   prof.profile->num_profile_all_events = profopts.num_profile_all_events;
@@ -423,6 +427,14 @@ void initialize_profiling() {
   for(i = 0; i < profopts.num_profile_all_events; i++) {
     prof.profile->profile_all_events[i] = orig_malloc((strlen(profopts.profile_all_events[i]) + 1) * sizeof(char));
     strcpy(prof.profile->profile_all_events[i], profopts.profile_all_events[i]);
+  }
+  
+  /* Store the profile_one event strings */
+  prof.profile->num_profile_one_events = profopts.num_profile_one_events;
+  prof.profile->profile_one_events = orig_calloc(prof.profile->num_profile_one_events, sizeof(char *));
+  for(i = 0; i < profopts.num_profile_one_events; i++) {
+    prof.profile->profile_one_events[i] = orig_malloc((strlen(profopts.profile_one_events[i]) + 1) * sizeof(char));
+    strcpy(prof.profile->profile_one_events[i], profopts.profile_one_events[i]);
   }
 
   prof.threads_finished = 0;
@@ -444,6 +456,9 @@ void initialize_profiling() {
    */
   if(profopts.should_profile_all) {
     profile_all_init();
+  }
+  if(profopts.should_profile_one) {
+    profile_one_init();
   }
   if(profopts.should_profile_rss) {
     profile_rss_init();
@@ -484,6 +499,9 @@ void sh_start_profile_master_thread() {
 void deinitialize_profiling() {
   if(profopts.should_profile_all) {
     profile_all_deinit();
+  }
+  if(profopts.should_profile_one) {
+    profile_one_deinit();
   }
   if(profopts.should_profile_rss) {
     profile_rss_deinit();

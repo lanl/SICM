@@ -6,6 +6,7 @@
 
 #define SICM_RUNTIME 1
 #include "sicm_runtime.h"
+#include "sicm_rdspy.h"
 
 /* Options for profiling */
 profiling_options profopts = {0};
@@ -382,6 +383,45 @@ void set_options() {
     fprintf(tracker.log_file, "SH_PROFILE_RATE_NSECONDS: %zu\n", profopts.profile_rate_nseconds);
   }
 
+  env = getenv("SH_PROFILE_NODES");
+  profopts.num_profile_cpus = 0;
+  profopts.profile_cpus = NULL;
+  if(env) {
+    /* First, get a list of nodes that the user specified */
+    nodes = numa_parse_nodestring(env);
+    cpus = numa_allocate_cpumask();
+    num_cpus = numa_num_configured_cpus();
+    num_nodes = numa_num_configured_nodes();
+    /* Iterate over the nodes in the `nodes` bitmask */
+    for(node = 0; node < num_nodes; node++) {
+      if(numa_bitmask_isbitset(nodes, node)) {
+        numa_bitmask_clearall(cpus);
+        numa_node_to_cpus(node, cpus);
+        /* Now iterate over the CPUs on those nodes */
+        for(cpu = 0; cpu < num_cpus; cpu++) {
+          if(numa_bitmask_isbitset(cpus, cpu)) {
+            /* Here, we're just adding a CPU number to the array. */
+            profopts.num_profile_cpus++;
+            profopts.profile_cpus = orig_realloc(profopts.profile_cpus, sizeof(int) * profopts.num_profile_cpus);
+            profopts.profile_cpus[profopts.num_profile_cpus - 1] = cpu;
+          }
+        }
+      }
+    }
+  } else {
+    /* If the user doesn't set this, default to using the CPUs on the NUMA nodes that this
+        process is allowed on */
+    cpus = numa_all_cpus_ptr;
+    num_cpus = numa_num_configured_cpus();
+    for(cpu = 0; cpu < num_cpus; cpu++) {
+      if(numa_bitmask_isbitset(cpus, cpu)) {
+        profopts.num_profile_cpus++;
+        profopts.profile_cpus = orig_realloc(profopts.profile_cpus, sizeof(int) * profopts.num_profile_cpus);
+        profopts.profile_cpus[profopts.num_profile_cpus - 1] = cpu;
+      }
+    }
+  }
+
   /* Should we profile all allocation sites using sampling-based profiling? */
   env = getenv("SH_PROFILE_ALL");
   profopts.should_profile_all = 0;
@@ -389,45 +429,6 @@ void set_options() {
     profopts.should_profile_all = 1;
   }
   if(profopts.should_profile_all) {
-
-    env = getenv("SH_PROFILE_ALL_NODES");
-    profopts.num_profile_all_cpus = 0;
-    profopts.profile_all_cpus = NULL;
-    if(env) {
-      /* First, get a list of nodes that the user specified */
-      nodes = numa_parse_nodestring(env);
-      cpus = numa_allocate_cpumask();
-      num_cpus = numa_num_configured_cpus();
-      num_nodes = numa_num_configured_nodes();
-      /* Iterate over the nodes in the `nodes` bitmask */
-      for(node = 0; node < num_nodes; node++) {
-        if(numa_bitmask_isbitset(nodes, node)) {
-          numa_bitmask_clearall(cpus);
-          numa_node_to_cpus(node, cpus);
-          /* Now iterate over the CPUs on those nodes */
-          for(cpu = 0; cpu < num_cpus; cpu++) {
-            if(numa_bitmask_isbitset(cpus, cpu)) {
-              /* Here, we're just adding a CPU number to the array. */
-              profopts.num_profile_all_cpus++;
-              profopts.profile_all_cpus = orig_realloc(profopts.profile_all_cpus, sizeof(int) * profopts.num_profile_all_cpus);
-              profopts.profile_all_cpus[profopts.num_profile_all_cpus - 1] = cpu;
-            }
-          }
-        }
-      }
-    } else {
-      /* If the user doesn't set this, default to using the CPUs on the NUMA nodes that this
-         process is allowed on */
-      cpus = numa_all_cpus_ptr;
-      num_cpus = numa_num_configured_cpus();
-      for(cpu = 0; cpu < num_cpus; cpu++) {
-        if(numa_bitmask_isbitset(cpus, cpu)) {
-          profopts.num_profile_all_cpus++;
-          profopts.profile_all_cpus = orig_realloc(profopts.profile_all_cpus, sizeof(int) * profopts.num_profile_all_cpus);
-          profopts.profile_all_cpus[profopts.num_profile_all_cpus - 1] = cpu;
-        }
-      }
-    }
 
     env = getenv("SH_PROFILE_ALL_EVENTS");
     profopts.num_profile_all_events = 0;
@@ -478,8 +479,15 @@ void set_options() {
    */
   env = getenv("SH_PROFILE_ONE");
   profopts.should_profile_one = 0;
+  profopts.profile_one_skip_intervals = 0;
   if(env) {
     profopts.should_profile_one = 1;
+
+    env = getenv("SH_PROFILE_ONE_SKIP_INTERVALS");
+    profopts.profile_one_skip_intervals = 1;
+    if(env) {
+      profopts.profile_one_skip_intervals = strtoul(env, NULL, 0);
+    }
   }
   if(tracker.log_file) {
     fprintf(tracker.log_file, "SH_PROFILE_ONE: %d\n", profopts.should_profile_one);
@@ -487,33 +495,12 @@ void set_options() {
 
   if(profopts.should_profile_one) {
 
+#if 0
     if(profopts.should_profile_all) {
       fprintf(stderr, "Cannot enable both profile_all and profile_one. Choose one.\n");
       exit(1);
     }
-
-    /* Which site are we profiling? */
-    env = getenv("SH_PROFILE_ONE_SITE");
-    profopts.profile_one_site = -1;
-    if(env) {
-      tmp_val = strtoimax(env, NULL, 10);
-      if((tmp_val == 0) || (tmp_val > INT_MAX)) {
-        fprintf(stderr, "Invalid allocation site ID given: %d.\n", tmp_val);
-        exit(1);
-      } else {
-        profopts.profile_one_site = (int) tmp_val;
-      }
-    }
-
-    /* If the above is true, which NUMA node should we isolate the allocation site
-     * onto? The user should also set SH_DEFAULT_DEVICES to another device to avoid
-     * the two being the same, if the allocation site is to be isolated.
-     */
-    env = getenv("SH_PROFILE_ONE_NODE");
-    if(env) {
-      tmp_val = strtoimax(env, NULL, 10);
-      profopts.profile_one_device = get_device_from_numa_node((int) tmp_val);
-    }
+#endif
 
     /* The user can also specify a comma-delimited list of IMCs to read the
      * bandwidth from. This will be passed to libpfm. For example, on an Ivy
@@ -541,7 +528,8 @@ void set_options() {
       exit(1);
     }
 
-    /* What events should be used to measure the bandwidth?
+    /*
+    What events should be used to measure the bandwidth?
      */
     env = getenv("SH_PROFILE_ONE_EVENTS");
     profopts.num_profile_one_events = 0;
@@ -640,7 +628,7 @@ void set_options() {
   if(env) {
     tmp_val = strtoimax(env, NULL, 10);
     /* Value needs to be non-negative, less than or equal to 512, and a power of 2. */
-    if((tmp_val <= 0) || (tmp_val > 512) || (tmp_val & (tmp_val - 1))) {
+    if((tmp_val <= 0) || (tmp_val > 2048) || (tmp_val & (tmp_val - 1))) {
       fprintf(stderr, "Invalid number of pages given. Aborting.\n");
       exit(1);
     } else {

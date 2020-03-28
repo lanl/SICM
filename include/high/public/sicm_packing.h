@@ -27,7 +27,8 @@ static char sh_value_flag = 0;    /* 0 for profile_all total,
                                      1 for profile_all current value */
 static char sh_weight_flag = 0;   /* 0 for profile_allocs,
                                      1 for profile_extent_size,
-                                     2 for profile_rss */
+                                     2 for profile_rss 
+                                     3 for profile_extent_size current */
 static char sh_algo_flag = 0;     /* 0 for hotset */
 static char sh_sort_flag = 0;     /* 0 for `value_per_weight`,
                                      1 for `value`,
@@ -86,6 +87,8 @@ static size_t get_weight(arena_profile *aprof) {
     weight = aprof->profile_extent_size.peak;
   } else if(sh_weight_flag == 2) {
     weight = aprof->profile_rss.peak;
+  } else if(sh_weight_flag == 3) {
+    weight = aprof->profile_extent_size.current;
   } else {
     fprintf(stderr, "Invalid weight type detected. Aborting.\n");
     exit(1);
@@ -200,7 +203,7 @@ static tree(site_info_ptr, int) sh_convert_to_site_tree(application_profile *inf
   } else {
     /* If the interval is zero, just get the current profiling info.
        Only the SICM runtime library should use this. */
-    num_arenas = info->num_arenas;
+    num_arenas = info->this_interval.num_arenas;
   }
 
   /* Iterate over the arenas, create a site_profile_info struct for each site,
@@ -209,7 +212,7 @@ static tree(site_info_ptr, int) sh_convert_to_site_tree(application_profile *inf
     if(interval) {
       aprof = info->intervals[interval].arenas[i];
     } else {
-      aprof = info->arenas[i];
+      aprof = info->this_interval.arenas[i];
     }
     if(!aprof) continue;
     if(get_weight(aprof) == 0) continue;
@@ -314,11 +317,11 @@ static void sh_scale_sites(tree(site_info_ptr, int) site_tree, double scale) {
 
 /* Greedy hotset algorithm. Called by sh_get_hot_sites.
    The resulting tree is keyed on the site ID instead of the site_info_ptr. */
-static tree(int, site_info_ptr) get_hotset(tree(site_info_ptr, int) site_tree, uintmax_t capacity) {
+static tree(int, site_info_ptr) get_hotset(tree(site_info_ptr, int) site_tree, size_t capacity) {
   tree(int, site_info_ptr) ret;
-  tree_it(site_info_ptr, int) sit;
+  tree_it(site_info_ptr, int) sit, last_site_added;
   char break_next_site;
-  uintmax_t packed_size;
+  size_t packed_size;
 
   ret = tree_make(int, site_info_ptr);
 
@@ -327,22 +330,24 @@ static tree(int, site_info_ptr) get_hotset(tree(site_info_ptr, int) site_tree, u
   break_next_site = 0;
   packed_size = 0;
   tree_traverse(site_tree, sit) {
+    /* If we're over capacity, break. We've already added the site,
+     * so we overflow by exactly one site. */
+    if(packed_size > capacity) {
+      tree_delete(ret, tree_it_val(last_site_added));
+      packed_size -= tree_it_key(last_site_added)->weight;
+      if(sh_verbose_flag) {
+        printf("Packed size is %zu, capacity is %zu. That's the last site.\n", packed_size, capacity);
+      }
+      break;
+    }
     packed_size += tree_it_key(sit)->weight;
     tree_insert(ret, tree_it_val(sit), tree_it_key(sit));
+    last_site_added = sit;
     if(sh_verbose_flag) {
       printf("Inserting %d (val: %zu, weight: %zu, v/w: %lf)\n", tree_it_val(sit),
                                                                    tree_it_key(sit)->value,
                                                                    tree_it_key(sit)->weight,
                                                                    tree_it_key(sit)->value_per_weight);
-    }
-
-    /* If we're over capacity, break. We've already added the site,
-     * so we overflow by exactly one site. */
-    if(packed_size > capacity) {
-      if(sh_verbose_flag) {
-        printf("Packed size is %ju, capacity is %ju. That's the last site.\n", packed_size, capacity);
-      }
-      break;
     }
   }
 
@@ -503,6 +508,8 @@ static void sh_packing_init(application_profile *info,
     sh_weight_flag = 1;
   } else if(strcmp(*weight, "profile_rss") == 0) {
     sh_weight_flag = 2;
+  } else if(strcmp(*weight, "profile_extent_size_current") == 0) {
+    sh_weight_flag = 3;
   } else {
     fprintf(stderr, "Type of weight profiling not recognized. Aborting.\n");
     exit(1);

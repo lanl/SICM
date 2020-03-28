@@ -1,6 +1,7 @@
 #ifndef OP_NEW_DEL
 #define OP_NEW_DEL
 
+#include <stdio.h>
 #include <stdlib.h> /* For exit() */
 #include <string.h>
 

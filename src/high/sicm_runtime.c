@@ -14,6 +14,7 @@
 
 #define SICM_RUNTIME 1
 #include "sicm_runtime.h"
+#include "sicm_profile.h"
 #include "sicm_rdspy.h"
 
 char sh_initialized = 0;
@@ -21,6 +22,9 @@ void *(*orig_malloc_ptr)(size_t);
 void *(*orig_calloc_ptr)(size_t, size_t);
 void *(*orig_realloc_ptr)(void *, size_t);
 void (*orig_free_ptr)(void *);
+
+/* Function declarations, so I can reorder them how I like */
+void sh_create_arena(int index, int id, sicm_device *device);
 
 /*************************************************
  *               ORIG_MALLOC                     *
@@ -204,12 +208,6 @@ sicm_device *get_site_device(int id) {
   if(!device) {
     device = tracker.default_device;
   }
-
-#if 0
-  if(profopts.should_profile_one && (id == profopts.profile_one_site)) {
-    device = profopts.profile_one_device;
-  }
-#endif
 
   return device;
 }
@@ -426,6 +424,7 @@ void sh_delete_extent(sarena *arena, void *start, void *end) {
     exit(1);
   }
   extent_arr_delete(tracker.extents, start);
+  madvise(start, end - start, MADV_DONTNEED);
   if(pthread_rwlock_unlock(&tracker.extents_lock) != 0) {
     fprintf(stderr, "Failed to unlock read/write lock. Aborting.\n");
     exit(1);

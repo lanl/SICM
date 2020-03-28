@@ -70,12 +70,11 @@ void profile_online_interval_orig(tree(site_info_ptr, int) sorted_sites) {
   arena_profile *aprof;
   sicm_dev_ptr dl;
   int index;
-  char full_rebind, dev, hot, prev_hot;
+  char dev, hot, prev_hot;
   size_t num_hot_intervals;
 
   tree_it(site_info_ptr, int) sit;
 
-  full_rebind = 0;
   if(!profopts.profile_online_nobind &&
      prof.profile_online.upper_contention &&
      (prof.profile_online.orig->total_site_value > profopts.profile_online_grace_accesses) &&
@@ -105,8 +104,6 @@ void profile_online_interval_orig(tree(site_info_ptr, int) sorted_sites) {
       }
 
       if(dl) {
-        full_rebind = 1;
-
         rebind_arena(index, dl, sit);
       }
     }

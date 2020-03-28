@@ -77,7 +77,7 @@ namespace {
 
 // Open a file that can be appended to simultaneously by multiple
 // processes in a safe way.
-FILE * sync_fopen(char * path) {
+FILE * sync_fopen(const char * path) {
     FILE * f = fopen(path, "a");
     if (f) {
         setvbuf(f, NULL, _IONBF, BUFSIZ);
@@ -1228,4 +1228,3 @@ char compass::ID = 0;
 static RegisterPass<compass> X("compass", "compass Pass",
                                false /* Only looks at CFG */,
                                false /* Analysis Pass */);
-

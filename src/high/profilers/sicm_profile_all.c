@@ -22,7 +22,7 @@ void profile_all_skip_interval(int);
 void profile_all_post_interval(arena_profile *);
 
 /* Uses libpfm to figure out the event we're going to use */
-void sh_get_event() {
+void sh_get_profile_all_event() {
   int err;
   size_t i, n;
   pfm_perf_encode_arg_t pfm;
@@ -30,7 +30,7 @@ void sh_get_event() {
   pfm_initialize();
 
   /* Make sure all of the events work. Initialize the pes. */
-  for(n = 0; n < profopts.num_profile_all_cpus; n++) {
+  for(n = 0; n < profopts.num_profile_cpus; n++) {
     for(i = 0; i < prof.profile->num_profile_all_events; i++) {
       memset(prof.profile_all.pes[n][i], 0, sizeof(struct perf_event_attr));
       prof.profile_all.pes[n][i]->size = sizeof(struct perf_event_attr);
@@ -73,12 +73,16 @@ void profile_all_arena_init(profile_all_info *info) {
 void profile_all_deinit() {
   size_t i, n;
 
-  for(i = 0; i < prof.profile->num_profile_all_events; i++) {
-    ioctl(prof.profile_all.fds[i], PERF_EVENT_IOC_DISABLE, 0);
+  for(n = 0; n < profopts.num_profile_cpus; n++) {
+    for(i = 0; i < prof.profile->num_profile_all_events; i++) {
+      ioctl(prof.profile_all.fds[n][i], PERF_EVENT_IOC_DISABLE, 0);
+    }
   }
 
-  for(i = 0; i < prof.profile->num_profile_all_events; i++) {
-    close(prof.profile_all.fds[i]);
+  for(n = 0; n < profopts.num_profile_cpus; n++) {
+    for(i = 0; i < prof.profile->num_profile_all_events; i++) {
+      close(prof.profile_all.fds[n][i]);
+    }
   }
 }
 
@@ -94,8 +98,8 @@ void profile_all_init() {
   /* This array is for storing the per-cpu, per-event data_head values. Instead of calling `poll`, we
      can see if the current data_head value is different from the previous one, and when it is,
      we know we have some new values to read. */
-  prof.profile_all.prev_head = malloc(sizeof(uint64_t *) * profopts.num_profile_all_cpus);
-  for(n = 0; n < profopts.num_profile_all_cpus; n++) {
+  prof.profile_all.prev_head = malloc(sizeof(uint64_t *) * profopts.num_profile_cpus);
+  for(n = 0; n < profopts.num_profile_cpus; n++) {
     prof.profile_all.prev_head[n] = malloc(sizeof(uint64_t) * prof.profile->num_profile_all_events);
     for(i = 0; i < prof.profile->num_profile_all_events; i++) {
       prof.profile_all.prev_head[n][i] = 0;
@@ -103,9 +107,9 @@ void profile_all_init() {
   }
 
   /* Allocate perf structs */
-  prof.profile_all.pes = orig_malloc(sizeof(struct perf_event_attr **) * profopts.num_profile_all_cpus);
-  prof.profile_all.fds = orig_malloc(sizeof(int *) * profopts.num_profile_all_cpus);
-  for(n = 0; n < profopts.num_profile_all_cpus; n++) {
+  prof.profile_all.pes = orig_malloc(sizeof(struct perf_event_attr **) * profopts.num_profile_cpus);
+  prof.profile_all.fds = orig_malloc(sizeof(int *) * profopts.num_profile_cpus);
+  for(n = 0; n < profopts.num_profile_cpus; n++) {
     prof.profile_all.pes[n] = orig_malloc(sizeof(struct perf_event_attr *) * prof.profile->num_profile_all_events);
     prof.profile_all.fds[n] = orig_malloc(sizeof(int) * prof.profile->num_profile_all_events);
     for(i = 0; i < prof.profile->num_profile_all_events; i++) {
@@ -115,17 +119,17 @@ void profile_all_init() {
   }
 
   /* Use libpfm to fill the pe struct */
-  sh_get_event();
+  sh_get_profile_all_event();
 
   /* Open all perf file descriptors */
-  for(n = 0; n < profopts.num_profile_all_cpus; n++) {
+  for(n = 0; n < profopts.num_profile_cpus; n++) {
     /* A value of -1 for both `pid` and `cpu` is not valid. */
-    if(profopts.profile_all_cpus[n] == -1) {
+    if(profopts.profile_cpus[n] == -1) {
       pid = 0;
     } else {
       pid = -1;
     }
-    cpu = profopts.profile_all_cpus[n];
+    cpu = profopts.profile_cpus[n];
     group_fd = -1;
     flags = 0;
     for(i = 0; i < prof.profile->num_profile_all_events; i++) {
@@ -138,8 +142,8 @@ void profile_all_init() {
   }
 
   /* mmap the perf file descriptors */
-  prof.profile_all.metadata = orig_malloc(sizeof(struct perf_event_mmap_page **) * profopts.num_profile_all_cpus);
-  for(n = 0; n < profopts.num_profile_all_cpus; n++) {
+  prof.profile_all.metadata = orig_malloc(sizeof(struct perf_event_mmap_page **) * profopts.num_profile_cpus);
+  for(n = 0; n < profopts.num_profile_cpus; n++) {
     prof.profile_all.metadata[n] = orig_malloc(sizeof(struct perf_event_mmap_page *) * prof.profile->num_profile_all_events);
     for(i = 0; i < prof.profile->num_profile_all_events; i++) {
       prof.profile_all.metadata[n][i] = mmap(NULL,
@@ -157,7 +161,7 @@ void profile_all_init() {
   }
 
   /* Start the events sampling */
-  for(n = 0; n < profopts.num_profile_all_cpus; n++) {
+  for(n = 0; n < profopts.num_profile_cpus; n++) {
     for(i = 0; i < prof.profile->num_profile_all_events; i++) {
       ioctl(prof.profile_all.fds[n][i], PERF_EVENT_IOC_RESET, 0);
       ioctl(prof.profile_all.fds[n][i], PERF_EVENT_IOC_ENABLE, 0);
@@ -166,8 +170,6 @@ void profile_all_init() {
 }
 
 void *profile_all(void *a) {
-  size_t i;
-
   pthread_setcanceltype(PTHREAD_CANCEL_ASYNCHRONOUS, NULL);
 
   /* Wait for signals */
@@ -202,7 +204,7 @@ void profile_all_interval(int s) {
   }
 
   /* Loops over all CPUs */
-  for(x = 0; x < profopts.num_profile_all_cpus; x++) {
+  for(x = 0; x < profopts.num_profile_cpus; x++) {
     /* Loops over all PROFILE_ALL events */
     for(i = 0; i < prof.profile->num_profile_all_events; i++) {
 
@@ -276,7 +278,6 @@ void profile_all_interval(int s) {
       /* Let perf know that we've read this far */
       prof.profile_all.metadata[x][i]->data_tail = head;
       __sync_synchronize();
-
     }
   }
 

@@ -1,5 +1,7 @@
 #pragma once
-#define __USE_LARGEFILE64
+#ifndef _USE_LARGEFILE64
+#define _USE_LARGEFILE64
+#endif
 #include <stdint.h> /* For uint64_t, etc. */
 #include <stdlib.h> /* For size_t */
 #include "sicm_tree.h"
@@ -23,18 +25,21 @@ struct __attribute__ ((__packed__)) sample {
 union pfn_t {
   uint64_t raw;
   struct {
-    uint64_t pfn:     55;
-    uint32_t pshift:  6;
-    uint32_t res:     1;
-    uint32_t swapped: 1;
-    uint32_t present: 1;
+    uint64_t pfn:        55;
+    uint32_t softdirty: 1;
+    uint32_t excl:       1;
+    uint32_t zero:       4;
+    uint32_t filepage:  1;
+    uint32_t swapped:    1;
+    uint32_t present:    1;
   } obj;
 };
 
 typedef struct per_event_profile_all_info {
   size_t total, peak, current;
 } per_event_profile_all_info;
-void sh_get_event();
+
+void sh_get_profile_all_event();
 
 typedef struct profile_all_info {
   /* profile_all */
@@ -53,12 +58,32 @@ typedef struct profile_all_data {
 } profile_all_data;
 
 /********************
+ * PROFILE_ONE
+ ********************/
+typedef struct per_event_profile_one_info {
+  size_t total, peak, current;
+} per_event_profile_one_info;
+
+typedef struct profile_one_info {
+  per_event_profile_one_info *events;
+} profile_one_info;
+ 
+typedef struct profile_one_data {
+  /* These are one-dimensional arrays that're the size of num_profile_one_events */
+  struct perf_event_attr ***pes;
+  int **fds;
+  size_t pagesize;
+} profile_one_data;
+
+/********************
  * PROFILE_RSS
  ********************/
 
 typedef struct profile_rss_info {
   /* profile_rss */
   size_t peak, current;
+  size_t non_present; /* The number of bytes that are allocated to it */
+  float present_percentage; /* The percentage of present bytes */
 } profile_rss_info;
 
 typedef struct profile_rss_data {
@@ -138,6 +163,7 @@ typedef struct profile_online_data {
   sicm_dev_ptr upper_dl, lower_dl;
   char upper_contention; /* Upper tier full? */
   tree(site_info_ptr, int) offline_sorted_sites;
+  size_t upper_avail, lower_avail;
 
   /* Strat-specific data */
   profile_online_data_orig *orig;
@@ -196,3 +222,11 @@ void profile_online_interval(int);
 void profile_online_post_interval(arena_profile *);
 void profile_online_skip_interval(int);
 void profile_online_arena_init(profile_online_info *);
+
+void profile_one_init();
+void profile_one_deinit();
+void *profile_one(void *);
+void profile_one_interval(int);
+void profile_one_post_interval();
+void profile_one_skip_interval(int);
+void profile_one_arena_init(profile_one_info *);

@@ -29,7 +29,6 @@ void profile_online_post_interval(arena_profile *);
 /* At the beginning of an interval, keeps track of stats and figures out what
    should happen during rebind. */
 tree(site_info_ptr, int) prepare_stats() {
-  size_t upper_avail, lower_avail;
 
   /* Trees and iterators to interface with the parsing/packing libraries */
   tree(site_info_ptr, int) sorted_sites;
@@ -39,16 +38,18 @@ tree(site_info_ptr, int) prepare_stats() {
   tree_it(site_info_ptr, int) sit;
 
   /* Look at how much the application has consumed on each tier */
-  upper_avail = sicm_avail(tracker.upper_device) * 1024;
-  lower_avail = sicm_avail(tracker.lower_device) * 1024;
+  prof.profile_online.upper_avail = sicm_avail(tracker.upper_device) * 1024;
+  prof.profile_online.lower_avail = sicm_avail(tracker.lower_device) * 1024;
 
-  if((lower_avail < prof.profile->lower_capacity) && (!prof.profile_online.upper_contention)) {
+  if((prof.profile_online.lower_avail < prof.profile->lower_capacity) && (!prof.profile_online.upper_contention)) {
     /* If the lower tier is being used, we're going to assume that the
        upper tier is under contention. Trip a flag and let the online
        approach take over. Begin defaulting all new allocations to the lower
        tier. */
     prof.profile_online.upper_contention = 1;
     tracker.default_device = tracker.lower_device;
+    sorted_sites = sh_convert_to_site_tree(prof.profile, 0);
+    full_rebind_cold(sorted_sites);
   }
 
   /* Convert to a tree of sites */
@@ -144,8 +145,13 @@ void profile_online_init() {
     weight = malloc((strlen("profile_allocs") + 1) * sizeof(char));
     strcpy(weight, "profile_allocs");
   } else if(profopts.should_profile_extent_size) {
-    weight = malloc((strlen("profile_extent_size") + 1) * sizeof(char));
-    strcpy(weight, "profile_extent_size");
+    if(profopts.profile_online_ski) {
+      weight = malloc((strlen("profile_extent_size") + 1) * sizeof(char));
+      strcpy(weight, "profile_extent_size");
+    } else {
+      weight = malloc((strlen("profile_extent_size") + 1) * sizeof(char));
+      strcpy(weight, "profile_extent_size");
+    }
   } else if(profopts.should_profile_rss) {
     weight = malloc((strlen("profile_rss") + 1) * sizeof(char));
     strcpy(weight, "profile_rss");
@@ -153,12 +159,20 @@ void profile_online_init() {
     fprintf(stderr, "The online approach requires some kind of capacity profiling. Aborting.\n");
     exit(1);
   }
-
-  /* Look for the event that we're supposed to use for value. Error out if it's not found. */
+  
+  /* Check for what each of the strategies expect */
   if(!profopts.should_profile_all) {
     fprintf(stderr, "SH_PROFILE_ONLINE requires SH_PROFILE_ALL. Aborting.\n");
     exit(1);
   }
+  if(profopts.profile_online_ski) {
+    if((!profopts.should_profile_extent_size)) {
+      fprintf(stderr, "SH_PROFILE_ONLINE_STRAT_SKI requires SH_PROFILE_EXTENT_SIZE. Aborting.\n");
+      exit(1);
+    }
+  }
+  
+  /* Look for the event that we're supposed to use for value. Error out if it's not found. */
   value = malloc((strlen("profile_all") + 1) * sizeof(char));
   strcpy(value, "profile_all");
 
@@ -230,6 +244,8 @@ void profile_online_init() {
   /* Initialize the strategy-specific stuff */
   if(profopts.profile_online_orig) {
     profile_online_init_orig();
+  } else if(profopts.profile_online_ski) {
+    profile_online_init_ski();
   }
 }
 

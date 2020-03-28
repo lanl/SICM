@@ -2,27 +2,33 @@
   The `ski` online strategy.
 *******************/
 
-/* This is the amount of time, in microseconds, that it will
+/* This is the amount of time, in milliseconds, that it will
     take to do the complete rebinding. */
-static inline double penalty_move(size_t cap) {
-  double retval;
+static inline size_t penalty_move(size_t cap) {
+  size_t retval;
   
   retval = ((double) cap)
-           / 2097152; /* 2GB/s, converted to bytes/ms */
+           / 2097152; /* 12 GB/s, converted to bytes/ms */
+  if(retval < 50) {
+    retval = 50;
+  }
   return retval;
 }
 
-/* This is the amount of time in milliseconds that we've wasted by keeping
-   `accesses` number of accesses in the AEP */
-static inline double penalty_stay(size_t accesses) {
-  double retval;
+/* This is the amount of time in milliseconds that we've wasted thus
+   far by keeping `accesses` number of accesses in the AEP */
+static inline size_t penalty_stay(size_t accesses) {
+  size_t retval;
   
-  retval =  ((double) accesses)
+  retval =  (accesses)
             * 200 /* PEBS only gets 0.05% of accesses on average */
             * 0.0003; /* We lose 300 nanoseconds per access, to ms */
   return retval;
 }
 
+/* This is the amount of time in milliseconds that we *would* waste by
+   displacing this site in the upper tier (that is, moving it from the upper
+   tier to the lower tier) */
 static inline size_t penalty_displace(size_t accesses) {
   /* This value is calculated the same way, just with different
      accesses */
@@ -33,12 +39,20 @@ void profile_online_init_ski() {
   prof.profile_online.ski = malloc(sizeof(profile_online_data_ski));
 }
 
+/* All this function will do is calculate:
+   1. penalty_move
+   2. penalty_stay
+   3. penalty_displace
+   For the set of sites that the hotset would move from the upper to the lower
+   tier, and vice versa. Sites whose current tier agrees with the current hotset
+   are ignored.
+*/
 void prepare_stats_ski(tree(site_info_ptr, int) sorted_sites) {
   tree_it(site_info_ptr, int) sit;
   size_t num_hot_intervals;
   int index;
   char dev, hot, prev_hot;
-  double pen_move, pen_stay, pen_dis;
+  size_t pen_move, pen_stay, pen_dis;
   
   /* We'll assume that the value at index 0 is the number of accesses to DRAM,
      and the value at index 1 is the number of accesses to AEP. Thus, we're
@@ -50,101 +64,95 @@ void prepare_stats_ski(tree(site_info_ptr, int) sorted_sites) {
   prof.profile_online.ski->penalty_move = 0;
   prof.profile_online.ski->penalty_stay = 0;
   prof.profile_online.ski->penalty_displace = 0;
-
+  
   tree_traverse(sorted_sites, sit) {
     index = tree_it_key(sit)->index;
     dev = get_arena_online_prof(index)->dev;
     hot = get_arena_online_prof(index)->hot;
     
-    /* Calculate what would have to be rebound if the current hotset
-       were to trigger a full rebind */
+    /* Here, we'll only look at sites that the hotset would rebind */
     if(((dev == -1) && hot) ||
        ((dev == 0)  && hot) ||
        ((dev == 1)  && !hot)) {
-        /* If the site is in the hotset, but not in the upper tier, OR
-           if the site is not in the hotset, but in the upper tier */
-        pen_move = penalty_move(tree_it_key(sit)->weight);
-        prof.profile_online.ski->penalty_move += pen_move;
-        if(((dev == -1) || (dev == 0)) && (hot)) {
-          /* The site is due to be rebound up */
-          pen_stay = penalty_stay(tree_it_key(sit)->value_arr[1]);
+         
+      /* Calculate the penalty to move this site */
+      pen_move = penalty_move(tree_it_key(sit)->weight);
+      prof.profile_online.ski->penalty_move += pen_move;
+      
+      if((((dev == -1) || (dev == 0)) && (hot))) {
+        /* The site is due to be rebound up */
+        pen_stay = penalty_stay(tree_it_key(sit)->value_arr[1]);
+        prof.profile_online.ski->penalty_stay += pen_stay;
+      } else if((dev == 1) && (!hot)) {
+        /* The site is due to be rebound down */
+        #if 0
+        if(prof.profile_online.upper_avail < 157286400) {
+          /* If the upper tier is completely full (signalled by having
+             less than 150MB available), the sites in the lower tier might
+             be over-packing the upper tier. */
+          pen_stay = penalty_stay(tree_it_key(sit)->value_arr[0]);
           prof.profile_online.ski->penalty_stay += pen_stay;
-        } else if((dev == 1) && (!hot)) {
-          /* The site is due to be rebound down */
+          
+        } else {
+        #endif
           pen_dis = penalty_displace(tree_it_key(sit)->value_arr[0]);
           prof.profile_online.ski->penalty_displace += pen_dis;
+        #if 0
         }
-        if(profopts.profile_online_debug_file) {
-          fprintf(profopts.profile_online_debug_file,
-                  "%d: %lf %lf %lf\n", index, pen_move, pen_stay, pen_dis);
-        }
+        #endif
+      }
     }
   }
-  fprintf(profopts.profile_online_debug_file,
-          "Total penalties: %lf %lf %lf\n",
-          prof.profile_online.ski->penalty_move,
-          prof.profile_online.ski->penalty_stay,
-          prof.profile_online.ski->penalty_displace);
+  
+  if(profopts.profile_online_debug_file) {
+    fprintf(profopts.profile_online_debug_file,
+            "Total penalties: move: %zu, stay: %zu, displace: %zu\n",
+            prof.profile_online.ski->penalty_move,
+            prof.profile_online.ski->penalty_stay,
+            prof.profile_online.ski->penalty_displace);
+  }
 }
 
+/* This implements the classic ski rental break-even algorithm. */
 void profile_online_interval_ski(tree(site_info_ptr, int) sorted_sites) {
-  arena_info *arena;
-  arena_profile *aprof;
-  sicm_dev_ptr dl;
+  size_t rent_cost, buy_cost;
+  char dev;
   int index;
-  char full_rebind, dev, hot, prev_hot;
-  size_t num_hot_intervals;
-
   tree_it(site_info_ptr, int) sit;
-
-  full_rebind = 0;
-  if(!profopts.profile_online_nobind &&
-     prof.profile_online.upper_contention &&
-     (prof.profile_online.ski->total_site_value > profopts.profile_online_grace_accesses) &&
-     ((((float) prof.profile_online.ski->site_weight_to_rebind) / ((float) prof.profile_online.ski->total_site_weight)) >= profopts.profile_online_reconf_weight_ratio)) {
-    /* Do a full rebind. Take the difference between what's currently on the devices (site_tiers),
-       and what the hotset says should be on there. */
-    tree_traverse(sorted_sites, sit) {
-      index = tree_it_key(sit)->index;
-      dev = get_arena_online_prof(index)->dev;
-      hot = get_arena_online_prof(index)->hot;
-      if(prof.profile->num_intervals) {
-        prev_hot = get_prev_arena_online_prof(index)->hot;
-      } else {
-        prev_hot = 0;
-      }
-
-      dl = NULL;
-      if(((dev == -1) && hot) ||
-         ((dev == 0) && hot)) {
-        /* The site is in AEP, and is in the hotset. */
-        dl = prof.profile_online.upper_dl;
-        get_arena_online_prof(index)->dev = 1;
-      } else if((dev == 1) && (hot == 0)) {
-        /* The site is in DRAM and isn't in the hotset */
-        dl = prof.profile_online.lower_dl;
-        get_arena_online_prof(index)->dev = 0;
-      }
-
-      if(dl) {
-        full_rebind = 1;
-
-        rebind_arena(index, dl, sit);
-      }
+  
+  /* The cost to "rent the skis" for another day is just penalty_stay;
+     the amount of time that we, approximately, lose for keeping the "hot"
+     sites in the lower tier. */
+  rent_cost = prof.profile_online.ski->penalty_stay;
+     
+  /* The cost to "buy the skis" is penalty_move plus penalty_displace; that is,
+     the cost to actually do the `mbind` calls (which incurs significant overhead)
+     plus the (presumably small) cost of keeping previously "hot" sites in the
+     lower tier. */
+  buy_cost = prof.profile_online.ski->penalty_move +
+             prof.profile_online.ski->penalty_displace;
+     
+  /* We rebind everything to match the current hotset if the cumulative
+     cost of "renting" exceeds the cost to "buy." */
+  if((rent_cost > 0.0) && (rent_cost >= buy_cost)) {
+    if(profopts.profile_online_debug_file) {
+      fprintf(profopts.profile_online_debug_file,
+              "Rebinding: %zu >= %zu\n", rent_cost, buy_cost);
     }
-  } else {
-    /* No full rebind, but we can bind specific sites if the conditions are right */
-    if(profopts.profile_online_hot_intervals) {
-      /* If the user specified a number of intervals, rebind the sites that
-         have been hot for that amount of intervals */
+    full_rebind(sorted_sites);
+    if(profopts.profile_online_debug_file) {
+      /* Prints the upper-tier sites */
+      fprintf(profopts.profile_online_debug_file,
+              "Hotbois: ");
       tree_traverse(sorted_sites, sit) {
         index = tree_it_key(sit)->index;
-        num_hot_intervals = get_arena_online_prof(index)->num_hot_intervals;
-        if(num_hot_intervals == profopts.profile_online_hot_intervals) {
-          get_arena_online_prof(index)->dev = 1;
-          rebind_arena(index, prof.profile_online.upper_dl, sit);
+        dev = get_arena_online_prof(index)->dev;
+        if(dev == 1) {
+          fprintf(profopts.profile_online_debug_file,
+                  "%d ", index);
         }
       }
+      fprintf(profopts.profile_online_debug_file, "\n");
     }
   }
 }
