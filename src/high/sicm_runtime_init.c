@@ -109,6 +109,7 @@ void set_options() {
   FILE *guidance_file;
   ssize_t len;
   struct bitmask *cpus, *nodes;
+  char flag;
 
   /* See if there's profiling information that we can use later */
   env = getenv("SH_PROFILE_INPUT_FILE");
@@ -149,10 +150,10 @@ void set_options() {
   }
 
   /* Should we generate and attempt to use per-interval profiling information? */
-  env = getenv("SH_PROFILE_INTERVALS");
-  profopts.profile_intervals = 0;
+  env = getenv("SH_PRINT_PROFILE_INTERVALS");
+  profopts.print_profile_intervals = 0;
   if(env) {
-    profopts.profile_intervals = 1;
+    profopts.print_profile_intervals = 1;
   }
 
   /* Should we split each type of profiling into its own thread? */
@@ -213,6 +214,19 @@ void set_options() {
     profopts.profile_online_skip_intervals = 1;
     if(env) {
       profopts.profile_online_skip_intervals = strtoul(env, NULL, 0);
+    }
+    
+    env = getenv("SH_PROFILE_ONLINE_PACKING_ALGO");
+    if(env) {
+      profopts.profile_online_packing_algo = 
+        orig_malloc((strlen(env) + 1) * sizeof(char));
+      strcpy(profopts.profile_online_packing_algo,
+        env);
+    } else {
+      profopts.profile_online_packing_algo = 
+        orig_malloc((strlen("hotset") + 1) * sizeof(char));
+      strcpy(profopts.profile_online_packing_algo,
+        "hotset");
     }
 
     env = getenv("SH_PROFILE_ONLINE_EVENTS");
@@ -383,9 +397,14 @@ void set_options() {
     fprintf(tracker.log_file, "SH_PROFILE_RATE_NSECONDS: %zu\n", profopts.profile_rate_nseconds);
   }
 
+  /* The user can specify a number of NUMA nodes to profile on. For profile_all,
+     all CPUs on the node(s) will be profiled. For profile_bw, one CPU from
+     each node will be chosen to record the bandwidth on the IMC. */
   env = getenv("SH_PROFILE_NODES");
-  profopts.num_profile_cpus = 0;
-  profopts.profile_cpus = NULL;
+  profopts.num_profile_all_cpus = 0;
+  profopts.num_profile_bw_cpus = 0;
+  profopts.profile_all_cpus = NULL;
+  profopts.profile_bw_cpus = NULL;
   if(env) {
     /* First, get a list of nodes that the user specified */
     nodes = numa_parse_nodestring(env);
@@ -397,13 +416,22 @@ void set_options() {
       if(numa_bitmask_isbitset(nodes, node)) {
         numa_bitmask_clearall(cpus);
         numa_node_to_cpus(node, cpus);
+        flag = 0;
         /* Now iterate over the CPUs on those nodes */
         for(cpu = 0; cpu < num_cpus; cpu++) {
           if(numa_bitmask_isbitset(cpus, cpu)) {
-            /* Here, we're just adding a CPU number to the array. */
-            profopts.num_profile_cpus++;
-            profopts.profile_cpus = orig_realloc(profopts.profile_cpus, sizeof(int) * profopts.num_profile_cpus);
-            profopts.profile_cpus[profopts.num_profile_cpus - 1] = cpu;
+            /* Here, we'll add one (1) CPU from this list to profile_bw */
+            if(!flag) {
+              profopts.num_profile_bw_cpus++;
+              profopts.profile_bw_cpus = orig_realloc(profopts.profile_bw_cpus,
+                                                      sizeof(int) * profopts.num_profile_bw_cpus);
+              profopts.profile_bw_cpus[profopts.num_profile_bw_cpus - 1] = cpu;
+              flag = 1;
+            }
+            /* ...and add all of the CPUs to profile_all */
+            profopts.num_profile_all_cpus++;
+            profopts.profile_all_cpus = orig_realloc(profopts.profile_all_cpus, sizeof(int) * profopts.num_profile_all_cpus);
+            profopts.profile_all_cpus[profopts.num_profile_all_cpus - 1] = cpu;
           }
         }
       }
@@ -413,11 +441,19 @@ void set_options() {
         process is allowed on */
     cpus = numa_all_cpus_ptr;
     num_cpus = numa_num_configured_cpus();
+    flag = 0;
     for(cpu = 0; cpu < num_cpus; cpu++) {
       if(numa_bitmask_isbitset(cpus, cpu)) {
-        profopts.num_profile_cpus++;
-        profopts.profile_cpus = orig_realloc(profopts.profile_cpus, sizeof(int) * profopts.num_profile_cpus);
-        profopts.profile_cpus[profopts.num_profile_cpus - 1] = cpu;
+        if(!flag) {
+          profopts.num_profile_bw_cpus++;
+          profopts.profile_bw_cpus = orig_realloc(profopts.profile_bw_cpus,
+                                                  sizeof(int) * profopts.num_profile_bw_cpus);
+          profopts.profile_bw_cpus[profopts.num_profile_bw_cpus - 1] = cpu;
+          flag = 1;
+        }
+        profopts.num_profile_all_cpus++;
+        profopts.profile_all_cpus = orig_realloc(profopts.profile_all_cpus, sizeof(int) * profopts.num_profile_all_cpus);
+        profopts.profile_all_cpus[profopts.num_profile_all_cpus - 1] = cpu;
       }
     }
   }
@@ -474,40 +510,31 @@ void set_options() {
     fprintf(tracker.log_file, "SH_PROFILE_ALLOCS: %d\n", profopts.should_profile_allocs);
   }
 
-  /* Should we profile (by isolating) a single allocation site onto a NUMA node
-   * and getting the memory bandwidth on that node?
-   */
-  env = getenv("SH_PROFILE_ONE");
-  profopts.should_profile_one = 0;
-  profopts.profile_one_skip_intervals = 0;
+  /* Should we profile bandwidth on a specific socket? */
+  env = getenv("SH_PROFILE_BW");
+  profopts.should_profile_bw = 0;
+  profopts.profile_bw_skip_intervals = 0;
   if(env) {
-    profopts.should_profile_one = 1;
+    profopts.should_profile_bw = 1;
 
-    env = getenv("SH_PROFILE_ONE_SKIP_INTERVALS");
-    profopts.profile_one_skip_intervals = 1;
+    env = getenv("SH_PROFILE_BW_SKIP_INTERVALS");
+    profopts.profile_bw_skip_intervals = 1;
     if(env) {
-      profopts.profile_one_skip_intervals = strtoul(env, NULL, 0);
+      profopts.profile_bw_skip_intervals = strtoul(env, NULL, 0);
     }
-  }
-  if(tracker.log_file) {
-    fprintf(tracker.log_file, "SH_PROFILE_ONE: %d\n", profopts.should_profile_one);
-  }
-
-  if(profopts.should_profile_one) {
-
-#if 0
-    if(profopts.should_profile_all) {
-      fprintf(stderr, "Cannot enable both profile_all and profile_one. Choose one.\n");
-      exit(1);
-    }
-#endif
-
+    
+    /* The user should specify a number of CPUs to use to read
+       the bandwidth from the IMCs. In the case of many machines,
+       this usually means that the user should select one CPU per socket. */
+    env = getenv("SH_PROFILE_BW_CPUS");
+    
+    
     /* The user can also specify a comma-delimited list of IMCs to read the
      * bandwidth from. This will be passed to libpfm. For example, on an Ivy
      * Bridge server, this value is e.g. `ivbep_unc_imc0`, and on KNL it's
      * `knl_unc_imc0`.
      */
-    env = getenv("SH_PROFILE_ONE_IMC");
+    env = getenv("SH_PROFILE_BW_IMC");
     profopts.num_imcs = 0;
     profopts.max_imc_len = 0;
     profopts.imcs = NULL;
@@ -531,37 +558,40 @@ void set_options() {
     /*
     What events should be used to measure the bandwidth?
      */
-    env = getenv("SH_PROFILE_ONE_EVENTS");
-    profopts.num_profile_one_events = 0;
-    char **tmp_profile_one_events = NULL;
+    env = getenv("SH_PROFILE_BW_EVENTS");
+    profopts.num_profile_bw_events = 0;
+    char **tmp_profile_bw_events = NULL;
     if(env) {
       /* Parse out the events into an array */
       while((str = strtok(env, ",")) != NULL) {
-        profopts.num_profile_one_events++;
-        tmp_profile_one_events = orig_realloc(tmp_profile_one_events, sizeof(char *) * profopts.num_profile_one_events);
-        tmp_profile_one_events[profopts.num_profile_one_events - 1] = str;
+        profopts.num_profile_bw_events++;
+        tmp_profile_bw_events = orig_realloc(tmp_profile_bw_events, sizeof(char *) * profopts.num_profile_bw_events);
+        tmp_profile_bw_events[profopts.num_profile_bw_events - 1] = str;
         env = NULL;
       }
     }
-    if(profopts.num_profile_one_events == 0) {
+    if(profopts.num_profile_bw_events == 0) {
       fprintf(stderr, "No profiling events given. Can't profile one arena.\n");
       exit(1);
     }
 
     /* Prepend each IMC name to each event string, because that's what libpfm4 expects */
     size_t index;
-    profopts.profile_one_events = orig_calloc(profopts.num_profile_one_events * profopts.num_imcs, sizeof(char *));
-    for(i = 0; i < profopts.num_profile_one_events; i++) {
+    profopts.profile_bw_events = orig_calloc(profopts.num_profile_bw_events * profopts.num_imcs, sizeof(char *));
+    for(i = 0; i < profopts.num_profile_bw_events; i++) {
       for(n = 0; n < profopts.num_imcs; n++) {
         index = (i * profopts.num_imcs) + n;
         /* Allocate enough room for the IMC name, the event name, two colons, and a terminator. */
-        profopts.profile_one_events[index] = orig_malloc(sizeof(char) *
-                                    (strlen(tmp_profile_one_events[i]) + strlen(profopts.imcs[n]) + 3));
-        sprintf(profopts.profile_one_events[index], "%s::%s", profopts.imcs[n], tmp_profile_one_events[i]);
+        profopts.profile_bw_events[index] = orig_malloc(sizeof(char) *
+                                    (strlen(tmp_profile_bw_events[i]) + strlen(profopts.imcs[n]) + 3));
+        sprintf(profopts.profile_bw_events[index], "%s::%s", profopts.imcs[n], tmp_profile_bw_events[i]);
       }
     }
 
-    profopts.num_profile_one_events *= profopts.num_imcs;
+    profopts.num_profile_bw_events *= profopts.num_imcs;
+  }
+  if(tracker.log_file) {
+    fprintf(tracker.log_file, "SH_PROFILE_BW: %d\n", profopts.should_profile_bw);
   }
 
   /* Should we get the RSS of each arena? */
@@ -873,7 +903,7 @@ void sh_init() {
        profopts.should_profile_extent_size ||
        profopts.should_profile_online ||
        profopts.should_profile_allocs ||
-       profopts.should_profile_one) {
+       profopts.should_profile_bw) {
       profopts.should_profile = 1;
     }
 

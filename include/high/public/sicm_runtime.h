@@ -149,20 +149,20 @@ typedef struct profiling_options {
   /* Should we do profiling? */
   int should_profile_online,
       should_profile_all,
-      should_profile_one,
+      should_profile_bw,
       should_profile_rss,
       should_profile_extent_size,
       should_profile_allocs,
       should_profile,
       should_profile_separate_threads;
   int should_run_rdspy;
-  int profile_intervals;
+  int print_profile_intervals;
 
   /* Sample rates */
   size_t profile_rate_nseconds;
   unsigned long profile_rss_skip_intervals,
                 profile_all_skip_intervals,
-                profile_one_skip_intervals,
+                profile_bw_skip_intervals,
                 profile_extent_size_skip_intervals,
                 profile_allocs_skip_intervals,
                 profile_online_skip_intervals;
@@ -188,20 +188,25 @@ typedef struct profiling_options {
   int profile_online_use_last_interval;
   char profile_online_orig; /* Online strat */
   char profile_online_ski; /* Online strat */
+  char *profile_online_packing_algo;
 
   /* Array of cpu numbers for profile_all */
-  size_t num_profile_cpus;
-  int *profile_cpus;
+  size_t num_profile_all_cpus;
+  int *profile_all_cpus;
 
   /* Array of strings for profile_all events */
   size_t num_profile_all_events;
   char **profile_all_events;
 
-  /* Array of strings for profile_one events */
-  size_t num_profile_one_events;
-  char **profile_one_events;
+  /* Array of cpu numbers for profile_bw */
+  size_t num_profile_bw_cpus;
+  int *profile_bw_cpus;
+  
+  /* Array of strings for profile_bw events */
+  size_t num_profile_bw_events;
+  char **profile_bw_events;
 
-  /* Array of strings of IMCs for profile_one */
+  /* Array of strings of IMCs for profile_bw */
   char **imcs;
   int num_imcs, max_imc_len, max_event_len;
 } profiling_options;

@@ -58,22 +58,22 @@ typedef struct profile_all_data {
 } profile_all_data;
 
 /********************
- * PROFILE_ONE
+ * PROFILE_BW
  ********************/
-typedef struct per_event_profile_one_info {
-  size_t total, peak, current;
-} per_event_profile_one_info;
+typedef struct per_cpu_profile_bw_info {
+  double total, peak, current;
+} per_event_profile_bw_info;
 
-typedef struct profile_one_info {
-  per_event_profile_one_info *events;
-} profile_one_info;
+typedef struct profile_bw_info {
+  per_cpu_profile_bw_info *cpus;
+} profile_bw_info;
  
-typedef struct profile_one_data {
-  /* These are one-dimensional arrays that're the size of num_profile_one_events */
+typedef struct profile_bw_data {
+  /* These are one-dimensional arrays that're the size of num_profile_bw_events */
   struct perf_event_attr ***pes;
   int **fds;
   size_t pagesize;
-} profile_one_data;
+} profile_bw_data;
 
 /********************
  * PROFILE_RSS
@@ -223,10 +223,10 @@ void profile_online_post_interval(arena_profile *);
 void profile_online_skip_interval(int);
 void profile_online_arena_init(profile_online_info *);
 
-void profile_one_init();
-void profile_one_deinit();
-void *profile_one(void *);
-void profile_one_interval(int);
-void profile_one_post_interval();
-void profile_one_skip_interval(int);
-void profile_one_arena_init(profile_one_info *);
+void profile_bw_init();
+void profile_bw_deinit();
+void *profile_bw(void *);
+void profile_bw_interval(int);
+void profile_bw_post_interval();
+void profile_bw_skip_interval(int);
+void profile_bw_arena_init(profile_bw_info *);

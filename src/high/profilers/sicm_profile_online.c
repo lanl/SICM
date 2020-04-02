@@ -48,12 +48,12 @@ tree(site_info_ptr, int) prepare_stats() {
        tier. */
     prof.profile_online.upper_contention = 1;
     tracker.default_device = tracker.lower_device;
-    sorted_sites = sh_convert_to_site_tree(prof.profile, 0);
+    sorted_sites = sh_convert_to_site_tree(prof.profile, SIZE_MAX);
     full_rebind_cold(sorted_sites);
   }
 
   /* Convert to a tree of sites */
-  sorted_sites = sh_convert_to_site_tree(prof.profile, 0);
+  sorted_sites = sh_convert_to_site_tree(prof.profile, SIZE_MAX);
 
   /* If we've got offline profiling, use it */
   if(prof.profile_online.offline_sorted_sites) {
@@ -145,13 +145,8 @@ void profile_online_init() {
     weight = malloc((strlen("profile_allocs") + 1) * sizeof(char));
     strcpy(weight, "profile_allocs");
   } else if(profopts.should_profile_extent_size) {
-    if(profopts.profile_online_ski) {
-      weight = malloc((strlen("profile_extent_size") + 1) * sizeof(char));
-      strcpy(weight, "profile_extent_size");
-    } else {
-      weight = malloc((strlen("profile_extent_size") + 1) * sizeof(char));
-      strcpy(weight, "profile_extent_size");
-    }
+    weight = malloc((strlen("profile_extent_size") + 1) * sizeof(char));
+    strcpy(weight, "profile_extent_size");
   } else if(profopts.should_profile_rss) {
     weight = malloc((strlen("profile_rss") + 1) * sizeof(char));
     strcpy(weight, "profile_rss");
@@ -164,12 +159,6 @@ void profile_online_init() {
   if(!profopts.should_profile_all) {
     fprintf(stderr, "SH_PROFILE_ONLINE requires SH_PROFILE_ALL. Aborting.\n");
     exit(1);
-  }
-  if(profopts.profile_online_ski) {
-    if((!profopts.should_profile_extent_size)) {
-      fprintf(stderr, "SH_PROFILE_ONLINE_STRAT_SKI requires SH_PROFILE_EXTENT_SIZE. Aborting.\n");
-      exit(1);
-    }
   }
   
   /* Look for the event that we're supposed to use for value. Error out if it's not found. */
@@ -191,8 +180,9 @@ void profile_online_init() {
     exit(1);
   }
 
-  algo = orig_malloc((strlen("hotset") + 1) * sizeof(char));
-  strcpy(algo, "hotset");
+  algo = orig_malloc((strlen(profopts.profile_online_packing_algo) + 1)
+                     * sizeof(char));
+  strcpy(algo, profopts.profile_online_packing_algo);
   sort = orig_malloc((strlen("value_per_weight") + 1) * sizeof(char));
   strcpy(sort, "value_per_weight");
 

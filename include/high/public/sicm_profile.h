@@ -42,14 +42,23 @@ typedef struct interval_profile {
   size_t num_arenas;
   arena_profile **arenas;
   
-  /* profile_one doesn't do any per-arena profiling */
-  profile_one_info profile_one;
+  /* profile_bw doesn't do any per-arena profiling */
+  profile_bw_info profile_bw;
 } interval_profile;
 
 /* Profiling information for a whole application */
 typedef struct application_profile {
+  /* Flags that get set if this profile has these types of
+     profiling in it */
+  char has_profile_all,
+       has_profile_allocs,
+       has_profile_extent_size,
+       has_profile_rss,
+       has_profile_online,
+       has_profile_bw;
+  
   size_t num_intervals, num_profile_all_events,
-         num_profile_one_events;
+         num_profile_bw_events;
 
   size_t upper_capacity, lower_capacity;
 
@@ -58,7 +67,7 @@ typedef struct application_profile {
 
   /* Array of event strings in the profiling */
   char **profile_all_events;
-  char **profile_one_events;
+  char **profile_bw_events;
 
   interval_profile *intervals;
 } application_profile;
@@ -106,7 +115,7 @@ typedef struct profiler {
   profile_extent_size_data profile_extent_size;
   profile_allocs_data profile_allocs;
   profile_online_data profile_online;
-  profile_one_data profile_one;
+  profile_bw_data profile_bw;
 } profiler;
 
 extern profiler prof;
@@ -158,11 +167,11 @@ static inline void copy_interval_profile(size_t index) {
   interval->arenas =
     orig_calloc(tracker.max_arenas, sizeof(arena_profile *));
     
-  /* Copy profile_one profiling info, too */
-  size = profopts.num_profile_one_events * sizeof(per_event_profile_one_info);
-  interval->profile_one.events = orig_malloc(size);
-  memcpy(interval->profile_one.events,
-         this_interval->profile_one.events,
+  /* Copy profile_bw profiling info, too */
+  size = profopts.num_profile_bw_events * sizeof(per_event_profile_bw_info);
+  interval->profile_bw.events = orig_malloc(size);
+  memcpy(interval->profile_bw.events,
+         this_interval->profile_bw.events,
          size);
   
   /* Iterate over all of the arenas in the interval, and copy them too */
@@ -178,8 +187,8 @@ static inline void copy_interval_profile(size_t index) {
 #define get_arena_prof(i) \
   prof.profile->this_interval.arenas[i]
   
-#define get_profile_one_prof() \
-  (&(prof.profile->this_interval.profile_one))
+#define get_profile_bw_prof() \
+  (&(prof.profile->this_interval.profile_bw))
   
 #define get_arena_online_prof(i) \
   (&(get_arena_prof(i)->profile_online))
@@ -201,6 +210,6 @@ static inline void copy_interval_profile(size_t index) {
 #define get_arena_profile_all_event_prof(i, n) \
   (&(get_arena_all_prof(i)->events[n]))
   
-#define get_profile_one_event_prof(i) \
-  (&(get_profile_one_prof()->events[i]))
+#define get_profile_bw_event_prof(i) \
+  (&(get_profile_bw_prof()->events[i]))
   

@@ -21,6 +21,18 @@
 #define DEFAULT_ALGO "hotset"
 #define DEFAULT_SORT "value_per_weight"
 
+static inline const char *sh_get_default_weight(application_profile *info) {
+  if(info->has_profile_allocs) {
+    return "profile_allocs";
+  } else if(info->has_profile_extent_size) {
+    return "profile_extent_size";
+  } else if(info->has_profile_rss) {
+    return "profile_rss";
+  } else {
+    return NULL;
+  }
+}
+
 /* Default values for all options */
 static char sh_verbose_flag = 0;  /* 0 for not verbose, 1 for verbose */
 static char sh_value_flag = 0;    /* 0 for profile_all total,
@@ -29,7 +41,8 @@ static char sh_weight_flag = 0;   /* 0 for profile_allocs,
                                      1 for profile_extent_size,
                                      2 for profile_rss 
                                      3 for profile_extent_size current */
-static char sh_algo_flag = 0;     /* 0 for hotset */
+static char sh_algo_flag = 0;     /* 0 for hotset
+                                     1 for thermos */
 static char sh_sort_flag = 0;     /* 0 for `value_per_weight`,
                                      1 for `value`,
                                      2 for `weight` */
@@ -195,25 +208,29 @@ static tree(site_info_ptr, int) sh_convert_to_site_tree(application_profile *inf
   int n;
   site_info_ptr site, site_copy;
   arena_profile *aprof;
+  interval_profile *cur_interval;
 
   site_tree = tree_make_c(site_info_ptr, int, &site_tree_cmp);
-
-  if(interval) {
-    num_arenas = info->intervals[interval].num_arenas;
+  
+  if(interval == SIZE_MAX) {
+    /* If the user didn't specify an interval to use */
+    #ifdef SICM_RUNTIME
+      /* We're in the runtime library, so we can use the convenience pointer */
+      cur_interval = &(info->this_interval);
+    #else
+      /* I guess just default to the last interval? */
+      cur_interval = &(info->intervals[info->num_intervals - 1]);
+    #endif
   } else {
-    /* If the interval is zero, just get the current profiling info.
-       Only the SICM runtime library should use this. */
-    num_arenas = info->this_interval.num_arenas;
+    /* The user specified an interval, use that. */
+    cur_interval = &(info->intervals[interval]);
   }
 
   /* Iterate over the arenas, create a site_profile_info struct for each site,
      and simply insert them into the tree (which sorts them). */
+  num_arenas = cur_interval->num_arenas;
   for(i = 0; i < num_arenas; i++) {
-    if(interval) {
-      aprof = info->intervals[interval].arenas[i];
-    } else {
-      aprof = info->this_interval.arenas[i];
-    }
+    aprof = cur_interval->arenas[i];
     if(!aprof) continue;
     if(get_weight(aprof) == 0) continue;
 
@@ -319,7 +336,7 @@ static void sh_scale_sites(tree(site_info_ptr, int) site_tree, double scale) {
    The resulting tree is keyed on the site ID instead of the site_info_ptr. */
 static tree(int, site_info_ptr) get_hotset(tree(site_info_ptr, int) site_tree, size_t capacity) {
   tree(int, site_info_ptr) ret;
-  tree_it(site_info_ptr, int) sit, last_site_added;
+  tree_it(site_info_ptr, int) sit;
   char break_next_site;
   size_t packed_size;
 
@@ -333,8 +350,6 @@ static tree(int, site_info_ptr) get_hotset(tree(site_info_ptr, int) site_tree, s
     /* If we're over capacity, break. We've already added the site,
      * so we overflow by exactly one site. */
     if(packed_size > capacity) {
-      tree_delete(ret, tree_it_val(last_site_added));
-      packed_size -= tree_it_key(last_site_added)->weight;
       if(sh_verbose_flag) {
         printf("Packed size is %zu, capacity is %zu. That's the last site.\n", packed_size, capacity);
       }
@@ -342,7 +357,6 @@ static tree(int, site_info_ptr) get_hotset(tree(site_info_ptr, int) site_tree, s
     }
     packed_size += tree_it_key(sit)->weight;
     tree_insert(ret, tree_it_val(sit), tree_it_key(sit));
-    last_site_added = sit;
     if(sh_verbose_flag) {
       printf("Inserting %d (val: %zu, weight: %zu, v/w: %lf)\n", tree_it_val(sit),
                                                                    tree_it_key(sit)->value,
@@ -352,6 +366,79 @@ static tree(int, site_info_ptr) get_hotset(tree(site_info_ptr, int) site_tree, s
   }
 
   return ret;
+}
+
+/* Greedy hotset algorithm, but with a twist. Attempts to overpack
+   more intelligently than `get_hotset`. Called by sh_get_hot_sites.
+   The resulting tree is keyed on the site ID instead of the site_info_ptr. */
+static tree(int, site_info_ptr) get_thermos(tree(site_info_ptr, int) site_tree, size_t capacity) {
+  tree(int, site_info_ptr) hotset;
+  tree_it(site_info_ptr, int) sit;
+  tree_it(int, site_info_ptr) hit;
+  char break_next_site;
+  size_t packed_weight, /* Bytes in the hotset already */
+         packed_value, /* Value in the hotset already */
+         overpacked_weight,
+         would_displace_weight,
+         would_displace_value;
+
+  hotset = tree_make(int, site_info_ptr);
+
+  break_next_site = 0;
+  packed_weight = 0;
+  packed_value = 0;
+  tree_traverse(site_tree, sit) {
+    
+    /* Calculate the amount of bytes that we would overpack by
+       if we were to add this site to the hotset */
+    if((packed_weight + tree_it_key(sit)->weight) > capacity) {
+      overpacked_weight = packed_weight + tree_it_key(sit)->weight - capacity;
+    } else {
+      overpacked_weight = 0;
+    }
+    
+    if(overpacked_weight) {
+      /* The hotset is already above the prescribed limit, but let's add more
+         sites if they're hotter than the sites that they would displace */
+      would_displace_weight = 0;
+      would_displace_value = 0;
+      tree_traverse(hotset, hit) {
+        /* In this loop, we're just calculating how many bytes and how much
+           value we would displace */
+        would_displace_weight += tree_it_val(hit)->weight;
+        would_displace_value += tree_it_val(hit)->value;
+        if(would_displace_weight > overpacked_weight) {
+          break;
+        }
+      }
+      if(tree_it_key(sit)->value > would_displace_value) {
+        /* If the value of the current site is greater than the sites
+           that it would displace, then let's overpack more. */
+        packed_weight += tree_it_key(sit)->weight;
+        packed_value += tree_it_key(sit)->value;
+        tree_insert(hotset, tree_it_val(sit), tree_it_key(sit));
+      }
+    } else {
+      /* We've not reached the capacity yet, so just keep greedily packing. */
+      packed_weight += tree_it_key(sit)->weight;
+      packed_value += tree_it_key(sit)->value;
+      tree_insert(hotset, tree_it_val(sit), tree_it_key(sit));
+      if(sh_verbose_flag) {
+        printf("Inserting %d (val: %zu, weight: %zu, v/w: %lf)\n", tree_it_val(sit),
+                                                                    tree_it_key(sit)->value,
+                                                                    tree_it_key(sit)->weight,
+                                                                    tree_it_key(sit)->value_per_weight);
+      }
+    }
+  }
+  
+  if(sh_verbose_flag) {
+    printf("Packed weight: %zu, packed value: %zu, capacity: %zu\n", packed_weight,
+                                                                     packed_value,
+                                                                     capacity);
+  }
+
+  return hotset;
 }
 
 /* Same as `sh_get_hot_sites`, but gives back `num_sites` number of top sites, instead of
@@ -389,6 +476,8 @@ static tree(int, site_info_ptr) sh_get_hot_sites(tree(site_info_ptr, int) site_t
 
   if(sh_algo_flag == 0) {
     hot_site_tree = get_hotset(site_tree, capacity);
+  } else if(sh_algo_flag == 1) {
+    hot_site_tree = get_thermos(site_tree, capacity);
   } else {
     fprintf(stderr, "Invalid packing algorithm detected. Aborting.\n");
     exit(1);
@@ -422,8 +511,8 @@ static void sh_packing_init(application_profile *info,
     strcpy(*value, DEFAULT_VALUE);
   }
   if(*weight == NULL) {
-    *weight = orig_malloc((strlen(DEFAULT_WEIGHT) + 1) * sizeof(char));
-    strcpy(*weight, DEFAULT_WEIGHT);
+    *weight = orig_malloc((strlen(sh_get_default_weight(info)) + 1) * sizeof(char));
+    strcpy(*weight, sh_get_default_weight(info));
   }
   if(*algo == NULL) {
     *algo = orig_malloc((strlen(DEFAULT_ALGO) + 1) * sizeof(char));
@@ -518,6 +607,8 @@ static void sh_packing_init(application_profile *info,
   /* Set sh_algo_flag */
   if(strcmp(*algo, "hotset") == 0) {
     sh_algo_flag = 0;
+  } else if(strcmp(*algo, "thermos") == 0) {
+    sh_algo_flag = 1;
   } else {
     fprintf(stderr, "Type of packing algorithm not recognized. Aborting.\n");
     exit(1);

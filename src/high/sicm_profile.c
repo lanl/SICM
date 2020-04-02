@@ -211,8 +211,8 @@ void profile_master_interval(int s) {
       profile_online_post_interval(aprof);
     }
   }
-  if(profopts.should_profile_one) {
-    profile_one_post_interval();
+  if(profopts.should_profile_bw) {
+    profile_bw_post_interval();
   }
 
   if(prof.profile->num_intervals) {
@@ -317,11 +317,11 @@ void *profile_master(void *a) {
                          &profile_all_skip_interval,
                          profopts.profile_all_skip_intervals);
   }
-  if(profopts.should_profile_one) {
-    setup_profile_thread(&profile_one,
-                         &profile_one_interval,
-                         &profile_one_skip_interval,
-                         profopts.profile_one_skip_intervals);
+  if(profopts.should_profile_bw) {
+    setup_profile_thread(&profile_bw,
+                         &profile_bw_interval,
+                         &profile_bw_skip_interval,
+                         profopts.profile_bw_skip_intervals);
   }
   if(profopts.should_profile_rss) {
     setup_profile_thread(&profile_rss,
@@ -409,13 +409,28 @@ void initialize_profiling() {
   pthread_rwlock_init(&(prof.profile_lock), NULL);
 
   /* Initialize the structs that store the profiling information */
-  prof.profile = orig_malloc(sizeof(application_profile));
+  prof.profile = orig_calloc(1, sizeof(application_profile));
 
   /* We'll add profiling to this array when an interval happens */
   prof.profile->num_intervals = 0;
   prof.profile->intervals = NULL;
   prof.cur_interval = NULL;
   prof.prev_interval = NULL;
+  
+  /* Set flags for what type of profiling we'll store */
+  if(profopts.should_profile_all) {
+    prof.profile->has_profile_all = 1;
+  } else if(profopts.should_profile_allocs) {
+    prof.profile->has_profile_allocs = 1;
+  } else if(profopts.should_profile_extent_size) {
+    prof.profile->has_profile_extent_size = 1;
+  } else if(profopts.should_profile_rss) {
+    prof.profile->has_profile_rss = 1;
+  } else if(profopts.should_profile_online) {
+    prof.profile->has_profile_online = 1;
+  } else if(profopts.should_profile_bw) {
+    prof.profile->has_profile_bw = 1;
+  }
 
   /* Stores the current interval's profiling */
   prof.profile->this_interval.num_arenas = 0;
@@ -429,12 +444,12 @@ void initialize_profiling() {
     strcpy(prof.profile->profile_all_events[i], profopts.profile_all_events[i]);
   }
   
-  /* Store the profile_one event strings */
-  prof.profile->num_profile_one_events = profopts.num_profile_one_events;
-  prof.profile->profile_one_events = orig_calloc(prof.profile->num_profile_one_events, sizeof(char *));
-  for(i = 0; i < profopts.num_profile_one_events; i++) {
-    prof.profile->profile_one_events[i] = orig_malloc((strlen(profopts.profile_one_events[i]) + 1) * sizeof(char));
-    strcpy(prof.profile->profile_one_events[i], profopts.profile_one_events[i]);
+  /* Store the profile_bw event strings */
+  prof.profile->num_profile_bw_events = profopts.num_profile_bw_events;
+  prof.profile->profile_bw_events = orig_calloc(prof.profile->num_profile_bw_events, sizeof(char *));
+  for(i = 0; i < profopts.num_profile_bw_events; i++) {
+    prof.profile->profile_bw_events[i] = orig_malloc((strlen(profopts.profile_bw_events[i]) + 1) * sizeof(char));
+    strcpy(prof.profile->profile_bw_events[i], profopts.profile_bw_events[i]);
   }
 
   prof.threads_finished = 0;
@@ -457,8 +472,8 @@ void initialize_profiling() {
   if(profopts.should_profile_all) {
     profile_all_init();
   }
-  if(profopts.should_profile_one) {
-    profile_one_init();
+  if(profopts.should_profile_bw) {
+    profile_bw_init();
   }
   if(profopts.should_profile_rss) {
     profile_rss_init();
@@ -500,8 +515,8 @@ void deinitialize_profiling() {
   if(profopts.should_profile_all) {
     profile_all_deinit();
   }
-  if(profopts.should_profile_one) {
-    profile_one_deinit();
+  if(profopts.should_profile_bw) {
+    profile_bw_deinit();
   }
   if(profopts.should_profile_rss) {
     profile_rss_deinit();
