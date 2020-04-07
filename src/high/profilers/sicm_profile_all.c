@@ -261,7 +261,6 @@ void profile_all_interval(int s) {
 
               /* Record this access */
               get_arena_profile_all_event_prof(arena->index, i)->current++;
-              get_arena_profile_all_event_prof(arena->index, i)->total++;
             }
           }
         }
@@ -278,6 +277,14 @@ void profile_all_interval(int s) {
       /* Let perf know that we've read this far */
       prof.profile_all.metadata[x][i]->data_tail = head;
       __sync_synchronize();
+    }
+  }
+  
+  for(i = 0; i < prof.profile->num_profile_all_events; i++) {
+    arena_arr_for(n) {
+      prof_check_good(arena, aprof, n);
+      aprof->profile_all.events[i].current *= profopts.profile_all_multipliers[i];
+      aprof->profile_all.events[i].total += aprof->profile_all.events[i].current;
     }
   }
 

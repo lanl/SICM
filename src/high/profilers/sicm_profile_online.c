@@ -134,84 +134,50 @@ void profile_online_interval(int s) {
 void profile_online_init() {
   size_t i, n;
   char found;
-  char *weight;
-  char *value;
-  char *algo;
-  char *sort;
   application_profile *offline_profile;
-
+  packing_options *opts;
+  
+  opts = orig_calloc(sizeof(char), sizeof(packing_options));
+  
+  if(profopts.should_profile_all &&
+     profopts.should_profile_bw &&
+     profopts.profile_bw_relative) {
+    opts->value = PROFILE_BW_RELATIVE_TOTAL;
+  } else {
+    fprintf(stderr, "The online approach currently requires both PROFILE_ALL and PROFILE_BW to work. Aborting.\n");
+    exit(1);
+  }
+  
   /* Determine which type of profiling to use to determine weight. Error if none found. */
   if(profopts.should_profile_allocs) {
-    weight = malloc((strlen("profile_allocs") + 1) * sizeof(char));
-    strcpy(weight, "profile_allocs");
+    opts->weight = PROFILE_ALLOCS_PEAK;
   } else if(profopts.should_profile_extent_size) {
-    weight = malloc((strlen("profile_extent_size") + 1) * sizeof(char));
-    strcpy(weight, "profile_extent_size");
+    opts->weight = PROFILE_EXTENT_SIZE_PEAK;
   } else if(profopts.should_profile_rss) {
-    weight = malloc((strlen("profile_rss") + 1) * sizeof(char));
-    strcpy(weight, "profile_rss");
+    opts->weight = PROFILE_RSS_PEAK;
   } else {
     fprintf(stderr, "The online approach requires some kind of capacity profiling. Aborting.\n");
     exit(1);
   }
   
-  /* Check for what each of the strategies expect */
-  if(!profopts.should_profile_all) {
-    fprintf(stderr, "SH_PROFILE_ONLINE requires SH_PROFILE_ALL. Aborting.\n");
-    exit(1);
+  if(strcmp(profopts.profile_online_packing_algo, "hotset") == 0) {
+    opts->algo = HOTSET;
+  } else if(strcmp(profopts.profile_online_packing_algo, "thermos") == 0) {
+    opts->algo = THERMOS;
   }
   
-  /* Look for the event that we're supposed to use for value. Error out if it's not found. */
-  value = malloc((strlen("profile_all") + 1) * sizeof(char));
-  strcpy(value, "profile_all");
-
-  /* Find the event string and make sure that the event is available. */
-  found = 0;
-  for(i = 0; i < profopts.num_profile_online_events; i++) {
-    for(n = 0; n < prof.profile->num_profile_all_events; n++) {
-      if(strcmp(prof.profile->profile_all_events[n], profopts.profile_online_events[i]) == 0) {
-        found++;
-        break;
-      }
-    }
-  }
-  if(found != profopts.num_profile_online_events) {
-    fprintf(stderr, "At least one of the events in SH_PROFILE_ONLINE_EVENTS wasn't found in SH_PROFILE_ALL_EVENTS. Aborting.\n");
-    exit(1);
-  }
-
-  algo = orig_malloc((strlen(profopts.profile_online_packing_algo) + 1)
-                     * sizeof(char));
-  strcpy(algo, profopts.profile_online_packing_algo);
-  sort = orig_malloc((strlen("value_per_weight") + 1) * sizeof(char));
-  strcpy(sort, "value_per_weight");
-
+  opts->sort = VALUE_PER_WEIGHT;
+  
   /* The previous and current profiling *need* to have the same type of profiling for this
      to make sense. Otherwise, you're just going to get errors. */
   offline_profile = NULL;
   prof.profile_online.offline_sorted_sites = NULL;
   if(profopts.profile_input_file) {
     offline_profile = sh_parse_profiling(profopts.profile_input_file);
-    sh_packing_init(offline_profile,
-                    &value,
-                    &profopts.profile_online_events,
-                    &profopts.num_profile_online_events,
-                    &weight,
-                    &algo,
-                    &sort,
-                    profopts.profile_online_weights,
-                    0);
+    sh_packing_init(offline_profile, &opts);
     prof.profile_online.offline_sorted_sites = sh_convert_to_site_tree(offline_profile, offline_profile->num_intervals - 1);
   } else {
-    sh_packing_init(prof.profile,
-                    &value,
-                    &profopts.profile_online_events,
-                    &profopts.num_profile_online_events,
-                    &weight,
-                    &algo,
-                    &sort,
-                    profopts.profile_online_weights,
-                    0);
+    sh_packing_init(prof.profile, &opts);
   }
 
   /* Figure out the amount of free memory that we're starting out with */

@@ -15,44 +15,54 @@
 #include "sicm_tree.h"
 #include "sicm_parsing.h"
 
-/* Default strings */
-#define DEFAULT_VALUE "profile_all"
-#define DEFAULT_WEIGHT "profile_extent_size"
-#define DEFAULT_ALGO "hotset"
-#define DEFAULT_SORT "value_per_weight"
+/* Value flags */
+#define PROFILE_ALL_TOTAL 1<<0
+#define PROFILE_ALL_CURRENT 1<<1
+#define PROFILE_BW_RELATIVE_TOTAL 1<<2
+#define PROFILE_BW_RELATIVE_CURRENT 1<<3
 
-static inline const char *sh_get_default_weight(application_profile *info) {
-  if(info->has_profile_allocs) {
-    return "profile_allocs";
-  } else if(info->has_profile_extent_size) {
-    return "profile_extent_size";
-  } else if(info->has_profile_rss) {
-    return "profile_rss";
-  } else {
-    return NULL;
-  }
-}
+/* Weight flags */
+#define PROFILE_ALLOCS_PEAK 1<<0
+#define PROFILE_EXTENT_SIZE_PEAK 1<<1
+#define PROFILE_EXTENT_SIZE_CURRENT 1<<2
+#define PROFILE_RSS_PEAK 1<<3
 
-/* Default values for all options */
-static char sh_verbose_flag = 0;  /* 0 for not verbose, 1 for verbose */
-static char sh_value_flag = 0;    /* 0 for profile_all total,
-                                     1 for profile_all current value */
-static char sh_weight_flag = 0;   /* 0 for profile_allocs,
-                                     1 for profile_extent_size,
-                                     2 for profile_rss 
-                                     3 for profile_extent_size current */
-static char sh_algo_flag = 0;     /* 0 for hotset
-                                     1 for thermos */
-static char sh_sort_flag = 0;     /* 0 for `value_per_weight`,
-                                     1 for `value`,
-                                     2 for `weight` */
-static size_t *sh_value_event_indices = NULL; /* Index into the array of events to use for value */
-static size_t sh_num_value_event_indices = 0;
-static float *sh_weights = NULL; /* Array of floats to multiply each event's value by */
+/* Packing algorithm flags */
+#define HOTSET 1<<0
+#define THERMOS 1<<1
+
+/* Sort flags */
+#define VALUE_PER_WEIGHT 1<<0
+#define VALUE 1<<1
+#define WEIGHT 1<<2
+
+/* Defaults */
+#define DEFAULT_VALUE PROFILE_ALL_TOTAL
+#define DEFAULT_WEIGHT PROFILE_EXTENT_SIZE_PEAK
+#define DEFAULT_ALGO THERMOS
+#define DEFAULT_SORT VALUE_PER_WEIGHT
+
+/* A struct of options that the user passes to `sh_packing_init` to choose
+   how to generate values and weights, which packing algorithm to use, etc. */
+typedef struct packing_options {
+  unsigned int verbose : 1;
+  unsigned int value : 4;
+  unsigned int weight : 4;
+  unsigned int algo : 2;
+  unsigned int sort : 3;
+  
+  /* Only for PROFILE_ALL_TOTAL and PROFILE_ALL_CURRENT.
+     Array of floats to weight each event by. */
+  size_t num_profile_all_events,
+         num_profile_bw_skts;
+  
+  FILE *packing_debug_file;
+} packing_options;
+static packing_options *packopts = NULL;
 
 typedef struct site_profile_info {
   size_t value, weight, num_hot_intervals,
-         *value_arr, num_values;
+         *value_arr;
   double value_per_weight;
   int index;
   char dev, hot;
@@ -65,25 +75,30 @@ use_tree(site_info_ptr, int);
 use_tree(int, site_info_ptr);
 #endif
 
-/* Gets a value from the given arena_profile */
-static void set_value(arena_profile *aprof, site_info_ptr site) {
+/* Gets a value for the given arena in aprof, and sets `value` and `value_arr` */
+static inline void set_value(arena_profile *aprof,
+                             site_info_ptr site) {
   size_t i, tmp;
 
   site->value = 0;
-  site->num_values = sh_num_value_event_indices;
-  site->value_arr = malloc(sizeof(size_t) * site->num_values);
-  if(sh_value_flag == 0) {
-    for(i = 0; i < site->num_values; i++) {
-      tmp = (aprof->profile_all.events[sh_value_event_indices[i]].total * sh_weights[i]);
+  if(packopts->value == PROFILE_ALL_TOTAL) {
+    site->value_arr = malloc(sizeof(size_t) * packopts->num_profile_all_events);
+    for(i = 0; i < packopts->num_profile_all_events; i++) {
+      tmp = (aprof->profile_all.events[i].total);
       site->value += tmp;
       site->value_arr[i] = tmp;
     }
-  } else if(sh_value_flag == 1) {
-    for(i = 0; i < sh_num_value_event_indices; i++) {
-      tmp = (aprof->profile_all.events[sh_value_event_indices[i]].current * sh_weights[i]);
+  } else if(packopts->value == PROFILE_ALL_CURRENT) {
+    site->value_arr = malloc(sizeof(size_t) * packopts->num_profile_all_events);
+    for(i = 0; i < packopts->num_profile_all_events; i++) {
+      tmp = (aprof->profile_all.events[i].current);
       site->value += tmp;
       site->value_arr[i] = tmp;
     }
+  } else if(packopts->value == PROFILE_BW_RELATIVE_TOTAL) {
+    site->value_arr = malloc(sizeof(size_t));
+    site->value_arr[0] = aprof->profile_bw.total;
+    site->value = aprof->profile_bw.total;
   } else {
     fprintf(stderr, "Invalid value type detected. Aborting.\n");
     exit(1);
@@ -91,17 +106,17 @@ static void set_value(arena_profile *aprof, site_info_ptr site) {
 }
 
 /* Gets a weight from the given arena_profile */
-static size_t get_weight(arena_profile *aprof) {
+static inline size_t get_weight(arena_profile *aprof) {
   size_t weight;
 
-  if(sh_weight_flag == 0) {
+  if(packopts->weight == PROFILE_ALLOCS_PEAK) {
     weight = aprof->profile_allocs.peak;
-  } else if(sh_weight_flag == 1) {
+  } else if(packopts->weight == PROFILE_EXTENT_SIZE_PEAK) {
     weight = aprof->profile_extent_size.peak;
-  } else if(sh_weight_flag == 2) {
-    weight = aprof->profile_rss.peak;
-  } else if(sh_weight_flag == 3) {
+  } else if(packopts->weight == PROFILE_EXTENT_SIZE_CURRENT) {
     weight = aprof->profile_extent_size.current;
+  } else if(packopts->weight == PROFILE_RSS_PEAK) {
+    weight = aprof->profile_rss.peak;
   } else {
     fprintf(stderr, "Invalid weight type detected. Aborting.\n");
     exit(1);
@@ -113,14 +128,14 @@ static size_t get_weight(arena_profile *aprof) {
 /* This is the function that tree uses to sort the sites.
    This is run each time the tree compares two site_profile_info structs.
    Slow (since it checks these conditions for every comparison), but simple. */
-static int site_tree_cmp(site_info_ptr a, site_info_ptr b) {
+static inline int site_tree_cmp(site_info_ptr a, site_info_ptr b) {
   int retval;
 
   if(a == b) {
     return 0;
   }
 
-  if(sh_sort_flag == 0) {
+  if(packopts->sort == VALUE_PER_WEIGHT) {
     if(a->value_per_weight < b->value_per_weight) {
       retval = 1;
     } else if(a->value_per_weight > b->value_per_weight) {
@@ -128,7 +143,7 @@ static int site_tree_cmp(site_info_ptr a, site_info_ptr b) {
     } else {
       retval = 1;
     }
-  } else if(sh_sort_flag == 1) {
+  } else if(packopts->sort == VALUE) {
     if(a->value < b->value) {
       retval = 1;
     } else if(a->value > b->value) {
@@ -136,7 +151,7 @@ static int site_tree_cmp(site_info_ptr a, site_info_ptr b) {
     } else {
       retval = 1;
     }
-  } else if(sh_sort_flag == 2) {
+  } else if(packopts->sort == WEIGHT) {
     if(a->weight < b->weight) {
       retval = 1;
     } else if(a->weight > b->weight) {
@@ -179,13 +194,9 @@ static tree(site_info_ptr, int) sh_merge_site_trees(tree(site_info_ptr, int) fir
     if(tree_it_good(fit)) {
       site->value = (tree_it_val(fit)->value * value_ratio) + (tree_it_key(sit)->value * (1 - value_ratio));
       site->weight = (tree_it_val(fit)->weight * weight_ratio) + (tree_it_key(sit)->weight * (1 - weight_ratio));
-      if(sh_verbose_flag) {
-        printf("(%zu * %f) + (%zu * %f) = %zu\n", tree_it_val(fit)->value, value_ratio, tree_it_key(sit)->value, 1 - value_ratio, site->value);
-      }
     } else {
       site->value = tree_it_key(sit)->value;
       site->weight = tree_it_key(sit)->weight;
-      printf("WARNING: Didn't find site %d in the previous run's profiling.\n", tree_it_val(sit));
     }
     site->value_per_weight = ((double) site->value) / ((double) site->weight);
     tree_insert(merged, site, tree_it_val(sit));
@@ -250,16 +261,6 @@ static tree(site_info_ptr, int) sh_convert_to_site_tree(application_profile *inf
       tree_insert(site_tree, site_copy, aprof->alloc_sites[n]);
     }
     orig_free(site);
-  }
-
-  if(sh_verbose_flag) {
-    printf("Sorted sites:\n");
-    tree_traverse(site_tree, sit) {
-      printf("%d (val: %zu, weight: %zu, v/w: %lf)\n", tree_it_val(sit),
-                                                       tree_it_key(sit)->value,
-                                                       tree_it_key(sit)->weight,
-                                                       tree_it_key(sit)->value_per_weight);
-    }
   }
 
   return site_tree;
@@ -350,19 +351,10 @@ static tree(int, site_info_ptr) get_hotset(tree(site_info_ptr, int) site_tree, s
     /* If we're over capacity, break. We've already added the site,
      * so we overflow by exactly one site. */
     if(packed_size > capacity) {
-      if(sh_verbose_flag) {
-        printf("Packed size is %zu, capacity is %zu. That's the last site.\n", packed_size, capacity);
-      }
       break;
     }
     packed_size += tree_it_key(sit)->weight;
     tree_insert(ret, tree_it_val(sit), tree_it_key(sit));
-    if(sh_verbose_flag) {
-      printf("Inserting %d (val: %zu, weight: %zu, v/w: %lf)\n", tree_it_val(sit),
-                                                                   tree_it_key(sit)->value,
-                                                                   tree_it_key(sit)->weight,
-                                                                   tree_it_key(sit)->value_per_weight);
-    }
   }
 
   return ret;
@@ -423,21 +415,9 @@ static tree(int, site_info_ptr) get_thermos(tree(site_info_ptr, int) site_tree, 
       packed_weight += tree_it_key(sit)->weight;
       packed_value += tree_it_key(sit)->value;
       tree_insert(hotset, tree_it_val(sit), tree_it_key(sit));
-      if(sh_verbose_flag) {
-        printf("Inserting %d (val: %zu, weight: %zu, v/w: %lf)\n", tree_it_val(sit),
-                                                                    tree_it_key(sit)->value,
-                                                                    tree_it_key(sit)->weight,
-                                                                    tree_it_key(sit)->value_per_weight);
-      }
     }
   }
   
-  if(sh_verbose_flag) {
-    printf("Packed weight: %zu, packed value: %zu, capacity: %zu\n", packed_weight,
-                                                                     packed_value,
-                                                                     capacity);
-  }
-
   return hotset;
 }
 
@@ -456,12 +436,6 @@ static tree(int, site_info_ptr) sh_get_top_sites(tree(site_info_ptr, int) site_t
   tree_traverse(site_tree, sit) {
     tree_insert(ret, tree_it_val(sit), tree_it_key(sit));
     cur_sites++;
-    if(sh_verbose_flag) {
-      printf("Inserting %d (val: %zu, weight: %zu, v/w: %lf)\n", tree_it_val(sit),
-                                                                   tree_it_key(sit)->value,
-                                                                   tree_it_key(sit)->weight,
-                                                                   tree_it_key(sit)->value_per_weight);
-    }
     if(cur_sites == num_sites) {
       break;
     }
@@ -474,9 +448,9 @@ static tree(int, site_info_ptr) sh_get_top_sites(tree(site_info_ptr, int) site_t
 static tree(int, site_info_ptr) sh_get_hot_sites(tree(site_info_ptr, int) site_tree, uintmax_t capacity) {
   tree(int, site_info_ptr) hot_site_tree;
 
-  if(sh_algo_flag == 0) {
+  if(packopts->algo == HOTSET) {
     hot_site_tree = get_hotset(site_tree, capacity);
-  } else if(sh_algo_flag == 1) {
+  } else if(packopts->algo == THERMOS) {
     hot_site_tree = get_thermos(site_tree, capacity);
   } else {
     fprintf(stderr, "Invalid packing algorithm detected. Aborting.\n");
@@ -489,155 +463,42 @@ static tree(int, site_info_ptr) sh_get_hot_sites(tree(site_info_ptr, int) site_t
 
 /* Initializes this packing library, sets all of the globals above. Some of the char ** pointers can be pointers to NULL,
    in which case this function will fill them in with a default value. */
-static void sh_packing_init(application_profile *info,
-                            char **value, /* A pointer to a string that's what type of profiling to use for determining the value */
-                            char ***events, /* Pointer to array of 'char *' */
-                            size_t *num_events,
-                            char **weight,
-                            char **algo,
-                            char **sort,
-                            float *weights, /* Array of floats (same size as num_events) to multiply each events' values by */
-                            char verbose) {
+static void sh_packing_init(application_profile *info, packing_options **opts) {
   size_t i, n;
+  
+  packopts = *opts;
 
   if(!info) {
     fprintf(stderr, "Can't initialize the packing library without some profiling information. Aborting.\n");
     exit(1);
   }
-
-  /* Set the defaults if any of the dereferenced pointers are NULL */
-  if(*value == NULL) {
-    *value = orig_malloc((strlen(DEFAULT_VALUE) + 1) * sizeof(char));
-    strcpy(*value, DEFAULT_VALUE);
-  }
-  if(*weight == NULL) {
-    *weight = orig_malloc((strlen(sh_get_default_weight(info)) + 1) * sizeof(char));
-    strcpy(*weight, sh_get_default_weight(info));
-  }
-  if(*algo == NULL) {
-    *algo = orig_malloc((strlen(DEFAULT_ALGO) + 1) * sizeof(char));
-    strcpy(*algo, DEFAULT_ALGO);
-  }
-  if(*sort == NULL) {
-    *sort = orig_malloc((strlen(DEFAULT_SORT) + 1) * sizeof(char));
-    strcpy(*sort, DEFAULT_SORT);
+  
+  if(!packopts) {
+    packopts = orig_calloc(sizeof(char), sizeof(packing_options));
   }
 
-  /* Set the sh_value_flag */
-  if(strcmp(*value, "profile_all") == 0) {
-    sh_value_flag = 0;
-  } else if(strcmp(*value, "profile_all_current") == 0) {
-    sh_value_flag = 1;
-  } else {
-    fprintf(stderr, "Type of value profiling (%s) not recognized. Aborting.\n", *value);
-    exit(1);
+  /* Set some sane defaults */
+  if(!(packopts->value)) {
+    packopts->value = DEFAULT_VALUE;
   }
-
-  sh_num_value_event_indices = 0;
-
-  /* Figure out which index the chosen event is */
-  if((sh_value_flag == 0) || (sh_value_flag == 1)) {
-    if(*events == NULL) {
-      /* Use all of the events */
-      if(info->num_profile_all_events) {
-        *events = orig_malloc(sizeof(char *) * info->num_profile_all_events);
-        for(i = 0; i < info->num_profile_all_events; i++) {
-          sh_num_value_event_indices++;
-          sh_value_event_indices = realloc(sh_value_event_indices, sizeof(size_t) * sh_num_value_event_indices);
-          sh_value_event_indices[sh_num_value_event_indices - 1] = i;
-          (*events)[i] = orig_malloc((strlen(info->profile_all_events[i]) + 1) * sizeof(char));
-          strcpy((*events)[i], info->profile_all_events[i]);
-        }
-        *num_events = info->num_profile_all_events;
-      } else {
-        fprintf(stderr, "The chosen value profiling has no events to default to. Aborting.\n");
-        exit(1);
-      }
-    } else {
-      if(!(*num_events)) {
-        fprintf(stderr, "You specified events, but not a number of them. Aborting.\n");
-        exit(1);
-      }
-      /* The user specified an event, so try to find that specific one */
-      for(i = 0; i < (*num_events); i++) {
-        for(n = 0; n < info->num_profile_all_events; n++) {
-          if(strcmp((*events)[i], info->profile_all_events[n]) == 0) {
-            sh_num_value_event_indices++;
-            sh_value_event_indices = realloc(sh_value_event_indices, sizeof(size_t) * sh_num_value_event_indices);
-            sh_value_event_indices[sh_num_value_event_indices - 1] = n;
-          }
-        }
-      }
-      if(sh_num_value_event_indices != *num_events) {
-        fprintf(stderr, "Unable to find an event in the profiling. Aborting.\n");
-        exit(1);
-      }
-    }
-  } else {
-    fprintf(stderr, "Invalid value profiling detected. Aborting.\n");
-    exit(1);
+  if(!(packopts->weight)) {
+    packopts->weight = DEFAULT_WEIGHT;
   }
-
-  /* Copy the array of floats into the global pointer */
-  sh_weights = malloc(sizeof(float) * (*num_events));
-  if(weights) {
-    for(i = 0; i < (*num_events); i++) {
-      sh_weights[i] = weights[i];
-    }
-  } else {
-    for(i = 0; i < (*num_events); i++) {
-      sh_weights[i] = 1.0;
-    }
+  if(!(packopts->algo)) {
+    packopts->algo = DEFAULT_ALGO;
   }
-
-  /* Set sh_weight_flag */
-  if(strcmp(*weight, "profile_allocs") == 0) {
-    sh_weight_flag = 0;
-  } else if(strcmp(*weight, "profile_extent_size") == 0) {
-    sh_weight_flag = 1;
-  } else if(strcmp(*weight, "profile_rss") == 0) {
-    sh_weight_flag = 2;
-  } else if(strcmp(*weight, "profile_extent_size_current") == 0) {
-    sh_weight_flag = 3;
-  } else {
-    fprintf(stderr, "Type of weight profiling not recognized. Aborting.\n");
-    exit(1);
+  if(!(packopts->sort)) {
+    packopts->sort = DEFAULT_SORT;
   }
-
-  /* Set sh_algo_flag */
-  if(strcmp(*algo, "hotset") == 0) {
-    sh_algo_flag = 0;
-  } else if(strcmp(*algo, "thermos") == 0) {
-    sh_algo_flag = 1;
-  } else {
-    fprintf(stderr, "Type of packing algorithm not recognized. Aborting.\n");
-    exit(1);
+  
+  /* Keep track of the number of profile_all and profile_bw events */
+  if((packopts->value == PROFILE_ALL_TOTAL) ||
+     (packopts->value == PROFILE_ALL_CURRENT)) {
+    packopts->num_profile_all_events = info->num_profile_all_events;
   }
-
-  /* Set sh_sort_flag */
-  if(strcmp(*sort, "value_per_weight") == 0) {
-    sh_sort_flag = 0;
-  } else if(strcmp(*sort, "value") == 0) {
-    sh_sort_flag = 1;
-  } else if(strcmp(*sort, "weight") == 0) {
-    sh_sort_flag = 2;
-  } else {
-    fprintf(stderr, "Type of sorting not recognized: '%s'. Aborting.\n", *sort);
-    exit(1);
+  if(packopts->value == PROFILE_BW_RELATIVE_TOTAL) {
+    packopts->num_profile_bw_skts = info->num_profile_bw_skts;
   }
-
-  /* Set sh_verbose_flag */
-  sh_verbose_flag = verbose;
-
-  /* Print out all values that we initialized, for debugging */
-  if(sh_verbose_flag) {
-    printf("Finished initializing the packing library with the following parameters:\n");
-    printf("  Value: %s\n", *value);
-    for(i = 0; i < (*num_events); i++) {
-      printf("  Event: '%s', index %zu\n", (*events)[i], i);
-    }
-    printf("  Weight: %s\n", *weight);
-    printf("  Algorithm: %s\n", *algo);
-    printf("  Sorting Type: %s\n", *sort);
-  }
+  
+  *opts = packopts;
 }

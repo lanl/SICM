@@ -157,6 +157,9 @@ typedef struct profiling_options {
       should_profile_separate_threads;
   int should_run_rdspy;
   int print_profile_intervals;
+  int profile_bw_relative;
+  size_t num_profile_all_multipliers;
+  float *profile_all_multipliers;
 
   /* Sample rates */
   size_t profile_rate_nseconds;
@@ -178,8 +181,6 @@ typedef struct profiling_options {
   size_t num_profile_online_events;
   float profile_online_reconf_weight_ratio;
   char **profile_online_events; /* Array of strings of events */
-  size_t num_profile_online_weights;
-  float *profile_online_weights;
   char profile_online_nobind;
   float profile_online_last_iter_value;
   float profile_online_last_iter_weight;
@@ -201,6 +202,7 @@ typedef struct profiling_options {
   /* Array of cpu numbers for profile_bw */
   size_t num_profile_bw_cpus;
   int *profile_bw_cpus;
+  int *profile_bw_skts;
   
   /* Array of strings for profile_bw events */
   size_t num_profile_bw_events;

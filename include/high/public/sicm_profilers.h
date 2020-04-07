@@ -60,12 +60,19 @@ typedef struct profile_all_data {
 /********************
  * PROFILE_BW
  ********************/
-typedef struct per_cpu_profile_bw_info {
-  double total, peak, current;
-} per_event_profile_bw_info;
+typedef struct per_arena_profile_bw_info {
+  /* This is per-arena, but not per-socket. Requires profile_bw_relative. */
+  size_t peak, current, total;
+} per_arena_profile_bw_info;
+ 
+typedef struct per_skt_profile_bw_info {
+  /* These are in the unit of cache lines per second.
+     On most systems, multiply by 64 and divide by 1,000,000 to get MB/s. */
+  size_t peak, current;
+} per_skt_profile_bw_info;
 
 typedef struct profile_bw_info {
-  per_cpu_profile_bw_info *cpus;
+  per_skt_profile_bw_info *skt;
 } profile_bw_info;
  
 typedef struct profile_bw_data {
@@ -73,6 +80,7 @@ typedef struct profile_bw_data {
   struct perf_event_attr ***pes;
   int **fds;
   size_t pagesize;
+  struct timespec start, end, actual;
 } profile_bw_data;
 
 /********************

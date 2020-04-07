@@ -17,7 +17,7 @@ static void sh_print_profiling(application_profile *info, FILE *file) {
   size_t i, n, x, cur_interval, first_interval;
   arena_profile *aprof;
   arena_info *arena;
-  per_event_profile_bw_info *profile_bw_aprof;
+  per_skt_profile_bw_info *profile_bw_aprof;
   
   /* If we're not printing every interval's profiling, just skip to the last
      interval. If we're not in SICM's runtime library, we're just going to 
@@ -36,7 +36,7 @@ static void sh_print_profiling(application_profile *info, FILE *file) {
     /* Common information for the whole application */
     fprintf(file, "===== BEGIN INTERVAL %zu PROFILING =====\n", cur_interval);
     fprintf(file, "Number of PROFILE_ALL events: %zu\n", info->num_profile_all_events);
-    fprintf(file, "Number of PROFILE_BW events: %zu\n", info->num_profile_bw_events);
+    fprintf(file, "Number of PROFILE_BW sockets: %zu\n", info->num_profile_bw_skts);
     fprintf(file, "Number of arenas: %zu\n", info->intervals[cur_interval].num_arenas);
     fprintf(file, "Upper Capacity: %zu\n", info->upper_capacity);
     fprintf(file, "Lower Capacity: %zu\n", info->lower_capacity);
@@ -44,13 +44,12 @@ static void sh_print_profiling(application_profile *info, FILE *file) {
 /* Non-arena profiling info */
     if(info->has_profile_bw) {
       fprintf(file, "  BEGIN PROFILE_BW\n");
-      for(n = 0; n < info->num_profile_bw_events; n++) {
-        profile_bw_aprof = &(info->intervals[cur_interval].profile_bw.events[n]);
-        fprintf(file, "    BEGIN EVENT %s\n", info->profile_bw_events[n]);
-        fprintf(file, "      Total: %zu\n", profile_bw_aprof->total);
+      for(n = 0; n < info->num_profile_bw_skts; n++) {
+        profile_bw_aprof = &(info->intervals[cur_interval].profile_bw.skt[n]);
+        fprintf(file, "    BEGIN SOCKET %s\n", info->profile_bw_skts[n]);
         fprintf(file, "      Current: %zu\n", profile_bw_aprof->current);
         fprintf(file, "      Peak: %zu\n", profile_bw_aprof->peak);
-        fprintf(file, "    END EVENT %s\n", info->profile_bw_events[n]);
+        fprintf(file, "    END SOCKET %s\n", info->profile_bw_skts[n]);
       }
       fprintf(file, "  END PROFILE_BW\n");
     }
@@ -124,13 +123,19 @@ static application_profile *sh_parse_profiling(FILE *file) {
 
   /* Temporaries */
   unsigned index, tmp_uint;
-  size_t num_arenas, cur_arena_index, cur_event_index, cur_interval, tmp_sizet;
+  size_t num_arenas,
+         cur_arena_index,
+         cur_event_index,
+         cur_skt_index,
+         cur_interval,
+         tmp_sizet,
+         tmp_double;
   int tmp_int, site;
   char *event;
   size_t i;
   arena_profile *cur_arena;
   per_event_profile_all_info *cur_event;
-  per_event_profile_bw_info *profile_bw_cur_event;
+  per_skt_profile_bw_info *profile_bw_cur_skt;
 
   if(!file) {
     fprintf(stderr, "Invalid file pointer to be parsed. Aborting.\n");
@@ -158,7 +163,7 @@ static application_profile *sh_parse_profiling(FILE *file) {
 
   ret = orig_calloc(1, sizeof(application_profile));
   ret->profile_all_events = NULL;
-  ret->profile_bw_events = NULL;
+  ret->profile_bw_skts = NULL;
   ret->num_intervals = 0;
   ret->intervals = NULL;
   len = 0;
@@ -175,9 +180,10 @@ static application_profile *sh_parse_profiling(FILE *file) {
         cur_interval = ret->num_intervals - 1;
         cur_arena = NULL;
         cur_event = NULL;
-        profile_bw_cur_event = NULL;
+        profile_bw_cur_skt = NULL;
         cur_arena_index = 0;
         cur_event_index = 0;
+        cur_skt_index = 0;
       }
 
     /* At this level, we're looking for three things:
@@ -197,8 +203,8 @@ static application_profile *sh_parse_profiling(FILE *file) {
         ret->intervals[cur_interval].arenas = orig_calloc(num_arenas, sizeof(arena_profile *));
       } else if(sscanf(line, "Number of PROFILE_ALL events: %zu\n", &tmp_sizet) == 1) {
         ret->num_profile_all_events = tmp_sizet;
-      } else if(sscanf(line, "Number of PROFILE_BW events: %zu\n", &tmp_sizet) == 1) {
-        ret->num_profile_bw_events = tmp_sizet;
+      } else if(sscanf(line, "Number of PROFILE_BW sockets: %zu\n", &tmp_sizet) == 1) {
+        ret->num_profile_bw_skts = tmp_sizet;
       } else if(sscanf(line, "Upper Capacity: %zu\n", &tmp_sizet) == 1) {
         ret->upper_capacity = tmp_sizet;
       } else if(sscanf(line, "Lower Capacity: %zu\n", &tmp_sizet) == 1) {
@@ -208,13 +214,13 @@ static application_profile *sh_parse_profiling(FILE *file) {
         depth = 2;
         profile_type = 5;
         ret->has_profile_bw = 1;
-        if(!(ret->profile_bw_events)) {
-          ret->profile_bw_events = orig_calloc(ret->num_profile_bw_events, sizeof(char *));
+        if(!(ret->profile_bw_skts)) {
+          ret->profile_bw_skts = orig_calloc(ret->num_profile_bw_skts, sizeof(int));
         }
-        ret->intervals[cur_interval].profile_bw.events = orig_calloc(ret->num_profile_bw_events,
-                                                                      sizeof(per_event_profile_bw_info));
-        cur_event_index = 0;
-        profile_bw_cur_event = &(ret->intervals[cur_interval].profile_bw.events[cur_event_index]);
+        ret->intervals[cur_interval].profile_bw.skt = orig_calloc(ret->num_profile_bw_skts,
+                                                                   sizeof(per_skt_profile_bw_info));
+        cur_skt_index = 0;
+        profile_bw_cur_skt = &(ret->intervals[cur_interval].profile_bw.skt[cur_skt_index]);
       } else if(sscanf(line, "BEGIN ARENA %u", &index) == 1) {
         /* Down in depth */
         depth = 2;
@@ -298,18 +304,14 @@ static application_profile *sh_parse_profiling(FILE *file) {
           /* Up in depth */
           depth = 1;
           profile_type = -1;
-        } else if(sscanf(line, "    BEGIN EVENT %ms\n", &event) == 1) {
+        } else if(sscanf(line, "    BEGIN SOCKET %d\n", &tmp_int) == 1) {
           /* Down in depth */
-          if(cur_event_index > ret->num_profile_bw_events - 1) {
-            fprintf(stderr, "Too many events specified. Aborting.\n");
+          if(cur_skt_index > ret->num_profile_bw_skts - 1) {
+            fprintf(stderr, "Too many sockets specified. Aborting.\n");
             exit(1);
           }
-          if(!(ret->profile_bw_events[cur_event_index])) {
-            ret->profile_bw_events[cur_event_index] = orig_malloc((strlen(event) + 1) * sizeof(char));
-            strcpy(ret->profile_bw_events[cur_event_index], event);
-          }
-          orig_free(event);
-          profile_bw_cur_event = &(ret->intervals[cur_interval].profile_bw.events[cur_event_index]);
+          ret->profile_bw_skts[cur_skt_index] = tmp_int;
+          profile_bw_cur_skt = &(ret->intervals[cur_interval].profile_bw.skt[cur_skt_index]);
           depth = 3;
         } else {
           fprintf(stderr, "Didn't recognize a line in the profiling information at depth %d. Aborting.\n", depth);
@@ -326,17 +328,14 @@ static application_profile *sh_parse_profiling(FILE *file) {
        is the same as PROFILE_ALL, but up one level of depth, since PROFILE_BW
        isn't per-arena. */
     } else if((depth == 3) && (profile_type == 5)) {
-      if(sscanf(line, "      Total: %zu\n", &tmp_sizet)) {
-        profile_bw_cur_event->total = tmp_sizet;
-      } else if(sscanf(line, "      Peak: %zu\n", &tmp_sizet)) {
-        profile_bw_cur_event->peak = tmp_sizet;
+      if(sscanf(line, "      Peak: %zu\n", &tmp_sizet)) {
+        profile_bw_cur_skt->peak = tmp_sizet;
       } else if(sscanf(line, "      Current: %zu\n", &tmp_sizet)) {
-        profile_bw_cur_event->current = tmp_sizet;
-      } else if(sscanf(line, "    END EVENT %ms\n", &event) == 1) {
+        profile_bw_cur_skt->current = tmp_sizet;
+      } else if(sscanf(line, "    END SOCKET %d\n", &tmp_int) == 1) {
         /* Up in depth */
-        orig_free(event);
         depth = 2;
-        cur_event_index++;
+        cur_skt_index++;
       } else {
         fprintf(stderr, "Didn't recognize a line in the profiling information at depth %d. Aborting.\n", depth);
         fprintf(stderr, "Line: %s\n", line);

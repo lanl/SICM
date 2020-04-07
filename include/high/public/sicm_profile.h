@@ -35,6 +35,7 @@ typedef struct arena_profile {
   profile_extent_size_info profile_extent_size;
   profile_allocs_info profile_allocs;
   profile_online_info profile_online;
+  per_arena_profile_bw_info profile_bw;
 } arena_profile;
 
 typedef struct interval_profile {
@@ -57,8 +58,7 @@ typedef struct application_profile {
        has_profile_online,
        has_profile_bw;
   
-  size_t num_intervals, num_profile_all_events,
-         num_profile_bw_events;
+  size_t num_intervals, num_profile_all_events;
 
   size_t upper_capacity, lower_capacity;
 
@@ -67,7 +67,11 @@ typedef struct application_profile {
 
   /* Array of event strings in the profiling */
   char **profile_all_events;
-  char **profile_bw_events;
+  
+  /* Array of integers that are the NUMA nodes of the sockets
+     that we got the bandwidth of */
+  size_t num_profile_bw_skts;
+  int *profile_bw_skts;
 
   interval_profile *intervals;
 } application_profile;
@@ -168,10 +172,10 @@ static inline void copy_interval_profile(size_t index) {
     orig_calloc(tracker.max_arenas, sizeof(arena_profile *));
     
   /* Copy profile_bw profiling info, too */
-  size = profopts.num_profile_bw_events * sizeof(per_event_profile_bw_info);
-  interval->profile_bw.events = orig_malloc(size);
-  memcpy(interval->profile_bw.events,
-         this_interval->profile_bw.events,
+  size = profopts.num_profile_bw_cpus * sizeof(per_skt_profile_bw_info);
+  interval->profile_bw.skt = orig_malloc(size);
+  memcpy(interval->profile_bw.skt,
+         this_interval->profile_bw.skt,
          size);
   
   /* Iterate over all of the arenas in the interval, and copy them too */
@@ -210,6 +214,8 @@ static inline void copy_interval_profile(size_t index) {
 #define get_arena_profile_all_event_prof(i, n) \
   (&(get_arena_all_prof(i)->events[n]))
   
-#define get_profile_bw_event_prof(i) \
-  (&(get_profile_bw_prof()->events[i]))
+#define get_profile_bw_skt_prof(i) \
+  (&(get_profile_bw_prof()->skt[i]))
   
+#define get_profile_bw_arena_prof(i) \
+  (&(get_arena_prof(i)->profile_bw))

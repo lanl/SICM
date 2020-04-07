@@ -182,19 +182,6 @@ void set_options() {
       }
     }
 
-    env = getenv("SH_PROFILE_ONLINE_WEIGHTS");
-    profopts.profile_online_weights = NULL;
-    profopts.num_profile_online_weights = 0;
-    if(env) {
-      /* Parse out the events into an array */
-      while((str = strtok(env, ",")) != NULL) {
-        profopts.num_profile_online_weights++;
-        profopts.profile_online_weights = orig_realloc(profopts.profile_online_weights, sizeof(float) * profopts.num_profile_online_weights);
-        profopts.profile_online_weights[profopts.num_profile_online_weights - 1] = strtof(str, NULL);
-        env = NULL;
-      }
-    }
-
     /* Grace period at the beginning of a run. Until this number of profiling accesses is reached,
        the profile_online won't rebind any sites. */
     env = getenv("SH_PROFILE_ONLINE_GRACE_ACCESSES");
@@ -301,13 +288,6 @@ void set_options() {
         fprintf(tracker.log_file, "SH_PROFILE_ONLINE_EVENT: %s\n", profopts.profile_online_events[i]);
       }
     }
-    if(profopts.num_profile_online_weights) {
-      fprintf(tracker.log_file, "SH_PROFILE_ONLINE_WEIGHTS: ");
-      for(i = 0; i < profopts.num_profile_online_weights; i++) {
-        fprintf(tracker.log_file, "%f ", profopts.profile_online_weights[i]);
-      }
-      fprintf(tracker.log_file, "\n");
-    }
     fprintf(tracker.log_file, "SH_PROFILE_ONLINE_USE_LAST_INTERVAL: %d\n", profopts.profile_online_use_last_interval);
     fprintf(tracker.log_file, "SH_PROFILE_ONLINE_GRACE_ACCESSES: %lu\n", profopts.profile_online_grace_accesses);
   }
@@ -405,6 +385,7 @@ void set_options() {
   profopts.num_profile_bw_cpus = 0;
   profopts.profile_all_cpus = NULL;
   profopts.profile_bw_cpus = NULL;
+  profopts.profile_bw_skts = NULL;
   if(env) {
     /* First, get a list of nodes that the user specified */
     nodes = numa_parse_nodestring(env);
@@ -425,7 +406,10 @@ void set_options() {
               profopts.num_profile_bw_cpus++;
               profopts.profile_bw_cpus = orig_realloc(profopts.profile_bw_cpus,
                                                       sizeof(int) * profopts.num_profile_bw_cpus);
+              profopts.profile_bw_skts = orig_realloc(profopts.profile_bw_cpus,
+                                                       sizeof(int) * profopts.num_profile_bw_cpus);
               profopts.profile_bw_cpus[profopts.num_profile_bw_cpus - 1] = cpu;
+              profopts.profile_bw_skts[profopts.num_profile_bw_cpus - 1] = node;
               flag = 1;
             }
             /* ...and add all of the CPUs to profile_all */
@@ -448,7 +432,10 @@ void set_options() {
           profopts.num_profile_bw_cpus++;
           profopts.profile_bw_cpus = orig_realloc(profopts.profile_bw_cpus,
                                                   sizeof(int) * profopts.num_profile_bw_cpus);
+          profopts.profile_bw_skts = orig_realloc(profopts.profile_bw_skts,
+                                                  sizeof(int) * profopts.num_profile_bw_cpus);
           profopts.profile_bw_cpus[profopts.num_profile_bw_cpus - 1] = cpu;
+          profopts.profile_bw_skts[profopts.num_profile_bw_cpus - 1] = numa_node_of_cpu(cpu);
           flag = 1;
         }
         profopts.num_profile_all_cpus++;
@@ -482,6 +469,23 @@ void set_options() {
     if(profopts.num_profile_all_events == 0) {
       fprintf(stderr, "No profiling events given. Can't profile with sampling.\n");
       exit(1);
+    }
+    
+    env = getenv("SH_PROFILE_ALL_MULTIPLIERS");
+    profopts.num_profile_all_multipliers = 0;
+    profopts.profile_all_multipliers = NULL;
+    if(env) {
+      /* Parse out the events into an array */
+      while((str = strtok(env, ",")) != NULL) {
+        profopts.num_profile_all_multipliers++;
+        profopts.profile_all_multipliers = orig_realloc(profopts.profile_all_multipliers, sizeof(float) * profopts.num_profile_all_multipliers);
+        profopts.profile_all_multipliers[profopts.num_profile_all_multipliers - 1] = strtof(str, NULL);
+        env = NULL;
+      }
+      if(profopts.num_profile_all_multipliers != profopts.num_profile_all_events) {
+        fprintf(stderr, "Number of multipliers doesn't equal the number of PROFILE_ALL events. Aborting.\n");
+        exit(1);
+      }
     }
 
     env = getenv("SH_PROFILE_ALL_SKIP_INTERVALS");
@@ -526,8 +530,7 @@ void set_options() {
     /* The user should specify a number of CPUs to use to read
        the bandwidth from the IMCs. In the case of many machines,
        this usually means that the user should select one CPU per socket. */
-    env = getenv("SH_PROFILE_BW_CPUS");
-    
+    //env = getenv("SH_PROFILE_BW_CPUS");
     
     /* The user can also specify a comma-delimited list of IMCs to read the
      * bandwidth from. This will be passed to libpfm. For example, on an Ivy
@@ -587,8 +590,15 @@ void set_options() {
         sprintf(profopts.profile_bw_events[index], "%s::%s", profopts.imcs[n], tmp_profile_bw_events[i]);
       }
     }
-
     profopts.num_profile_bw_events *= profopts.num_imcs;
+    
+    /* Should we try to associate bandwidth with arenas, using their
+       relative profile_all values? */
+    env = getenv("SH_PROFILE_BW_RELATIVE");
+    profopts.profile_bw_relative = 0;
+    if(env) {
+      profopts.profile_bw_relative = 1;
+    }
   }
   if(tracker.log_file) {
     fprintf(tracker.log_file, "SH_PROFILE_BW: %d\n", profopts.should_profile_bw);

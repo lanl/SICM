@@ -63,9 +63,9 @@ void profile_bw_init() {
   prof.profile_bw.pagesize = (size_t) sysconf(_SC_PAGESIZE);
   
   /* Allocate room for the events profiling info */
-  prof.profile->this_interval.profile_bw.events = 
-    orig_calloc(profopts.num_profile_bw_events,
-                sizeof(per_event_profile_bw_info));
+  prof.profile->this_interval.profile_bw.skt = 
+    orig_calloc(profopts.num_profile_bw_cpus,
+                sizeof(per_skt_profile_bw_info));
   
   /* Allocate perf structs */
   prof.profile_bw.pes = orig_malloc(sizeof(struct perf_event_attr **) *
@@ -94,7 +94,6 @@ void profile_bw_init() {
   for(i = 0; i < profopts.num_profile_bw_cpus; i++) {
     cpu = profopts.profile_bw_cpus[i];
     for(n = 0; n < profopts.num_profile_bw_events; n++) {
-      printf("Programming event on CPU %d.\n", cpu);
       prof.profile_bw.fds[i][n] = syscall(__NR_perf_event_open, prof.profile_bw.pes[i][n], pid, cpu, group_fd, flags);
       if(prof.profile_bw.fds[i][n] == -1) {
         fprintf(stderr, "Error opening perf event %d (0x%llx) on cpu %d: %s\n", i, prof.profile_bw.pes[i][n]->config, cpu, strerror(errno));
@@ -102,6 +101,9 @@ void profile_bw_init() {
       }
     }
   }
+  
+  /* Start the timer just before starting the profiling */
+  clock_gettime(CLOCK_MONOTONIC, &(prof.profile_bw.start));
 
   /* Start the events sampling */
   for(i = 0; i < profopts.num_profile_bw_cpus; i++) {
@@ -123,19 +125,75 @@ void *profile_bw(void *a) {
 
 void profile_bw_interval(int s) {
   long long count;
-  size_t i, n;
+  size_t i, n, tmp_bw, tmp_all, tmp_arena_all;
+  double time;
+  arena_info *arena;
+  arena_profile *aprof;
+  
+  /* Get the time between now and the last interval ending */
+  clock_gettime(CLOCK_MONOTONIC, &prof.profile_bw.end);
+  timespec_diff(&(prof.profile_bw.start),
+                &(prof.profile_bw.end),
+                &(prof.profile_bw.actual));
+  time = prof.profile_bw.actual.tv_sec +
+         (((double) prof.profile_bw.actual.tv_nsec) / 1000000000);
 
+  /* Since the profile_bw_cpus array has exactly one CPU per socket,
+     we're really just iterating over the sockets here. We'll sum
+     the values from each IMC across the socket. */
   for(i = 0; i < profopts.num_profile_bw_cpus; i++) {
-    get_profile_bw_event_prof(i)->current = 0;
+    get_profile_bw_skt_prof(i)->current = 0;
     for(n = 0; n < profopts.num_profile_bw_events; n++) {
       ioctl(prof.profile_bw.fds[i][n], PERF_EVENT_IOC_DISABLE, 0);
       read(prof.profile_bw.fds[i][n], &count, sizeof(long long));
       
-      /*
-      get_profile_bw_event_prof(n)->current += count;
-      get_profile_bw_event_prof(n)->total += count;
-      */
-      
+      /* Here, the counter should be gathering the number of retired cache
+         lines that go through the IMC. */
+      get_profile_bw_skt_prof(i)->current += (((double) count) / time);
+    }
+  }
+  
+  if(profopts.profile_bw_relative) {
+    /* Clear current values, and add up all profile_all values this interval */
+    tmp_all = 0;
+    arena_arr_for(n) {
+      prof_check_good(arena, aprof, n);
+      for(i = 0; i < prof.profile->num_profile_all_events; i++) {
+        tmp_all += aprof->profile_all.events[i].current;
+      }
+    }
+    
+    /* Add up this interval's bandwidth in tmp */
+    tmp_bw = 0;
+    for(i = 0; i < profopts.num_profile_bw_cpus; i++) {
+      tmp_bw += get_profile_bw_skt_prof(i)->current;
+    }
+    
+    /* Spread this interval's bandwidth amongst the arenas, based on
+       their profile_all values. */
+    arena_arr_for(n) {
+      prof_check_good(arena, aprof, n);
+      tmp_arena_all = 0;
+      for(i = 0; i < prof.profile->num_profile_all_events; i++) {
+        tmp_arena_all += aprof->profile_all.events[i].current;
+      }
+      if((tmp_arena_all == 0) || (tmp_all == 0) || (tmp_bw == 0)) {
+        aprof->profile_bw.current = 0;
+      } else {
+        aprof->profile_bw.current = (((double) tmp_arena_all) / tmp_all) * tmp_bw;
+      }
+    }
+    
+    arena_arr_for(n) {
+      prof_check_good(arena, aprof, n);
+      aprof->profile_bw.total += aprof->profile_bw.current;
+    }
+  }
+  
+  clock_gettime(CLOCK_MONOTONIC, &(prof.profile_bw.start));
+  
+  for(i = 0; i < profopts.num_profile_bw_cpus; i++) {
+    for(n = 0; n < profopts.num_profile_bw_events; n++) {
       /* Start it back up again */
       ioctl(prof.profile_bw.fds[i][n], PERF_EVENT_IOC_RESET, 0);
       ioctl(prof.profile_bw.fds[i][n], PERF_EVENT_IOC_ENABLE, 0);
@@ -144,14 +202,27 @@ void profile_bw_interval(int s) {
 }
 
 void profile_bw_post_interval() {
-  per_event_profile_bw_info *per_event_aprof;
-  size_t i;
+  per_skt_profile_bw_info *per_skt_aprof;
+  size_t i, n;
+  arena_info *arena;
+  arena_profile *aprof;
 
   /* All we need to do here is maintain the peak */
-  for(i = 0; i < profopts.num_profile_bw_events; i++) {
-    per_event_aprof = get_profile_bw_event_prof(i);
-    if(per_event_aprof->current > per_event_aprof->peak) {
-      per_event_aprof->peak = per_event_aprof->current;
+  for(i = 0; i < profopts.num_profile_bw_cpus; i++) {
+    per_skt_aprof = get_profile_bw_skt_prof(i);
+    if(per_skt_aprof->current > per_skt_aprof->peak) {
+      per_skt_aprof->peak = per_skt_aprof->current;
+    }
+  }
+  
+  if(profopts.profile_bw_relative) {
+    /* We'll have to iterate over all of the arenas and maintain
+      their peaks, too. */
+    arena_arr_for(n) {
+      prof_check_good(arena, aprof, n);
+      if(aprof->profile_bw.current > aprof->profile_bw.peak) {
+        aprof->profile_bw.peak = aprof->profile_bw.current;
+      }
     }
   }
 }

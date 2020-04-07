@@ -444,14 +444,13 @@ void initialize_profiling() {
     strcpy(prof.profile->profile_all_events[i], profopts.profile_all_events[i]);
   }
   
-  /* Store the profile_bw event strings */
-  prof.profile->num_profile_bw_events = profopts.num_profile_bw_events;
-  prof.profile->profile_bw_events = orig_calloc(prof.profile->num_profile_bw_events, sizeof(char *));
-  for(i = 0; i < profopts.num_profile_bw_events; i++) {
-    prof.profile->profile_bw_events[i] = orig_malloc((strlen(profopts.profile_bw_events[i]) + 1) * sizeof(char));
-    strcpy(prof.profile->profile_bw_events[i], profopts.profile_bw_events[i]);
+  /* Store the profile_bw socket numbers */
+  prof.profile->num_profile_bw_skts = profopts.num_profile_bw_cpus;
+  prof.profile->profile_bw_skts = orig_calloc(prof.profile->num_profile_bw_skts, sizeof(int));
+  for(i = 0; i < profopts.num_profile_bw_cpus; i++) {
+    prof.profile->profile_bw_skts[i] = profopts.profile_bw_skts[i];
   }
-
+  
   prof.threads_finished = 0;
 
   /* The signal that will stop the master thread */

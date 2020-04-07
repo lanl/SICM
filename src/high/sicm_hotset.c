@@ -20,8 +20,6 @@ static struct option long_options[] = {
   {"value", required_argument, NULL, 'l'},  /* The type of profiling to use
                                                for determining the "value" of an arena.
                                                Defaults to `profile_all`. */
-  {"event", required_argument, NULL, 'e'},  /* The event to use to determine the value of an arena.
-                                               Defaults to `MEM_LOAD_UOPS_RETIRED:L3_MISS`. */
   {"weight", required_argument, NULL, 'w'}, /* The type of profiling to use as the "weight" of an arena.
                                                Defaults to `profile_extent_size`. */
   {"algo", required_argument, NULL, 'a'},   /* The packing algorithm. Defaults to `hotset`. */
@@ -31,7 +29,6 @@ static struct option long_options[] = {
   {"sort", required_argument, NULL, 'o'},   /* How should we sort the sites? Possibilities are
                                                `value_per_weight`, `value`, and `weight`. Defaults
                                                to `value_per_weight`. */
-  {"multiplier", required_argument, NULL, 'm'}, /* The multiplier to multiply an event by */
   {0, 0, 0, 0}
 };
 
@@ -44,18 +41,10 @@ int main(int argc, char **argv) {
        *endptr;
   size_t i;
 
-  char verbose = 0;
+  packing_options *opts;
   long int node = -1;
   uintmax_t capacity = 0;
-  char *value = NULL;
-  char *weight = NULL;
-  char *algo = NULL;
-  char *sort = NULL;
-  char **events = NULL;
-  float *multipliers = NULL;
   double scale = 0.0;
-  size_t num_events = 0;
-  size_t num_multipliers = 0;
 
   /* The profiling information, as parsed by sicm_parsing.h. */
   application_profile *info;
@@ -64,11 +53,13 @@ int main(int argc, char **argv) {
   /* The set of hot sites that we've chosen */
   tree(int, site_info_ptr) hot_site_tree;
   tree_it(int, site_info_ptr) sit;
+  
+  opts = orig_calloc(sizeof(char), sizeof(packing_options));
 
   /* Use getopt to read in the options. */
   option_index = 0;
   while(1) {
-    c = getopt_long(argc, argv, "vl:e:w:a:c:n:s:o:m:", long_options, &option_index);
+    c = getopt_long(argc, argv, "vl:w:a:c:n:s:o:", long_options, &option_index);
     if(c == -1) {
       break;
     }
@@ -78,29 +69,47 @@ int main(int argc, char **argv) {
         /* This is an option that just sets a flag. Ignore it. */
         break;
       case 'v':
-        verbose = 1;
+        opts->verbose = 1;
         break;
       case 'l':
         /* value */
-        value = malloc((strlen(optarg) + 1) * sizeof(char));
-        strcpy(value, optarg);
-        break;
-      case 'e':
-        /* event */
-        num_events++;
-        events = realloc(events, num_events * sizeof(char *));
-        events[num_events - 1] = malloc((strlen(optarg) + 1) * sizeof(char));
-        strcpy(events[num_events - 1], optarg);
+        if(strcmp(optarg, "profile_all_total") == 0) {
+          opts->value = PROFILE_ALL_TOTAL;
+        } else if(strcmp(optarg, "profile_all_current") == 0) {
+          opts->value = PROFILE_ALL_CURRENT;
+        } else if(strcmp(optarg, "profile_bw_relative_total") == 0) {
+          opts->value = PROFILE_BW_RELATIVE_TOTAL;
+        } else if(strcmp(optarg, "profile_bw_relative_current") == 0) {
+          opts->value = PROFILE_BW_RELATIVE_CURRENT;
+        } else {
+          fprintf(stderr, "Didn't recognize the value type. Aborting.\n");
+          exit(1);
+        }
         break;
       case 'w':
         /* weight */
-        weight = malloc((strlen(optarg) + 1) * sizeof(char));
-        strcpy(weight, optarg);
+        if(strcmp(optarg, "profile_allocs_peak") == 0) {
+          opts->weight = PROFILE_ALLOCS_PEAK;
+        } else if(strcmp(optarg, "profile_extent_size_peak") == 0) {
+          opts->weight = PROFILE_EXTENT_SIZE_PEAK;
+        } else if(strcmp(optarg, "profile_extent_size_current") == 0) {
+          opts->weight = PROFILE_EXTENT_SIZE_CURRENT;
+        } else if(strcmp(optarg, "profile_rss_peak") == 0) {
+          opts->weight = PROFILE_RSS_PEAK;
+        } else {
+          fprintf(stderr, "Didn't recognize the weight type. Aborting.\n");
+          exit(1);
+        }
         break;
       case 'a':
         /* algo */
-        algo = malloc((strlen(optarg) + 1) * sizeof(char));
-        strcpy(algo, optarg);
+        if(strcmp(optarg, "hotset") == 0) {
+          opts->algo = HOTSET;
+        } else if(strcmp(optarg, "thermos") == 0) {
+          opts->algo = THERMOS;
+        } else {
+          fprintf(stderr, "Didn't recognize the packing algorihtm. Aborting.\n");
+        }
         break;
       case 'c':
         /* capacity */
@@ -122,15 +131,16 @@ int main(int argc, char **argv) {
         break;
       case 'o':
         /* sort */
-        sort = malloc((strlen(optarg) + 1) * sizeof(char));
-        strcpy(sort, optarg);
-        break;
-      case 'm':
-        /* multiplier */
-        num_multipliers++;
-        multipliers = realloc(multipliers, num_multipliers * sizeof(float));
-        endptr = NULL;
-        multipliers[num_multipliers - 1] = strtod(optarg, &endptr);
+        if(strcmp(optarg, "value") == 0) {
+          opts->sort = VALUE;
+        } else if(strcmp(optarg, "weight") == 0) {
+          opts->sort = WEIGHT;
+        } else if(strcmp(optarg, "value_per_weight") == 0) {
+          opts->sort = VALUE_PER_WEIGHT;
+        } else {
+          fprintf(stderr, "Unrecognized sort option. Aborting.\n");
+          exit(1);
+        }
         break;
       case '?':
         /* We're relying on getopt_long to print an error message. */
@@ -150,23 +160,12 @@ int main(int argc, char **argv) {
     fprintf(stderr, "You didn't specify a node to pack into. This is required. Aborting.\n");
     exit(1);
   }
-  if(num_events == 0) {
-    /* Here, the user didn't specify any events. Just set this to one, and let the `events` array be NULL */
-    events = malloc(sizeof(char *) * 1);
-    events[0] = NULL;
-    num_events = 1;
-  }
-  if((num_multipliers != 0) && (num_multipliers != num_events)) {
-    /* The user specified multipliers, but didn't specify the right amount. */
-    fprintf(stderr, "You specified multipliers, but didn't specify the same amount as you did events. Aborting.\n");
-    exit(1);
-  }
 
   /* Parse profiling information */
   info = sh_parse_profiling(stdin);
-
+  
   /* Initialize the global options */
-  sh_packing_init(info, &value, &events, &num_events, &weight, &algo, &sort, multipliers, verbose);
+  sh_packing_init(info, &opts);
 
   /* For the sake of simplicity, convert the parsed profiling information into simpler trees */
   site_tree = sh_convert_to_site_tree(info, info->num_intervals - 1);
@@ -184,17 +183,4 @@ int main(int argc, char **argv) {
     printf("%d %ld\n", tree_it_key(sit), node);
   }
   printf("===== END GUIDANCE =====\n");
-
-  /* Print debugging information about how we generated this guidance file
-     Here, we'll assume all of these values are valid, so no errors. */
-  printf("Value profiling type: %s\n", value);
-  for(i = 0; i < num_events; i++) {
-    printf("Value event: %s\n", events[i]);
-  }
-  printf("Weight profiling type: %s\n", weight);
-  printf("Capacity that we packed into: %ju\n", capacity);
-  printf("NUMA node: %ld\n", node);
-  printf("Scale factor: %lf\n", scale);
-  printf("Packing algorithm: %s\n", algo);
-  printf("Sorting type: %s\n", sort);
 }
