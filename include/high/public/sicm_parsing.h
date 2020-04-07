@@ -41,7 +41,7 @@ static void sh_print_profiling(application_profile *info, FILE *file) {
     fprintf(file, "Upper Capacity: %zu\n", info->upper_capacity);
     fprintf(file, "Lower Capacity: %zu\n", info->lower_capacity);
     
-/* Non-arena profiling info */
+    /* Non-arena profiling info */
     if(info->has_profile_bw) {
       fprintf(file, "  BEGIN PROFILE_BW\n");
       for(n = 0; n < info->num_profile_bw_skts; n++) {
@@ -95,6 +95,13 @@ static void sh_print_profiling(application_profile *info, FILE *file) {
         fprintf(file, "    Peak: %zu\n", aprof->profile_extent_size.peak);
         fprintf(file, "    Current: %zu\n", aprof->profile_extent_size.current);
         fprintf(file, "  END PROFILE_EXTENT_SIZE\n");
+      }
+      if(info->has_profile_bw_relative) {
+        fprintf(file, "  BEGIN PROFILE_BW_RELATIVE\n");
+        fprintf(file, "    Total: %zu\n", aprof->profile_bw.total);
+        fprintf(file, "    Current: %zu\n", aprof->profile_bw.current);
+        fprintf(file, "    Peak: %zu\n", aprof->profile_bw.peak);
+        fprintf(file, "  END PROFILE_BW_RELATIVE\n");
       }
       if(info->has_profile_online) {
         fprintf(file, "  BEGIN PROFILE_ONLINE\n");
@@ -158,6 +165,7 @@ static application_profile *sh_parse_profiling(FILE *file) {
      3: profile_rss
      4: profile_online
      5: profile_bw
+     6: profile_bw_relative
   */
   profile_type = -1;
 
@@ -294,6 +302,10 @@ static application_profile *sh_parse_profiling(FILE *file) {
         depth = 3;
         profile_type = 3;
         ret->has_profile_rss = 1;
+      } else if(strcmp(line, "  BEGIN PROFILE_BW_RELATIVE\n") == 0) {
+        depth = 3;
+        profile_type = 6;
+        ret->has_profile_bw_relative = 1;
       } else if(strcmp(line, "  BEGIN PROFILE_ONLINE\n") == 0) {
         depth = 3;
         profile_type = 4;
@@ -423,6 +435,29 @@ static application_profile *sh_parse_profiling(FILE *file) {
         cur_arena->profile_rss.peak = tmp_sizet;
       } else if(sscanf(line, "    Current: %zu\n", &tmp_sizet)) {
         cur_arena->profile_rss.current = tmp_sizet;
+      } else {
+        fprintf(stderr, "Didn't recognize a line in the profiling information at depth %d. Aborting.\n", depth);
+        fprintf(stderr, "Line: %s\n", line);
+        exit(1);
+      }
+      
+    /* PROFILE_BW_RELATIVE
+       Looking for:
+       1. A peak.
+       2. A current value.
+       3. A total.
+       4. The end of this profiling block.
+    */
+    } else if((depth == 3) && (profile_type == 6)) {
+      if(strcmp(line, "  END PROFILE_BW_RELATIVE\n") == 0) {
+        /* Up in depth */
+        depth = 2;
+      } else if(sscanf(line, "    Peak: %zu\n", &tmp_sizet)) {
+        cur_arena->profile_bw.peak = tmp_sizet;
+      } else if(sscanf(line, "    Current: %zu\n", &tmp_sizet)) {
+        cur_arena->profile_bw.current = tmp_sizet;
+      } else if(sscanf(line, "    Total: %zu\n", &tmp_sizet)) {
+        cur_arena->profile_bw.total = tmp_sizet;
       } else {
         fprintf(stderr, "Didn't recognize a line in the profiling information at depth %d. Aborting.\n", depth);
         fprintf(stderr, "Line: %s\n", line);

@@ -89,7 +89,6 @@ void prepare_stats_ski(tree(site_info_ptr, int) sorted_sites) {
         prof.profile_online.ski->penalty_stay += pen_stay;
       } else if((dev == 1) && (!hot)) {
         /* The site is due to be rebound down */
-        #if 0
         if(prof.profile_online.upper_avail < 157286400) {
           /* If the upper tier is completely full (signalled by having
              less than 150MB available), the sites in the lower tier might
@@ -98,12 +97,9 @@ void prepare_stats_ski(tree(site_info_ptr, int) sorted_sites) {
           prof.profile_online.ski->penalty_stay += pen_stay;
           
         } else {
-        #endif
           pen_dis = penalty_displace(tree_it_key(sit)->value_arr[0]);
           prof.profile_online.ski->penalty_displace += pen_dis;
-        #if 0
         }
-        #endif
       }
     }
   }
@@ -139,24 +135,6 @@ void profile_online_interval_ski(tree(site_info_ptr, int) sorted_sites) {
   /* We rebind everything to match the current hotset if the cumulative
      cost of "renting" exceeds the cost to "buy." */
   if((rent_cost > 0.0) && (rent_cost >= buy_cost)) {
-    if(profopts.profile_online_debug_file) {
-      fprintf(profopts.profile_online_debug_file,
-              "Rebinding: %zu >= %zu\n", rent_cost, buy_cost);
-    }
     full_rebind(sorted_sites);
-    if(profopts.profile_online_debug_file) {
-      /* Prints the upper-tier sites */
-      fprintf(profopts.profile_online_debug_file,
-              "Hotbois: ");
-      tree_traverse(sorted_sites, sit) {
-        index = tree_it_key(sit)->index;
-        dev = get_arena_online_prof(index)->dev;
-        if(dev == 1) {
-          fprintf(profopts.profile_online_debug_file,
-                  "%d ", index);
-        }
-      }
-      fprintf(profopts.profile_online_debug_file, "\n");
-    }
   }
 }

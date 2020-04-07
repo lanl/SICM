@@ -5,12 +5,7 @@
    Times it and prints debugging information if necessary. */
 void rebind_arena(int index, sicm_dev_ptr dl, tree_it(site_info_ptr, int) sit) {
   int retval;
-  struct timespec start, end, diff;
   
-  if(profopts.profile_online_debug_file) {
-    clock_gettime(CLOCK_MONOTONIC, &start);
-  }
-
   retval = sicm_arena_set_devices(tracker.arenas[index]->arena, dl);
 
   if(profopts.profile_online_debug_file) {
@@ -20,15 +15,6 @@ void rebind_arena(int index, sicm_dev_ptr dl, tree_it(site_info_ptr, int) sit) {
     } else if(retval != 0) {
       fprintf(profopts.profile_online_debug_file,
         "Rebinding arena %d failed internally.\n", index);
-    }
-    
-    /* End the timer, print out the time */
-    clock_gettime(CLOCK_MONOTONIC, &end);
-    timespec_diff(&start, &end, &diff);
-    if(profopts.profile_online_ski) {
-      fprintf(profopts.profile_online_debug_file,
-        "real: %ld.%09ld s\n",
-        diff.tv_sec, diff.tv_nsec);
     }
   }
 }
@@ -63,6 +49,16 @@ void full_rebind(tree(site_info_ptr, int) sorted_sites) {
       get_arena_online_prof(index)->dev = 0;
     }
     
+    if(dl) {
+      if(dl == prof.profile_online.upper_dl) {
+        fprintf(profopts.profile_online_debug_file,
+                "Binding up: %zu, %zu\n", index, get_profile_bw_arena_prof(index)->total);
+      } else {
+        fprintf(profopts.profile_online_debug_file,
+                "Binding down: %zu, %zu\n", index, get_profile_bw_arena_prof(index)->total);
+      }
+    }
+    
     /* We also want to rebind sites that are currently bound to
        DRAM and in the hotset, just to make sure they
        consume all of the memory there. */
@@ -76,14 +72,6 @@ void full_rebind(tree(site_info_ptr, int) sorted_sites) {
       get_arena_online_prof(index)->dev = 0;
     }
     
-    #if 0
-    if(dl && (index == 25)) {
-      /* Screw site 26 */
-      dl = prof.profile_online.lower_dl;
-      get_arena_online_prof(index)->dev = 0;
-    }
-    #endif
-
     if(dl) {
       rebind_arena(index, dl, sit);
     }
@@ -97,6 +85,7 @@ void full_rebind(tree(site_info_ptr, int) sorted_sites) {
         "Full rebind estimate: %zu ms, real: %ld.%09ld s.\n",
         prof.profile_online.ski->penalty_move,
         diff.tv_sec, diff.tv_nsec);
+      fflush(profopts.profile_online_debug_file);
     }
   }
 }
@@ -122,10 +111,5 @@ void full_rebind_cold(tree(site_info_ptr, int) sorted_sites) {
   if(profopts.profile_online_debug_file) {
     clock_gettime(CLOCK_MONOTONIC, &end);
     timespec_diff(&start, &end, &diff);
-    if(profopts.profile_online_ski) {
-      fprintf(profopts.profile_online_debug_file,
-        "Initial rebind to AEP: %ld.%09ld s.\n",
-        diff.tv_sec, diff.tv_nsec);
-    }
   }
 }

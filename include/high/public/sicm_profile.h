@@ -56,7 +56,8 @@ typedef struct application_profile {
        has_profile_extent_size,
        has_profile_rss,
        has_profile_online,
-       has_profile_bw;
+       has_profile_bw,
+       has_profile_bw_relative;
   
   size_t num_intervals, num_profile_all_events;
 

@@ -99,6 +99,10 @@ static inline void set_value(arena_profile *aprof,
     site->value_arr = malloc(sizeof(size_t));
     site->value_arr[0] = aprof->profile_bw.total;
     site->value = aprof->profile_bw.total;
+  } else if(packopts->value == PROFILE_BW_RELATIVE_CURRENT) {
+    site->value_arr = malloc(sizeof(size_t));
+    site->value_arr[0] = aprof->profile_bw.current;
+    site->value = aprof->profile_bw.current;
   } else {
     fprintf(stderr, "Invalid value type detected. Aborting.\n");
     exit(1);
@@ -353,6 +357,11 @@ static tree(int, site_info_ptr) get_hotset(tree(site_info_ptr, int) site_tree, s
     if(packed_size > capacity) {
       break;
     }
+    /* Ignore the site if the value is zero. */
+    if((tree_it_key(sit)->value == 0) ||
+       (tree_it_key(sit)->weight == 0)) {
+      continue;
+    }
     packed_size += tree_it_key(sit)->weight;
     tree_insert(ret, tree_it_val(sit), tree_it_key(sit));
   }
@@ -380,6 +389,12 @@ static tree(int, site_info_ptr) get_thermos(tree(site_info_ptr, int) site_tree, 
   packed_weight = 0;
   packed_value = 0;
   tree_traverse(site_tree, sit) {
+    
+    /* Ignore the site if the value is zero. */
+    if((tree_it_key(sit)->value == 0) ||
+       (tree_it_key(sit)->weight == 0)) {
+      continue;
+    }
     
     /* Calculate the amount of bytes that we would overpack by
        if we were to add this site to the hotset */
@@ -489,6 +504,19 @@ static void sh_packing_init(application_profile *info, packing_options **opts) {
   }
   if(!(packopts->sort)) {
     packopts->sort = DEFAULT_SORT;
+  }
+  
+  /* Check to make sure the application_profile has the right
+     profiling information to fulfill the user's choices. */
+  if(((packopts->value == PROFILE_ALL_TOTAL) || (packopts->value == PROFILE_ALL_CURRENT)) &&
+     !(info->has_profile_all)) {
+    fprintf(stderr, "User chose to use PROFILE_ALL_*, but the application_profile doesn't have that in it.\n");
+    exit(1);
+  }
+  if(((packopts->value == PROFILE_BW_RELATIVE_TOTAL) || (packopts->value == PROFILE_BW_RELATIVE_CURRENT)) &&
+     !(info->has_profile_bw_relative)) {
+    fprintf(stderr, "User chose to use PROFILE_BW_RELATIVE_*, but the application_profile doesn't have that in it.\n");
+    exit(1);
   }
   
   /* Keep track of the number of profile_all and profile_bw events */

@@ -181,6 +181,7 @@ void profile_master_interval(int s) {
     target.tv_sec = profopts.profile_rate_nseconds / 1000000000;
     target.tv_nsec = profopts.profile_rate_nseconds % 1000000000;
     timespec_diff(&start, &end, &actual);
+    #if 0
     if(timespec_cmp(&target, &actual) && profopts.profile_output_file) {
       fprintf(profopts.profile_online_debug_file, "WARNING: Interval (%ld.%09ld) went over the time limit (%ld.%09ld).\n",
               actual.tv_sec, actual.tv_nsec,
@@ -190,6 +191,7 @@ void profile_master_interval(int s) {
               actual.tv_sec, actual.tv_nsec,
               target.tv_sec, target.tv_nsec);
     }
+    #endif
   }
 
   arena_arr_for(i) {
@@ -430,6 +432,8 @@ void initialize_profiling() {
     prof.profile->has_profile_online = 1;
   } else if(profopts.should_profile_bw) {
     prof.profile->has_profile_bw = 1;
+  } else if(profopts.profile_bw_relative) {
+    prof.profile->has_profile_bw_relative = 1;
   }
 
   /* Stores the current interval's profiling */
