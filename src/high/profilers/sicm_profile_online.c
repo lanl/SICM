@@ -18,7 +18,16 @@
 #include "sicm_profile_online_orig.h"
 #include "sicm_profile_online_ski.h"
 
-void profile_online_arena_init(profile_online_info *);
+/* Helper functions called by the application, for debugging purposes. */
+#include "sicm_helpers.h"
+
+void sh_profile_online_phase_change() {
+  profile_online_info *online;
+  online = get_profile_online_prof();
+  online->phase_change = 1;
+}
+
+void profile_online_arena_init(per_arena_profile_online_info *);
 void profile_online_deinit();
 void profile_online_init();
 void *profile_online(void *);
@@ -69,7 +78,7 @@ tree(site_info_ptr, int) prepare_stats() {
   /* Calculate the hotset, then mark each arena's hotness
      in the profiling so that it'll be recorded for this interval */
   hotset = sh_get_hot_sites(merged_sorted_sites,
-                            prof.profile->upper_capacity);
+                            prof.profile->upper_capacity - profopts.profile_online_reserved_bytes);
   tree_traverse(merged_sorted_sites, sit) {
     hit = tree_lookup(hotset, tree_it_val(sit));
     if(tree_it_good(hit)) {
@@ -93,7 +102,7 @@ tree(site_info_ptr, int) prepare_stats() {
 }
 
 /* Initializes the profiling information for one arena for one interval */
-void profile_online_arena_init(profile_online_info *info) {
+void profile_online_arena_init(per_arena_profile_online_info *info) {
   info->dev = -1;
   info->hot = -1;
   info->num_hot_intervals = 0;
@@ -139,34 +148,22 @@ void profile_online_init() {
   
   opts = orig_calloc(sizeof(char), sizeof(packing_options));
   
-  if(profopts.should_profile_all &&
-     profopts.should_profile_bw &&
-     profopts.profile_bw_relative) {
-    opts->value = PROFILE_BW_RELATIVE_TOTAL;
-  } else {
-    fprintf(stderr, "The online approach currently requires both PROFILE_ALL and PROFILE_BW to work. Aborting.\n");
-    exit(1);
+  /* Let the user choose these, but sh_packing_init will set defaults if not */
+  if(profopts.profile_online_value) {
+    opts->value = sh_packing_value_flag(profopts.profile_online_value);
   }
-  
-  /* Determine which type of profiling to use to determine weight. Error if none found. */
-  if(profopts.should_profile_allocs) {
-    opts->weight = PROFILE_ALLOCS_PEAK;
-  } else if(profopts.should_profile_extent_size) {
-    opts->weight = PROFILE_EXTENT_SIZE_PEAK;
-  } else if(profopts.should_profile_rss) {
-    opts->weight = PROFILE_RSS_PEAK;
-  } else {
-    fprintf(stderr, "The online approach requires some kind of capacity profiling. Aborting.\n");
-    exit(1);
+  if(profopts.profile_online_weight) {
+    opts->weight = sh_packing_weight_flag(profopts.profile_online_weight);
   }
-  
-  if(strcmp(profopts.profile_online_packing_algo, "hotset") == 0) {
-    opts->algo = HOTSET;
-  } else if(strcmp(profopts.profile_online_packing_algo, "thermos") == 0) {
-    opts->algo = THERMOS;
+  if(profopts.profile_online_packing_algo) {
+    opts->algo = sh_packing_algo_flag(profopts.profile_online_packing_algo);
   }
-  
-  opts->sort = VALUE_PER_WEIGHT;
+  if(profopts.profile_online_sort) {
+    opts->sort = sh_packing_sort_flag(profopts.profile_online_sort);
+  }
+  if(profopts.profile_online_debug_file) {
+    opts->debug_file = profopts.profile_online_debug_file;
+  }
   
   /* The previous and current profiling *need* to have the same type of profiling for this
      to make sense. Otherwise, you're just going to get errors. */
@@ -194,7 +191,6 @@ void profile_online_init() {
   prof.profile_online.lower_dl->devices = orig_malloc(sizeof(deviceptr));
   prof.profile_online.lower_dl->devices[0] = tracker.lower_device;
 
-  prof.profile_online.num_reconfigures = 0;
   prof.profile_online.upper_contention = 0;
 
   /* Initialize the strategy-specific stuff */

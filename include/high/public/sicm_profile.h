@@ -34,17 +34,21 @@ typedef struct arena_profile {
   profile_rss_info profile_rss;
   profile_extent_size_info profile_extent_size;
   profile_allocs_info profile_allocs;
-  profile_online_info profile_online;
+  per_arena_profile_online_info profile_online;
   per_arena_profile_bw_info profile_bw;
 } arena_profile;
 
 typedef struct interval_profile {
+  /* Time in seconds that this interval took */
+  double time;
+  
   /* Array of arenas and their info */
   size_t num_arenas;
   arena_profile **arenas;
   
   /* profile_bw doesn't do any per-arena profiling */
   profile_bw_info profile_bw;
+  profile_online_info profile_online;
 } interval_profile;
 
 /* Profiling information for a whole application */
@@ -63,7 +67,6 @@ typedef struct application_profile {
 
   size_t upper_capacity, lower_capacity;
 
-  /* Array of the last interval's arenas */
   interval_profile this_interval;
 
   /* Array of event strings in the profiling */
@@ -109,6 +112,8 @@ typedef struct profiler {
    * signal the master to stop
    */
   int stop_signal, master_signal;
+  struct timespec start, end;
+  double target;
 
   /* Profiling information for the currently-running application */
   application_profile *profile;
@@ -148,7 +153,7 @@ static inline void copy_arena_profile(arena_profile *dst, arena_profile *src) {
 }
 
 /* Copies an interval profile from the current one
-   (stored in pro.profile->this_interval)
+   (stored in prof.profile->this_interval)
    into the array of intervals
    (prof.profile->intervals). */
 static inline void copy_interval_profile(size_t index) {
@@ -167,10 +172,8 @@ static inline void copy_interval_profile(size_t index) {
   this_interval = &(prof.profile->this_interval);
                                          
   /* Copy the interval_profile from this_interval to intervals[index] */
-  interval->num_arenas =
-    this_interval->num_arenas;
-  interval->arenas =
-    orig_calloc(tracker.max_arenas, sizeof(arena_profile *));
+  interval->num_arenas = this_interval->num_arenas;
+  interval->arenas = orig_calloc(tracker.max_arenas, sizeof(arena_profile *));
     
   /* Copy profile_bw profiling info, too */
   size = profopts.num_profile_bw_cpus * sizeof(per_skt_profile_bw_info);
@@ -183,10 +186,14 @@ static inline void copy_interval_profile(size_t index) {
   arena_arr_for(i) {
     prof_check_good(arena, aprof, i);
     interval->arenas[i] = orig_malloc(sizeof(arena_profile));
-    copy_arena_profile(
-           interval->arenas[i],
-           aprof);
+    copy_arena_profile(interval->arenas[i], aprof);
   }
+  
+  interval->time = this_interval->time;
+  interval->profile_online.reconfigure = this_interval->profile_online.reconfigure;
+  interval->profile_online.phase_change = this_interval->profile_online.phase_change;
+  this_interval->profile_online.phase_change = 0;
+  this_interval->profile_online.reconfigure = 0;
 }
 
 #define get_arena_prof(i) \
@@ -194,6 +201,9 @@ static inline void copy_interval_profile(size_t index) {
   
 #define get_profile_bw_prof() \
   (&(prof.profile->this_interval.profile_bw))
+  
+#define get_profile_online_prof() \
+  (&(prof.profile->this_interval.profile_online))
   
 #define get_arena_online_prof(i) \
   (&(get_arena_prof(i)->profile_online))

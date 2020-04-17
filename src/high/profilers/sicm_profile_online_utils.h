@@ -20,7 +20,7 @@ void rebind_arena(int index, sicm_dev_ptr dl, tree_it(site_info_ptr, int) sit) {
 }
 
 /* Rebinds all arenas according to the `dev` and `hot` parameters
-   in the arena's `profile_online_info` struct. */
+   in the arena's `per_arena_profile_online_info` struct. */
 void full_rebind(tree(site_info_ptr, int) sorted_sites) {
   sicm_dev_ptr dl;
   int index;

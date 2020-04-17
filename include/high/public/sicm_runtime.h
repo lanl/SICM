@@ -178,9 +178,7 @@ typedef struct profiling_options {
   FILE *profile_online_debug_file; /* For the verbose online approach */
 
   /* Online */
-  size_t num_profile_online_events;
   float profile_online_reconf_weight_ratio;
-  char **profile_online_events; /* Array of strings of events */
   char profile_online_nobind;
   float profile_online_last_iter_value;
   float profile_online_last_iter_weight;
@@ -189,7 +187,11 @@ typedef struct profiling_options {
   int profile_online_use_last_interval;
   char profile_online_orig; /* Online strat */
   char profile_online_ski; /* Online strat */
+  char *profile_online_value;
+  char *profile_online_weight;
+  char *profile_online_sort;
   char *profile_online_packing_algo;
+  unsigned long profile_online_reserved_bytes;
 
   /* Array of cpu numbers for profile_all */
   size_t num_profile_all_cpus;

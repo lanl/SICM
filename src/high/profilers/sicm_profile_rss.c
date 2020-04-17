@@ -62,7 +62,7 @@ void profile_rss_interval(int s) {
   arena_info *arena;
   ssize_t num_read;
   arena_profile *aprof;
-
+  
   /* Grab the lock for the extents array */
   pthread_rwlock_rdlock(&tracker.extents_lock);
   
@@ -128,15 +128,14 @@ void profile_rss_interval(int s) {
   }
 
   pthread_rwlock_unlock(&tracker.extents_lock);
-
+  
   end_interval();
 }
 
 void profile_rss_post_interval(arena_profile *info) {
   profile_rss_info *aprof;
-
-  aprof = &(info->profile_rss);
   
+  aprof = &(info->profile_rss);
   /* Maintain the peak for this arena */
   if(aprof->current > aprof->peak) {
     aprof->peak = aprof->current;

@@ -167,8 +167,6 @@ void set_options() {
   env = getenv("SH_PROFILE_ONLINE");
   profopts.should_profile_online = 0;
   profopts.profile_online_skip_intervals = 0;
-  profopts.profile_online_events = NULL;
-  profopts.num_profile_online_events = 0;
   if(env) {
     profopts.should_profile_online = 1;
 
@@ -181,7 +179,13 @@ void set_options() {
         exit(1);
       }
     }
-
+    
+    env = getenv("SH_PROFILE_ONLINE_RESERVED_BYTES");
+    profopts.profile_online_reserved_bytes = 0;
+    if(env) {
+      profopts.profile_online_reserved_bytes = strtoul(env, NULL, 0);
+    }
+    
     /* Grace period at the beginning of a run. Until this number of profiling accesses is reached,
        the profile_online won't rebind any sites. */
     env = getenv("SH_PROFILE_ONLINE_GRACE_ACCESSES");
@@ -203,37 +207,30 @@ void set_options() {
       profopts.profile_online_skip_intervals = strtoul(env, NULL, 0);
     }
     
+    env = getenv("SH_PROFILE_ONLINE_VALUE");
+    if(env) {
+      profopts.profile_online_value = orig_malloc((strlen(env) + 1) * sizeof(char));
+      strcpy(profopts.profile_online_value, env);
+    }
+    
+    env = getenv("SH_PROFILE_ONLINE_WEIGHT");
+    if(env) {
+      profopts.profile_online_weight = orig_malloc((strlen(env) + 1) * sizeof(char));
+      strcpy(profopts.profile_online_weight, env);
+    }
+
+    env = getenv("SH_PROFILE_ONLINE_SORT");
+    if(env) {
+      profopts.profile_online_sort = orig_malloc((strlen(env) + 1) * sizeof(char));
+      strcpy(profopts.profile_online_sort, env);
+    }
+    
     env = getenv("SH_PROFILE_ONLINE_PACKING_ALGO");
     if(env) {
-      profopts.profile_online_packing_algo = 
-        orig_malloc((strlen(env) + 1) * sizeof(char));
-      strcpy(profopts.profile_online_packing_algo,
-        env);
-    } else {
-      profopts.profile_online_packing_algo = 
-        orig_malloc((strlen("hotset") + 1) * sizeof(char));
-      strcpy(profopts.profile_online_packing_algo,
-        "hotset");
+      profopts.profile_online_packing_algo = orig_malloc((strlen(env) + 1) * sizeof(char));
+      strcpy(profopts.profile_online_packing_algo, env);
     }
-
-    env = getenv("SH_PROFILE_ONLINE_EVENTS");
-    profopts.num_profile_online_events = 0;
-    profopts.profile_online_events = NULL;
-    if(env) {
-      /* Parse out the events into an array */
-      while((str = strtok(env, ",")) != NULL) {
-        profopts.num_profile_online_events++;
-        profopts.profile_online_events = orig_realloc(profopts.profile_online_events, sizeof(char *) * profopts.num_profile_online_events);
-        profopts.profile_online_events[profopts.num_profile_online_events - 1] = orig_malloc(sizeof(char) * (strlen(str) + 1));
-        strcpy(profopts.profile_online_events[profopts.num_profile_online_events - 1], str);
-        env = NULL;
-      }
-    }
-    if(profopts.num_profile_online_events == 0) {
-      fprintf(stderr, "No online events given. Can't proceed. Aborting.\n");
-      exit(1);
-    }
-
+    
     env = getenv("SH_PROFILE_ONLINE_USE_LAST_INTERVAL");
     profopts.profile_online_use_last_interval = 0;
     if(env) {
@@ -283,11 +280,6 @@ void set_options() {
   if(tracker.log_file) {
     fprintf(tracker.log_file, "SH_PROFILE_ONLINE: %d\n", profopts.should_profile_online);
     fprintf(tracker.log_file, "SH_PROFILE_ONLINE_SKIP_INTERVALS: %d\n", profopts.profile_online_skip_intervals);
-    if(profopts.num_profile_online_events) {
-      for(i = 0; i < profopts.num_profile_online_events; i++) {
-        fprintf(tracker.log_file, "SH_PROFILE_ONLINE_EVENT: %s\n", profopts.profile_online_events[i]);
-      }
-    }
     fprintf(tracker.log_file, "SH_PROFILE_ONLINE_USE_LAST_INTERVAL: %d\n", profopts.profile_online_use_last_interval);
     fprintf(tracker.log_file, "SH_PROFILE_ONLINE_GRACE_ACCESSES: %lu\n", profopts.profile_online_grace_accesses);
   }

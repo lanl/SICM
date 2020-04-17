@@ -35,8 +35,17 @@ static void sh_print_profiling(application_profile *info, FILE *file) {
   for(cur_interval = first_interval; cur_interval < info->num_intervals; cur_interval++) {
     /* Common information for the whole application */
     fprintf(file, "===== BEGIN INTERVAL %zu PROFILING =====\n", cur_interval);
-    fprintf(file, "Number of PROFILE_ALL events: %zu\n", info->num_profile_all_events);
-    fprintf(file, "Number of PROFILE_BW sockets: %zu\n", info->num_profile_bw_skts);
+    if(info->has_profile_all) {
+      fprintf(file, "Number of PROFILE_ALL events: %zu\n", info->num_profile_all_events);
+    }
+    if(info->has_profile_bw) {
+      fprintf(file, "Number of PROFILE_BW sockets: %zu\n", info->num_profile_bw_skts);
+    }
+    fprintf(file, "Time: %.4lf\n", info->intervals[cur_interval].time);
+    if(info->has_profile_online) {
+      fprintf(file, "Reconfigure: %d\n", info->intervals[cur_interval].profile_online.reconfigure);
+      fprintf(file, "Phase Change: %d\n", info->intervals[cur_interval].profile_online.phase_change);
+    }
     fprintf(file, "Number of arenas: %zu\n", info->intervals[cur_interval].num_arenas);
     fprintf(file, "Upper Capacity: %zu\n", info->upper_capacity);
     fprintf(file, "Lower Capacity: %zu\n", info->lower_capacity);
@@ -46,10 +55,10 @@ static void sh_print_profiling(application_profile *info, FILE *file) {
       fprintf(file, "  BEGIN PROFILE_BW\n");
       for(n = 0; n < info->num_profile_bw_skts; n++) {
         profile_bw_aprof = &(info->intervals[cur_interval].profile_bw.skt[n]);
-        fprintf(file, "    BEGIN SOCKET %s\n", info->profile_bw_skts[n]);
+        fprintf(file, "    BEGIN SOCKET %d\n", info->profile_bw_skts[n]);
         fprintf(file, "      Current: %zu\n", profile_bw_aprof->current);
         fprintf(file, "      Peak: %zu\n", profile_bw_aprof->peak);
-        fprintf(file, "    END SOCKET %s\n", info->profile_bw_skts[n]);
+        fprintf(file, "    END SOCKET %d\n", info->profile_bw_skts[n]);
       }
       fprintf(file, "  END PROFILE_BW\n");
     }
@@ -135,8 +144,9 @@ static application_profile *sh_parse_profiling(FILE *file) {
          cur_event_index,
          cur_skt_index,
          cur_interval,
-         tmp_sizet,
-         tmp_double;
+         tmp_sizet;
+  double tmp_double;
+  char tmp_char;
   int tmp_int, site;
   char *event;
   size_t i;
@@ -217,6 +227,12 @@ static application_profile *sh_parse_profiling(FILE *file) {
         ret->upper_capacity = tmp_sizet;
       } else if(sscanf(line, "Lower Capacity: %zu\n", &tmp_sizet) == 1) {
         ret->lower_capacity = tmp_sizet;
+      } else if(sscanf(line, "Time: %lf\n", &tmp_double) == 1) {
+        ret->intervals[cur_interval].time = tmp_double;
+      } else if(sscanf(line, "Reconfigure: %d\n", &tmp_char) == 1) {
+        ret->intervals[cur_interval].profile_online.reconfigure = tmp_char;
+      } else if(sscanf(line, "Phase Change: %d\n", &tmp_char) == 1) {
+        ret->intervals[cur_interval].profile_online.phase_change = tmp_char;
       } else if(strcmp(line, "  BEGIN PROFILE_BW\n") == 0) {
         /* Down in depth */
         depth = 2;

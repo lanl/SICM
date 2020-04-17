@@ -377,10 +377,6 @@ void sh_create_arena(int index, int id, sicm_device *device) {
   arena->alloc_sites = orig_malloc(sizeof(int) * tracker.max_sites_per_arena);
   arena->alloc_sites[0] = id;
   arena->num_alloc_sites = 1;
-  if(profopts.should_profile) {
-    create_arena_profile(index, id);
-  }
-
   /* Need to construct a sicm_device_list of one device */
   sicm_device_list dl;
   dl.count = 1;
@@ -391,6 +387,11 @@ void sh_create_arena(int index, int id, sicm_device *device) {
 
   /* Now add the arena to the array of arenas */
   tracker.arenas[index] = arena;
+  
+  /* Finally, tell the profiler about this arena */
+  if(profopts.should_profile) {
+    create_arena_profile(index, id);
+  }
 }
 
 /* Adds an extent to the `extents` array. */

@@ -145,12 +145,17 @@ use_tree(int, size_t);
 #endif
 
 typedef struct profile_online_info {
-  /* profile_online */
+  char reconfigure; /* If there was a rebinding this interval */
+  char phase_change;
+} profile_online_info;
+
+typedef struct per_arena_profile_online_info {
+  /* profile_online per-arena */
   char dev; /* The device it was on at the end of the interval.
                0 for lower, 1 for upper, -1 for not yet set. */
   char hot; /* Whether it was hot or not. -1 for not yet set. */
   size_t num_hot_intervals; /* How long it's been hot, as of this interval. */
-} profile_online_info;
+} per_arena_profile_online_info;
 
 typedef struct profile_online_data_orig {
   /* Metrics that only the orig strat needs */
@@ -166,7 +171,6 @@ typedef struct profile_online_data_ski {
 } profile_online_data_ski;
 
 typedef struct profile_online_data {
-  size_t num_reconfigures;
   size_t profile_online_event_index;
   sicm_dev_ptr upper_dl, lower_dl;
   char upper_contention; /* Upper tier full? */
@@ -229,7 +233,7 @@ void *profile_online(void *);
 void profile_online_interval(int);
 void profile_online_post_interval(arena_profile *);
 void profile_online_skip_interval(int);
-void profile_online_arena_init(profile_online_info *);
+void profile_online_arena_init(per_arena_profile_online_info *);
 
 void profile_bw_init();
 void profile_bw_deinit();

@@ -40,7 +40,6 @@ void timespec_diff(struct timespec *start, struct timespec *stop,
     result->tv_sec = stop->tv_sec - start->tv_sec;
     result->tv_nsec = stop->tv_nsec - start->tv_nsec;
   }
-  return;
 }
 
 /* Runs when an arena has already been created, but the runtime library
@@ -107,20 +106,33 @@ void end_interval() {
  * it does this on every interval.
  */
 void profile_master_interval(int s) {
-  struct timespec start, end, target, actual;
+  struct timespec actual;
   size_t i, n, x;
   char copy;
+  double elapsed_time;
 
   /* Convenience pointers */
   arena_profile *aprof;
   arena_info *arena;
   profile_thread *profthread;
-
-  pthread_rwlock_wrlock(&prof.profile_lock);
-
-  if(profopts.profile_online_debug_file) {
-    clock_gettime(CLOCK_MONOTONIC, &start);
+  
+  /* Here, we're checking to see if the time between this interval and
+     the previous one is too short. If it is, this is likely a queued-up
+     signal caused by an interval that took too long. In some cases,
+     profiling threads can take up to 10 seconds to complete, and in that
+     span of time, hundreds or thousands of timer signals could have been
+     queued up. We want to prevent that from happening, so ignore a signal
+     that occurs quicker than it should. */
+  clock_gettime(CLOCK_MONOTONIC, &(prof.start));
+  timespec_diff(&(prof.end), &(prof.start), &actual);
+  elapsed_time = actual.tv_sec + (((double) actual.tv_nsec) / 1000000000);
+  if(elapsed_time < (prof.target - (prof.target * 10 / 100))) {
+    /* It's too soon since the last interval. */
+    clock_gettime(CLOCK_MONOTONIC, &(prof.end));
+    return;
   }
+
+  pthread_rwlock_wrlock(&(prof.profile_lock));
 
   if(profopts.should_profile_separate_threads) {
     /* If we're separating the profiling threads, notify them that an interval has started. */
@@ -175,25 +187,6 @@ void profile_master_interval(int s) {
     }
   }
 
-  /* Throw a warning if this interval took too long */
-  if(profopts.profile_online_debug_file) {
-    clock_gettime(CLOCK_MONOTONIC, &end);
-    target.tv_sec = profopts.profile_rate_nseconds / 1000000000;
-    target.tv_nsec = profopts.profile_rate_nseconds % 1000000000;
-    timespec_diff(&start, &end, &actual);
-    #if 0
-    if(timespec_cmp(&target, &actual) && profopts.profile_output_file) {
-      fprintf(profopts.profile_online_debug_file, "WARNING: Interval (%ld.%09ld) went over the time limit (%ld.%09ld).\n",
-              actual.tv_sec, actual.tv_nsec,
-              target.tv_sec, target.tv_nsec);
-    } else if(profopts.profile_output_file) {
-      fprintf(profopts.profile_online_debug_file, "Interval (%ld.%09ld) went under the time limit (%ld.%09ld).\n",
-              actual.tv_sec, actual.tv_nsec,
-              target.tv_sec, target.tv_nsec);
-    }
-    #endif
-  }
-
   arena_arr_for(i) {
     prof_check_good(arena, aprof, i);
 
@@ -216,21 +209,26 @@ void profile_master_interval(int s) {
   if(profopts.should_profile_bw) {
     profile_bw_post_interval();
   }
-
+  
+  /* Store the time taht this interval took */
+  clock_gettime(CLOCK_MONOTONIC, &(prof.end));
+  timespec_diff(&(prof.start), &(prof.end), &actual);
+  prof.profile->this_interval.time = actual.tv_sec + (((double) actual.tv_nsec) / 1000000000);
+  
+  /* End the interval */
   if(prof.profile->num_intervals) {
     /* If we've had at least one interval of profiling already,
        store that pointer in `prev_interval` */
     prof.prev_interval = &(prof.profile->intervals[prof.profile->num_intervals - 1]);
   }
-  
-  /* Increment the interval and store the interval that just happened */
   prof.profile->num_intervals++;
   copy_interval_profile(prof.profile->num_intervals - 1);
-  
-  /* Store the current interval in this pointer */
   prof.cur_interval = &(prof.profile->intervals[prof.profile->num_intervals - 1]);
 
-  pthread_rwlock_unlock(&prof.profile_lock);
+  pthread_rwlock_unlock(&(prof.profile_lock));
+  
+  /* We need this timer to actually end outside out of the lock */
+  clock_gettime(CLOCK_MONOTONIC, &(prof.end));
 }
 
 /* Stops the master thread */
@@ -382,6 +380,9 @@ void *profile_master(void *a) {
     fprintf(stderr, "Error creating timer. Aborting.\n");
     exit(1);
   }
+  
+  /* Store how long the interval should take */
+  prof.target = ((double) profopts.profile_rate_nseconds) / 1000000000;
 
   /* Set the timer */
   its.it_value.tv_sec     = profopts.profile_rate_nseconds / 1000000000;
@@ -392,6 +393,9 @@ void *profile_master(void *a) {
     fprintf(stderr, "Error setting the timer. Aborting.\n");
     exit(1);
   }
+  
+  /* Initialize this time */
+  clock_gettime(CLOCK_MONOTONIC, &(prof.end));
 
   /* Unblock the signal */
   if(sigprocmask(SIG_UNBLOCK, &mask, NULL) == -1) {
@@ -422,17 +426,23 @@ void initialize_profiling() {
   /* Set flags for what type of profiling we'll store */
   if(profopts.should_profile_all) {
     prof.profile->has_profile_all = 1;
-  } else if(profopts.should_profile_allocs) {
+  }
+  if(profopts.should_profile_allocs) {
     prof.profile->has_profile_allocs = 1;
-  } else if(profopts.should_profile_extent_size) {
+  }
+  if(profopts.should_profile_extent_size) {
     prof.profile->has_profile_extent_size = 1;
-  } else if(profopts.should_profile_rss) {
+  }
+  if(profopts.should_profile_rss) {
     prof.profile->has_profile_rss = 1;
-  } else if(profopts.should_profile_online) {
+  }
+  if(profopts.should_profile_online) {
     prof.profile->has_profile_online = 1;
-  } else if(profopts.should_profile_bw) {
+  }
+  if(profopts.should_profile_bw) {
     prof.profile->has_profile_bw = 1;
-  } else if(profopts.profile_bw_relative) {
+  }
+  if(profopts.profile_bw_relative) {
     prof.profile->has_profile_bw_relative = 1;
   }
 

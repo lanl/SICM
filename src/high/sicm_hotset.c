@@ -73,43 +73,15 @@ int main(int argc, char **argv) {
         break;
       case 'l':
         /* value */
-        if(strcmp(optarg, "profile_all_total") == 0) {
-          opts->value = PROFILE_ALL_TOTAL;
-        } else if(strcmp(optarg, "profile_all_current") == 0) {
-          opts->value = PROFILE_ALL_CURRENT;
-        } else if(strcmp(optarg, "profile_bw_relative_total") == 0) {
-          opts->value = PROFILE_BW_RELATIVE_TOTAL;
-        } else if(strcmp(optarg, "profile_bw_relative_current") == 0) {
-          opts->value = PROFILE_BW_RELATIVE_CURRENT;
-        } else {
-          fprintf(stderr, "Didn't recognize the value type. Aborting.\n");
-          exit(1);
-        }
+        opts->value = sh_packing_value_flag(optarg);
         break;
       case 'w':
         /* weight */
-        if(strcmp(optarg, "profile_allocs_peak") == 0) {
-          opts->weight = PROFILE_ALLOCS_PEAK;
-        } else if(strcmp(optarg, "profile_extent_size_peak") == 0) {
-          opts->weight = PROFILE_EXTENT_SIZE_PEAK;
-        } else if(strcmp(optarg, "profile_extent_size_current") == 0) {
-          opts->weight = PROFILE_EXTENT_SIZE_CURRENT;
-        } else if(strcmp(optarg, "profile_rss_peak") == 0) {
-          opts->weight = PROFILE_RSS_PEAK;
-        } else {
-          fprintf(stderr, "Didn't recognize the weight type. Aborting.\n");
-          exit(1);
-        }
+        opts->weight = sh_packing_weight_flag(optarg);
         break;
       case 'a':
         /* algo */
-        if(strcmp(optarg, "hotset") == 0) {
-          opts->algo = HOTSET;
-        } else if(strcmp(optarg, "thermos") == 0) {
-          opts->algo = THERMOS;
-        } else {
-          fprintf(stderr, "Didn't recognize the packing algorihtm. Aborting.\n");
-        }
+        opts->algo = sh_packing_algo_flag(optarg);
         break;
       case 'c':
         /* capacity */
@@ -131,16 +103,7 @@ int main(int argc, char **argv) {
         break;
       case 'o':
         /* sort */
-        if(strcmp(optarg, "value") == 0) {
-          opts->sort = VALUE;
-        } else if(strcmp(optarg, "weight") == 0) {
-          opts->sort = WEIGHT;
-        } else if(strcmp(optarg, "value_per_weight") == 0) {
-          opts->sort = VALUE_PER_WEIGHT;
-        } else {
-          fprintf(stderr, "Unrecognized sort option. Aborting.\n");
-          exit(1);
-        }
+        opts->sort = sh_packing_sort_flag(optarg);
         break;
       case '?':
         /* We're relying on getopt_long to print an error message. */
@@ -160,6 +123,9 @@ int main(int argc, char **argv) {
     fprintf(stderr, "You didn't specify a node to pack into. This is required. Aborting.\n");
     exit(1);
   }
+  
+  /* We want to print out some debugging information */
+  opts->debug_file = stdout;
 
   /* Parse profiling information */
   info = sh_parse_profiling(stdin);
