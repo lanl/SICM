@@ -209,8 +209,11 @@ void profile_master_interval(int s) {
   if(profopts.should_profile_bw) {
     profile_bw_post_interval();
   }
+  if(profopts.should_profile_latency) {
+    profile_latency_post_interval();
+  }
   
-  /* Store the time taht this interval took */
+  /* Store the time that this interval took */
   clock_gettime(CLOCK_MONOTONIC, &(prof.end));
   timespec_diff(&(prof.start), &(prof.end), &actual);
   prof.profile->this_interval.time = actual.tv_sec + (((double) actual.tv_nsec) / 1000000000);
@@ -322,6 +325,12 @@ void *profile_master(void *a) {
                          &profile_bw_interval,
                          &profile_bw_skip_interval,
                          profopts.profile_bw_skip_intervals);
+  }
+  if(profopts.should_profile_latency) {
+    setup_profile_thread(&profile_latency,
+                         &profile_latency_interval,
+                         &profile_latency_skip_interval,
+                         profopts.profile_latency_skip_intervals);
   }
   if(profopts.should_profile_rss) {
     setup_profile_thread(&profile_rss,
@@ -442,6 +451,9 @@ void initialize_profiling() {
   if(profopts.should_profile_bw) {
     prof.profile->has_profile_bw = 1;
   }
+  if(profopts.should_profile_latency) {
+    prof.profile->has_profile_latency = 1;
+  }
   if(profopts.profile_bw_relative) {
     prof.profile->has_profile_bw_relative = 1;
   }
@@ -458,11 +470,11 @@ void initialize_profiling() {
     strcpy(prof.profile->profile_all_events[i], profopts.profile_all_events[i]);
   }
   
-  /* Store the profile_bw socket numbers */
-  prof.profile->num_profile_bw_skts = profopts.num_profile_bw_cpus;
-  prof.profile->profile_bw_skts = orig_calloc(prof.profile->num_profile_bw_skts, sizeof(int));
-  for(i = 0; i < profopts.num_profile_bw_cpus; i++) {
-    prof.profile->profile_bw_skts[i] = profopts.profile_bw_skts[i];
+  /* Store which sockets we profiled */
+  prof.profile->num_profile_skts = profopts.num_profile_skt_cpus;
+  prof.profile->profile_skts = orig_calloc(prof.profile->num_profile_skts, sizeof(int));
+  for(i = 0; i < profopts.num_profile_skt_cpus; i++) {
+    prof.profile->profile_skts[i] = profopts.profile_skts[i];
   }
   
   prof.threads_finished = 0;
@@ -487,6 +499,9 @@ void initialize_profiling() {
   }
   if(profopts.should_profile_bw) {
     profile_bw_init();
+  }
+  if(profopts.should_profile_latency) {
+    profile_latency_init();
   }
   if(profopts.should_profile_rss) {
     profile_rss_init();
@@ -530,6 +545,9 @@ void deinitialize_profiling() {
   }
   if(profopts.should_profile_bw) {
     profile_bw_deinit();
+  }
+  if(profopts.should_profile_latency) {
+    profile_latency_deinit();
   }
   if(profopts.should_profile_rss) {
     profile_rss_deinit();

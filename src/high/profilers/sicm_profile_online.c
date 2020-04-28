@@ -22,9 +22,11 @@
 #include "sicm_helpers.h"
 
 void sh_profile_online_phase_change() {
-  profile_online_info *online;
-  online = get_profile_online_prof();
-  online->phase_change = 1;
+  if(profopts.should_profile_online) {
+    profile_online_info *online;
+    online = get_profile_online_prof();
+    online->phase_change = 1;
+  }
 }
 
 void profile_online_arena_init(per_arena_profile_online_info *);

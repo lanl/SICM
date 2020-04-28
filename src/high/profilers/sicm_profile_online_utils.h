@@ -38,40 +38,40 @@ void full_rebind(tree(site_info_ptr, int) sorted_sites) {
     hot = get_arena_online_prof(index)->hot;
 
     dl = NULL;
+    if((dev == 1) && (hot == 0)) {
+      /* The site is in DRAM and isn't in the hotset */
+      dl = prof.profile_online.lower_dl;
+      get_arena_online_prof(index)->dev = 0;
+      fprintf(profopts.profile_online_debug_file,
+              "Binding down: %zu, %zu\n", index, get_profile_bw_arena_prof(index)->total);
+    }
+    if(((dev == 0) || (dev == -1)) && !hot) {
+      dl = prof.profile_online.lower_dl;
+      get_arena_online_prof(index)->dev = 0;
+    }
+    if(dl) {
+      rebind_arena(index, dl, sit);
+    }
+  }
+  
+  tree_traverse(sorted_sites, sit) {
+    index = tree_it_key(sit)->index;
+    dev = get_arena_online_prof(index)->dev;
+    hot = get_arena_online_prof(index)->hot;
+
+    dl = NULL;
     if(((dev == -1) && hot) ||
         ((dev == 0) && hot)) {
       /* The site is in AEP, and is in the hotset. */
       dl = prof.profile_online.upper_dl;
       get_arena_online_prof(index)->dev = 1;
-    } else if((dev == 1) && (hot == 0)) {
-      /* The site is in DRAM and isn't in the hotset */
-      dl = prof.profile_online.lower_dl;
-      get_arena_online_prof(index)->dev = 0;
+      fprintf(profopts.profile_online_debug_file,
+              "Binding up: %zu, %zu\n", index, get_profile_bw_arena_prof(index)->total);
     }
-    
-    if(dl) {
-      if(dl == prof.profile_online.upper_dl) {
-        fprintf(profopts.profile_online_debug_file,
-                "Binding up: %zu, %zu\n", index, get_profile_bw_arena_prof(index)->total);
-      } else {
-        fprintf(profopts.profile_online_debug_file,
-                "Binding down: %zu, %zu\n", index, get_profile_bw_arena_prof(index)->total);
-      }
-    }
-    
-    /* We also want to rebind sites that are currently bound to
-       DRAM and in the hotset, just to make sure they
-       consume all of the memory there. */
     if((dev == 1) && hot) {
       dl = prof.profile_online.upper_dl;
       get_arena_online_prof(index)->dev = 1;
     }
-    
-    if(((dev == 0) || (dev == -1)) && !hot) {
-      dl = prof.profile_online.lower_dl;
-      get_arena_online_prof(index)->dev = 0;
-    }
-    
     if(dl) {
       rebind_arena(index, dl, sit);
     }

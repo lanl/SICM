@@ -8,7 +8,7 @@ static inline size_t penalty_move(size_t cap) {
   size_t retval;
   
   retval = ((double) cap)
-           / 2097152; /* 12 GB/s, converted to bytes/ms */
+           / 2097152; /* 2 GB/s, converted to bytes/ms */
   if(retval < 50) {
     retval = 50;
   }

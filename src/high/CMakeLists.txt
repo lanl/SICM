@@ -8,7 +8,8 @@ add_library(sicm_runtime SHARED
             profilers/sicm_profile_rss.c
             profilers/sicm_profile_extent_size.c
             profilers/sicm_profile_online.c
-            profilers/sicm_profile_bw.c)
+            profilers/sicm_profile_bw.c
+            profilers/sicm_profile_latency.c)
 add_library(sicm_overrides SHARED
             sicm_overrides.c)
 add_library(sicm_compass SHARED sicm_compass.cpp)

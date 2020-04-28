@@ -154,7 +154,8 @@ typedef struct profiling_options {
       should_profile_extent_size,
       should_profile_allocs,
       should_profile,
-      should_profile_separate_threads;
+      should_profile_separate_threads,
+      should_profile_latency;
   int should_run_rdspy;
   int print_profile_intervals;
   int profile_bw_relative;
@@ -166,6 +167,7 @@ typedef struct profiling_options {
   unsigned long profile_rss_skip_intervals,
                 profile_all_skip_intervals,
                 profile_bw_skip_intervals,
+                profile_latency_skip_intervals,
                 profile_extent_size_skip_intervals,
                 profile_allocs_skip_intervals,
                 profile_online_skip_intervals;
@@ -201,18 +203,23 @@ typedef struct profiling_options {
   size_t num_profile_all_events;
   char **profile_all_events;
 
-  /* Array of cpu numbers for profile_bw */
-  size_t num_profile_bw_cpus;
-  int *profile_bw_cpus;
-  int *profile_bw_skts;
+  /* Array of sockets to profile on, and one CPU per socket to use to profile */
+  size_t num_profile_skt_cpus;
+  int *profile_skt_cpus;
+  int *profile_skts;
   
   /* Array of strings for profile_bw events */
   size_t num_profile_bw_events;
   char **profile_bw_events;
+  
+  /* Array of strings for profile_latency events */
+  size_t num_profile_latency_events;
+  char **profile_latency_events;
+  char *profile_latency_clocktick_event;
 
-  /* Array of strings of IMCs for profile_bw */
+  /* Array of strings of IMCs for per-IMC profiling */
   char **imcs;
-  int num_imcs, max_imc_len, max_event_len;
+  int num_imcs;
 } profiling_options;
 
 /* Symbols that both sicm_runtime.c and sicm_profile.c need */

@@ -61,7 +61,8 @@ typedef struct profile_all_data {
  * PROFILE_BW
  ********************/
 typedef struct per_arena_profile_bw_info {
-  /* This is per-arena, but not per-socket. Requires profile_bw_relative. */
+  /* This is per-arena, but not per-socket. Requires profile_bw_relative. 
+     Uses values gathered from profile_all. */
   size_t peak, current, total;
 } per_arena_profile_bw_info;
  
@@ -77,11 +78,35 @@ typedef struct profile_bw_info {
  
 typedef struct profile_bw_data {
   /* These are one-dimensional arrays that're the size of num_profile_bw_events */
-  struct perf_event_attr ***pes;
-  int **fds;
+  struct perf_event_attr ****pes;
+  int ***fds;
   size_t pagesize;
   struct timespec start, end, actual;
 } profile_bw_data;
+
+/********************
+ * PROFILE_LATENCY
+ ********************/
+typedef struct per_skt_profile_latency_info {
+  double read_peak, read_current;
+  double write_peak, write_current;
+} per_skt_profile_latency_info;
+
+typedef struct profile_latency_info {
+  per_skt_profile_latency_info *skt;
+} profile_latency_info;
+
+typedef struct profile_latency_data {
+  /* One per event, per IMC, per socket */
+  struct perf_event_attr ****pes;
+  int ***fds;
+  
+  /* One per socket */
+  struct perf_event_attr **clocktick_pes;
+  int *clocktick_fds;
+  
+  struct timespec start, end, actual;
+} profile_latency_data;
 
 /********************
  * PROFILE_RSS
@@ -241,4 +266,10 @@ void *profile_bw(void *);
 void profile_bw_interval(int);
 void profile_bw_post_interval();
 void profile_bw_skip_interval(int);
-void profile_bw_arena_init(profile_bw_info *);
+
+void profile_latency_init();
+void profile_latency_deinit();
+void *profile_latency(void *);
+void profile_latency_interval(int);
+void profile_latency_post_interval();
+void profile_latency_skip_interval(int);

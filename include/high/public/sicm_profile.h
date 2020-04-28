@@ -46,7 +46,9 @@ typedef struct interval_profile {
   size_t num_arenas;
   arena_profile **arenas;
   
-  /* profile_bw doesn't do any per-arena profiling */
+  /* These are profiling types that can have not-per-arena
+     profiling information */
+  profile_latency_info profile_latency;
   profile_bw_info profile_bw;
   profile_online_info profile_online;
 } interval_profile;
@@ -61,7 +63,8 @@ typedef struct application_profile {
        has_profile_rss,
        has_profile_online,
        has_profile_bw,
-       has_profile_bw_relative;
+       has_profile_bw_relative,
+       has_profile_latency;
   
   size_t num_intervals, num_profile_all_events;
 
@@ -74,8 +77,8 @@ typedef struct application_profile {
   
   /* Array of integers that are the NUMA nodes of the sockets
      that we got the bandwidth of */
-  size_t num_profile_bw_skts;
-  int *profile_bw_skts;
+  size_t num_profile_skts;
+  int *profile_skts;
 
   interval_profile *intervals;
 } application_profile;
@@ -126,6 +129,7 @@ typedef struct profiler {
   profile_allocs_data profile_allocs;
   profile_online_data profile_online;
   profile_bw_data profile_bw;
+  profile_latency_data profile_latency;
 } profiler;
 
 extern profiler prof;
@@ -176,11 +180,24 @@ static inline void copy_interval_profile(size_t index) {
   interval->arenas = orig_calloc(tracker.max_arenas, sizeof(arena_profile *));
     
   /* Copy profile_bw profiling info, too */
-  size = profopts.num_profile_bw_cpus * sizeof(per_skt_profile_bw_info);
-  interval->profile_bw.skt = orig_malloc(size);
-  memcpy(interval->profile_bw.skt,
-         this_interval->profile_bw.skt,
-         size);
+  interval->profile_bw.skt = NULL;
+  if(profopts.should_profile_bw) {
+    size = profopts.num_profile_skt_cpus * sizeof(per_skt_profile_bw_info);
+    interval->profile_bw.skt = orig_malloc(size);
+    memcpy(interval->profile_bw.skt,
+          this_interval->profile_bw.skt,
+          size);
+  }
+  
+  /* Copy profile_latency profiling info, too */
+  interval->profile_latency.skt = NULL;
+  if(profopts.should_profile_latency) {
+    size = profopts.num_profile_skt_cpus * sizeof(per_skt_profile_latency_info);
+    interval->profile_latency.skt = orig_malloc(size);
+    memcpy(interval->profile_latency.skt,
+          this_interval->profile_latency.skt,
+          size);
+  }
   
   /* Iterate over all of the arenas in the interval, and copy them too */
   arena_arr_for(i) {
@@ -201,6 +218,9 @@ static inline void copy_interval_profile(size_t index) {
   
 #define get_profile_bw_prof() \
   (&(prof.profile->this_interval.profile_bw))
+  
+#define get_profile_latency_prof() \
+  (&(prof.profile->this_interval.profile_latency))
   
 #define get_profile_online_prof() \
   (&(prof.profile->this_interval.profile_online))
@@ -227,6 +247,9 @@ static inline void copy_interval_profile(size_t index) {
   
 #define get_profile_bw_skt_prof(i) \
   (&(get_profile_bw_prof()->skt[i]))
+  
+#define get_profile_latency_skt_prof(i) \
+  (&(get_profile_latency_prof()->skt[i]))
   
 #define get_profile_bw_arena_prof(i) \
   (&(get_arena_prof(i)->profile_bw))

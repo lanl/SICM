@@ -169,7 +169,7 @@ typedef struct packing_options {
   /* Only for PROFILE_ALL_TOTAL and PROFILE_ALL_CURRENT.
      Array of floats to weight each event by. */
   size_t num_profile_all_events,
-         num_profile_bw_skts;
+         num_profile_skts;
   
   FILE *debug_file;
 } packing_options;
@@ -677,7 +677,7 @@ static void sh_packing_init(application_profile *info, packing_options **opts) {
     packopts->num_profile_all_events = info->num_profile_all_events;
   }
   if(packopts->value == PROFILE_BW_RELATIVE_TOTAL) {
-    packopts->num_profile_bw_skts = info->num_profile_bw_skts;
+    packopts->num_profile_skts = info->num_profile_skts;
   }
   
   /* Print out all relevant options */

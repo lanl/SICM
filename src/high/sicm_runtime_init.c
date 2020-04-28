@@ -374,10 +374,10 @@ void set_options() {
      each node will be chosen to record the bandwidth on the IMC. */
   env = getenv("SH_PROFILE_NODES");
   profopts.num_profile_all_cpus = 0;
-  profopts.num_profile_bw_cpus = 0;
+  profopts.num_profile_skt_cpus = 0;
   profopts.profile_all_cpus = NULL;
-  profopts.profile_bw_cpus = NULL;
-  profopts.profile_bw_skts = NULL;
+  profopts.profile_skt_cpus = NULL;
+  profopts.profile_skts = NULL;
   if(env) {
     /* First, get a list of nodes that the user specified */
     nodes = numa_parse_nodestring(env);
@@ -393,15 +393,15 @@ void set_options() {
         /* Now iterate over the CPUs on those nodes */
         for(cpu = 0; cpu < num_cpus; cpu++) {
           if(numa_bitmask_isbitset(cpus, cpu)) {
-            /* Here, we'll add one (1) CPU from this list to profile_bw */
+            /* Here, we'll add one (1) CPU from this list to profile_skt_cpus */
             if(!flag) {
-              profopts.num_profile_bw_cpus++;
-              profopts.profile_bw_cpus = orig_realloc(profopts.profile_bw_cpus,
-                                                      sizeof(int) * profopts.num_profile_bw_cpus);
-              profopts.profile_bw_skts = orig_realloc(profopts.profile_bw_cpus,
-                                                       sizeof(int) * profopts.num_profile_bw_cpus);
-              profopts.profile_bw_cpus[profopts.num_profile_bw_cpus - 1] = cpu;
-              profopts.profile_bw_skts[profopts.num_profile_bw_cpus - 1] = node;
+              profopts.num_profile_skt_cpus++;
+              profopts.profile_skt_cpus = orig_realloc(profopts.profile_skt_cpus,
+                                                      sizeof(int) * profopts.num_profile_skt_cpus);
+              profopts.profile_skts = orig_realloc(profopts.profile_skt_cpus,
+                                                       sizeof(int) * profopts.num_profile_skt_cpus);
+              profopts.profile_skt_cpus[profopts.num_profile_skt_cpus - 1] = cpu;
+              profopts.profile_skts[profopts.num_profile_skt_cpus - 1] = node;
               flag = 1;
             }
             /* ...and add all of the CPUs to profile_all */
@@ -421,13 +421,13 @@ void set_options() {
     for(cpu = 0; cpu < num_cpus; cpu++) {
       if(numa_bitmask_isbitset(cpus, cpu)) {
         if(!flag) {
-          profopts.num_profile_bw_cpus++;
-          profopts.profile_bw_cpus = orig_realloc(profopts.profile_bw_cpus,
-                                                  sizeof(int) * profopts.num_profile_bw_cpus);
-          profopts.profile_bw_skts = orig_realloc(profopts.profile_bw_skts,
-                                                  sizeof(int) * profopts.num_profile_bw_cpus);
-          profopts.profile_bw_cpus[profopts.num_profile_bw_cpus - 1] = cpu;
-          profopts.profile_bw_skts[profopts.num_profile_bw_cpus - 1] = numa_node_of_cpu(cpu);
+          profopts.num_profile_skt_cpus++;
+          profopts.profile_skt_cpus = orig_realloc(profopts.profile_skt_cpus,
+                                                  sizeof(int) * profopts.num_profile_skt_cpus);
+          profopts.profile_skts = orig_realloc(profopts.profile_skts,
+                                                  sizeof(int) * profopts.num_profile_skt_cpus);
+          profopts.profile_skt_cpus[profopts.num_profile_skt_cpus - 1] = cpu;
+          profopts.profile_skts[profopts.num_profile_skt_cpus - 1] = numa_node_of_cpu(cpu);
           flag = 1;
         }
         profopts.num_profile_all_cpus++;
@@ -505,13 +505,37 @@ void set_options() {
   if(tracker.log_file) {
     fprintf(tracker.log_file, "SH_PROFILE_ALLOCS: %d\n", profopts.should_profile_allocs);
   }
-
+  
+  /* The user should specify a comma-delimited list of IMCs to read the
+    * bandwidth from. This will be passed to libpfm. For example, on an Ivy
+    * Bridge server, this value is e.g. `ivbep_unc_imc0`, and on KNL it's
+    * `knl_unc_imc0`. These are per-socket IMCs, so they will be used on all
+    * sockets that you choose to profile on.
+    */
+  env = getenv("SH_PROFILE_IMC");
+  profopts.num_imcs = 0;
+  profopts.imcs = NULL;
+  if(env) {
+    /* Parse out the IMCs into an array */
+    while((str = strtok(env, ",")) != NULL) {
+      profopts.num_imcs++;
+      profopts.imcs = orig_realloc(profopts.imcs, sizeof(char *) * profopts.num_imcs);
+      profopts.imcs[profopts.num_imcs - 1] = str;
+      env = NULL;
+    }
+  }
+  
   /* Should we profile bandwidth on a specific socket? */
   env = getenv("SH_PROFILE_BW");
   profopts.should_profile_bw = 0;
   profopts.profile_bw_skip_intervals = 0;
   if(env) {
     profopts.should_profile_bw = 1;
+    
+    if(profopts.num_imcs == 0) {
+      fprintf(stderr, "No IMCs given. Can't enable profile_bw.\n");
+      exit(1);
+    }
 
     env = getenv("SH_PROFILE_BW_SKIP_INTERVALS");
     profopts.profile_bw_skip_intervals = 1;
@@ -522,34 +546,7 @@ void set_options() {
     /* The user should specify a number of CPUs to use to read
        the bandwidth from the IMCs. In the case of many machines,
        this usually means that the user should select one CPU per socket. */
-    //env = getenv("SH_PROFILE_BW_CPUS");
     
-    /* The user can also specify a comma-delimited list of IMCs to read the
-     * bandwidth from. This will be passed to libpfm. For example, on an Ivy
-     * Bridge server, this value is e.g. `ivbep_unc_imc0`, and on KNL it's
-     * `knl_unc_imc0`.
-     */
-    env = getenv("SH_PROFILE_BW_IMC");
-    profopts.num_imcs = 0;
-    profopts.max_imc_len = 0;
-    profopts.imcs = NULL;
-    if(env) {
-      /* Parse out the IMCs into an array */
-      while((str = strtok(env, ",")) != NULL) {
-        profopts.num_imcs++;
-        profopts.imcs = orig_realloc(profopts.imcs, sizeof(char *) * profopts.num_imcs);
-        profopts.imcs[profopts.num_imcs - 1] = str;
-        if(strlen(str) > profopts.max_imc_len) {
-          profopts.max_imc_len = strlen(str);
-        }
-        env = NULL;
-      }
-    }
-    if(profopts.num_imcs == 0) {
-      fprintf(stderr, "No IMCs given. Can't profile one arena.\n");
-      exit(1);
-    }
-
     /*
     What events should be used to measure the bandwidth?
      */
@@ -569,20 +566,6 @@ void set_options() {
       fprintf(stderr, "No profiling events given. Can't profile one arena.\n");
       exit(1);
     }
-
-    /* Prepend each IMC name to each event string, because that's what libpfm4 expects */
-    size_t index;
-    profopts.profile_bw_events = orig_calloc(profopts.num_profile_bw_events * profopts.num_imcs, sizeof(char *));
-    for(i = 0; i < profopts.num_profile_bw_events; i++) {
-      for(n = 0; n < profopts.num_imcs; n++) {
-        index = (i * profopts.num_imcs) + n;
-        /* Allocate enough room for the IMC name, the event name, two colons, and a terminator. */
-        profopts.profile_bw_events[index] = orig_malloc(sizeof(char) *
-                                    (strlen(tmp_profile_bw_events[i]) + strlen(profopts.imcs[n]) + 3));
-        sprintf(profopts.profile_bw_events[index], "%s::%s", profopts.imcs[n], tmp_profile_bw_events[i]);
-      }
-    }
-    profopts.num_profile_bw_events *= profopts.num_imcs;
     
     /* Should we try to associate bandwidth with arenas, using their
        relative profile_all values? */
@@ -594,6 +577,64 @@ void set_options() {
   }
   if(tracker.log_file) {
     fprintf(tracker.log_file, "SH_PROFILE_BW: %d\n", profopts.should_profile_bw);
+  }
+  
+  /* Should we profile latency on a specific socket? */
+  env = getenv("SH_PROFILE_LATENCY");
+  profopts.should_profile_latency = 0;
+  profopts.profile_latency_skip_intervals = 0;
+  if(env) {
+    profopts.should_profile_latency = 1;
+    
+    if(profopts.num_imcs == 0) {
+      fprintf(stderr, "No IMCs given. Can't enable profile_latency.\n");
+      exit(1);
+    }
+
+    env = getenv("SH_PROFILE_LATENCY_SKIP_INTERVALS");
+    profopts.profile_latency_skip_intervals = 1;
+    if(env) {
+      profopts.profile_latency_skip_intervals = strtoul(env, NULL, 0);
+    }
+    
+    /*
+      What events should be used to measure the latency?
+    */
+    env = getenv("SH_PROFILE_LATENCY_EVENTS");
+    profopts.num_profile_latency_events = 0;
+    profopts.profile_latency_events = NULL;
+    if(env) {
+      /* Parse out the events into an array */
+      while((str = strtok(env, ",")) != NULL) {
+        profopts.num_profile_latency_events++;
+        profopts.profile_latency_events = orig_realloc(profopts.profile_latency_events, sizeof(char *) * profopts.num_profile_latency_events);
+        profopts.profile_latency_events[profopts.num_profile_latency_events - 1] = malloc(sizeof(char) * (strlen(str) + 1));
+        strcpy(profopts.profile_latency_events[profopts.num_profile_latency_events - 1], str);
+        env = NULL;
+      }
+      if((profopts.num_profile_latency_events != 2) && (profopts.num_profile_latency_events != 4)) {
+        fprintf(stderr, "Currently, the profile_latency profiler hardcodes a metric composed of exactly two (read-only) or four (read and write) events. Aborting.\n");
+        exit(1);
+      }
+    }
+    if(profopts.num_profile_latency_events == 0) {
+      fprintf(stderr, "No profiling events given. Can't profile latency.\n");
+      exit(1);
+    }
+    
+    /*
+      We'll need an event to measure the DRAM clockticks
+    */
+    env = getenv("SH_PROFILE_LATENCY_CLOCKTICK_EVENT");
+    profopts.profile_latency_clocktick_event = NULL;
+    if(env) {
+      profopts.profile_latency_clocktick_event = malloc(sizeof(char) * (strlen(env) + 1));
+      strcpy(profopts.profile_latency_clocktick_event, env);
+    }
+    if(profopts.profile_latency_clocktick_event == NULL) {
+      fprintf(stderr, "Need an event to get clockticks from the DRAM. Can't profile latency. Aborting.\n");
+      exit(1);
+    }
   }
 
   /* Should we get the RSS of each arena? */
@@ -905,7 +946,8 @@ void sh_init() {
        profopts.should_profile_extent_size ||
        profopts.should_profile_online ||
        profopts.should_profile_allocs ||
-       profopts.should_profile_bw) {
+       profopts.should_profile_bw ||
+       profopts.should_profile_latency) {
       profopts.should_profile = 1;
     }
 
