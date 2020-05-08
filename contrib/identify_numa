@@ -1,0 +1,37 @@
+#!/usr/bin/env bash
+
+ROOT="$(dirname ${BASH_SOURCE[0]})"
+
+declare -A mapping
+
+nodes=$(${ROOT}/list_numa_nodes | awk '{ print $1 }')
+
+# start with assumption that all numa nodes are dram
+for node in ${nodes}
+do
+    mapping["${node}"]="DRAM"
+done
+
+# run all memory type detectors in the identify_numa.d directory
+for detector in $(find ${ROOT}/identify_numa.d/* -type f -executable)
+do
+    while IFS=" " read -r node type; do
+        if [[ "${node}" == "" ]]
+        then
+            continue
+        fi
+
+        if [[ "${mapping[${node}]}" != "DRAM" ]]
+        then
+            echo "Warning: NUMA Node ${node} previously mapped to ${mapping[${node}]}" 1>&2
+        fi
+
+        mapping["${node}"]="${type}"
+    done <<< "$(${detector})"
+done
+
+# done
+for node in ${nodes}
+do
+    echo "${node} ${mapping[${node}]}"
+done
