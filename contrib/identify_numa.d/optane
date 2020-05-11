@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+
+# find non-volatile memory (only optane for now)
+if [[ -d /sys/bus/nd/devices/ ]]
+then
+    for nv in /sys/bus/nd/devices/region*/numa_node
+    do
+        node=$(cat ${nv})
+        echo "${node} Optane"
+    done
+fi
