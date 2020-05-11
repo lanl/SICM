@@ -21,6 +21,12 @@ do
             continue
         fi
 
+        if [[ "${node}" -lt "0" ]]
+        then
+            echo "Warning: ${type} mapped to NUMA node ${node}"
+            continue
+        fi
+
         if [[ "${mapping[${node}]}" != "DRAM" ]]
         then
             echo "Warning: NUMA Node ${node} previously mapped to ${mapping[${node}]}" 1>&2
