@@ -68,8 +68,18 @@ static void sh_print_profiling(application_profile *info, FILE *file) {
       for(n = 0; n < info->num_profile_skts; n++) {
         profile_latency_aprof = &(info->intervals[cur_interval].profile_latency.skt[n]);
         fprintf(file, "    BEGIN SOCKET %d\n", info->profile_skts[n]);
-        fprintf(file, "      Current: %f\n", profile_latency_aprof->read_current);
-        fprintf(file, "      Peak: %f\n", profile_latency_aprof->read_peak);
+        fprintf(file, "      Upper Read Current: %f\n", profile_latency_aprof->upper_read_current);
+        fprintf(file, "      Upper Read Peak: %f\n", profile_latency_aprof->upper_read_peak);
+        fprintf(file, "      Upper Write Current: %f\n", profile_latency_aprof->upper_write_current);
+        fprintf(file, "      Upper Write Peak: %f\n", profile_latency_aprof->upper_write_peak);
+        fprintf(file, "      Lower Read Current: %f\n", profile_latency_aprof->lower_read_current);
+        fprintf(file, "      Lower Read Peak: %f\n", profile_latency_aprof->lower_read_peak);
+        fprintf(file, "      Lower Write Current: %f\n", profile_latency_aprof->lower_write_current);
+        fprintf(file, "      Lower Write Peak: %f\n", profile_latency_aprof->lower_write_peak);
+        fprintf(file, "      Read Ratio: %f\n", profile_latency_aprof->read_ratio);
+        fprintf(file, "      Write Ratio: %f\n", profile_latency_aprof->write_ratio);
+        fprintf(file, "      Read Ratio CMA: %f\n", profile_latency_aprof->read_ratio_cma);
+        fprintf(file, "      Write Ratio CMA: %f\n", profile_latency_aprof->write_ratio_cma);
         fprintf(file, "    END SOCKET %d\n", info->profile_skts[n]);
       }
       fprintf(file, "  END PROFILE_LATENCY\n");
@@ -420,10 +430,30 @@ static application_profile *sh_parse_profiling(FILE *file) {
        is the same as PROFILE_ALL, but up one level of depth, since PROFILE_LATENCY
        isn't per-arena. */
     } else if((depth == 3) && (profile_type == 7)) {
-      if(sscanf(line, "      Peak: %lf\n", &tmp_double)) {
-        profile_latency_cur_skt->read_peak = tmp_double;
-      } else if(sscanf(line, "      Current: %lf\n", &tmp_double)) {
-        profile_latency_cur_skt->read_current = tmp_double;
+      if(sscanf(line, "      Upper Read Peak: %lf\n", &tmp_double)) {
+        profile_latency_cur_skt->upper_read_peak = tmp_double;
+      } else if(sscanf(line, "      Upper Read Current: %lf\n", &tmp_double)) {
+        profile_latency_cur_skt->upper_read_current = tmp_double;
+      } else if(sscanf(line, "      Upper Write Peak: %lf\n", &tmp_double)) {
+        profile_latency_cur_skt->upper_write_peak = tmp_double;
+      } else if(sscanf(line, "      Upper Write Current: %lf\n", &tmp_double)) {
+        profile_latency_cur_skt->upper_write_current = tmp_double;
+      } else if(sscanf(line, "      Lower Read Peak: %lf\n", &tmp_double)) {
+        profile_latency_cur_skt->lower_read_peak = tmp_double;
+      } else if(sscanf(line, "      Lower Read Current: %lf\n", &tmp_double)) {
+        profile_latency_cur_skt->lower_read_current = tmp_double;
+      } else if(sscanf(line, "      Lower Write Peak: %lf\n", &tmp_double)) {
+        profile_latency_cur_skt->lower_write_peak = tmp_double;
+      } else if(sscanf(line, "      Lower Write Current: %lf\n", &tmp_double)) {
+        profile_latency_cur_skt->lower_write_current = tmp_double;
+      } else if(sscanf(line, "      Read Ratio: %lf\n", &tmp_double)) {
+        profile_latency_cur_skt->read_ratio = tmp_double;
+      } else if(sscanf(line, "      Write Ratio: %lf\n", &tmp_double)) {
+        profile_latency_cur_skt->write_ratio = tmp_double;
+      } else if(sscanf(line, "      Read Ratio CMA: %lf\n", &tmp_double)) {
+        profile_latency_cur_skt->read_ratio_cma = tmp_double;
+      } else if(sscanf(line, "      Write Ratio CMA: %lf\n", &tmp_double)) {
+        profile_latency_cur_skt->write_ratio_cma = tmp_double;
       } else if(sscanf(line, "    END SOCKET %d\n", &tmp_int) == 1) {
         /* Up in depth */
         depth = 2;

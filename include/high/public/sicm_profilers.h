@@ -88,8 +88,14 @@ typedef struct profile_bw_data {
  * PROFILE_LATENCY
  ********************/
 typedef struct per_skt_profile_latency_info {
-  double read_peak, read_current;
-  double write_peak, write_current;
+  double upper_read_peak, upper_read_current,
+         upper_write_peak, upper_write_current,
+         lower_read_peak, lower_read_current,
+         lower_write_peak, lower_write_current;
+  double read_ratio,
+         read_ratio_cma,
+         write_ratio,
+         write_ratio_cma;
 } per_skt_profile_latency_info;
 
 typedef struct profile_latency_info {
@@ -106,6 +112,10 @@ typedef struct profile_latency_data {
   int *clocktick_fds;
   
   struct timespec start, end, actual;
+  
+  /* To keep track of the cumulative moving average */
+  double *prev_read_cma, *prev_write_cma;
+  size_t num_samples;
 } profile_latency_data;
 
 /********************

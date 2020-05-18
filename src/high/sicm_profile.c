@@ -314,6 +314,18 @@ void *profile_master(void *a) {
   sigset_t mask;
   pid_t tid;
 
+  /* NOTE: This order is important for profiling types that depend on others.
+     For example, if a profiling type depends on the bandwidth values, 
+     make sure that its `setup_profile_thread` is called *before* the bandwidth
+     profiler. This also means that, if you use the SH_PROFILE_SEPARATE_THREADS feature,
+     you must add mutices to ensure that one type has finished before another starts. */
+  
+  if(profopts.should_profile_latency) {
+    setup_profile_thread(&profile_latency,
+                         &profile_latency_interval,
+                         &profile_latency_skip_interval,
+                         profopts.profile_latency_skip_intervals);
+  }
   if(profopts.should_profile_all) {
     setup_profile_thread(&profile_all,
                          &profile_all_interval,
@@ -325,12 +337,6 @@ void *profile_master(void *a) {
                          &profile_bw_interval,
                          &profile_bw_skip_interval,
                          profopts.profile_bw_skip_intervals);
-  }
-  if(profopts.should_profile_latency) {
-    setup_profile_thread(&profile_latency,
-                         &profile_latency_interval,
-                         &profile_latency_skip_interval,
-                         profopts.profile_latency_skip_intervals);
   }
   if(profopts.should_profile_rss) {
     setup_profile_thread(&profile_rss,

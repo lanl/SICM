@@ -283,7 +283,9 @@ void profile_all_interval(int s) {
   for(i = 0; i < prof.profile->num_profile_all_events; i++) {
     arena_arr_for(n) {
       prof_check_good(arena, aprof, n);
-      aprof->profile_all.events[i].current *= profopts.profile_all_multipliers[i];
+      if(profopts.profile_all_multipliers) {
+        aprof->profile_all.events[i].current *= profopts.profile_all_multipliers[i];
+      }
       aprof->profile_all.events[i].total += aprof->profile_all.events[i].current;
     }
   }

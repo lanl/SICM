@@ -157,6 +157,7 @@ typedef struct profiling_options {
       should_profile_separate_threads,
       should_profile_latency;
   int should_run_rdspy;
+  int profile_latency_set_multipliers;
   int print_profile_intervals;
   int profile_bw_relative;
   size_t num_profile_all_multipliers;

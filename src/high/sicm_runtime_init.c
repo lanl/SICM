@@ -552,13 +552,14 @@ void set_options() {
      */
     env = getenv("SH_PROFILE_BW_EVENTS");
     profopts.num_profile_bw_events = 0;
-    char **tmp_profile_bw_events = NULL;
+    profopts.profile_bw_events = NULL;
     if(env) {
       /* Parse out the events into an array */
       while((str = strtok(env, ",")) != NULL) {
         profopts.num_profile_bw_events++;
-        tmp_profile_bw_events = orig_realloc(tmp_profile_bw_events, sizeof(char *) * profopts.num_profile_bw_events);
-        tmp_profile_bw_events[profopts.num_profile_bw_events - 1] = str;
+        profopts.profile_bw_events = orig_realloc(profopts.profile_bw_events, sizeof(char *) * profopts.num_profile_bw_events);
+        profopts.profile_bw_events[profopts.num_profile_bw_events - 1] = malloc(sizeof(char) * (strlen(str) + 1));
+        strcpy(profopts.profile_bw_events[profopts.num_profile_bw_events - 1], str);
         env = NULL;
       }
     }
@@ -590,6 +591,12 @@ void set_options() {
       fprintf(stderr, "No IMCs given. Can't enable profile_latency.\n");
       exit(1);
     }
+    
+    env = getenv("SH_PROFILE_LATENCY_SET_MULTIPLIERS");
+    profopts.profile_latency_set_multipliers = 0;
+    if(env) {
+      profopts.profile_latency_set_multipliers = 1;
+    }
 
     env = getenv("SH_PROFILE_LATENCY_SKIP_INTERVALS");
     profopts.profile_latency_skip_intervals = 1;
@@ -612,8 +619,10 @@ void set_options() {
         strcpy(profopts.profile_latency_events[profopts.num_profile_latency_events - 1], str);
         env = NULL;
       }
-      if((profopts.num_profile_latency_events != 2) && (profopts.num_profile_latency_events != 4)) {
-        fprintf(stderr, "Currently, the profile_latency profiler hardcodes a metric composed of exactly two (read-only) or four (read and write) events. Aborting.\n");
+      if(profopts.num_profile_latency_events != 8) {
+        fprintf(stderr, "Currently, the profile_latency profiler hardcodes a metric composed of exactly eight (read and write) events.\n");
+        fprintf(stderr, "The first four should be for the upper tier, and the last four should be for the lower tier.\n");
+        fprintf(stderr, "Aborting.\n");
         exit(1);
       }
     }
