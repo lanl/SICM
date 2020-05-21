@@ -15,7 +15,7 @@
 #include "sicm_profilers.h"
 #include "sicm_profile.h"
 
-void profile_rss_arena_init(profile_rss_info *);
+void profile_rss_arena_init(per_arena_profile_rss_info *);
 void profile_rss_deinit();
 void profile_rss_init();
 void *profile_rss(void *);
@@ -23,7 +23,7 @@ void profile_rss_interval(int);
 void profile_rss_skip_interval(int);
 void profile_rss_post_interval(arena_profile *);
 
-void profile_rss_arena_init(profile_rss_info *info) {
+void profile_rss_arena_init(per_arena_profile_rss_info *info) {
   info->peak = 0;
   info->current = 0;
   info->non_present = 0;
@@ -62,6 +62,10 @@ void profile_rss_interval(int s) {
   arena_info *arena;
   ssize_t num_read;
   arena_profile *aprof;
+  struct timespec start_time, end_time, actual;
+  
+  /* Time this interval */
+  clock_gettime(CLOCK_MONOTONIC, &start_time);
   
   /* Grab the lock for the extents array */
   pthread_rwlock_rdlock(&tracker.extents_lock);
@@ -129,11 +133,15 @@ void profile_rss_interval(int s) {
 
   pthread_rwlock_unlock(&tracker.extents_lock);
   
+  clock_gettime(CLOCK_MONOTONIC, &end_time);
+  timespec_diff(&start_time, &end_time, &actual);
+  get_profile_rss_prof()->time = actual.tv_sec + (((double) actual.tv_nsec) / 1000000000);
+  
   end_interval();
 }
 
 void profile_rss_post_interval(arena_profile *info) {
-  profile_rss_info *aprof;
+  per_arena_profile_rss_info *aprof;
   
   aprof = &(info->profile_rss);
   /* Maintain the peak for this arena */

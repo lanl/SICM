@@ -17,6 +17,7 @@ static void sh_print_profiling(application_profile *info, FILE *file) {
   size_t i, n, x, cur_interval, first_interval;
   arena_profile *aprof;
   arena_info *arena;
+  profile_rss_info *profile_rss_aprof;
   per_skt_profile_bw_info *profile_bw_aprof;
   per_skt_profile_latency_info *profile_latency_aprof;
   
@@ -62,6 +63,12 @@ static void sh_print_profiling(application_profile *info, FILE *file) {
         fprintf(file, "    END SOCKET %d\n", info->profile_skts[n]);
       }
       fprintf(file, "  END PROFILE_BW\n");
+    }
+    if(info->has_profile_rss) {
+      fprintf(file, "  BEGIN PROFILE_RSS\n");
+      profile_rss_aprof = &(info->intervals[cur_interval].profile_rss);
+      fprintf(file, "    Time: %f\n", profile_rss_aprof->time);
+      fprintf(file, "  END PROFILE_RSS\n");
     }
     if(info->has_profile_latency) {
       fprintf(file, "  BEGIN PROFILE_LATENCY\n");
@@ -269,6 +276,11 @@ static application_profile *sh_parse_profiling(FILE *file) {
                                                                    sizeof(per_skt_profile_bw_info));
         cur_skt_index = 0;
         profile_bw_cur_skt = &(ret->intervals[cur_interval].profile_bw.skt[cur_skt_index]);
+      } else if(strcmp(line, "  BEGIN PROFILE_RSS\n") == 0) {
+        /* Down in depth */
+        depth = 2;
+        profile_type = 3;
+        ret->has_profile_rss = 1;
       } else if(strcmp(line, "  BEGIN PROFILE_LATENCY\n") == 0) {
         /* Down in depth */
         depth = 2;
@@ -377,6 +389,19 @@ static application_profile *sh_parse_profiling(FILE *file) {
           ret->profile_skts[cur_skt_index] = tmp_int;
           profile_bw_cur_skt = &(ret->intervals[cur_interval].profile_bw.skt[cur_skt_index]);
           depth = 3;
+        } else {
+          fprintf(stderr, "Didn't recognize a line in the profiling information at depth %d. Aborting.\n", depth);
+          fprintf(stderr, "Line: %s\n", line);
+          exit(1);
+        }
+      } else if(profile_type == 3) {
+        /* This is the case where we're in a PROFILE_RSS block */
+        if(strcmp(line, "  END PROFILE_RSS\n") == 0) {
+          /* Up in depth */
+          depth = 1;
+          profile_type = -1;
+        } else if(sscanf(line, "    Time: %lf\n", &tmp_double) == 1) {
+          ret->intervals[cur_interval].profile_rss.time = tmp_double;
         } else {
           fprintf(stderr, "Didn't recognize a line in the profiling information at depth %d. Aborting.\n", depth);
           fprintf(stderr, "Line: %s\n", line);

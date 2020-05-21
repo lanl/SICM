@@ -13,35 +13,6 @@
 profiler prof;
 static int global_signal;
 
-/* Returns 0 if "a" is bigger, 1 if "b" is bigger */
-char timespec_cmp(struct timespec *a, struct timespec *b) {
-  if (a->tv_sec == b->tv_sec) {
-    if(a->tv_nsec > b->tv_nsec) {
-      return 0;
-    } else {
-      return 1;
-    }
-  } else if(a->tv_sec > b->tv_sec) {
-    return 0;
-  } else {
-    return 1;
-  }
-}
-
-/* Subtracts two timespec structs from each other. Assumes stop is
- * larger than start.
- */
-void timespec_diff(struct timespec *start, struct timespec *stop,
-                   struct timespec *result) {
-  if ((stop->tv_nsec - start->tv_nsec) < 0) {
-    result->tv_sec = stop->tv_sec - start->tv_sec - 1;
-    result->tv_nsec = stop->tv_nsec - start->tv_nsec + 1000000000;
-  } else {
-    result->tv_sec = stop->tv_sec - start->tv_sec;
-    result->tv_nsec = stop->tv_nsec - start->tv_nsec;
-  }
-}
-
 /* Runs when an arena has already been created, but the runtime library
    has added an allocation site to the arena. */
 void add_site_profile(int index, int site_id) {

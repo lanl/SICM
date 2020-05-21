@@ -258,7 +258,6 @@ void profile_all_interval(int s) {
             if(!tracker.extents->arr[n].start && !tracker.extents->arr[n].end) continue;
             arena = (arena_info *)tracker.extents->arr[n].arena;
             if((addr >= tracker.extents->arr[n].start) && (addr <= tracker.extents->arr[n].end) && arena) {
-
               /* Record this access */
               get_arena_profile_all_event_prof(arena->index, i)->current++;
             }

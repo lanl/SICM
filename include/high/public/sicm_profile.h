@@ -17,10 +17,34 @@
 #include <errno.h>
 #include <poll.h>
 
-char timespec_cmp(struct timespec *a, struct timespec *b);
-void timespec_diff(struct timespec *start,
-                   struct timespec *stop,
-                   struct timespec *result);
+/* Returns 0 if "a" is bigger, 1 if "b" is bigger */
+static char timespec_cmp(struct timespec *a, struct timespec *b) {
+  if (a->tv_sec == b->tv_sec) {
+    if(a->tv_nsec > b->tv_nsec) {
+      return 0;
+    } else {
+      return 1;
+    }
+  } else if(a->tv_sec > b->tv_sec) {
+    return 0;
+  } else {
+    return 1;
+  }
+}
+
+/* Subtracts two timespec structs from each other. Assumes stop is
+ * larger than start.
+ */
+static void timespec_diff(struct timespec *start, struct timespec *stop,
+                   struct timespec *result) {
+  if ((stop->tv_nsec - start->tv_nsec) < 0) {
+    result->tv_sec = stop->tv_sec - start->tv_sec - 1;
+    result->tv_nsec = stop->tv_nsec - start->tv_nsec + 1000000000;
+  } else {
+    result->tv_sec = stop->tv_sec - start->tv_sec;
+    result->tv_nsec = stop->tv_nsec - start->tv_nsec;
+  }
+}
 
 #include "sicm_runtime.h"
 #include "sicm_profilers.h"
@@ -31,9 +55,9 @@ typedef struct arena_profile {
   int num_alloc_sites, *alloc_sites;
 
   profile_all_info profile_all;
-  profile_rss_info profile_rss;
   profile_extent_size_info profile_extent_size;
   profile_allocs_info profile_allocs;
+  per_arena_profile_rss_info profile_rss;
   per_arena_profile_online_info profile_online;
   per_arena_profile_bw_info profile_bw;
 } arena_profile;
@@ -51,6 +75,7 @@ typedef struct interval_profile {
   profile_latency_info profile_latency;
   profile_bw_info profile_bw;
   profile_online_info profile_online;
+  profile_rss_info profile_rss;
 } interval_profile;
 
 /* Profiling information for a whole application */
@@ -211,6 +236,8 @@ static inline void copy_interval_profile(size_t index) {
   interval->profile_online.phase_change = this_interval->profile_online.phase_change;
   this_interval->profile_online.phase_change = 0;
   this_interval->profile_online.reconfigure = 0;
+  interval->profile_rss.time = this_interval->profile_rss.time;
+  this_interval->profile_rss.time = 0.0;
 }
 
 #define get_arena_prof(i) \
@@ -218,6 +245,9 @@ static inline void copy_interval_profile(size_t index) {
   
 #define get_profile_bw_prof() \
   (&(prof.profile->this_interval.profile_bw))
+  
+#define get_profile_rss_prof() \
+  (&(prof.profile->this_interval.profile_rss))
   
 #define get_profile_latency_prof() \
   (&(prof.profile->this_interval.profile_latency))

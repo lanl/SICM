@@ -121,13 +121,17 @@ typedef struct profile_latency_data {
 /********************
  * PROFILE_RSS
  ********************/
-
+ 
 typedef struct profile_rss_info {
+  double time;
+} profile_rss_info;
+
+typedef struct per_arena_profile_rss_info {
   /* profile_rss */
   size_t peak, current;
   size_t non_present; /* The number of bytes that are allocated to it */
   float present_percentage; /* The percentage of present bytes */
-} profile_rss_info;
+} per_arena_profile_rss_info;
 
 typedef struct profile_rss_data {
   /* profile_rss */
@@ -244,7 +248,7 @@ void profile_rss_skip_interval(int);
 void profile_rss_post_interval(arena_profile *);
 void profile_rss_init();
 void profile_rss_deinit();
-void profile_rss_arena_init(profile_rss_info *);
+void profile_rss_arena_init(per_arena_profile_rss_info *);
 
 void *profile_extent_size(void *);
 void profile_extent_size_interval(int);

@@ -687,6 +687,7 @@ static void sh_packing_init(application_profile *info, packing_options **opts) {
     fprintf(packopts->debug_file, "Weight: %s\n", sh_packing_weight_str(packopts->weight));
     fprintf(packopts->debug_file, "Algo: %s\n", sh_packing_algo_str(packopts->algo));
     fprintf(packopts->debug_file, "Sort: %s\n", sh_packing_sort_str(packopts->sort));
+    fprintf(packopts->debug_file, "===== END PACKING OPTIONS =====\n");
   }
   
   *opts = packopts;
