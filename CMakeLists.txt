@@ -15,6 +15,8 @@ find_package(PkgConfig REQUIRED)
 pkg_search_module(JEMALLOC REQUIRED jemalloc)
 string(REPLACE ";" " " JEMALLOC_LDFLAGS "${JEMALLOC_LDFLAGS}")
 
+add_subdirectory(include)
+
 # Compile and install the low- and high-level interfaces
 add_subdirectory(src)
 
