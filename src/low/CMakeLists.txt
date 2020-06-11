@@ -34,6 +34,3 @@ foreach(type ${TYPES})
   target_link_libraries(sicm_${type} ${NUMA_LIBRARY})
   target_include_directories(sicm_${type} PRIVATE ${NUMA_INCLUDE_DIR})
 endforeach()
-
-install(DIRECTORY ${CMAKE_SOURCE_DIR}/include/low/public
-  DESTINATION include)
