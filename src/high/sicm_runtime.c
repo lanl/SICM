@@ -25,6 +25,7 @@ void (*orig_free_ptr)(void *);
 
 /* Function declarations, so I can reorder them how I like */
 void sh_create_arena(int index, int id, sicm_device *device);
+void sh_add_site_to_arena(int index, int id);
 
 /*************************************************
  *               ORIG_MALLOC                     *
@@ -124,9 +125,12 @@ int get_alloc_site(arena_info *arena, int id) {
   
   retval = -1;
 
+#if 0
   /* Get this thread's last allocated site */
   val = (int *) pthread_getspecific(tracker.thread_site_key);
+#endif
 
+#if 0
   /* If nonexistent, increment the counter and set it */
   if(val == NULL) {
     /* We haven't set the site cache for this thread yet, so initialize it */
@@ -141,19 +145,22 @@ int get_alloc_site(arena_info *arena, int id) {
     if(*val == id) {
       return id;
     }
+#endif
     
     /* If we didn't hit in our one-value cache, search all sites in this arena to see if
        we can find this site in it. */
-    printf("Searching %zu sites.\n", arena->num_alloc_sites);
-    fflush(stdout);
     for(i = 0; i < arena->num_alloc_sites; i++) {
       if(arena->alloc_sites[i] == id) {
         retval = id;
+#if 0
         *val = id;
+#endif
         break;
       }
     }
+#if 0
   }
+#endif
   return retval;
 }
 
@@ -325,6 +332,7 @@ int get_arena_index(int id, size_t sz) {
   int ret, thread_index, offset;
   deviceptr device;
   siteinfo_ptr site;
+  char should_create_arena;
 
   thread_index = get_thread_index();
 
@@ -414,10 +422,22 @@ int get_arena_index(int id, size_t sz) {
     /* Fit the index to the maximum number of arenas */
     ret = ret % tracker.max_arenas;
   }
+  
+  should_create_arena = 1;
+  if(tracker.arenas[ret] != NULL) {
+    /* If we've already created this arena */
+    if(get_alloc_site(tracker.arenas[ret], id) != -1) {
+      /* If the site isn't already in the arena */
+      sh_add_site_to_arena(ret, id);
+    }
+    should_create_arena = 0;
+  }
 
   pthread_mutex_lock(&tracker.arena_lock);
   tracker.pending_indices[thread_index] = ret;
-  sh_create_arena(ret, id, device);
+  if(should_create_arena) {
+    sh_create_arena(ret, id, device);
+  }
   pthread_mutex_unlock(&tracker.arena_lock);
 
   return ret;
@@ -428,6 +448,27 @@ int get_arena_index(int id, size_t sz) {
  *************************************************
  *  Functions for creating arenas and extents.
  */
+ 
+/* Add the site to the arena */
+void sh_add_site_to_arena(int index, int id) {
+  size_t i;
+  
+  if(tracker.arenas[index]->num_alloc_sites == tracker.max_sites_per_arena) {
+    fprintf(stderr, "Sites: ");
+    for(i = 0; i < tracker.arenas[index]->num_alloc_sites; i++) {
+      fprintf(stderr, "%d ", tracker.arenas[index]->alloc_sites[i]);
+    }
+    fprintf(stderr, "\n");
+    fprintf(stderr, "Tried to allocate %d sites into an arena. Increase SH_MAX_SITES_PER_ARENA.\n", tracker.max_sites_per_arena + 1);
+    exit(1);
+  }
+  tracker.arenas[index]->alloc_sites[tracker.arenas[index]->num_alloc_sites] = id;
+  tracker.arenas[index]->num_alloc_sites++;
+
+  if(profopts.should_profile) {
+    add_site_profile(index, id); /* Calls into sicm_profile.c to add this site to the arena */
+  }
+}
 
 /* Adds an arena to the `arenas` array. */
 void sh_create_arena(int index, int id, sicm_device *device) {
@@ -435,32 +476,6 @@ void sh_create_arena(int index, int id, sicm_device *device) {
   arena_info *arena;
   siteinfo_ptr site;
   
-  /* If we've already created this arena */
-  if(tracker.arenas[index] != NULL) {
-
-    /* If the site isn't already in the arena */
-    if(get_alloc_site(tracker.arenas[index], id) != -1) {
-      /* Add the site to the arena */
-      if(tracker.arenas[index]->num_alloc_sites == tracker.max_sites_per_arena) {
-        fprintf(stderr, "Sites: ");
-        for(i = 0; i < tracker.arenas[index]->num_alloc_sites; i++) {
-          fprintf(stderr, "%d ", tracker.arenas[index]->alloc_sites[i]);
-        }
-        fprintf(stderr, "\n");
-        fprintf(stderr, "Tried to allocate %d sites into an arena. Increase SH_MAX_SITES_PER_ARENA.\n", tracker.max_sites_per_arena + 1);
-        exit(1);
-      }
-      tracker.arenas[index]->alloc_sites[tracker.arenas[index]->num_alloc_sites] = id;
-      tracker.arenas[index]->num_alloc_sites++;
-  
-      if(profopts.should_profile) {
-        add_site_profile(index, id); /* Calls into sicm_profile.c to add this site to the arena */
-      }
-    }
-
-    return;
-  }
-
   /* Put an upper bound on the indices that need to be searched */
   if(index > tracker.max_index) {
     tracker.max_index = index;
