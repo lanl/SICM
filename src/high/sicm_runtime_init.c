@@ -26,6 +26,8 @@ enum arena_layout parse_layout(char *env) {
     return EXCLUSIVE_ONE_ARENA;
   } else if(strncmp(env, "SHARED_DEVICE_ARENAS", max_chars) == 0) {
     return SHARED_DEVICE_ARENAS;
+  } else if(strncmp(env, "EXCLUSIVE_ARENAS", max_chars) == 0) {
+    return EXCLUSIVE_ARENAS;
   } else if(strncmp(env, "EXCLUSIVE_DEVICE_ARENAS", max_chars) == 0) {
     return EXCLUSIVE_DEVICE_ARENAS;
   } else if(strncmp(env, "SHARED_SITE_ARENAS", max_chars) == 0) {
@@ -34,8 +36,14 @@ enum arena_layout parse_layout(char *env) {
     return EXCLUSIVE_SITE_ARENAS;
   } else if(strncmp(env, "EXCLUSIVE_TWO_DEVICE_ARENAS", max_chars) == 0) {
     return EXCLUSIVE_TWO_DEVICE_ARENAS;
-  } else if(strncmp(env, "EXCLUSIVE_FOUR_DEVICE_ARENAS", max_chars) == 0) {
-    return EXCLUSIVE_FOUR_DEVICE_ARENAS;
+  } else if(strncmp(env, "EXCLUSIVE_FOUR_ARENAS", max_chars) == 0) {
+    return EXCLUSIVE_FOUR_ARENAS;
+  } else if(strncmp(env, "EXCLUSIVE_EIGHT_ARENAS", max_chars) == 0) {
+    return EXCLUSIVE_EIGHT_ARENAS;
+  } else if(strncmp(env, "EXCLUSIVE_THIRTYTWO_ARENAS", max_chars) == 0) {
+    return EXCLUSIVE_THIRTYTWO_ARENAS;
+  } else if(strncmp(env, "EXCLUSIVE_SIXTYFOUR_ARENAS", max_chars) == 0) {
+    return EXCLUSIVE_SIXTYFOUR_ARENAS;
   } else if(strncmp(env, "BIG_SMALL_ARENAS", max_chars) == 0) {
     return BIG_SMALL_ARENAS;
   }
@@ -52,6 +60,8 @@ char *layout_str(enum arena_layout layout) {
       return "EXCLUSIVE_ONE_ARENA";
     case SHARED_DEVICE_ARENAS:
       return "SHARED_DEVICE_ARENAS";
+    case EXCLUSIVE_ARENAS:
+      return "EXCLUSIVE_ARENAS";
     case EXCLUSIVE_DEVICE_ARENAS:
       return "EXCLUSIVE_DEVICE_ARENAS";
     case SHARED_SITE_ARENAS:
@@ -60,8 +70,14 @@ char *layout_str(enum arena_layout layout) {
       return "EXCLUSIVE_SITE_ARENAS";
     case EXCLUSIVE_TWO_DEVICE_ARENAS:
       return "EXCLUSIVE_TWO_DEVICE_ARENAS";
-    case EXCLUSIVE_FOUR_DEVICE_ARENAS:
-      return "EXCLUSIVE_FOUR_DEVICE_ARENAS";
+    case EXCLUSIVE_FOUR_ARENAS:
+      return "EXCLUSIVE_FOUR_ARENAS";
+    case EXCLUSIVE_EIGHT_ARENAS:
+      return "EXCLUSIVE_EIGHT_ARENAS";
+    case EXCLUSIVE_THIRTYTWO_ARENAS:
+      return "EXCLUSIVE_THIRTYTWO_ARENAS";
+    case EXCLUSIVE_SIXTYFOUR_ARENAS:
+      return "EXCLUSIVE_SIXTYFOUR_ARENAS";
     case BIG_SMALL_ARENAS:
       return "BIG_SMALL_ARENAS";
     default:
@@ -110,6 +126,12 @@ void set_options() {
   ssize_t len;
   struct bitmask *cpus, *nodes;
   char flag;
+  
+  env = getenv("SH_FREE_BUFFER");
+  profopts.free_buffer = 0;
+  if(env) {
+    profopts.free_buffer = 1;
+  }
 
   /* See if there's profiling information that we can use later */
   env = getenv("SH_PROFILE_INPUT_FILE");
@@ -323,10 +345,11 @@ void set_options() {
   }
 
   /* Get max_arenas.
-   * Keep in mind that 4096 is the maximum number supported by jemalloc.
+   * Keep in mind that 4095 is the maximum number supported by jemalloc
+   * (12 bits to store the arena IDs, minus one).
    * An error occurs if this limit is reached.
    */
-  tracker.max_arenas = 4096;
+  tracker.max_arenas = 4095;
   env = getenv("SH_MAX_ARENAS");
   if(env) {
     tmp_val = strtoimax(env, NULL, 10);
@@ -758,6 +781,7 @@ void set_options() {
   switch(tracker.layout) {
     case SHARED_ONE_ARENA:
     case EXCLUSIVE_ONE_ARENA:
+    case EXCLUSIVE_ARENAS:
       tracker.arenas_per_thread = 1;
       break;
     case SHARED_DEVICE_ARENAS:
@@ -771,8 +795,17 @@ void set_options() {
     case EXCLUSIVE_TWO_DEVICE_ARENAS:
       tracker.arenas_per_thread = 2 * tracker.num_numa_nodes; //((int) device_list.count);
       break;
-    case EXCLUSIVE_FOUR_DEVICE_ARENAS:
-      tracker.arenas_per_thread = 4 * tracker.num_numa_nodes; //((int) device_list.count);
+    case EXCLUSIVE_FOUR_ARENAS:
+      tracker.arenas_per_thread = 4; //((int) device_list.count);
+      break;
+    case EXCLUSIVE_EIGHT_ARENAS:
+      tracker.arenas_per_thread = 8; //((int) device_list.count);
+      break;
+    case EXCLUSIVE_THIRTYTWO_ARENAS:
+      tracker.arenas_per_thread = 32; //((int) device_list.count);
+      break;
+    case EXCLUSIVE_SIXTYFOUR_ARENAS:
+      tracker.arenas_per_thread = 64; //((int) device_list.count);
       break;
     case BIG_SMALL_ARENAS:
       tracker.arenas_per_thread = 1;
@@ -902,7 +935,9 @@ void sh_init() {
   /* Initialize all of the locks */
   pthread_rwlock_init(&tracker.extents_lock, NULL);
   pthread_mutex_init(&tracker.arena_lock, NULL);
-  pthread_mutex_init(&tracker.thread_lock, NULL);
+  pthread_mutex_init(&tracker.thread_index_lock, NULL);
+  pthread_mutex_init(&tracker.thread_site_lock, NULL);
+  pthread_mutex_init(&tracker.thread_offset_lock, NULL);
   pthread_rwlock_init(&tracker.device_arenas_lock, NULL);
   pthread_rwlock_init(&tracker.sites_lock, NULL);
 
@@ -929,6 +964,9 @@ void sh_init() {
     tracker.extents = extent_arr_init();
 
     /* Stores the index into the `arenas` array for each thread */
+    /* When you use getspecific, it'll give you back a pointer. This will be NULL
+       initially for each thread, but then it'll be a pointer pointing to this
+       thread_indices array, which contains per-thread indices. */
     pthread_key_create(&tracker.thread_key, NULL);
     tracker.thread_indices = (int *) orig_malloc(tracker.max_threads * sizeof(int));
     tracker.orig_thread_indices = tracker.thread_indices;
@@ -938,6 +976,25 @@ void sh_init() {
     }
     pthread_setspecific(tracker.thread_key, (void *) tracker.thread_indices);
     tracker.thread_indices++;
+    
+    /* Stores a 0-3 integer to round-robin choose one of four per-thread arenas */
+    pthread_key_create(&tracker.thread_offset_key, NULL);
+    tracker.thread_offset_indices = (char *) orig_malloc(tracker.max_threads * sizeof(char));
+    for(i = 0; i < tracker.max_threads; i++) {
+      tracker.thread_offset_indices[i] = 0;
+    }
+    pthread_setspecific(tracker.thread_offset_key, (void *) tracker.thread_offset_indices);
+    tracker.thread_offset_indices++;
+    
+    /* Caches a per-thread site ID that it last allocated. Intention is to reduce calls
+       to get_alloc_site for performance reasons. */
+    pthread_key_create(&tracker.thread_site_key, NULL);
+    tracker.thread_site_cache = (int *) orig_malloc(tracker.max_threads * sizeof(int));
+    for(i = 0; i < tracker.max_threads; i++) {
+      tracker.thread_site_cache[i] = -1;
+    }
+    pthread_setspecific(tracker.thread_site_key, (void *) tracker.thread_site_cache);
+    tracker.thread_site_cache++;
 
     /* Stores an index into `arenas` for the extent hooks */
     tracker.pending_indices = (int *) orig_malloc(tracker.max_threads * sizeof(int));
@@ -971,7 +1028,7 @@ void sh_init() {
 
   if(tracker.log_file) {
     fprintf(tracker.log_file, "===== END OPTIONS =====\n");
-    fclose(tracker.log_file);
+    //fclose(tracker.log_file);
   }
 
   sh_initialized = 1;
@@ -991,6 +1048,10 @@ void sh_terminate() {
     return;
   }
   sh_initialized = 0;
+  
+  if(tracker.log_file) {
+    fclose(tracker.log_file);
+  }
 
   /* Disable the background thread in jemalloc to avoid a segfault */
   on = false;

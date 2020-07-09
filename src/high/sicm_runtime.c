@@ -120,14 +120,93 @@ void profile_allocs_free(void *ptr) {
 /* Returns the index of an allocation site in an arena,
  * -1 if it's not there */
 int get_alloc_site(arena_info *arena, int id) {
-  int i;
-  for(i = 0; i < arena->num_alloc_sites; i++) {
-    if(arena->alloc_sites[i] == id) {
-      return i;
+  int i, *val, retval;
+  
+  retval = -1;
+
+  /* Get this thread's last allocated site */
+  val = (int *) pthread_getspecific(tracker.thread_site_key);
+
+  /* If nonexistent, increment the counter and set it */
+  if(val == NULL) {
+    /* We haven't set the site cache for this thread yet, so initialize it */
+    pthread_mutex_lock(&tracker.thread_site_lock);
+    pthread_setspecific(tracker.thread_site_key, (void *) tracker.thread_site_cache);
+    *(tracker.thread_site_cache) = id;
+    tracker.thread_offset_indices++;
+    pthread_mutex_unlock(&tracker.thread_site_lock);
+  } else {
+    /* First, check if the last site that this thread allocated to is this site. If so,
+       we can immediately return that. */
+    if(*val == id) {
+      return id;
+    }
+    
+    /* If we didn't hit in our one-value cache, search all sites in this arena to see if
+       we can find this site in it. */
+    printf("Searching %zu sites.\n", arena->num_alloc_sites);
+    fflush(stdout);
+    for(i = 0; i < arena->num_alloc_sites; i++) {
+      if(arena->alloc_sites[i] == id) {
+        retval = id;
+        *val = id;
+        break;
+      }
+    }
+  }
+  return retval;
+}
+
+/* Gets a unique index offset for a thread. Used in any
+ * per-thread arena layout that requires multiple arenas per
+ * thread, assigned in a round-robin fashion.
+ */
+char get_thread_index_offset() {
+  char *val;
+  char retval;
+
+  /* Get this thread's index */
+  val = (char *) pthread_getspecific(tracker.thread_offset_key);
+
+  /* If nonexistent, increment the counter and set it */
+  if(val == NULL) {
+    pthread_mutex_lock(&tracker.thread_offset_lock);
+    pthread_setspecific(tracker.thread_offset_key, (void *) tracker.thread_offset_indices);
+    val = tracker.thread_offset_indices;
+    retval = *val; /* This value should begin as zero, as initialized in sicm_runtime_init.c */
+    tracker.thread_offset_indices++;
+    pthread_mutex_unlock(&tracker.thread_offset_lock);
+  } else {
+    /* We've got a per-thread offset already created, so let's return its current value and increment it */
+    retval = *val;
+    if(tracker.layout == EXCLUSIVE_FOUR_ARENAS) {
+      if(*val == 3) {
+        *val = 0;
+      } else {
+        (*val)++;
+      }
+    } else if(tracker.layout == EXCLUSIVE_EIGHT_ARENAS) {
+      if(*val == 7) {
+        *val = 0;
+      } else {
+        (*val)++;
+      }
+    } else if(tracker.layout == EXCLUSIVE_THIRTYTWO_ARENAS) {
+      if(*val == 31) {
+        *val = 0;
+      } else {
+        (*val)++;
+      }
+    } else if(tracker.layout == EXCLUSIVE_SIXTYFOUR_ARENAS) {
+      if(*val == 63) {
+        *val = 0;
+      } else {
+        (*val)++;
+      }
     }
   }
 
-  return -1;
+  return retval;
 }
 
 /* Gets a unique index for a thread. Used especially
@@ -141,7 +220,7 @@ int get_thread_index() {
 
   /* If nonexistent, increment the counter and set it */
   if(val == NULL) {
-    pthread_mutex_lock(&tracker.thread_lock);
+    pthread_mutex_lock(&tracker.thread_index_lock);
     if(tracker.thread_indices + 1 >= tracker.max_thread_indices) {
       fprintf(stderr, "Maximum number of threads (%d) reached. Aborting!\n", tracker.max_threads);
       exit(1);
@@ -149,7 +228,7 @@ int get_thread_index() {
     pthread_setspecific(tracker.thread_key, (void *) tracker.thread_indices);
     val = tracker.thread_indices;
     tracker.thread_indices++;
-    pthread_mutex_unlock(&tracker.thread_lock);
+    pthread_mutex_unlock(&tracker.thread_index_lock);
   }
 
   return *val;
@@ -243,7 +322,7 @@ int get_device_arena(int id, deviceptr *device) {
 
 /* Gets the index that the allocation site should go into */
 int get_arena_index(int id, size_t sz) {
-  int ret, thread_index;
+  int ret, thread_index, offset;
   deviceptr device;
   siteinfo_ptr site;
 
@@ -261,6 +340,9 @@ int get_arena_index(int id, size_t sz) {
     case SHARED_DEVICE_ARENAS:
       ret = get_device_arena(id, &device);
       break;
+    case EXCLUSIVE_ARENAS:
+      ret = thread_index + 1;
+      break;
     case EXCLUSIVE_DEVICE_ARENAS:
       /* Same as SHARED_DEVICE_ARENAS, except per thread */
       ret = get_device_arena(id, &device);
@@ -277,9 +359,25 @@ int get_arena_index(int id, size_t sz) {
       ret = get_device_arena(id, &device);
       ret = (thread_index * tracker.arenas_per_thread) + ret;
       break;
-    case EXCLUSIVE_FOUR_DEVICE_ARENAS:
-      ret = get_device_arena(id, &device);
-      ret = (thread_index * tracker.arenas_per_thread) + ret;
+    case EXCLUSIVE_FOUR_ARENAS:
+      //ret = get_device_arena(id, &device);
+      offset = get_thread_index_offset();
+      ret = (thread_index * tracker.arenas_per_thread) + offset;
+      break;
+    case EXCLUSIVE_EIGHT_ARENAS:
+      //ret = get_device_arena(id, &device);
+      offset = get_thread_index_offset();
+      ret = (thread_index * tracker.arenas_per_thread) + offset;
+      break;
+    case EXCLUSIVE_THIRTYTWO_ARENAS:
+      //ret = get_device_arena(id, &device);
+      offset = get_thread_index_offset();
+      ret = (thread_index * tracker.arenas_per_thread) + offset;
+      break;
+    case EXCLUSIVE_SIXTYFOUR_ARENAS:
+      //ret = get_device_arena(id, &device);
+      offset = get_thread_index_offset();
+      ret = (thread_index * tracker.arenas_per_thread) + offset;
       break;
     case BIG_SMALL_ARENAS:
       /* Uses the first 'tracker.max_threads' indices to have one per-thread arena for "small" allocations.
@@ -293,6 +391,9 @@ int get_arena_index(int id, size_t sz) {
       if(!(site->big) && ((sz > tracker.big_small_threshold) || (site->size > tracker.big_small_threshold))) {
         /* Mark the site as big if it hasn't already been */
         site->big = 1;
+        if(tracker.log_file) {
+          fprintf(tracker.log_file, "Site %d is big.\n", id);
+        }
       }
       pthread_rwlock_unlock(&site->lock);
       if(site->big) {
@@ -311,7 +412,6 @@ int get_arena_index(int id, size_t sz) {
 
   if(ret > tracker.max_arenas) {
     /* Fit the index to the maximum number of arenas */
-    fprintf(stderr, "WARNING: Overflowing maximum arenas.\n");
     ret = ret % tracker.max_arenas;
   }
 
@@ -334,29 +434,28 @@ void sh_create_arena(int index, int id, sicm_device *device) {
   size_t i;
   arena_info *arena;
   siteinfo_ptr site;
-
-  if((tracker.arenas[index] != NULL) && (get_alloc_site(tracker.arenas[index], id) != -1)) {
-    return;
-  }
-
+  
   /* If we've already created this arena */
   if(tracker.arenas[index] != NULL) {
 
-    /* Add the site to the arena */
-    if(tracker.arenas[index]->num_alloc_sites == tracker.max_sites_per_arena) {
-      fprintf(stderr, "Sites: ");
-      for(i = 0; i < tracker.arenas[index]->num_alloc_sites; i++) {
-        fprintf(stderr, "%d ", tracker.arenas[index]->alloc_sites[i]);
+    /* If the site isn't already in the arena */
+    if(get_alloc_site(tracker.arenas[index], id) != -1) {
+      /* Add the site to the arena */
+      if(tracker.arenas[index]->num_alloc_sites == tracker.max_sites_per_arena) {
+        fprintf(stderr, "Sites: ");
+        for(i = 0; i < tracker.arenas[index]->num_alloc_sites; i++) {
+          fprintf(stderr, "%d ", tracker.arenas[index]->alloc_sites[i]);
+        }
+        fprintf(stderr, "\n");
+        fprintf(stderr, "Tried to allocate %d sites into an arena. Increase SH_MAX_SITES_PER_ARENA.\n", tracker.max_sites_per_arena + 1);
+        exit(1);
       }
-      fprintf(stderr, "\n");
-      fprintf(stderr, "Tried to allocate %d sites into an arena. Increase SH_MAX_SITES_PER_ARENA.\n", tracker.max_sites_per_arena + 1);
-      exit(1);
-    }
-    tracker.arenas[index]->alloc_sites[tracker.arenas[index]->num_alloc_sites] = id;
-    tracker.arenas[index]->num_alloc_sites++;
-
-    if(profopts.should_profile) {
-      add_site_profile(index, id); /* Calls into sicm_profile.c to add this site to the arena */
+      tracker.arenas[index]->alloc_sites[tracker.arenas[index]->num_alloc_sites] = id;
+      tracker.arenas[index]->num_alloc_sites++;
+  
+      if(profopts.should_profile) {
+        add_site_profile(index, id); /* Calls into sicm_profile.c to add this site to the arena */
+      }
     }
 
     return;

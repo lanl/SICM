@@ -22,11 +22,15 @@ enum arena_layout {
   SHARED_ONE_ARENA, /* One arena between all threads */
   EXCLUSIVE_ONE_ARENA, /* One arena per thread */
   SHARED_DEVICE_ARENAS, /* One arena per device */
+  EXCLUSIVE_ARENAS, /* One arena per thread */
   EXCLUSIVE_DEVICE_ARENAS, /* One arena per device per thread */
   SHARED_SITE_ARENAS, /* One arena per allocation site */
   EXCLUSIVE_SITE_ARENAS, /* One arena per allocation site per thread */
   EXCLUSIVE_TWO_DEVICE_ARENAS, /* Two arenas per device per thread */
-  EXCLUSIVE_FOUR_DEVICE_ARENAS, /* Four arenas per device per thread */
+  EXCLUSIVE_FOUR_ARENAS, /* Four arenas per thread */
+  EXCLUSIVE_EIGHT_ARENAS, /* Eight arenas per thread */
+  EXCLUSIVE_THIRTYTWO_ARENAS, /* Thirty-two arenas per thread */
+  EXCLUSIVE_SIXTYFOUR_ARENAS, /* Sixty-four arenas per thread */
   BIG_SMALL_ARENAS, /* Per-thread arenas for small allocations, shared site ones for larger sites */
   INVALID_LAYOUT
 };
@@ -67,7 +71,7 @@ use_tree(int, siteinfo_ptr);
 typedef struct tracker_struct {
   /* File to output log to */
   FILE *log_file;
-
+  
   /* Stores all machine devices and device
    * we should bind to by default */
   struct sicm_device_list device_list;
@@ -108,12 +112,20 @@ typedef struct tracker_struct {
   tree(addr_t, alloc_info_ptr) profile_allocs_map;
   pthread_rwlock_t profile_allocs_map_lock;
 
-
   /* Associates a thread with an index (starting at 0) into the `arenas` array */
-  pthread_mutex_t thread_lock;
+  pthread_mutex_t thread_index_lock;
   pthread_key_t thread_key;
   int *thread_indices, *orig_thread_indices, *max_thread_indices, max_threads;
   int num_static_sites;
+  
+  pthread_mutex_t thread_site_lock;
+  pthread_key_t thread_site_key;
+  int *thread_site_cache;
+  
+  /* Get a per-thread char which represents which per-thread arena it should use */
+  pthread_mutex_t thread_offset_lock;
+  pthread_key_t thread_offset_key;
+  char *thread_offset_indices;
 
   /* Passes an arena index to the extent hooks */
   int *pending_indices;
@@ -146,6 +158,8 @@ int get_arena_index(int id, size_t sz);
  * used by src/high/sicm_profile.c.
  */
 typedef struct profiling_options {
+  char free_buffer;
+  
   /* Should we do profiling? */
   int should_profile_online,
       should_profile_all,

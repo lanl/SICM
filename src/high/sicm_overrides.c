@@ -36,7 +36,6 @@ void free(void *ptr) {
 }
 
 int posix_memalign(void **ptr, size_t alignment, size_t size) {
-  printf("Got a call from posix_memalign: %p %zu %zu\n", *ptr, alignment, size);
   return sh_posix_memalign(0, ptr, alignment, size);
 }
 

@@ -1186,7 +1186,7 @@ out:
 
             fprintf(nclones_file, "%llu\n", ncloned);
 
-#if LLVM_VERSION_MAJOR >= 4
+#if (LLVM_VERSION_MAJOR >= 4) && (LLVM_VERSION_MAJOR < 7)
             if (CompassQuickExit) {
                 // Writing the bitcode ourselves is faster.
                 //fprintf(stderr, "writing bitcode..\n", n_sites);

@@ -465,6 +465,7 @@ void initialize_profiling() {
    * (via a timer) when the next interval should start */
   prof.master_signal = global_signal;
   global_signal++;
+  
 
   /* All of this initialization HAS to happen in the main SICM thread.
    * If it's not, the `perf_event_open` system call won't profile
