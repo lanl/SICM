@@ -14,7 +14,8 @@ set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/Modules/")
 find_package(PkgConfig REQUIRED)
 pkg_search_module(JEMALLOC REQUIRED jemalloc)
 string(REPLACE ";" " " JEMALLOC_LDFLAGS "${JEMALLOC_LDFLAGS}")
-link_directories(${JEMALLOC_LIBRARY_DIRS})
+
+add_subdirectory(include)
 
 # Compile and install the low- and high-level interfaces
 add_subdirectory(src)
