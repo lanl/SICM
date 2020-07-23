@@ -90,31 +90,12 @@ typedef struct sarena sarena;
 
 /* Stores information about a jemalloc arena */
 struct sarena {
-/*	pthread_mutex_t	mutex;
-	sicm_device*	dev;
-	size_t		maxsize;
-	size_t		size;
-	size_t		pagesize;
-	int		numaid;
-	sarena*		next;
-*/
-	/* jemalloc related */
-//	unsigned	arena_ind;
-//	extent_hooks_t	hooks;
-
-	/* jemalloc extent ranges */
-/*	struct sicm_tree_t*	ranges;
-
-	int		err;
-
-	void * add_info;*/
-    pthread_mutexattr_t attr;
     pthread_mutex_t*    mutex;
-    sicm_device*        dev;
-    size_t              maxsize;
-    size_t              size;
-    size_t              pagesize;
-    int                 numaid;
+    sicm_arena_flags	flags;
+    sicm_device_list    devs;
+    size_t              maxsize;	// 0 is unlimited
+    size_t              size;		// curent size of all extents
+    struct bitmask*	nodemask;
     sarena*             next;
 
     /* jemalloc related */
@@ -126,7 +107,6 @@ struct sarena {
 
     int                 err;
     int                 fd;
-    int                 user;
 };
 
 extern sarena *sarena_ptr2sarena(void *ptr);

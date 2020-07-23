@@ -10,6 +10,12 @@ link_libraries(Threads::Threads m dl)
 # Install custom CMake modules for jemalloc and libnuma.
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/Modules/")
 
+# find jemalloc through pkg-config
+find_package(PkgConfig REQUIRED)
+pkg_search_module(JEMALLOC REQUIRED jemalloc)
+string(REPLACE ";" " " JEMALLOC_LDFLAGS "${JEMALLOC_LDFLAGS}")
+link_directories(${JEMALLOC_LIBRARY_DIRS})
+
 # Compile and install the low- and high-level interfaces
 add_subdirectory(src)
 
@@ -17,6 +23,9 @@ add_subdirectory(src)
 if(SICM_BUILD_HIGH_LEVEL)
   add_subdirectory(bin)
 endif()
+
+# Add helper code found in the contrib directory
+add_subdirectory(contrib)
 
 # Compile some tests
 enable_testing()

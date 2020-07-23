@@ -1,0 +1,31 @@
+The script numa_measure.sh is a combination of three programs to classify numa nodes based on its affininty to processors and accelerators.
+It identifies CPU sets by parsing output of numactl -H.
+It runs the gpu-numa program in gpu-test folder which associates a GPU to its NUMA memory.
+Then it runs the affinuma program in the affinuma folder to label numa nodes as fast, slow and slowest by measuring bandwidth for every numa node and CPU sets combination.
+Then it runs the affigpu program in the affigpu folder to label numa nodes as fast, slow and slowest by measuring bandwidth for every numa node and GPU device combination.
+Sample Output:
+$ ./numa_measure.sh 
+GPGPU: 1, Numa id: 253
+GPGPU: 0, Numa id: 255
+CPU ID	NUMA ID	Type	Init(Mb/s)	Triad(Mb/s)
+80-159	8	fast	47319.484270	107039.366933
+80-159	0	slow	22821.453687	39829.581055
+80-159	253	slowest	22508.873163	31666.426367
+80-159	255	slowest	17582.395024	22205.584516
+CPU ID	NUMA ID	Type	Init(Mb/s)	Triad(Mb/s)
+0-79	0	fast	44087.145600	106673.043970
+0-79	8	slow	22375.582712	40498.159135
+0-79	255	slowest	20672.927851	25507.188754
+0-79	253	slowest	17663.774583	22080.248388
+GPU ID	NUMA ID	Type	Init(Mb/s)	Triad(Mb/s)
+1	255	fast	11109.001355	3677209882.489710
+0	255	slow	10846.288579	2912339559.760742
+1	253	slow	9509.114939	2793779890.012525
+0	253	slowest	9320.696732	2093161819.298433
+1	8	slowest	8459.545271	2050490433.333394
+0	8	slowest	8493.785391	1614497001.799529
+1	0	slowest	5230.729496	1022481308.627978
+0	0	slowest	5217.704504	820399292.673978
+
+This program runs for all compute devices (Intel, AMD, IBM) but not ARM. (TODO: Add support form ARM)
+This program classifies only Nvidia GPUs. (TODO: Add support for Radeon and Intel GPUs)

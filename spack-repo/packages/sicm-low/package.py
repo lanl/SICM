@@ -12,11 +12,11 @@ class SicmLow(CMakePackage):
     Includes only the low-level interface and arena allocator."""
 
     homepage = "https://github.com/lanl/SICM/"
-    git      = os.path.expandvars("file:///${SICM_DIR}")
+    git      = "https://github.com/lanl/SICM.git"
 
-    version('develop', commit='HEAD')
+    version('master')
 
-    depends_on('jemalloc@5.1.0+je')
+    depends_on('jemalloc +je')
     depends_on('numactl')
 
     def cmake_args(self):

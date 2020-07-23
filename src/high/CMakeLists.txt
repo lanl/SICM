@@ -24,14 +24,13 @@ target_include_directories(sicm_hotset PUBLIC ${CMAKE_SOURCE_DIR}/include/low/pu
 ####################
 #     jemalloc     #
 ####################
-find_package(Jemalloc REQUIRED)
-target_include_directories(sicm_high PRIVATE ${JEMALLOC_INCLUDE_DIR})
+target_include_directories(sicm_high PRIVATE ${JEMALLOC_INCLUDE_DIRS})
 target_link_libraries(sicm_high ${JEMALLOC_LIBRARIES})
-target_include_directories(sicm_dump_info PRIVATE ${JEMALLOC_INCLUDE_DIR})
+target_include_directories(sicm_dump_info PRIVATE ${JEMALLOC_INCLUDE_DIRS})
 target_link_libraries(sicm_dump_info ${JEMALLOC_LIBRARIES})
-target_include_directories(sicm_memreserve PRIVATE ${JEMALLOC_INCLUDE_DIR})
+target_include_directories(sicm_memreserve PRIVATE ${JEMALLOC_INCLUDE_DIRS})
 target_link_libraries(sicm_memreserve ${JEMALLOC_LIBRARIES})
-target_include_directories(sicm_hotset PRIVATE ${JEMALLOC_INCLUDE_DIR})
+target_include_directories(sicm_hotset PRIVATE ${JEMALLOC_INCLUDE_DIRS})
 target_link_libraries(sicm_hotset ${JEMALLOC_LIBRARIES})
 
 ####################
