@@ -22,6 +22,7 @@
 #define X86_CPUID_MODEL_MASK        (0xf<<4)
 #define X86_CPUID_EXT_MODEL_MASK    (0xf<<16)
 
+int ** numa_dist_matrix;
 int normal_page_size = -1;
 
 sicm_device_tag sicm_get_device_tag(char *env) {
@@ -281,6 +282,20 @@ struct sicm_device_list sicm_init() {
       }
     }
   }
+
+//NUMA Distance matrix
+  numa_dist_matrix = (int **)malloc(sizeof(int*)*idx);
+  for(i = 0; i < idx; i++){
+  	numa_dist_matrix[i] = (int *)malloc(sizeof(int)*idx);
+  }
+
+  for(i = 0; i < idx; i++){
+    for(j = 0; j < idx; j++){
+      numa_dist_matrix[i][j] = numa_distance(sicm_numa_id(&devices[j]), sicm_numa_id(&devices[i])); 
+    }
+  }
+
+//Group numa ids to type of memory
 
   numa_bitmask_free(compute_nodes);
   numa_bitmask_free(non_dram_nodes);

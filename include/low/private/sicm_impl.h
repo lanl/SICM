@@ -76,6 +76,15 @@ extern int normal_page_size;
 #define container_of(ptr, type, member) ((type *)( \
     (char *)(member_type(type, member) *){ ptr } - offsetof(type, member)))
 
+struct alloc_list{
+        char name[50];
+        size_t size;
+        void * dram = NULL;
+        void * nv1 = NULL;
+        void * nv2 = NULL;
+	struct alloc_list * next;
+}
+
 typedef struct sarena sarena;
 
 

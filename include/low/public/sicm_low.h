@@ -83,6 +83,18 @@ typedef union sicm_device_data {
   sicm_optane_data optane;
 } sicm_device_data;
 
+//Bandwidth, Latency and Tag
+typedef struct sicm_numa_device_prop{
+  int numa_id;
+  char tag[10];
+  double write_bw;
+  double read_bw;
+  double avg_bw;
+  double write_lat;
+  double read_lat;
+  double avg_lat;
+}sicm_numa_device_prop;
+
 /// Tagged/discriminated union that fully identifies a device.
 /**
  * The combination of a sicm_device_tag and sicm_device_data identifies
@@ -95,6 +107,7 @@ typedef struct sicm_device {
   int node;              ///< NUMA node
   int page_size;         ///< Page size
   sicm_device_data data; ///< Per-type identifying information
+  sicm_numa_device_prop properties;
 } sicm_device;
 
 /// Explicitly-sized sicm_device array.
@@ -102,6 +115,7 @@ typedef struct sicm_device_list {
   unsigned int count;   ///< Number of devices in the array.
   sicm_device** devices; ///< Array of devices of count elements.
 } sicm_device_list;
+
 
 /// Results of a latency timing.
 /**
@@ -114,6 +128,7 @@ struct sicm_timing {
   unsigned int free;    ///< Time required for deallocation.
 };
 
+
 /// Handle to an arena.
 typedef void* sicm_arena;
 
@@ -122,6 +137,10 @@ typedef struct sicm_arena_list {
 	unsigned int count;
 	sicm_arena *arenas;
 } sicm_arena_list;
+
+void read_dev_prop();
+
+extern int ** numa_dist_matrix;
 
 /// Initialize the low-level interface.
 /**
@@ -171,6 +190,14 @@ sicm_arena_list *sicm_arenas_list();
  */
 sicm_arena sicm_arena_create(size_t maxsize, sicm_arena_flags flags, sicm_device_list *devs);
 
+/// Create new numa aware arena
+/**
+ * @param maxsize maximum size of the arena.
+  * @param dev initial device where the arena's allocations should use
+   * @return handle to the newly created arena, or ARENA_DEFAULT if the
+    *         the function failed.
+     */
+//sicm_arena sicm_na_arena_create(size_t s, char * alloc_type, struct sicm_device_list * devices);
 /// Create new mapped arena
 /**
  * @param maxsize maximum size of the arena.
