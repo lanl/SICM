@@ -134,7 +134,6 @@ typedef struct profiler {
   /* Sync the threads */
   pthread_mutex_t mtx;
   pthread_cond_t cond;
-  char threads_finished;
 
   /* For the main application thread to
    * signal the master to stop
@@ -161,9 +160,6 @@ extern profiler prof;
 
 void sh_start_profile_master_thread();
 void sh_stop_profile_master_thread();
-
-void end_interval();
-
 void create_arena_profile(int, int);
 void add_site_profile(int, int);
 
@@ -206,7 +202,7 @@ static inline void copy_interval_profile(size_t index) {
     
   /* Copy profile_bw profiling info, too */
   interval->profile_bw.skt = NULL;
-  if(profopts.should_profile_bw) {
+  if(should_profile_bw()) {
     size = profopts.num_profile_skt_cpus * sizeof(per_skt_profile_bw_info);
     interval->profile_bw.skt = orig_malloc(size);
     memcpy(interval->profile_bw.skt,
@@ -216,7 +212,7 @@ static inline void copy_interval_profile(size_t index) {
   
   /* Copy profile_latency profiling info, too */
   interval->profile_latency.skt = NULL;
-  if(profopts.should_profile_latency) {
+  if(should_profile_latency()) {
     size = profopts.num_profile_skt_cpus * sizeof(per_skt_profile_latency_info);
     interval->profile_latency.skt = orig_malloc(size);
     memcpy(interval->profile_latency.skt,

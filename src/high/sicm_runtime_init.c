@@ -20,30 +20,12 @@ enum arena_layout parse_layout(char *env) {
 
   max_chars = 32;
 
-  if(strncmp(env, "SHARED_ONE_ARENA", max_chars) == 0) {
-    return SHARED_ONE_ARENA;
-  } else if(strncmp(env, "EXCLUSIVE_ONE_ARENA", max_chars) == 0) {
-    return EXCLUSIVE_ONE_ARENA;
-  } else if(strncmp(env, "SHARED_DEVICE_ARENAS", max_chars) == 0) {
-    return SHARED_DEVICE_ARENAS;
-  } else if(strncmp(env, "EXCLUSIVE_ARENAS", max_chars) == 0) {
+  if(strncmp(env, "EXCLUSIVE_ARENAS", max_chars) == 0) {
     return EXCLUSIVE_ARENAS;
   } else if(strncmp(env, "EXCLUSIVE_DEVICE_ARENAS", max_chars) == 0) {
     return EXCLUSIVE_DEVICE_ARENAS;
   } else if(strncmp(env, "SHARED_SITE_ARENAS", max_chars) == 0) {
     return SHARED_SITE_ARENAS;
-  } else if(strncmp(env, "EXCLUSIVE_SITE_ARENAS", max_chars) == 0) {
-    return EXCLUSIVE_SITE_ARENAS;
-  } else if(strncmp(env, "EXCLUSIVE_TWO_DEVICE_ARENAS", max_chars) == 0) {
-    return EXCLUSIVE_TWO_DEVICE_ARENAS;
-  } else if(strncmp(env, "EXCLUSIVE_FOUR_ARENAS", max_chars) == 0) {
-    return EXCLUSIVE_FOUR_ARENAS;
-  } else if(strncmp(env, "EXCLUSIVE_EIGHT_ARENAS", max_chars) == 0) {
-    return EXCLUSIVE_EIGHT_ARENAS;
-  } else if(strncmp(env, "EXCLUSIVE_THIRTYTWO_ARENAS", max_chars) == 0) {
-    return EXCLUSIVE_THIRTYTWO_ARENAS;
-  } else if(strncmp(env, "EXCLUSIVE_SIXTYFOUR_ARENAS", max_chars) == 0) {
-    return EXCLUSIVE_SIXTYFOUR_ARENAS;
   } else if(strncmp(env, "BIG_SMALL_ARENAS", max_chars) == 0) {
     return BIG_SMALL_ARENAS;
   }
@@ -54,30 +36,12 @@ enum arena_layout parse_layout(char *env) {
 /* Converts an arena_layout to a string */
 char *layout_str(enum arena_layout layout) {
   switch(layout) {
-    case SHARED_ONE_ARENA:
-      return "SHARED_ONE_ARENA";
-    case EXCLUSIVE_ONE_ARENA:
-      return "EXCLUSIVE_ONE_ARENA";
-    case SHARED_DEVICE_ARENAS:
-      return "SHARED_DEVICE_ARENAS";
     case EXCLUSIVE_ARENAS:
       return "EXCLUSIVE_ARENAS";
     case EXCLUSIVE_DEVICE_ARENAS:
       return "EXCLUSIVE_DEVICE_ARENAS";
     case SHARED_SITE_ARENAS:
       return "SHARED_SITE_ARENAS";
-    case EXCLUSIVE_SITE_ARENAS:
-      return "EXCLUSIVE_SITE_ARENAS";
-    case EXCLUSIVE_TWO_DEVICE_ARENAS:
-      return "EXCLUSIVE_TWO_DEVICE_ARENAS";
-    case EXCLUSIVE_FOUR_ARENAS:
-      return "EXCLUSIVE_FOUR_ARENAS";
-    case EXCLUSIVE_EIGHT_ARENAS:
-      return "EXCLUSIVE_EIGHT_ARENAS";
-    case EXCLUSIVE_THIRTYTWO_ARENAS:
-      return "EXCLUSIVE_THIRTYTWO_ARENAS";
-    case EXCLUSIVE_SIXTYFOUR_ARENAS:
-      return "EXCLUSIVE_SIXTYFOUR_ARENAS";
     case BIG_SMALL_ARENAS:
       return "BIG_SMALL_ARENAS";
     default:
@@ -126,6 +90,8 @@ void set_options() {
   ssize_t len;
   struct bitmask *cpus, *nodes;
   char flag;
+  
+  profopts.profile_type_flags = 0;
   
   env = getenv("SH_FREE_BUFFER");
   profopts.free_buffer = 0;
@@ -178,19 +144,11 @@ void set_options() {
     profopts.print_profile_intervals = 1;
   }
 
-  /* Should we split each type of profiling into its own thread? */
-  env = getenv("SH_PROFILE_SEPARATE_THREADS");
-  profopts.should_profile_separate_threads = 0;
-  if(env) {
-    profopts.should_profile_separate_threads = 1;
-  }
-
   /* Do we want to use the online approach, moving arenas around devices automatically? */
   env = getenv("SH_PROFILE_ONLINE");
-  profopts.should_profile_online = 0;
   profopts.profile_online_skip_intervals = 0;
   if(env) {
-    profopts.should_profile_online = 1;
+    enable_profile_online();
 
     env = getenv("SH_PROFILE_ONLINE_DEBUG_FILE");
     profopts.profile_online_debug_file = NULL;
@@ -300,7 +258,7 @@ void set_options() {
     }
   }
   if(tracker.log_file) {
-    fprintf(tracker.log_file, "SH_PROFILE_ONLINE: %d\n", profopts.should_profile_online);
+    fprintf(tracker.log_file, "SH_PROFILE_ONLINE: %d\n", should_profile_online());
     fprintf(tracker.log_file, "SH_PROFILE_ONLINE_SKIP_INTERVALS: %d\n", profopts.profile_online_skip_intervals);
     fprintf(tracker.log_file, "SH_PROFILE_ONLINE_USE_LAST_INTERVAL: %d\n", profopts.profile_online_use_last_interval);
     fprintf(tracker.log_file, "SH_PROFILE_ONLINE_GRACE_ACCESSES: %lu\n", profopts.profile_online_grace_accesses);
@@ -380,6 +338,25 @@ void set_options() {
   }
   if(tracker.log_file) {
     fprintf(tracker.log_file, "SH_MAX_SITES_PER_ARENA: %d\n", tracker.max_sites_per_arena);
+  }
+  
+  /* Get max_sites.
+     This is the maximum number of allocation sites that you can have. Keep in mind
+     that we use site IDs as indices into an array, so the maximum site ID that you can
+     have is `tracker.max_sites - 1`. */
+  tracker.max_sites = 4096;
+  env = getenv("SH_MAX_SITES");
+  if(env) {
+    tmp_val = strtoimax(env, NULL, 10);
+    if((tmp_val == 0) || (tmp_val > INT_MAX)) {
+      fprintf(stderr, "Invalid arena number given. Aborting.\n");
+      exit(1);
+    } else {
+      tracker.max_sites = (int) tmp_val;
+    }
+  }
+  if(tracker.log_file) {
+    fprintf(tracker.log_file, "SH_MAX_SITES: %d\n", tracker.max_sites);
   }
 
   /* Controls the profiling rate of all profiling types */
@@ -462,11 +439,10 @@ void set_options() {
 
   /* Should we profile all allocation sites using sampling-based profiling? */
   env = getenv("SH_PROFILE_ALL");
-  profopts.should_profile_all = 0;
   if(env) {
-    profopts.should_profile_all = 1;
+    enable_profile_all();
   }
-  if(profopts.should_profile_all) {
+  if(should_profile_all()) {
 
     env = getenv("SH_PROFILE_ALL_EVENTS");
     profopts.num_profile_all_events = 0;
@@ -510,7 +486,7 @@ void set_options() {
     }
 
     if(tracker.log_file) {
-      fprintf(tracker.log_file, "SH_PROFILE_ALL: %d\n", profopts.should_profile_all);
+      fprintf(tracker.log_file, "SH_PROFILE_ALL: %d\n", should_profile_all());
       fprintf(tracker.log_file, "SH_PROFILE_ALL_SKIP_INTERVALS: %lu\n", profopts.profile_all_skip_intervals);
       fprintf(tracker.log_file, "NUM_PROFILE_ALL_EVENTS: %zu\n", profopts.num_profile_all_events);
       for(i = 0; i < profopts.num_profile_all_events; i++) {
@@ -521,12 +497,11 @@ void set_options() {
 
   /* Should we keep track of when each allocation happened, in intervals? */
   env = getenv("SH_PROFILE_ALLOCS");
-  profopts.should_profile_allocs = 0;
   if(env) {
-    profopts.should_profile_allocs = 1;
+    enable_profile_allocs();
   }
   if(tracker.log_file) {
-    fprintf(tracker.log_file, "SH_PROFILE_ALLOCS: %d\n", profopts.should_profile_allocs);
+    fprintf(tracker.log_file, "SH_PROFILE_ALLOCS: %d\n", should_profile_allocs());
   }
   
   /* The user should specify a comma-delimited list of IMCs to read the
@@ -550,10 +525,9 @@ void set_options() {
   
   /* Should we profile bandwidth on a specific socket? */
   env = getenv("SH_PROFILE_BW");
-  profopts.should_profile_bw = 0;
   profopts.profile_bw_skip_intervals = 0;
   if(env) {
-    profopts.should_profile_bw = 1;
+    enable_profile_bw();
     
     if(profopts.num_imcs == 0) {
       fprintf(stderr, "No IMCs given. Can't enable profile_bw.\n");
@@ -600,15 +574,14 @@ void set_options() {
     }
   }
   if(tracker.log_file) {
-    fprintf(tracker.log_file, "SH_PROFILE_BW: %d\n", profopts.should_profile_bw);
+    fprintf(tracker.log_file, "SH_PROFILE_BW: %d\n", should_profile_bw());
   }
   
   /* Should we profile latency on a specific socket? */
   env = getenv("SH_PROFILE_LATENCY");
-  profopts.should_profile_latency = 0;
   profopts.profile_latency_skip_intervals = 0;
   if(env) {
-    profopts.should_profile_latency = 1;
+    enable_profile_latency();
     
     if(profopts.num_imcs == 0) {
       fprintf(stderr, "No IMCs given. Can't enable profile_latency.\n");
@@ -671,10 +644,9 @@ void set_options() {
 
   /* Should we get the RSS of each arena? */
   env = getenv("SH_PROFILE_RSS");
-  profopts.should_profile_rss = 0;
   profopts.profile_rss_skip_intervals = 0;
   if(env) {
-    profopts.should_profile_rss = 1;
+    enable_profile_rss();
 
     env = getenv("SH_PROFILE_RSS_SKIP_INTERVALS");
     profopts.profile_rss_skip_intervals = 1;
@@ -684,9 +656,8 @@ void set_options() {
   }
 
   env = getenv("SH_PROFILE_EXTENT_SIZE");
-  profopts.should_profile_extent_size = 0;
   if(env) {
-    profopts.should_profile_extent_size = 1;
+    enable_profile_extent_size();
 
     env = getenv("SH_PROFILE_EXTENT_SIZE_SKIP_INTERVALS");
     profopts.profile_extent_size_skip_intervals = 1;
@@ -696,9 +667,8 @@ void set_options() {
   }
 
   env = getenv("SH_PROFILE_ALLOCS");
-  profopts.should_profile_allocs = 0;
   if(env) {
-    profopts.should_profile_allocs = 1;
+    enable_profile_allocs();
 
     env = getenv("SH_PROFILE_ALLOCS_SKIP_INTERVALS");
     profopts.profile_allocs_skip_intervals = 1;
@@ -779,34 +749,13 @@ void set_options() {
 
   /* Get arenas_per_thread */
   switch(tracker.layout) {
-    case SHARED_ONE_ARENA:
-    case EXCLUSIVE_ONE_ARENA:
     case EXCLUSIVE_ARENAS:
       tracker.arenas_per_thread = 1;
       break;
-    case SHARED_DEVICE_ARENAS:
     case EXCLUSIVE_DEVICE_ARENAS:
-      tracker.arenas_per_thread = tracker.num_numa_nodes; //(int) device_list.count;
+      tracker.arenas_per_thread = 2;
       break;
     case SHARED_SITE_ARENAS:
-    case EXCLUSIVE_SITE_ARENAS:
-      tracker.arenas_per_thread = tracker.max_arenas;
-      break;
-    case EXCLUSIVE_TWO_DEVICE_ARENAS:
-      tracker.arenas_per_thread = 2 * tracker.num_numa_nodes; //((int) device_list.count);
-      break;
-    case EXCLUSIVE_FOUR_ARENAS:
-      tracker.arenas_per_thread = 4; //((int) device_list.count);
-      break;
-    case EXCLUSIVE_EIGHT_ARENAS:
-      tracker.arenas_per_thread = 8; //((int) device_list.count);
-      break;
-    case EXCLUSIVE_THIRTYTWO_ARENAS:
-      tracker.arenas_per_thread = 32; //((int) device_list.count);
-      break;
-    case EXCLUSIVE_SIXTYFOUR_ARENAS:
-      tracker.arenas_per_thread = 64; //((int) device_list.count);
-      break;
     case BIG_SMALL_ARENAS:
       tracker.arenas_per_thread = 1;
     default:
@@ -855,14 +804,9 @@ void set_options() {
         }
         sscanf(str, "%d", &node);
 
-        /* Construct a site_info struct to store in the tree */
-        site_info *site_struct = orig_malloc(sizeof(site_info));
-        pthread_rwlock_init(&site_struct->lock, NULL);
-        site_struct->device = get_device_from_numa_node(node);
-        site_struct->arena = -1;
-        site_struct->size = 0;
-        site_struct->big = 0;
-        tree_insert(tracker.sites, site, site_struct);
+        /* Use the arrays of atomics to set this site to go to the proper device */
+        tracker.site_devices[site] = (atomic_intptr_t) get_device_from_numa_node(node);
+        
       } else {
         if(!str) continue;
         /* Find the "===== GUIDANCE" tokens */
@@ -902,6 +846,12 @@ void set_options() {
     }
     profopts.should_run_rdspy = 1 && tracker.num_static_sites;
   }
+  
+  printf("profile_type_flags = %u\n", profopts.profile_type_flags);
+  if(should_profile_online()) {
+    printf("I should profile online.\n");
+  }
+  fflush(stdout);
 }
 
 __attribute__((constructor))
@@ -935,11 +885,7 @@ void sh_init() {
   /* Initialize all of the locks */
   pthread_rwlock_init(&tracker.extents_lock, NULL);
   pthread_mutex_init(&tracker.arena_lock, NULL);
-  pthread_mutex_init(&tracker.thread_index_lock, NULL);
-  pthread_mutex_init(&tracker.thread_site_lock, NULL);
-  pthread_mutex_init(&tracker.thread_offset_lock, NULL);
   pthread_rwlock_init(&tracker.device_arenas_lock, NULL);
-  pthread_rwlock_init(&tracker.sites_lock, NULL);
 
   /* Get the number of NUMA nodes with memory, since we ignore huge pages with
    * the DEVICE arena layouts */
@@ -952,72 +898,45 @@ void sh_init() {
   }
 
   tracker.arena_counter = 0;
-  tracker.sites = tree_make(int, siteinfo_ptr);
-  tracker.device_arenas = tree_make(deviceptr, int);
   set_options();
 
   if(tracker.layout != INVALID_LAYOUT) {
     tracker.arenas = (arena_info **) orig_calloc(tracker.max_arenas, sizeof(arena_info *));
+    
+    /* These atomics keep track of per-site information, such as:
+       1. `site_bigs`: boolean for if the site is above big_small_threshold or not.
+       2. `site_sizes`: the number of bytes allocated to this site.
+       3. `site_devices`: a pointer to the device that this site should be bound to.
+       4. `site_arenas`: an integer index of the arena this site gets allocated to.
+    */
+    tracker.site_bigs = (atomic_char *) orig_calloc(tracker.max_sites, sizeof(atomic_char));
+    tracker.site_sizes = (atomic_size_t *) orig_calloc(tracker.max_sites, sizeof(atomic_size_t));
+    tracker.site_devices = (atomic_intptr_t *) orig_malloc(tracker.max_sites * sizeof(atomic_intptr_t));
+    for(i = 0; i < tracker.max_sites; i++) {
+      tracker.site_devices[i] = (atomic_intptr_t) NULL;
+    }
+    tracker.site_arenas = (atomic_int *) orig_malloc(tracker.max_sites * sizeof(atomic_int));
+    for(i = 0; i < tracker.max_sites; i++) {
+      tracker.site_arenas[i] = -1;
+    }
 
     /* Initialize the extents array.
      */
     tracker.extents = extent_arr_init();
-
-    /* Stores the index into the `arenas` array for each thread */
-    /* When you use getspecific, it'll give you back a pointer. This will be NULL
-       initially for each thread, but then it'll be a pointer pointing to this
-       thread_indices array, which contains per-thread indices. */
-    pthread_key_create(&tracker.thread_key, NULL);
-    tracker.thread_indices = (int *) orig_malloc(tracker.max_threads * sizeof(int));
-    tracker.orig_thread_indices = tracker.thread_indices;
-    tracker.max_thread_indices = tracker.orig_thread_indices + tracker.max_threads;
-    for(i = 0; i < tracker.max_threads; i++) {
-      tracker.thread_indices[i] = i;
-    }
-    pthread_setspecific(tracker.thread_key, (void *) tracker.thread_indices);
-    tracker.thread_indices++;
     
-    /* Stores a 0-3 integer to round-robin choose one of four per-thread arenas */
-    pthread_key_create(&tracker.thread_offset_key, NULL);
-    tracker.thread_offset_indices = (char *) orig_malloc(tracker.max_threads * sizeof(char));
-    for(i = 0; i < tracker.max_threads; i++) {
-      tracker.thread_offset_indices[i] = 0;
-    }
-    pthread_setspecific(tracker.thread_offset_key, (void *) tracker.thread_offset_indices);
-    tracker.thread_offset_indices++;
+    /* This is just an atomic counter that we use to grab a new
+       index for every thread that allocates for the first time */
+    tracker.current_thread_index = 0;
     
-    /* Caches a per-thread site ID that it last allocated. Intention is to reduce calls
-       to get_alloc_site for performance reasons. */
-    pthread_key_create(&tracker.thread_site_key, NULL);
-    tracker.thread_site_cache = (int *) orig_malloc(tracker.max_threads * sizeof(int));
-    for(i = 0; i < tracker.max_threads; i++) {
-      tracker.thread_site_cache[i] = -1;
-    }
-    pthread_setspecific(tracker.thread_site_key, (void *) tracker.thread_site_cache);
-    tracker.thread_site_cache++;
-
-    /* Stores an index into `arenas` for the extent hooks */
-    tracker.pending_indices = (int *) orig_malloc(tracker.max_threads * sizeof(int));
-    for(i = 0; i < tracker.max_threads; i++) {
-      tracker.pending_indices[i] = -1;
+    if(should_profile_all() ||
+       should_profile_rss() ||
+       should_profile_extent_size()) {
+      /* Set the arena allocator's callback function */
+      sicm_extent_alloc_callback = &sh_create_extent;
+      sicm_extent_dalloc_callback = &sh_delete_extent;
     }
 
-    /* Set the arena allocator's callback function */
-    sicm_extent_alloc_callback = &sh_create_extent;
-    sicm_extent_dalloc_callback = &sh_delete_extent;
-
-    profopts.should_profile = 0;
-    if(profopts.should_profile_all ||
-       profopts.should_profile_rss ||
-       profopts.should_profile_extent_size ||
-       profopts.should_profile_online ||
-       profopts.should_profile_allocs ||
-       profopts.should_profile_bw ||
-       profopts.should_profile_latency) {
-      profopts.should_profile = 1;
-    }
-
-    if(profopts.should_profile) {
+    if(should_profile()) {
       sh_start_profile_master_thread();
     }
   }
@@ -1064,7 +983,7 @@ void sh_terminate() {
   if(tracker.layout != INVALID_LAYOUT) {
 
     /* Clean up the profiler */
-    if(profopts.should_profile) {
+    if(should_profile()) {
       sh_stop_profile_master_thread();
     }
 
@@ -1076,9 +995,6 @@ void sh_terminate() {
       orig_free(tracker.arenas[i]);
     }
     orig_free(tracker.arenas);
-
-    orig_free(tracker.pending_indices);
-    orig_free(tracker.orig_thread_indices);
     extent_arr_free(tracker.extents);
   }
 

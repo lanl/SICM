@@ -53,7 +53,6 @@ void *profile_rss(void *a) {
 
 /* Just copies the previous value */
 void profile_rss_skip_interval(int s) {
-  end_interval();
 }
 
 void profile_rss_interval(int s) {
@@ -136,8 +135,6 @@ void profile_rss_interval(int s) {
   clock_gettime(CLOCK_MONOTONIC, &end_time);
   timespec_diff(&start_time, &end_time, &actual);
   get_profile_rss_prof()->time = actual.tv_sec + (((double) actual.tv_nsec) / 1000000000);
-  
-  end_interval();
 }
 
 void profile_rss_post_interval(arena_profile *info) {

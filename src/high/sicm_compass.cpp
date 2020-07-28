@@ -12,9 +12,6 @@
 #include "llvm/IR/Operator.h"
 #include "llvm/Pass.h"
 #include "llvm/Support/CommandLine.h"
-#if 0
-#include "llvm/Support/Error.h"
-#endif
 #include "llvm/Support/FileSystem.h"
 #include "llvm/Support/raw_ostream.h"
 #include "llvm/Transforms/Utils/BasicBlockUtils.h"

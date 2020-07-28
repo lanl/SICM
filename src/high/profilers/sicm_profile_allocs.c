@@ -40,8 +40,6 @@ void profile_allocs_interval(int s) {
     prof_check_good(arena, aprof, i);
     aprof->profile_allocs.current = arena->size;
   }
-
-  end_interval();
 }
 
 void profile_allocs_init() {
@@ -64,5 +62,4 @@ void profile_allocs_post_interval(arena_profile *aprof) {
 }
 
 void profile_allocs_skip_interval(int s) {
-  end_interval();
 }

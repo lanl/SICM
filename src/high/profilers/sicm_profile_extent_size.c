@@ -56,8 +56,6 @@ void profile_extent_size_interval(int s) {
   }
 
   pthread_rwlock_unlock(&tracker.extents_lock);
-
-  end_interval();
 }
 
 void profile_extent_size_post_interval(arena_profile *info) {
@@ -72,7 +70,6 @@ void profile_extent_size_post_interval(arena_profile *info) {
 }
 
 void profile_extent_size_skip_interval(int s) {
-  end_interval();
 }
 
 void profile_extent_size_init() {

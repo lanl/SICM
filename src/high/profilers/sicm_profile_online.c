@@ -22,7 +22,7 @@
 #include "sicm_helpers.h"
 
 void sh_profile_online_phase_change() {
-  if(profopts.should_profile_online) {
+  if(should_profile_online()) {
     profile_online_info *online;
     online = get_profile_online_prof();
     online->phase_change = 1;
@@ -138,8 +138,6 @@ void profile_online_interval(int s) {
     }
   }
   tree_free(sorted_sites);
-
-  end_interval();
 }
 
 void profile_online_init() {
@@ -210,5 +208,4 @@ void profile_online_post_interval(arena_profile *info) {
 }
 
 void profile_online_skip_interval(int s) {
-  end_interval();
 }

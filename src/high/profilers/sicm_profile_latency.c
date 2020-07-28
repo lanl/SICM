@@ -37,7 +37,7 @@ void sh_get_profile_latency_event() {
   pfm_perf_encode_arg_t pfm;
   char *tmp;
 
-  if(!profopts.should_profile_all) {
+  if(!should_profile_all()) {
     /* We don't want to initialize twice, so only initialize if
        we haven't already */
     pfm_initialize();
@@ -369,5 +369,4 @@ void profile_latency_post_interval() {
 }
 
 void profile_latency_skip_interval(int s) {
-  end_interval();
 }

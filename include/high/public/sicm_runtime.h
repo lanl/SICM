@@ -1,6 +1,7 @@
 #pragma once
 
 #include <inttypes.h>
+#include <stdatomic.h>
 #include "sicm_malloc_free.h"
 #include "sicm_low.h"
 #include "sicm_tree.h"
@@ -19,21 +20,13 @@ extern void *(*orig_realloc_ptr)(void *, size_t);
 extern void (*orig_free_ptr)(void *);
 
 enum arena_layout {
-  SHARED_ONE_ARENA, /* One arena between all threads */
-  EXCLUSIVE_ONE_ARENA, /* One arena per thread */
-  SHARED_DEVICE_ARENAS, /* One arena per device */
   EXCLUSIVE_ARENAS, /* One arena per thread */
   EXCLUSIVE_DEVICE_ARENAS, /* One arena per device per thread */
   SHARED_SITE_ARENAS, /* One arena per allocation site */
-  EXCLUSIVE_SITE_ARENAS, /* One arena per allocation site per thread */
-  EXCLUSIVE_TWO_DEVICE_ARENAS, /* Two arenas per device per thread */
-  EXCLUSIVE_FOUR_ARENAS, /* Four arenas per thread */
-  EXCLUSIVE_EIGHT_ARENAS, /* Eight arenas per thread */
-  EXCLUSIVE_THIRTYTWO_ARENAS, /* Thirty-two arenas per thread */
-  EXCLUSIVE_SIXTYFOUR_ARENAS, /* Sixty-four arenas per thread */
   BIG_SMALL_ARENAS, /* Per-thread arenas for small allocations, shared site ones for larger sites */
   INVALID_LAYOUT
 };
+#define DEFAULT_ARENA_LAYOUT INVALID_LAYOUT
 
 /* Information about a single allocation */
 typedef void *addr_t;
@@ -46,7 +39,6 @@ use_tree(addr_t, alloc_info_ptr);
 
 /* Information about a single arena */
 typedef struct arena_info {
-  int *alloc_sites, num_alloc_sites; /* Stores the allocation sites that are in this arena */
   unsigned index; /* Index into the arenas array */
   sicm_arena arena; /* SICM's low-level interface pointer */
   size_t size; /* The total size of the arena's allocations */
@@ -87,9 +79,11 @@ typedef struct tracker_struct {
   pthread_rwlock_t extents_lock;
   extent_arr *extents;
 
-  /* Keeps track of sites */
-  pthread_rwlock_t sites_lock;
-  tree(int, siteinfo_ptr) sites;
+  /* Associates a site ID with the arena that it's in */
+  atomic_int *site_arenas;
+  atomic_intptr_t *site_devices;
+  atomic_char *site_bigs;
+  atomic_size_t *site_sizes;
 
   /* Arena layout */
   enum arena_layout layout;
@@ -97,13 +91,9 @@ typedef struct tracker_struct {
 
   /* Keeps track of arenas */
   arena_info **arenas;
-  int max_arenas, arenas_per_thread, max_sites_per_arena;
+  int max_arenas, arenas_per_thread, max_sites_per_arena, max_sites;
   int max_index;
   pthread_mutex_t arena_lock;
-
-  /* Incremented atomically to keep track of which arena indices are
-   * taken or not */
-  int arena_counter;
 
   /* Only for profile_allocs. Stores allocated pointers as keys,
    * their arenas as values. For looking up which arena a `free` call
@@ -112,47 +102,14 @@ typedef struct tracker_struct {
   tree(addr_t, alloc_info_ptr) profile_allocs_map;
   pthread_rwlock_t profile_allocs_map_lock;
 
-  /* Associates a thread with an index (starting at 0) into the `arenas` array */
-  pthread_mutex_t thread_index_lock;
-  pthread_key_t thread_key;
-  int *thread_indices, *orig_thread_indices, *max_thread_indices, max_threads;
+  int max_threads;
+  atomic_int current_thread_index;
+  atomic_int arena_counter;
   int num_static_sites;
   
-  pthread_mutex_t thread_site_lock;
-  pthread_key_t thread_site_key;
-  int *thread_site_cache;
-  
-  /* Get a per-thread char which represents which per-thread arena it should use */
-  pthread_mutex_t thread_offset_lock;
-  pthread_key_t thread_offset_key;
-  char *thread_offset_indices;
-
-  /* Passes an arena index to the extent hooks */
-  int *pending_indices;
-
   /* Ensures that nothing happens before initialization */
   char finished_initializing;
 } tracker_struct;
-
-#define arena_arr_for(i) \
-  for(i = 0; i <= tracker.max_index; i++)
-
-#define arena_check_good(a, i) \
-  a = tracker.arenas[i]; \
-  if(!a) continue;
-
-
-#define DEFAULT_ARENA_LAYOUT INVALID_LAYOUT
-
-__attribute__((constructor))
-void sh_init();
-
-__attribute__((destructor))
-void sh_terminate();
-
-void sh_create_extent(sarena *arena, void *begin, void *end);
-void sh_delete_extent(sarena *arena, void *begin, void *end);
-int get_arena_index(int id, size_t sz);
 
 /* Options for if/when/how to profile. Initialized in src/high/sicm_runtime_init.c,
  * used by src/high/sicm_profile.c.
@@ -160,16 +117,9 @@ int get_arena_index(int id, size_t sz);
 typedef struct profiling_options {
   char free_buffer;
   
-  /* Should we do profiling? */
-  int should_profile_online,
-      should_profile_all,
-      should_profile_bw,
-      should_profile_rss,
-      should_profile_extent_size,
-      should_profile_allocs,
-      should_profile,
-      should_profile_separate_threads,
-      should_profile_latency;
+  /* bitmask of which profiling types are enabled */
+  char profile_type_flags;
+  
   int should_run_rdspy;
   int profile_latency_set_multipliers;
   int print_profile_intervals;
@@ -241,11 +191,16 @@ typedef struct profiling_options {
 extern tracker_struct tracker;
 extern profiling_options profopts;
 
-/* Defined by sicm_profile.c, need a declaration here for sicm_runtime_init.c */
+/* Function declarations */
 void sh_start_profile_master_thread();
 void sh_stop_profile_master_thread();
-
+void sh_create_extent(sarena *arena, void *begin, void *end);
+void sh_delete_extent(sarena *arena, void *begin, void *end);
+int get_arena_index(int id, size_t sz);
+__attribute__((constructor)) void sh_init();
+__attribute__((destructor)) void sh_terminate();
 #ifdef __cplusplus
+/* For Bjarnebois */
 extern "C" {
 #endif
   void* sh_alloc_exact(int id, size_t sz);
@@ -259,3 +214,44 @@ extern "C" {
 #ifdef __cplusplus
 }
 #endif
+
+/* Some helper macros */
+#define arena_arr_for(i) \
+  for(i = 0; i <= tracker.max_index; i++)
+#define arena_check_good(a, i) \
+  a = tracker.arenas[i]; \
+  if(!a) continue;
+  
+/* Used to determine which types of profiling are enabled */
+#define should_profile() \
+  profopts.profile_type_flags
+#define should_profile_all() \
+  profopts.profile_type_flags & (1 << 0)
+#define should_profile_rss() \
+  profopts.profile_type_flags & (1 << 1)
+#define should_profile_extent_size() \
+  profopts.profile_type_flags & (1 << 2)
+#define should_profile_allocs() \
+  profopts.profile_type_flags & (1 << 3)
+#define should_profile_bw() \
+  profopts.profile_type_flags & (1 << 4)
+#define should_profile_latency() \
+  profopts.profile_type_flags & (1 << 5)
+#define should_profile_online() \
+  profopts.profile_type_flags & (1 << 6)
+  
+/* Used to set which types of profiling are enabled */
+#define enable_profile_all() \
+  profopts.profile_type_flags = profopts.profile_type_flags | 1
+#define enable_profile_rss() \
+  profopts.profile_type_flags = profopts.profile_type_flags | (1 << 1)
+#define enable_profile_extent_size() \
+  profopts.profile_type_flags = profopts.profile_type_flags | (1 << 2)
+#define enable_profile_allocs() \
+  profopts.profile_type_flags = profopts.profile_type_flags | (1 << 3)
+#define enable_profile_bw() \
+  profopts.profile_type_flags = profopts.profile_type_flags | (1 << 4)
+#define enable_profile_latency() \
+  profopts.profile_type_flags = profopts.profile_type_flags | (1 << 5)
+#define enable_profile_online() \
+  profopts.profile_type_flags = profopts.profile_type_flags | (1 << 6)

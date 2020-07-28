@@ -27,7 +27,7 @@ void sh_get_profile_bw_event() {
   pfm_perf_encode_arg_t pfm;
   char *tmp;
 
-  if(!profopts.should_profile_all) {
+  if(!should_profile_all()) {
     /* We don't want to initialize twice, so only initialize if
        we haven't already */
     pfm_initialize();
@@ -253,5 +253,4 @@ void profile_bw_post_interval() {
 }
 
 void profile_bw_skip_interval(int s) {
-  end_interval();
 }
