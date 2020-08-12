@@ -206,9 +206,6 @@ int get_big_small_arena(int id, size_t sz, deviceptr *device, char *new_site) {
     /* If the site isn't already `big`, and if its size exceeds the threshold, mark it as `big`.
        Checked and set in this manner, the `site_bigs` atomics could be doubly set to `1`. That's fine. */
     tracker.site_bigs[id] = 1;
-    if(tracker.log_file) {
-      fprintf(tracker.log_file, "Site %d is big.\n", id);
-    }
   }
   
   if(new_site) {
@@ -244,6 +241,9 @@ int get_arena_index(int id, size_t sz) {
   ret = 0;
   device = NULL;
   switch(tracker.layout) {
+    case ONE_ARENA:
+      ret = 0;
+      break;
     case EXCLUSIVE_ARENAS:
       /* One arena per thread. */
       thread_index = get_thread_index();

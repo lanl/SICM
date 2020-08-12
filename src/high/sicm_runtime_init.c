@@ -20,7 +20,9 @@ enum arena_layout parse_layout(char *env) {
 
   max_chars = 32;
 
-  if(strncmp(env, "EXCLUSIVE_ARENAS", max_chars) == 0) {
+  if(strncmp(env, "ONE_ARENA", max_chars) == 0) {
+    return ONE_ARENA;
+  } else if(strncmp(env, "EXCLUSIVE_ARENAS", max_chars) == 0) {
     return EXCLUSIVE_ARENAS;
   } else if(strncmp(env, "EXCLUSIVE_DEVICE_ARENAS", max_chars) == 0) {
     return EXCLUSIVE_DEVICE_ARENAS;
@@ -36,6 +38,8 @@ enum arena_layout parse_layout(char *env) {
 /* Converts an arena_layout to a string */
 char *layout_str(enum arena_layout layout) {
   switch(layout) {
+    case ONE_ARENA:
+      return "ONE_ARENA";
     case EXCLUSIVE_ARENAS:
       return "EXCLUSIVE_ARENAS";
     case EXCLUSIVE_DEVICE_ARENAS:
@@ -79,26 +83,292 @@ sicm_device *get_device_from_numa_node(int id) {
   return retval;
 }
 
-/* Gets environment variables and sets up globals */
-void set_options() {
-  char *env, *str, *line, guidance, found_guidance;
+#define COMMON_OPTIONS \
+  X(SH_LOG_FILE) \
+  X(SH_ARENA_LAYOUT) \
+  X(SH_BIG_SMALL_THRESHOLD) \
+  X(SH_MAX_THREADS) \
+  X(SH_MAX_ARENAS) \
+  X(SH_MAX_SITES_PER_ARENA) \
+  X(SH_MAX_SITES) \
+  X(SH_UPPER_NODE) \
+  X(SH_LOWER_NODE) \
+  X(SH_DEFAULT_NODE)
+  
+#define PROFILE_OPTIONS \
+  X(SH_PROFILE_INPUT_FILE) \
+  X(SH_PROFILE_OUTPUT_FILE) \
+  X(SH_PRINT_PROFILE_INTERVALS) \
+  X(SH_PROFILE_ONLINE) \
+  X(SH_PROFILE_ONLINE_DEBUG_FILE) \
+  X(SH_PROFILE_ONLINE_RESERVED_BYTES) \
+  X(SH_PROFILE_ONLINE_GRACE_ACCESSES) \
+  X(SH_PROFILE_ONLINE_NOBIND) \
+  X(SH_PROFILE_ONLINE_SKIP_INTERVALS) \
+  X(SH_PROFILE_ONLINE_VALUE) \
+  X(SH_PROFILE_ONLINE_WEIGHT) \
+  X(SH_PROFILE_ONLINE_SORT) \
+  X(SH_PROFILE_ONLINE_PACKING_ALGO) \
+  X(SH_PROFILE_ONLINE_USE_LAST_INTERVAL) \
+  X(SH_PROFILE_ONLINE_LAST_ITER_VALUE) \
+  X(SH_PROFILE_ONLINE_LAST_ITER_WEIGHT) \
+  X(SH_PROFILE_ONLINE_STRAT_ORIG) \
+  X(SH_PROFILE_ONLINE_RECONF_WEIGHT_RATIO) \
+  X(SH_PROFILE_ONLINE_HOT_INTERVALS) \
+  X(SH_PROFILE_ONLINE_STRAT_SKI) \
+  X(SH_PROFILE_RATE_NSECONDS) \
+  X(SH_PROFILE_NODES) \
+  X(SH_PROFILE_ALL) \
+  X(SH_PROFILE_ALL_EVENTS) \
+  X(SH_PROFILE_ALL_MULTIPLIERS) \
+  X(SH_PROFILE_ALL_SKIP_INTERVALS) \
+  X(SH_PROFILE_IMC) \
+  X(SH_PROFILE_BW) \
+  X(SH_PROFILE_BW_SKIP_INTERVALS) \
+  X(SH_PROFILE_BW_EVENTS) \
+  X(SH_PROFILE_BW_RELATIVE) \
+  X(SH_PROFILE_LATENCY) \
+  X(SH_PROFILE_LATENCY_SET_MULTIPLIERS) \
+  X(SH_PROFILE_LATENCY_SKIP_INTERVALS) \
+  X(SH_PROFILE_LATENCY_EVENTS) \
+  X(SH_PROFILE_LATENCY_CLOCKTICK_EVENT) \
+  X(SH_PROFILE_RSS) \
+  X(SH_PROFILE_RSS_SKIP_INTERVALS) \
+  X(SH_PROFILE_EXTENT_SIZE) \
+  X(SH_PROFILE_EXTENT_SIZE_SKIP_INTERVALS) \
+  X(SH_PROFILE_ALLOCS) \
+  X(SH_PROFILE_ALLOCS_SKIP_INTERVALS) \
+  X(SH_SAMPLE_FREQ) \
+  X(SH_MAX_SAMPLE_PAGES) \
+  X(SH_NUM_STATIC_SITES) \
+  X(SH_RDSPY)
+
+#define X(name) char * name;
+  COMMON_OPTIONS
+  PROFILE_OPTIONS
+#undef X
+
+void print_options() {
+  char *env;
+  
+  if(!tracker.log_file) {
+    return;
+  }
+  
+  fprintf(tracker.log_file, "===== OPTIONS =====\n");
+  #define X(name) env = getenv(#name); if(env) fprintf(tracker.log_file, #name " = %s\n", env);
+    COMMON_OPTIONS
+    PROFILE_OPTIONS
+  #undef X
+  fprintf(tracker.log_file, "===== END OPTIONS =====\n");
+  fflush(tracker.log_file);
+  fclose(tracker.log_file);
+}
+
+void set_common_options() {
+  char *env;
+  long long tmp_val;
+  
+  /* Output the chosen options to this file */
+  env = getenv("SH_LOG_FILE");
+  tracker.log_file = NULL;
+  if(env) {
+    tracker.log_file = fopen(env, "w");
+    if(!tracker.log_file) {
+      fprintf(stderr, "Failed to open the specified logfile: '%s'. Aborting.\n", env);
+      exit(1);
+    }
+  }
+  
+  /* Get the arena layout */
+  env = getenv("SH_ARENA_LAYOUT");
+  if(env) {
+    tracker.layout = parse_layout(env);
+  } else {
+    tracker.layout = DEFAULT_ARENA_LAYOUT;
+  }
+
+  /* Get the threshold for a "big" or "small" arena, in bytes */
+  if(tracker.layout == BIG_SMALL_ARENAS) {
+    env = getenv("SH_BIG_SMALL_THRESHOLD");
+    if(env) {
+      tracker.big_small_threshold = strtoul(env, NULL, 0);
+    }
+  }
+
+  /* Get max_threads */
+  tracker.max_threads = numa_num_possible_cpus();
+  env = getenv("SH_MAX_THREADS");
+  if(env) {
+    tmp_val = strtoimax(env, NULL, 10);
+    if((tmp_val == 0) || (tmp_val > INT_MAX)) {
+      fprintf(stderr, "Invalid thread number given. Aborting.\n");
+      exit(1);
+    } else {
+      tracker.max_threads = (int) tmp_val;
+    }
+  }
+
+  /* Get max_arenas.
+   * Keep in mind that 4095 is the maximum number supported by jemalloc
+   * (12 bits to store the arena IDs, minus one).
+   * An error occurs if this limit is reached.
+   */
+  tracker.max_arenas = 4095;
+  env = getenv("SH_MAX_ARENAS");
+  if(env) {
+    tmp_val = strtoimax(env, NULL, 10);
+    if((tmp_val == 0) || (tmp_val > INT_MAX)) {
+      fprintf(stderr, "Invalid arena number given. Aborting.\n");
+      exit(1);
+    } else {
+      tracker.max_arenas = (int) tmp_val;
+    }
+  }
+
+  /* Get max_sites_per_arena.
+   * This is the maximum amount of allocation sites that a single arena can hold.
+   */
+  tracker.max_sites_per_arena = 1;
+  env = getenv("SH_MAX_SITES_PER_ARENA");
+  if(env) {
+    tmp_val = strtoimax(env, NULL, 10);
+    if((tmp_val == 0) || (tmp_val > INT_MAX)) {
+      fprintf(stderr, "Invalid arena number given. Aborting.\n");
+      exit(1);
+    } else {
+      tracker.max_sites_per_arena = (int) tmp_val;
+    }
+  }
+  
+  /* Get max_sites.
+     This is the maximum number of allocation sites that you can have. Keep in mind
+     that we use site IDs as indices into an array, so the maximum site ID that you can
+     have is `tracker.max_sites - 1`. */
+  tracker.max_sites = 4096;
+  env = getenv("SH_MAX_SITES");
+  if(env) {
+    tmp_val = strtoimax(env, NULL, 10);
+    if((tmp_val == 0) || (tmp_val > INT_MAX)) {
+      fprintf(stderr, "Invalid arena number given. Aborting.\n");
+      exit(1);
+    } else {
+      tracker.max_sites = (int) tmp_val;
+    }
+  }
+  
+  /* Get the devices */
+  env = getenv("SH_UPPER_NODE");
+  tracker.upper_device = NULL;
+  if(env) {
+    tmp_val = strtoimax(env, NULL, 10);
+    tracker.upper_device = get_device_from_numa_node((int) tmp_val);
+  }
+  if(!tracker.upper_device) {
+    fprintf(stderr, "WARNING: Upper device defaulting to NUMA node 0.\n");
+    tracker.upper_device = get_device_from_numa_node(0);
+  }
+  env = getenv("SH_LOWER_NODE");
+  tracker.lower_device = NULL;
+  if(env) {
+    tmp_val = strtoimax(env, NULL, 10);
+    tracker.lower_device = get_device_from_numa_node((int) tmp_val);
+  }
+  if(!tracker.lower_device) {
+    fprintf(stderr, "WARNING: Lower device defaulting to NUMA node 0.\n");
+    tracker.lower_device = get_device_from_numa_node(0);
+  }
+  env = getenv("SH_DEFAULT_NODE");
+  tracker.default_device = NULL;
+  if(env) {
+    tmp_val = strtoimax(env, NULL, 10);
+    tracker.default_device = get_device_from_numa_node((int) tmp_val);
+  }
+  if(!tracker.default_device) {
+    tracker.default_device = tracker.lower_device;
+  }
+}
+
+void set_guided_options() {
+  char *env, *line, guidance, found_guidance, *str;
+  int node, site;
+  FILE *guidance_file;
+  ssize_t len;
+  
+  /* Get the guidance file that tells where each site goes */
+  env = getenv("SH_GUIDANCE_FILE");
+  if(env) {
+    /* Open the file */
+    guidance_file = fopen(env, "r");
+    if(!guidance_file) {
+      fprintf(stderr, "Failed to open guidance file. Aborting.\n");
+      exit(1);
+    }
+
+    /* Read in the sites */
+    guidance = 0;
+    found_guidance = 0; /* Set if we find any site guidance at all */
+    line = NULL;
+    len = 0;
+    while(getline(&line, &len, guidance_file) != -1) {
+      str = strtok(line, " ");
+      if(guidance) {
+        if(!str) continue;
+
+        /* Look to see if it's the end */
+        if(str && (strcmp(str, "=====") == 0)) {
+          str = strtok(NULL, " ");
+          if(str && (strcmp(str, "END") == 0)) {
+            guidance = 0;
+          } else {
+            fprintf(stderr, "In a guidance section, and found five equals signs, but not the end. Aborting.\n");
+            exit(1);
+          }
+          continue;
+        }
+
+        /* Read in the actual guidance now that we're in a guidance section */
+        sscanf(str, "%d", &site);
+        str = strtok(NULL, " ");
+        if(!str) {
+          fprintf(stderr, "Read in a site number from the guidance file, but no node number. Aborting.\n");
+          exit(1);
+        }
+        sscanf(str, "%d", &node);
+
+        /* Use the arrays of atomics to set this site to go to the proper device */
+        tracker.site_devices[site] = (atomic_intptr_t) get_device_from_numa_node(node);
+        
+      } else {
+        if(!str) continue;
+        /* Find the "===== GUIDANCE" tokens */
+        if(strcmp(str, "=====") != 0) continue;
+        str = strtok(NULL, " ");
+        if(str && (strcmp(str, "GUIDANCE") == 0)) {
+          /* Now we're in a guidance section */
+          guidance = 1;
+          found_guidance = 1;
+          continue;
+        }
+      }
+    }
+    if(!found_guidance) {
+      fprintf(stderr, "Didn't find any guidance in the file. Aborting.\n");
+      exit(1);
+    }
+  }
+}
+
+void set_profile_options() {
+  char *env, *str;
   long long tmp_val;
   deviceptr device;
   size_t i, n;
   int node, cpu, site, num_cpus, num_nodes;
-  FILE *guidance_file;
   ssize_t len;
   struct bitmask *cpus, *nodes;
   char flag;
   
-  profopts.profile_type_flags = 0;
-  
-  env = getenv("SH_FREE_BUFFER");
-  profopts.free_buffer = 0;
-  if(env) {
-    profopts.free_buffer = 1;
-  }
-
   /* See if there's profiling information that we can use later */
   env = getenv("SH_PROFILE_INPUT_FILE");
   profopts.profile_input_file = NULL;
@@ -118,23 +388,6 @@ void set_options() {
       fprintf(stderr, "Failed to open profile output file. Aborting.\n");
       exit(1);
     }
-  }
-
-  /* Output the chosen options to this file */
-  env = getenv("SH_LOG_FILE");
-  tracker.log_file = NULL;
-  if(env) {
-    tracker.log_file = fopen(env, "w");
-    if(!tracker.log_file) {
-      fprintf(stderr, "Failed to open the specified logfile: '%s'. Aborting.\n", env);
-      exit(1);
-    }
-    printf("Outputting to '%s'.\n", env);
-    fflush(stdout);
-    fprintf(tracker.log_file, "===== OPTIONS =====\n");
-  } else {
-    printf("Not outputting to a logfile.\n");
-    fflush(stdout);
   }
 
   /* Should we generate and attempt to use per-interval profiling information? */
@@ -257,116 +510,13 @@ void set_options() {
       profopts.profile_online_ski = 1;
     }
   }
-  if(tracker.log_file) {
-    fprintf(tracker.log_file, "SH_PROFILE_ONLINE: %d\n", should_profile_online());
-    fprintf(tracker.log_file, "SH_PROFILE_ONLINE_SKIP_INTERVALS: %d\n", profopts.profile_online_skip_intervals);
-    fprintf(tracker.log_file, "SH_PROFILE_ONLINE_USE_LAST_INTERVAL: %d\n", profopts.profile_online_use_last_interval);
-    fprintf(tracker.log_file, "SH_PROFILE_ONLINE_GRACE_ACCESSES: %lu\n", profopts.profile_online_grace_accesses);
-  }
 
-  /* Get the arena layout */
-  env = getenv("SH_ARENA_LAYOUT");
-  if(env) {
-    tracker.layout = parse_layout(env);
-  } else {
-    tracker.layout = DEFAULT_ARENA_LAYOUT;
-  }
-  if(tracker.log_file) {
-    fprintf(tracker.log_file, "SH_ARENA_LAYOUT: %s\n", env);
-  }
-
-  /* Get the threshold for a "big" or "small" arena, in bytes */
-  if(tracker.layout == BIG_SMALL_ARENAS) {
-    env = getenv("SH_BIG_SMALL_THRESHOLD");
-    if(env) {
-      tracker.big_small_threshold = strtoul(env, NULL, 0);
-    }
-    if(tracker.log_file) {
-      fprintf(tracker.log_file, "SH_BIG_SMALL_THRESHOLD: %lu\n", tracker.big_small_threshold);
-    }
-  }
-
-  /* Get max_threads */
-  tracker.max_threads = numa_num_possible_cpus();
-  env = getenv("SH_MAX_THREADS");
-  if(env) {
-    tmp_val = strtoimax(env, NULL, 10);
-    if((tmp_val == 0) || (tmp_val > INT_MAX)) {
-      fprintf(stderr, "Invalid thread number given. Aborting.\n");
-      exit(1);
-    } else {
-      tracker.max_threads = (int) tmp_val;
-    }
-  }
-  if(tracker.log_file) {
-    fprintf(tracker.log_file, "SH_MAX_THREADS: %d\n", tracker.max_threads);
-  }
-
-  /* Get max_arenas.
-   * Keep in mind that 4095 is the maximum number supported by jemalloc
-   * (12 bits to store the arena IDs, minus one).
-   * An error occurs if this limit is reached.
-   */
-  tracker.max_arenas = 4095;
-  env = getenv("SH_MAX_ARENAS");
-  if(env) {
-    tmp_val = strtoimax(env, NULL, 10);
-    if((tmp_val == 0) || (tmp_val > INT_MAX)) {
-      fprintf(stderr, "Invalid arena number given. Aborting.\n");
-      exit(1);
-    } else {
-      tracker.max_arenas = (int) tmp_val;
-    }
-  }
-  if(tracker.log_file) {
-    fprintf(tracker.log_file, "SH_MAX_ARENAS: %d\n", tracker.max_arenas);
-  }
-
-  /* Get max_sites_per_arena.
-   * This is the maximum amount of allocation sites that a single arena can hold.
-   */
-  tracker.max_sites_per_arena = 1;
-  env = getenv("SH_MAX_SITES_PER_ARENA");
-  if(env) {
-    tmp_val = strtoimax(env, NULL, 10);
-    if((tmp_val == 0) || (tmp_val > INT_MAX)) {
-      fprintf(stderr, "Invalid arena number given. Aborting.\n");
-      exit(1);
-    } else {
-      tracker.max_sites_per_arena = (int) tmp_val;
-    }
-  }
-  if(tracker.log_file) {
-    fprintf(tracker.log_file, "SH_MAX_SITES_PER_ARENA: %d\n", tracker.max_sites_per_arena);
-  }
-  
-  /* Get max_sites.
-     This is the maximum number of allocation sites that you can have. Keep in mind
-     that we use site IDs as indices into an array, so the maximum site ID that you can
-     have is `tracker.max_sites - 1`. */
-  tracker.max_sites = 4096;
-  env = getenv("SH_MAX_SITES");
-  if(env) {
-    tmp_val = strtoimax(env, NULL, 10);
-    if((tmp_val == 0) || (tmp_val > INT_MAX)) {
-      fprintf(stderr, "Invalid arena number given. Aborting.\n");
-      exit(1);
-    } else {
-      tracker.max_sites = (int) tmp_val;
-    }
-  }
-  if(tracker.log_file) {
-    fprintf(tracker.log_file, "SH_MAX_SITES: %d\n", tracker.max_sites);
-  }
 
   /* Controls the profiling rate of all profiling types */
   profopts.profile_rate_nseconds = 0;
   env = getenv("SH_PROFILE_RATE_NSECONDS");
   if(env) {
     profopts.profile_rate_nseconds = strtoimax(env, NULL, 10);
-  }
-  if(tracker.log_file) {
-    fprintf(tracker.log_file, "SH_PROFILE_RATE_NSECONDS: %zu\n", profopts.profile_rate_nseconds);
   }
 
   /* The user can specify a number of NUMA nodes to profile on. For profile_all,
@@ -484,24 +634,12 @@ void set_options() {
     if(env) {
       profopts.profile_all_skip_intervals = strtoul(env, NULL, 0);
     }
-
-    if(tracker.log_file) {
-      fprintf(tracker.log_file, "SH_PROFILE_ALL: %d\n", should_profile_all());
-      fprintf(tracker.log_file, "SH_PROFILE_ALL_SKIP_INTERVALS: %lu\n", profopts.profile_all_skip_intervals);
-      fprintf(tracker.log_file, "NUM_PROFILE_ALL_EVENTS: %zu\n", profopts.num_profile_all_events);
-      for(i = 0; i < profopts.num_profile_all_events; i++) {
-        fprintf(tracker.log_file, "PROFILE_ALL_EVENTS: %s\n", profopts.profile_all_events[i]);
-      }
-    }
   }
 
   /* Should we keep track of when each allocation happened, in intervals? */
   env = getenv("SH_PROFILE_ALLOCS");
   if(env) {
     enable_profile_allocs();
-  }
-  if(tracker.log_file) {
-    fprintf(tracker.log_file, "SH_PROFILE_ALLOCS: %d\n", should_profile_allocs());
   }
   
   /* The user should specify a comma-delimited list of IMCs to read the
@@ -572,9 +710,6 @@ void set_options() {
     if(env) {
       profopts.profile_bw_relative = 1;
     }
-  }
-  if(tracker.log_file) {
-    fprintf(tracker.log_file, "SH_PROFILE_BW: %d\n", should_profile_bw());
   }
   
   /* Should we profile latency on a specific socket? */
@@ -711,120 +846,7 @@ void set_options() {
     }
   }
 
-  /* Get the devices */
-  env = getenv("SH_UPPER_NODE");
-  tracker.upper_device = NULL;
-  if(env) {
-    tmp_val = strtoimax(env, NULL, 10);
-    tracker.upper_device = get_device_from_numa_node((int) tmp_val);
-  }
-  if(!tracker.upper_device) {
-    fprintf(stderr, "WARNING: Upper device defaulting to NUMA node 0.\n");
-    tracker.upper_device = get_device_from_numa_node(0);
-  }
-  env = getenv("SH_LOWER_NODE");
-  tracker.lower_device = NULL;
-  if(env) {
-    tmp_val = strtoimax(env, NULL, 10);
-    tracker.lower_device = get_device_from_numa_node((int) tmp_val);
-  }
-  if(!tracker.lower_device) {
-    fprintf(stderr, "WARNING: Lower device defaulting to NUMA node 0.\n");
-    tracker.lower_device = get_device_from_numa_node(0);
-  }
-  env = getenv("SH_DEFAULT_NODE");
-  tracker.default_device = NULL;
-  if(env) {
-    tmp_val = strtoimax(env, NULL, 10);
-    tracker.default_device = get_device_from_numa_node((int) tmp_val);
-  }
-  if(!tracker.default_device) {
-    tracker.default_device = tracker.lower_device;
-  }
-  if(tracker.log_file) {
-    fprintf(tracker.log_file, "SH_DEFAULT_NODE: %d\n", sicm_numa_id(tracker.default_device));
-    fprintf(tracker.log_file, "SH_UPPER_NODE: %d\n", sicm_numa_id(tracker.upper_device));
-    fprintf(tracker.log_file, "SH_LOWER_NODE: %d\n", sicm_numa_id(tracker.lower_device));
-  }
 
-  /* Get arenas_per_thread */
-  switch(tracker.layout) {
-    case EXCLUSIVE_ARENAS:
-      tracker.arenas_per_thread = 1;
-      break;
-    case EXCLUSIVE_DEVICE_ARENAS:
-      tracker.arenas_per_thread = 2;
-      break;
-    case SHARED_SITE_ARENAS:
-    case BIG_SMALL_ARENAS:
-      tracker.arenas_per_thread = 1;
-    default:
-      tracker.arenas_per_thread = 1;
-      break;
-  };
-
-  /* Get the guidance file that tells where each site goes */
-  env = getenv("SH_GUIDANCE_FILE");
-  if(env) {
-    /* Open the file */
-    guidance_file = fopen(env, "r");
-    if(!guidance_file) {
-      fprintf(stderr, "Failed to open guidance file. Aborting.\n");
-      exit(1);
-    }
-
-    /* Read in the sites */
-    guidance = 0;
-    found_guidance = 0; /* Set if we find any site guidance at all */
-    line = NULL;
-    len = 0;
-    while(getline(&line, &len, guidance_file) != -1) {
-      str = strtok(line, " ");
-      if(guidance) {
-        if(!str) continue;
-
-        /* Look to see if it's the end */
-        if(str && (strcmp(str, "=====") == 0)) {
-          str = strtok(NULL, " ");
-          if(str && (strcmp(str, "END") == 0)) {
-            guidance = 0;
-          } else {
-            fprintf(stderr, "In a guidance section, and found five equals signs, but not the end. Aborting.\n");
-            exit(1);
-          }
-          continue;
-        }
-
-        /* Read in the actual guidance now that we're in a guidance section */
-        sscanf(str, "%d", &site);
-        str = strtok(NULL, " ");
-        if(!str) {
-          fprintf(stderr, "Read in a site number from the guidance file, but no node number. Aborting.\n");
-          exit(1);
-        }
-        sscanf(str, "%d", &node);
-
-        /* Use the arrays of atomics to set this site to go to the proper device */
-        tracker.site_devices[site] = (atomic_intptr_t) get_device_from_numa_node(node);
-        
-      } else {
-        if(!str) continue;
-        /* Find the "===== GUIDANCE" tokens */
-        if(strcmp(str, "=====") != 0) continue;
-        str = strtok(NULL, " ");
-        if(str && (strcmp(str, "GUIDANCE") == 0)) {
-          /* Now we're in a guidance section */
-          guidance = 1;
-          found_guidance = 1;
-          continue;
-        }
-      }
-    }
-    if(!found_guidance) {
-      fprintf(stderr, "Didn't find any guidance in the file. Aborting.\n");
-      exit(1);
-    }
-  }
 
   env = getenv("SH_NUM_STATIC_SITES");
   if (env) {
@@ -846,12 +868,6 @@ void set_options() {
     }
     profopts.should_run_rdspy = 1 && tracker.num_static_sites;
   }
-  
-  printf("profile_type_flags = %u\n", profopts.profile_type_flags);
-  if(should_profile_online()) {
-    printf("I should profile online.\n");
-  }
-  fflush(stdout);
 }
 
 __attribute__((constructor))
@@ -866,21 +882,12 @@ void sh_init() {
     return;
   }
 
-  fprintf(stderr, "Beginning initialization.\n");
-  fflush(stderr);
-
   orig_malloc_ptr = dlsym(RTLD_NEXT, "malloc");
   orig_calloc_ptr = dlsym(RTLD_NEXT, "calloc");
   orig_realloc_ptr = dlsym(RTLD_NEXT, "realloc");
   orig_free_ptr = dlsym(RTLD_NEXT, "free");
 
-  fprintf(stderr, "Initializing SICM.\n");
-  fflush(stderr);
-
   tracker.device_list = sicm_init();
-
-  fprintf(stderr, "Initialized SICM.\n");
-  fflush(stderr);
 
   /* Initialize all of the locks */
   pthread_rwlock_init(&tracker.extents_lock, NULL);
@@ -898,7 +905,28 @@ void sh_init() {
   }
 
   tracker.arena_counter = 0;
-  set_options();
+  
+  set_common_options();
+  
+  /* Get arenas_per_thread */
+  switch(tracker.layout) {
+    case ONE_ARENA:
+      tracker.arenas_per_thread = 1;
+      break;
+    case EXCLUSIVE_ARENAS:
+      tracker.arenas_per_thread = 1;
+      break;
+    case EXCLUSIVE_DEVICE_ARENAS:
+      tracker.arenas_per_thread = 2;
+      break;
+    case SHARED_SITE_ARENAS:
+    case BIG_SMALL_ARENAS:
+      tracker.arenas_per_thread = 1;
+    default:
+      tracker.arenas_per_thread = 1;
+      break;
+  };
+
 
   if(tracker.layout != INVALID_LAYOUT) {
     tracker.arenas = (arena_info **) orig_calloc(tracker.max_arenas, sizeof(arena_info *));
@@ -920,40 +948,38 @@ void sh_init() {
       tracker.site_arenas[i] = -1;
     }
 
-    /* Initialize the extents array.
-     */
-    tracker.extents = extent_arr_init();
-    
     /* This is just an atomic counter that we use to grab a new
        index for every thread that allocates for the first time */
     tracker.current_thread_index = 0;
     
-    if(should_profile_all() ||
-       should_profile_rss() ||
-       should_profile_extent_size()) {
-      /* Set the arena allocator's callback function */
-      sicm_extent_alloc_callback = &sh_create_extent;
-      sicm_extent_dalloc_callback = &sh_delete_extent;
-    }
+    /* Initialize the extents array.
+     */
+    tracker.extents = extent_arr_init();
+    
+  }
+  
+  set_profile_options();
+  set_guided_options();
+  
+  if(should_profile_all() ||
+      should_profile_rss() ||
+      should_profile_extent_size()) {
+    /* Set the arena allocator's callback function */
+    sicm_extent_alloc_callback = &sh_create_extent;
+    sicm_extent_dalloc_callback = &sh_delete_extent;
+  }
 
-    if(should_profile()) {
-      sh_start_profile_master_thread();
-    }
+  if(should_profile()) {
+    sh_start_profile_master_thread();
   }
 
   if (profopts.should_run_rdspy) {
     sh_rdspy_init(tracker.max_threads, tracker.num_static_sites);
   }
-
-  if(tracker.log_file) {
-    fprintf(tracker.log_file, "===== END OPTIONS =====\n");
-    //fclose(tracker.log_file);
-  }
+  
+  print_options();
 
   sh_initialized = 1;
-
-  fprintf(stderr, "Finished initialization.\n");
-  fflush(stderr);
 }
 
 __attribute__((destructor))
@@ -968,10 +994,6 @@ void sh_terminate() {
   }
   sh_initialized = 0;
   
-  if(tracker.log_file) {
-    fclose(tracker.log_file);
-  }
-
   /* Disable the background thread in jemalloc to avoid a segfault */
   on = false;
   err = je_mallctl("background_thread", NULL, NULL, (void *)&on, sizeof(bool));

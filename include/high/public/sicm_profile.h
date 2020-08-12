@@ -67,7 +67,7 @@ typedef struct interval_profile {
   double time;
   
   /* Array of arenas and their info */
-  size_t num_arenas;
+  size_t num_arenas, max_index;
   arena_profile **arenas;
   
   /* These are profiling types that can have not-per-arena
@@ -198,6 +198,7 @@ static inline void copy_interval_profile(size_t index) {
                                          
   /* Copy the interval_profile from this_interval to intervals[index] */
   interval->num_arenas = this_interval->num_arenas;
+  interval->max_index = this_interval->max_index;
   interval->arenas = orig_calloc(tracker.max_arenas, sizeof(arena_profile *));
     
   /* Copy profile_bw profiling info, too */
@@ -222,7 +223,10 @@ static inline void copy_interval_profile(size_t index) {
   
   /* Iterate over all of the arenas in the interval, and copy them too */
   arena_arr_for(i) {
-    prof_check_good(arena, aprof, i);
+    //prof_check_good(arena, aprof, i);
+    aprof = this_interval->arenas[i];
+    if(!aprof) continue;
+    
     interval->arenas[i] = orig_malloc(sizeof(arena_profile));
     copy_arena_profile(interval->arenas[i], aprof);
   }

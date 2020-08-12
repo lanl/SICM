@@ -51,6 +51,7 @@ static void sh_print_profiling(application_profile *info, FILE *file) {
       fprintf(file, "Lower Capacity: %zu\n", info->lower_capacity);
     }
     fprintf(file, "Number of arenas: %zu\n", info->intervals[cur_interval].num_arenas);
+    fprintf(file, "Maximum index: %zu\n", info->intervals[cur_interval].max_index);
     
     /* Non-arena profiling info */
     if(info->has_profile_bw) {
@@ -92,7 +93,7 @@ static void sh_print_profiling(application_profile *info, FILE *file) {
       fprintf(file, "  END PROFILE_LATENCY\n");
     }
 
-    for(i = 0; i < info->intervals[cur_interval].num_arenas; i++) {
+    for(i = 0; i < info->intervals[cur_interval].max_index; i++) {
       aprof = info->intervals[cur_interval].arenas[i];
       if(!aprof) continue;
 
@@ -169,6 +170,7 @@ static application_profile *sh_parse_profiling(FILE *file) {
   /* Temporaries */
   unsigned index, tmp_uint;
   size_t num_arenas,
+         max_index,
          cur_arena_index,
          cur_event_index,
          cur_skt_index,
@@ -249,7 +251,10 @@ static application_profile *sh_parse_profiling(FILE *file) {
         continue;
       } else if(sscanf(line, "Number of arenas: %zu", &num_arenas) == 1) {
         ret->intervals[cur_interval].num_arenas = num_arenas;
-        ret->intervals[cur_interval].arenas = orig_calloc(num_arenas, sizeof(arena_profile *));
+        /* ret->intervals[cur_interval].arenas = orig_calloc(num_arenas, sizeof(arena_profile *)); */
+      } else if(sscanf(line, "Maximum index: %zu", &max_index) == 1) {
+        ret->intervals[cur_interval].max_index = max_index;
+        ret->intervals[cur_interval].arenas = orig_calloc(max_index, sizeof(arena_profile *));
       } else if(sscanf(line, "Number of PROFILE_ALL events: %zu\n", &tmp_sizet) == 1) {
         ret->num_profile_all_events = tmp_sizet;
       } else if(sscanf(line, "Number of PROFILE_BW sockets: %zu\n", &tmp_sizet) == 1) {
@@ -296,13 +301,13 @@ static application_profile *sh_parse_profiling(FILE *file) {
       } else if(sscanf(line, "BEGIN ARENA %u", &index) == 1) {
         /* Down in depth */
         depth = 2;
-        if(!num_arenas) {
-          fprintf(stderr, "Didn't find a number of arenas. Aborting.\n");
+        if(!max_index) {
+          fprintf(stderr, "Didn't find a maximum index. Aborting.\n");
           exit(1);
         }
-        if((cur_arena_index > num_arenas - 1)) {
+        if((cur_arena_index > max_index - 1)) {
           fprintf(stderr, "Too many arenas (index %zu, max %zu) when parsing profiling info. Aborting.\n",
-                  cur_arena_index, num_arenas - 1);
+                  cur_arena_index, max_index);
           exit(1);
         }
         cur_arena = orig_malloc(sizeof(arena_profile));

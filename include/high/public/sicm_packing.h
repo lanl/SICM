@@ -338,7 +338,7 @@ static tree(site_info_ptr, int) sh_merge_site_trees(tree(site_info_ptr, int) fir
 static tree(site_info_ptr, int) sh_convert_to_site_tree(application_profile *info, size_t interval) {
   tree(site_info_ptr, int) site_tree;
   tree_it(site_info_ptr, int) sit;
-  size_t i, num_arenas;
+  size_t i, num_arenas, max_index;
   int n;
   site_info_ptr site, site_copy;
   arena_profile *aprof;
@@ -363,7 +363,8 @@ static tree(site_info_ptr, int) sh_convert_to_site_tree(application_profile *inf
   /* Iterate over the arenas, create a site_profile_info struct for each site,
      and simply insert them into the tree (which sorts them). */
   num_arenas = cur_interval->num_arenas;
-  for(i = 0; i < num_arenas; i++) {
+  max_index = cur_interval->max_index;
+  for(i = 0; i < max_index; i++) {
     aprof = cur_interval->arenas[i];
     if(!aprof) continue;
     if(get_weight(aprof) == 0) continue;

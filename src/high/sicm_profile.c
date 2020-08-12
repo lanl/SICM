@@ -55,6 +55,9 @@ void create_arena_profile(int index, int site_id) {
   aprof->alloc_sites[0] = site_id;
   prof.profile->this_interval.arenas[index] = aprof;
   prof.profile->this_interval.num_arenas++;
+  if(index > prof.profile->this_interval.max_index) {
+    prof.profile->this_interval.max_index = index;
+  }
 }
 
 /* This is the signal handler for the Master thread, so
@@ -342,6 +345,7 @@ void initialize_profiling() {
 
   /* Stores the current interval's profiling */
   prof.profile->this_interval.num_arenas = 0;
+  prof.profile->this_interval.max_index = 0;
   prof.profile->this_interval.arenas = orig_calloc(tracker.max_arenas, sizeof(arena_profile *));
 
   /* Store the profile_all event strings */

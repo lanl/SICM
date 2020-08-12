@@ -20,6 +20,7 @@ extern void *(*orig_realloc_ptr)(void *, size_t);
 extern void (*orig_free_ptr)(void *);
 
 enum arena_layout {
+  ONE_ARENA, /* One arena */
   EXCLUSIVE_ARENAS, /* One arena per thread */
   EXCLUSIVE_DEVICE_ARENAS, /* One arena per device per thread */
   SHARED_SITE_ARENAS, /* One arena per allocation site */
