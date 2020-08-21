@@ -21,7 +21,7 @@
 __thread int thread_index = -1;
 __thread int pending_index = -1;
 
-char sh_initialized = 0;
+atomic_int sh_initialized = 0;
 void *(*orig_malloc_ptr)(size_t);
 void *(*orig_calloc_ptr)(size_t, size_t);
 void *(*orig_realloc_ptr)(void *, size_t);
@@ -201,30 +201,27 @@ int get_big_small_arena(int id, size_t sz, deviceptr *device, char *new_site) {
   char prev_big;
   
   prev_big = tracker.site_bigs[id];
-  if(!(prev_big) &&
+  if(new_site && (prev_big == -1) && should_profile()) {
+    /* This is the condition that we haven't seen this site before, and that profiling is on.
+       We set this variable so that the profiler knows to add it to the list of sites in the arena (which requires locking). */
+    *new_site = 1;
+    tracker.site_bigs[id] = 0;
+  }
+  
+  if((prev_big == 0) &&
      ((sz > tracker.big_small_threshold) || (tracker.site_sizes[id] > tracker.big_small_threshold))) {
     /* If the site isn't already `big`, and if its size exceeds the threshold, mark it as `big`.
        Checked and set in this manner, the `site_bigs` atomics could be doubly set to `1`. That's fine. */
     tracker.site_bigs[id] = 1;
   }
   
-  if(new_site) {
-    *new_site = 0;
-  }
-  
-  if(tracker.site_bigs[id]) {
+  if(tracker.site_bigs[id] == 1) {
     ret = get_site_arena(id, NULL);
-    ret += tracker.max_threads;
+    ret += tracker.max_threads + 1; /* We need to skip arena 0, as well as the per-thread arenas. */
     *device = get_site_device(id);
-    
-    if(!prev_big && should_profile()) {
-      /* If this site is newly big, then it just got its own arena. Tell the profiler. */
-      if(new_site) {
-        *new_site = 1;
-      }
-    }
   } else {
-    ret = get_thread_index();
+    /* We add one here because arena 0 is reserved for unknown allocations. */
+    ret = get_thread_index() + 1;
     *device = tracker.upper_device;
   }
   
@@ -238,6 +235,7 @@ int get_arena_index(int id, size_t sz) {
   siteinfo_ptr site;
   char new_site;
 
+  new_site = 0;
   ret = 0;
   device = NULL;
   switch(tracker.layout) {
@@ -246,7 +244,7 @@ int get_arena_index(int id, size_t sz) {
       break;
     case EXCLUSIVE_ARENAS:
       /* One arena per thread. */
-      thread_index = get_thread_index();
+      thread_index = get_thread_index() + 1;
       ret = thread_index;
       break;
     case EXCLUSIVE_DEVICE_ARENAS:
@@ -254,7 +252,7 @@ int get_arena_index(int id, size_t sz) {
       thread_index = get_thread_index();
       device = get_site_device(id);
       ret = get_device_offset(device);
-      ret = (thread_index * tracker.arenas_per_thread) + ret;
+      ret = (thread_index * tracker.arenas_per_thread) + ret + 1;
       break;
     case SHARED_SITE_ARENAS:
       /* One (shared) arena per allocation site. */
@@ -287,7 +285,7 @@ int get_arena_index(int id, size_t sz) {
   } else if(new_site && should_profile()) {
     add_site_profile(ret, id);
   }
-
+  
   return ret;
 }
 
@@ -412,8 +410,15 @@ void* sh_alloc(int id, size_t sz) {
     return je_mallocx(sz, MALLOCX_TCACHE_NONE);
   }
 
+  if(id >= tracker.max_sites) {
+    fprintf(stderr, "Exceeded maximum number of sites: %d. Aborting.\n", tracker.max_sites);
+    exit(1);
+  }
+  
+  tracker.site_sizes[id] += sz;
   index = get_arena_index(id, sz);
   ret = sicm_arena_alloc(tracker.arenas[index]->arena, sz);
+  
 
   if(should_profile_allocs()) {
     profile_allocs_alloc(ret, sz, index);

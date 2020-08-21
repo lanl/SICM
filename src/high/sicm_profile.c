@@ -11,6 +11,7 @@
 #include "sicm_parsing.h"
 
 profiler prof;
+static pthread_rwlock_t profile_lock = PTHREAD_RWLOCK_INITIALIZER;
 static int global_signal;
 
 /* Runs when an arena has already been created, but the runtime library
@@ -18,11 +19,15 @@ static int global_signal;
 void add_site_profile(int index, int site_id) {
   arena_profile *aprof;
   
-  pthread_rwlock_wrlock(&prof.profile_lock);
+  pthread_rwlock_wrlock(&profile_lock);
   aprof = get_arena_prof(index);
+  if((aprof->num_alloc_sites + 1) > tracker.max_sites_per_arena) {
+    fprintf(stderr, "The maximum number of sites per arena has been reached: %d\n", tracker.max_sites_per_arena);
+    exit(1);
+  }
   aprof->alloc_sites[aprof->num_alloc_sites] = site_id;
   aprof->num_alloc_sites++;
-  pthread_rwlock_unlock(&prof.profile_lock);
+  pthread_rwlock_unlock(&profile_lock);
 }
 
 /* Runs when a new arena is created. Allocates room to store
@@ -30,6 +35,7 @@ void add_site_profile(int index, int site_id) {
 void create_arena_profile(int index, int site_id) {
   arena_profile *aprof;
 
+  pthread_rwlock_wrlock(&profile_lock);
   aprof = orig_calloc(1, sizeof(arena_profile));
 
   if(should_profile_all()) {
@@ -58,6 +64,7 @@ void create_arena_profile(int index, int site_id) {
   if(index > prof.profile->this_interval.max_index) {
     prof.profile->this_interval.max_index = index;
   }
+  pthread_rwlock_unlock(&profile_lock);
 }
 
 /* This is the signal handler for the Master thread, so
@@ -90,7 +97,7 @@ void profile_master_interval(int s) {
     return;
   }
 
-  pthread_rwlock_wrlock(&(prof.profile_lock));
+  pthread_rwlock_wrlock(&(profile_lock));
 
   /* Call the interval functions for each of the profiling types */
   for(i = 0; i < prof.num_profile_threads; i++) {
@@ -147,7 +154,7 @@ void profile_master_interval(int s) {
   copy_interval_profile(prof.profile->num_intervals - 1);
   prof.cur_interval = &(prof.profile->intervals[prof.profile->num_intervals - 1]);
 
-  pthread_rwlock_unlock(&(prof.profile_lock));
+  pthread_rwlock_unlock(&(profile_lock));
   
   /* We need this timer to actually end outside out of the lock */
   clock_gettime(CLOCK_MONOTONIC, &(prof.end));
@@ -334,7 +341,7 @@ void init_application_profile(application_profile *profile) {
 void initialize_profiling() {
   size_t i;
 
-  pthread_rwlock_init(&(prof.profile_lock), NULL);
+  pthread_rwlock_wrlock(&profile_lock);
 
   /* Initialize the structs that store the profiling information */
   prof.profile = orig_calloc(1, sizeof(application_profile));
@@ -399,6 +406,8 @@ void initialize_profiling() {
   if(should_profile_online()) {
     profile_online_init();
   }
+  
+  pthread_rwlock_unlock(&profile_lock);
 }
 
 void sh_start_profile_master_thread() {

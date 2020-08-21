@@ -93,7 +93,7 @@ static void sh_print_profiling(application_profile *info, FILE *file) {
       fprintf(file, "  END PROFILE_LATENCY\n");
     }
 
-    for(i = 0; i < info->intervals[cur_interval].max_index; i++) {
+    for(i = 0; i <= info->intervals[cur_interval].max_index; i++) {
       aprof = info->intervals[cur_interval].arenas[i];
       if(!aprof) continue;
 

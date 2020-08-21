@@ -77,6 +77,8 @@ set(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} -fno-rtti")
 find_library(LIBRT rt)
 target_link_libraries(sicm_runtime ${LIBRT})
 
+target_link_libraries(sicm_runtime m)
+
 install(TARGETS sicm_runtime sicm_overrides sicm_compass sicm_rdspy sicm_hotset
         LIBRARY DESTINATION lib
         RUNTIME DESTINATION bin)

@@ -144,7 +144,6 @@ typedef struct profiler {
 
   /* Profiling information for the currently-running application */
   application_profile *profile;
-  pthread_rwlock_t profile_lock;
 
   /* Data for each profile thread */
   profile_all_data profile_all;

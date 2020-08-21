@@ -364,7 +364,7 @@ static tree(site_info_ptr, int) sh_convert_to_site_tree(application_profile *inf
      and simply insert them into the tree (which sorts them). */
   num_arenas = cur_interval->num_arenas;
   max_index = cur_interval->max_index;
-  for(i = 0; i < max_index; i++) {
+  for(i = 0; i <= max_index; i++) {
     aprof = cur_interval->arenas[i];
     if(!aprof) continue;
     if(get_weight(aprof) == 0) continue;

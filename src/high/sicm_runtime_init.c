@@ -14,6 +14,8 @@ profiling_options profopts = {0};
 /* Keeps track of arenas, extents, etc. */
 tracker_struct tracker = {0};
 
+static atomic_int sh_being_initialized = 0;
+
 /* Takes a string as input and outputs which arena layout it is */
 enum arena_layout parse_layout(char *env) {
   size_t max_chars;
@@ -875,9 +877,8 @@ void sh_init() {
   int i;
   long size;
 
-  if(sh_initialized) {
-    /* We already initialized, don't do it again. */
-    fprintf(stderr, "sh_initialized called twice.\n");
+  if(atomic_fetch_add(&sh_being_initialized, 1) > 0) {
+    fprintf(stderr, "sh_init called more than once: %d\n", sh_being_initialized);
     fflush(stderr);
     return;
   }
@@ -937,7 +938,10 @@ void sh_init() {
        3. `site_devices`: a pointer to the device that this site should be bound to.
        4. `site_arenas`: an integer index of the arena this site gets allocated to.
     */
-    tracker.site_bigs = (atomic_char *) orig_calloc(tracker.max_sites, sizeof(atomic_char));
+    tracker.site_bigs = (atomic_char *) orig_malloc(tracker.max_sites * sizeof(atomic_char));
+    for(i = 0; i < tracker.max_sites; i++) {
+      tracker.site_bigs[i] = (atomic_char) -1;
+    }
     tracker.site_sizes = (atomic_size_t *) orig_calloc(tracker.max_sites, sizeof(atomic_size_t));
     tracker.site_devices = (atomic_intptr_t *) orig_malloc(tracker.max_sites * sizeof(atomic_intptr_t));
     for(i = 0; i < tracker.max_sites; i++) {
@@ -949,13 +953,12 @@ void sh_init() {
     }
 
     /* This is just an atomic counter that we use to grab a new
-       index for every thread that allocates for the first time */
+       index for every thread that allocates for the first time. */
     tracker.current_thread_index = 0;
     
     /* Initialize the extents array.
      */
     tracker.extents = extent_arr_init();
-    
   }
   
   set_profile_options();

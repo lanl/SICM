@@ -13,7 +13,7 @@ typedef struct extent_arr extent_arr;
 typedef struct sarena sarena;
 #endif
 
-extern char sh_initialized;
+extern atomic_int sh_initialized;
 extern void *(*orig_malloc_ptr)(size_t);
 extern void *(*orig_calloc_ptr)(size_t, size_t);
 extern void *(*orig_realloc_ptr)(void *, size_t);
