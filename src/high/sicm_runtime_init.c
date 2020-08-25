@@ -3,6 +3,7 @@
 #include <dlfcn.h>
 #include <stdbool.h>
 #include <numa.h>
+#include <sys/resource.h>
 
 #define SICM_RUNTIME 1
 #include "sicm_runtime.h"
@@ -876,17 +877,30 @@ __attribute__((constructor))
 void sh_init() {
   int i;
   long size;
+  Dl_info dlinfo;
 
   if(atomic_fetch_add(&sh_being_initialized, 1) > 0) {
     fprintf(stderr, "sh_init called more than once: %d\n", sh_being_initialized);
     fflush(stderr);
     return;
   }
-
+  
   orig_malloc_ptr = dlsym(RTLD_NEXT, "malloc");
   orig_calloc_ptr = dlsym(RTLD_NEXT, "calloc");
   orig_realloc_ptr = dlsym(RTLD_NEXT, "realloc");
   orig_free_ptr = dlsym(RTLD_NEXT, "free");
+  if(!dladdr(orig_malloc_ptr, &dlinfo)) {
+    fprintf(stderr, "dladdr failed. Aborting.\n");
+    exit(1);
+  }
+  printf("Setting malloc to the one from: '%s'.\n", dlinfo.dli_fname);
+  fflush(stdout);
+  if(!dladdr(orig_realloc_ptr, &dlinfo)) {
+    fprintf(stderr, "dladdr failed. Aborting.\n");
+    exit(1);
+  }
+  printf("Setting realloc to the one from: '%s'.\n", dlinfo.dli_fname);
+  fflush(stdout);
 
   tracker.device_list = sicm_init();
 
@@ -938,17 +952,17 @@ void sh_init() {
        3. `site_devices`: a pointer to the device that this site should be bound to.
        4. `site_arenas`: an integer index of the arena this site gets allocated to.
     */
-    tracker.site_bigs = (atomic_char *) orig_malloc(tracker.max_sites * sizeof(atomic_char));
-    for(i = 0; i < tracker.max_sites; i++) {
+    tracker.site_bigs = (atomic_char *) orig_malloc((tracker.max_sites + 1) * sizeof(atomic_char));
+    for(i = 0; i < tracker.max_sites + 1; i++) {
       tracker.site_bigs[i] = (atomic_char) -1;
     }
-    tracker.site_sizes = (atomic_size_t *) orig_calloc(tracker.max_sites, sizeof(atomic_size_t));
-    tracker.site_devices = (atomic_intptr_t *) orig_malloc(tracker.max_sites * sizeof(atomic_intptr_t));
-    for(i = 0; i < tracker.max_sites; i++) {
+    tracker.site_sizes = (atomic_size_t *) orig_calloc(tracker.max_sites + 1, sizeof(atomic_size_t));
+    tracker.site_devices = (atomic_intptr_t *) orig_malloc((tracker.max_sites + 1) * sizeof(atomic_intptr_t));
+    for(i = 0; i < tracker.max_sites + 1; i++) {
       tracker.site_devices[i] = (atomic_intptr_t) NULL;
     }
-    tracker.site_arenas = (atomic_int *) orig_malloc(tracker.max_sites * sizeof(atomic_int));
-    for(i = 0; i < tracker.max_sites; i++) {
+    tracker.site_arenas = (atomic_int *) orig_malloc((tracker.max_sites + 1) * sizeof(atomic_int));
+    for(i = 0; i < tracker.max_sites + 1; i++) {
       tracker.site_arenas[i] = -1;
     }
 

@@ -196,8 +196,8 @@ void profile_all_interval(int s) {
 
   /* Loop over all arenas and clear their accumulators */
   for(i = 0; i < prof.profile->num_profile_all_events; i++) {
-    arena_arr_for(n) {
-      prof_check_good(arena, aprof, n);
+    aprof_arr_for(n, aprof) {
+      aprof_check_good(n, aprof);
       aprof->profile_all.events[i].current = 0;
     }
   }
@@ -278,8 +278,8 @@ void profile_all_interval(int s) {
   }
   
   for(i = 0; i < prof.profile->num_profile_all_events; i++) {
-    arena_arr_for(n) {
-      prof_check_good(arena, aprof, n);
+    aprof_arr_for(n, aprof) {
+      aprof_check_good(n, aprof);
       if(profopts.profile_all_multipliers) {
         aprof->profile_all.events[i].current *= profopts.profile_all_multipliers[i];
       }

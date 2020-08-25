@@ -20,12 +20,20 @@ void add_site_profile(int index, int site_id) {
   arena_profile *aprof;
   
   pthread_rwlock_wrlock(&profile_lock);
+  if((index < 0) || (index > tracker.max_arenas)) {
+    fprintf(stderr, "Can't add a site to an index (%d) larger than the maximum index (%d).\n", index, tracker.max_arenas);
+    exit(1);
+  }
   aprof = get_arena_prof(index);
-  if((aprof->num_alloc_sites + 1) > tracker.max_sites_per_arena) {
+  if(!aprof) {
+    fprintf(stderr, "Tried to add a site to index %d without having created an arena profile there. Aborting.\n", index);
+    exit(1);
+  }
+  if(aprof->num_alloc_sites + 1 > tracker.max_sites_per_arena) {
     fprintf(stderr, "The maximum number of sites per arena has been reached: %d\n", tracker.max_sites_per_arena);
     exit(1);
   }
-  aprof->alloc_sites[aprof->num_alloc_sites] = site_id;
+  aprof->alloc_sites[aprof->num_alloc_sites - 1] = site_id;
   aprof->num_alloc_sites++;
   pthread_rwlock_unlock(&profile_lock);
 }
@@ -36,6 +44,12 @@ void create_arena_profile(int index, int site_id) {
   arena_profile *aprof;
 
   pthread_rwlock_wrlock(&profile_lock);
+  
+  if((index < 0) || (index > tracker.max_arenas)) {
+    fprintf(stderr, "Can't add a site to an index (%d) larger than the maximum index (%d).\n", index, tracker.max_arenas);
+    exit(1);
+  }
+  
   aprof = orig_calloc(1, sizeof(arena_profile));
 
   if(should_profile_all()) {
@@ -64,6 +78,7 @@ void create_arena_profile(int index, int site_id) {
   if(index > prof.profile->this_interval.max_index) {
     prof.profile->this_interval.max_index = index;
   }
+  
   pthread_rwlock_unlock(&profile_lock);
 }
 
@@ -81,6 +96,8 @@ void profile_master_interval(int s) {
   arena_info *arena;
   profile_thread *profthread;
   
+  pthread_rwlock_wrlock(&profile_lock);
+  
   /* Here, we're checking to see if the time between this interval and
      the previous one is too short. If it is, this is likely a queued-up
      signal caused by an interval that took too long. In some cases,
@@ -97,8 +114,6 @@ void profile_master_interval(int s) {
     return;
   }
 
-  pthread_rwlock_wrlock(&(profile_lock));
-
   /* Call the interval functions for each of the profiling types */
   for(i = 0; i < prof.num_profile_threads; i++) {
     profthread = &prof.profile_threads[i];
@@ -113,8 +128,8 @@ void profile_master_interval(int s) {
     }
   }
 
-  arena_arr_for(i) {
-    prof_check_good(arena, aprof, i);
+  aprof_arr_for(i, aprof) {
+    aprof_check_good(i, aprof);
 
     if(should_profile_all()) {
       profile_all_post_interval(aprof);
@@ -153,11 +168,11 @@ void profile_master_interval(int s) {
   prof.profile->num_intervals++;
   copy_interval_profile(prof.profile->num_intervals - 1);
   prof.cur_interval = &(prof.profile->intervals[prof.profile->num_intervals - 1]);
-
-  pthread_rwlock_unlock(&(profile_lock));
   
   /* We need this timer to actually end outside out of the lock */
   clock_gettime(CLOCK_MONOTONIC, &(prof.end));
+  
+  pthread_rwlock_unlock(&profile_lock);
 }
 
 /* Stops the master thread */
@@ -196,7 +211,7 @@ void *profile_master(void *a) {
   long long frequency;
   sigset_t mask;
   pid_t tid;
-
+  
   /* NOTE: This order is important for profiling types that depend on others.
      For example, if a profiling type depends on the bandwidth values, 
      make sure that its `setup_profile_thread` is called *before* the bandwidth
@@ -294,7 +309,7 @@ void *profile_master(void *a) {
   
   /* Initialize this time */
   clock_gettime(CLOCK_MONOTONIC, &(prof.end));
-
+  
   /* Unblock the signal */
   if(sigprocmask(SIG_UNBLOCK, &mask, NULL) == -1) {
     fprintf(stderr, "Error unblocking signal. Aborting.\n");
@@ -340,7 +355,7 @@ void init_application_profile(application_profile *profile) {
 
 void initialize_profiling() {
   size_t i;
-
+  
   pthread_rwlock_wrlock(&profile_lock);
 
   /* Initialize the structs that store the profiling information */
@@ -412,7 +427,7 @@ void initialize_profiling() {
 
 void sh_start_profile_master_thread() {
   struct sigaction sa;
-
+  
   /* This initializes the values that the threads will need to do their profiling,
    * including perf events, file descriptors, etc.
    */

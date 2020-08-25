@@ -170,8 +170,8 @@ void add_site_profile(int, int);
 
 static inline void copy_arena_profile(arena_profile *dst, arena_profile *src) {
   memcpy(dst, src, sizeof(arena_profile));
-  dst->alloc_sites = orig_malloc(sizeof(int) * dst->num_alloc_sites);
-  memcpy(dst->alloc_sites, src->alloc_sites, sizeof(int) * dst->num_alloc_sites);
+  dst->alloc_sites = orig_malloc(sizeof(int) * tracker.max_sites_per_arena);
+  memcpy(dst->alloc_sites, src->alloc_sites, sizeof(int) * tracker.max_sites_per_arena);
   dst->profile_all.events = orig_malloc(sizeof(per_event_profile_all_info) * prof.profile->num_profile_all_events);
   memcpy(dst->profile_all.events, src->profile_all.events, sizeof(per_event_profile_all_info) * prof.profile->num_profile_all_events);
 }
@@ -238,6 +238,13 @@ static inline void copy_interval_profile(size_t index) {
   interval->profile_rss.time = this_interval->profile_rss.time;
   this_interval->profile_rss.time = 0.0;
 }
+
+#define aprof_arr_for(i, aprof) \
+  for(i = 0; i <= prof.profile->this_interval.max_index; i++)
+    
+#define aprof_check_good(i, aprof) \
+    aprof = prof.profile->this_interval.arenas[i]; \
+    if(!aprof) continue;
 
 #define get_arena_prof(i) \
   prof.profile->this_interval.arenas[i]

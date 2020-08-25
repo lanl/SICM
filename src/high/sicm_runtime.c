@@ -37,20 +37,31 @@ void sh_create_arena(int index, int id, sicm_device *device);
  *  after the malloc wrappers have been defined.
  */
 void *__attribute__ ((noinline)) orig_malloc(size_t size) {
+  /*
   return je_mallocx(size, MALLOCX_TCACHE_NONE);
+  */
+  return (*orig_malloc_ptr)(size);
 }
 void *__attribute__ ((noinline)) orig_calloc(size_t num, size_t size) {
+  /*
   return je_mallocx(num * size, MALLOCX_TCACHE_NONE | MALLOCX_ZERO);
+  */
+  return (*orig_calloc_ptr)(num, size);
 }
 void *__attribute__ ((noinline)) orig_realloc(void *ptr, size_t size) {
+  /*
   if(ptr == NULL) {
     return je_mallocx(size, MALLOCX_TCACHE_NONE);
   }
   return je_rallocx(ptr, size, MALLOCX_TCACHE_NONE);
+  */
+  return (*orig_realloc_ptr)(ptr, size);
 }
 void __attribute__ ((noinline)) orig_free(void *ptr) {
+  /*
   je_dallocx(ptr, MALLOCX_TCACHE_NONE);
-  return;
+  */
+  (*orig_free_ptr)(ptr);
 }
 
 /*************************************************
@@ -300,8 +311,11 @@ void sh_create_arena(int index, int id, sicm_device *device) {
   size_t i;
   arena_info *arena;
   siteinfo_ptr site;
+  sicm_device_list dl;
   
-  /* Put an upper bound on the indices that need to be searched */
+  /* Put an upper bound on the indices that need to be searched.
+     We need the profile_lock, so that a profiling thread isn't trying
+     to iterate over the arenas at this moment. */
   if(index > tracker.max_index) {
     tracker.max_index = index;
   }
@@ -310,11 +324,8 @@ void sh_create_arena(int index, int id, sicm_device *device) {
     device = tracker.default_device;
   }
 
-  /* Create the arena if it doesn't exist */
   arena = orig_calloc(1, sizeof(arena_info));
   arena->index = index;
-  /* Need to construct a sicm_device_list of one device */
-  sicm_device_list dl;
   dl.count = 1;
   dl.devices = orig_malloc(sizeof(sicm_device *) * 1);
   dl.devices[0] = device;
@@ -380,6 +391,10 @@ void* sh_realloc(int id, void *ptr, size_t sz) {
   alloc_info_ptr aip;
 
   if(!sh_initialized || !id) {
+    if(id) {
+      printf("Allocation happening without SICM being initialized: %d\n", id);
+      fflush(stdout);
+    }
     return je_realloc(ptr, sz);
   }
 
@@ -407,11 +422,15 @@ void* sh_alloc(int id, size_t sz) {
   alloc_info_ptr aip;
 
   if(!sh_initialized || !id || (tracker.layout == INVALID_LAYOUT) || !sz) {
+    if(id) {
+      printf("Allocation happening without SICM being initialized: %d\n", id);
+      fflush(stdout);
+    }
     return je_mallocx(sz, MALLOCX_TCACHE_NONE);
   }
 
   if(id >= tracker.max_sites) {
-    fprintf(stderr, "Exceeded maximum number of sites: %d. Aborting.\n", tracker.max_sites);
+    fprintf(stderr, "Site %d went over maximum number of sites, %d.\n", id, tracker.max_sites);
     exit(1);
   }
   

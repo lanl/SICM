@@ -179,8 +179,8 @@ void profile_bw_interval(int s) {
   if(profopts.profile_bw_relative) {
     /* Clear current values, and add up all profile_all values this interval */
     tmp_all = 0;
-    arena_arr_for(n) {
-      prof_check_good(arena, aprof, n);
+    aprof_arr_for(n, aprof) {
+      aprof_check_good(n, aprof);
       for(i = 0; i < prof.profile->num_profile_all_events; i++) {
         tmp_all += aprof->profile_all.events[i].current;
       }
@@ -194,8 +194,8 @@ void profile_bw_interval(int s) {
     
     /* Spread this interval's bandwidth amongst the arenas, based on
        their profile_all values. */
-    arena_arr_for(n) {
-      prof_check_good(arena, aprof, n);
+    aprof_arr_for(n, aprof) {
+      aprof_check_good(n, aprof);
       tmp_arena_all = 0;
       for(i = 0; i < prof.profile->num_profile_all_events; i++) {
         tmp_arena_all += aprof->profile_all.events[i].current;
@@ -207,8 +207,8 @@ void profile_bw_interval(int s) {
       }
     }
     
-    arena_arr_for(n) {
-      prof_check_good(arena, aprof, n);
+    aprof_arr_for(n, aprof) {
+      aprof_check_good(n, aprof);
       aprof->profile_bw.total += aprof->profile_bw.current;
     }
   }
@@ -243,8 +243,8 @@ void profile_bw_post_interval() {
   if(profopts.profile_bw_relative) {
     /* We'll have to iterate over all of the arenas and maintain
       their peaks, too. */
-    arena_arr_for(n) {
-      prof_check_good(arena, aprof, n);
+    aprof_arr_for(n, aprof) {
+      aprof_check_good(n, aprof);
       if(aprof->profile_bw.current > aprof->profile_bw.peak) {
         aprof->profile_bw.peak = aprof->profile_bw.current;
       }
