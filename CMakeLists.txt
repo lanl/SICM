@@ -1,5 +1,5 @@
 cmake_minimum_required (VERSION 3.0)
-project (SICM)
+project (SICM LANGUAGES C CXX)
 
 # Use -DSICM_BUILD_HIGH_LEVEL=True to build the high-level interface.
 set(SICM_BUILD_HIGH_LEVEL False CACHE BOOL "Should we build the high-level interface?")
