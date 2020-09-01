@@ -103,6 +103,16 @@ typedef struct sicm_device_list {
   sicm_device** devices; ///< Array of devices of count elements.
 } sicm_device_list;
 
+/// Set/Get the default device
+/**
+ * If the input argument is within the range
+ * [0, sicm_device_list.count), the default device
+ * will be updated. Otherwise, the default device
+ * will not be changed. Either way, the default
+ * device will be returned.
+ */
+sicm_device *sicm_default_device(const unsigned int idx);
+
 /// Results of a latency timing.
 /**
  * All times are in milliseconds.
