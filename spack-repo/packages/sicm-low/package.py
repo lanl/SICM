@@ -16,7 +16,7 @@ class SicmLow(CMakePackage):
 
     version('master')
 
-    depends_on('jemalloc +je')
+    depends_on('jemalloc jemalloc_prefix=je_')
     depends_on('numactl')
 
     def cmake_args(self):
