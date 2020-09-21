@@ -73,6 +73,9 @@ static pthread_mutex_t sicm_init_count_mutex = PTHREAD_MUTEX_INITIALIZER;
 static sicm_device_list sicm_global_devices = {};
 static sicm_device *sicm_global_device_array = NULL;
 
+/* set in sicm_init */
+struct sicm_device *sicm_default_device_ptr = NULL;
+
 struct sicm_device_list sicm_init() {
   /* Check whether or not the global devices list has been initialized already */
   pthread_mutex_lock(&sicm_init_count_mutex);
@@ -290,9 +293,19 @@ struct sicm_device_list sicm_init() {
 
   sicm_global_devices = (struct sicm_device_list){ .count = idx, .devices = devices };
 
+  sicm_default_device(0);
+
   sicm_init_count++;
   pthread_mutex_unlock(&sicm_init_count_mutex);
   return sicm_global_devices;
+}
+
+sicm_device *sicm_default_device(const unsigned int idx) {
+    if (idx < sicm_global_devices.count) {
+        sicm_default_device_ptr = sicm_global_devices.devices[idx];
+    }
+
+    return sicm_default_device_ptr;
 }
 
 /* Frees memory up */

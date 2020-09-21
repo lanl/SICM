@@ -26,8 +26,6 @@ foreach(type ${TYPES})
   create_library(sicm ${type} sicm_low.c sicm_arena.c
     ${SICM_SOURCE_DIR}/include/low/public/sicm_low.h)
   create_library(sicm_f90 ${type} fbinding_c.c fbinding_f90.f90)
-  create_library(sicm_cpp ${type} sicm_cpp.cpp
-    ${CMAKE_SOURCE_DIR}/include/low/public/sicm_cpp.hpp)
 
   # libsicm needs to link against jemalloc and numa
   target_link_libraries(sicm_${type} ${JEMALLOC_LDFLAGS})
