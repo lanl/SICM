@@ -14,7 +14,7 @@ int main() {
   int i;
   unsigned int j;
   for(i = 0; i < devices.count; i++) {
-    struct sicm_device* device = &devices.devices[i];
+    struct sicm_device* device = devices.devices[i];
     sicm_pin(device);
     printf("device %d\n", i);
     printf("type: ");
@@ -24,6 +24,15 @@ int main() {
         break;
       case SICM_KNL_HBM:
         printf("knl hbm\n");
+        break;
+      case SICM_POWERPC_HBM:
+        printf("powerpc hbm\n");
+        break;
+      case SICM_OPTANE:
+        printf("optane\n");
+        break;
+      case INVALID_TAG:
+        printf("invalid-tag\n");
         break;
       default:
         printf("unknown (update this example!)\n");
