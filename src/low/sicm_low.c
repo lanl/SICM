@@ -616,7 +616,6 @@ size_t sicm_capacity(struct sicm_device* device) {
         }
         return res;
 #else
-        fprintf(stderr, "DBG: %d sicm_capacity path=%s\n", __LINE__, path);
         char data[128];
         if (read(fd, data, 128) != 128) {
             close(fd);
@@ -714,13 +713,11 @@ int parse_meminfo(char *buf, int buf_len, char *field, size_t *value)
                  */
                 while ((i <= buf_len) && (buf[i] != ' ')) {
                     tmp[k] = buf[i];
-                    /*fprintf(stderr, "tmp[k]=%c buf[i]=%c\n",tmp[k], buf[i]);*/
                     k++;
                     i++;
                 }
                 tmp[k] = '\0';
 
-                /* fprintf(stderr, "DBG: VALUE IS tmp=%s\n", tmp); */
                 *value = strtol(tmp, NULL, 0);
 
                 /* Found, all done. */
@@ -765,7 +762,6 @@ size_t sicm_avail(struct sicm_device* device) {
           factor *= 10;
         }
 #else
-        fprintf(stderr, "DBG: %d sicm_avail path=%s\n", __LINE__, path);
         char data[128];
         if (read(fd, data, 128) != 128) {
             close(fd);
@@ -785,7 +781,6 @@ size_t sicm_avail(struct sicm_device* device) {
       }
       else {
         snprintf(path, path_len, "/sys/devices/system/node/node%d/hugepages/hugepages-%dkB/free_hugepages", node, page_size);
-        /* fprintf(stderr, "DBG: %d sicm_avail path=%s\n", __LINE__, path); */
         int fd = open(path, O_RDONLY);
         int pages = 0;
         char data[10];
