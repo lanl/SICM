@@ -601,6 +601,7 @@ size_t sicm_capacity(struct sicm_device* device) {
       if(page_size == normal_page_size) {
         snprintf(path, path_len, "/sys/devices/system/node/node%d/meminfo", node);
         int fd = open(path, O_RDONLY);
+#if 0
         char data[31];
         if (read(fd, data, 31) != 31) {
             close(fd);
@@ -614,6 +615,23 @@ size_t sicm_capacity(struct sicm_device* device) {
           factor *= 10;
         }
         return res;
+#else
+        char data[128];
+        if (read(fd, data, 128) != 128) {
+            close(fd);
+            return -1;
+        }
+        close(fd);
+        size_t res = 0;
+        int rc = 0;
+        /* TODO: More testing */
+        rc = parse_meminfo(data, 128, "MemTotal", &res);
+        if (rc <= 0) {
+            fprintf(stderr, "Error: failed to get available memory for node %d\n", node);
+            return -1;
+        }
+        return res;
+#endif
       }
       else {
         snprintf(path, path_len, "/sys/devices/system/node/node%d/hugepages/hugepages-%dkB/nr_hugepages", node, page_size);
@@ -636,6 +654,86 @@ size_t sicm_capacity(struct sicm_device* device) {
   }
 }
 
+/**
+ * @input     buf - sting with meminfo data
+ * @input buf_len - length of buffer (buf)
+ * @input   field - field looking for (e.g., "MemFree")
+ * @inout   value - output result found in buf input
+ *
+ * @return: -1 (error), 0 (not found), 1 (found)
+ *
+ * @Notes:
+ *  - Note this assumes you do not split meminfo lines up,
+ *    or at least the fields you care about are fully contained
+ *    in the input buffer (i.e., not split up between reads and
+ *    get partial line of input in buf).
+ *  - Field names look like "MemTotal"
+ *  - Not very pretty, but gets the correct values from meminfo
+ *    likely needs some more bounds checking (e.g., buf[i]).
+ */
+int parse_meminfo(char *buf, int buf_len, char *field, size_t *value)
+{
+    char str[128];
+    int i;
+    int found = 0;
+
+    if (0 >= buf_len) {
+        fprintf (stderr, "Error: Bad parameter (bugus buf_len)\n");
+        return -1;
+    }
+
+    if ((NULL == buf) || (NULL == field) || (NULL == value)) {
+        fprintf (stderr, "Error: Bad parameter\n");
+        return -1;
+    }
+
+    for (i=0; i <= buf_len; i++) {
+        if (buf[i] == field[0]) {
+            char *s1 = &buf[i];
+            char *s2 = &field[0];
+            char tmp[128];
+            int k=0;
+            while (*s1++ == *s2++) {
+                i++;
+            }
+            if (buf[i] == ':') {
+                /* This is our line of info */
+
+                /* Move past colon */
+                i++;
+
+                /* Move past blank spaces (careful of buf_len) */
+                while ((i <= buf_len) && (buf[i] == ' ')) {
+                    i++;
+                }
+
+                /*
+                 * Grab digits before space and units, e.g.,
+                 *    Node 0 MemFree:         6348756 kB
+                 */
+                while ((i <= buf_len) && (buf[i] != ' ')) {
+                    tmp[k] = buf[i];
+                    k++;
+                    i++;
+                }
+                tmp[k] = '\0';
+
+                *value = strtol(tmp, NULL, 0);
+
+                /* Found, all done. */
+                found = 1;
+                break;
+            }
+            /* NOT our match, keep looking*/
+        }
+    }
+
+    return found;
+}
+
+
+
+
 size_t sicm_avail(struct sicm_device* device) {
   static const size_t path_len = 100;
   char path[path_len];
@@ -650,6 +748,7 @@ size_t sicm_avail(struct sicm_device* device) {
       if(page_size == normal_page_size) {
         snprintf(path, path_len, "/sys/devices/system/node/node%d/meminfo", node);
         int fd = open(path, O_RDONLY);
+#if 0
         char data[66];
         if (read(fd, data, 66) != 66) {
             close(fd);
@@ -662,6 +761,22 @@ size_t sicm_avail(struct sicm_device* device) {
           res += factor * (data[i] - '0');
           factor *= 10;
         }
+#else
+        char data[128];
+        if (read(fd, data, 128) != 128) {
+            close(fd);
+            return -1;
+        }
+        close(fd);
+        size_t res = 0;
+        int rc = 0;
+        /* TODO: More testing */
+        rc = parse_meminfo(data, 128, "MemFree", &res);
+        if (rc <= 0) {
+            fprintf(stderr, "Error: failed to get available memory for node %d\n", node);
+            return -1;
+        }
+#endif
         return res;
       }
       else {
