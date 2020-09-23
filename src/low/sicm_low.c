@@ -601,6 +601,7 @@ size_t sicm_capacity(struct sicm_device* device) {
       if(page_size == normal_page_size) {
         snprintf(path, path_len, "/sys/devices/system/node/node%d/meminfo", node);
         int fd = open(path, O_RDONLY);
+#if 0
         char data[31];
         if (read(fd, data, 31) != 31) {
             close(fd);
@@ -614,6 +615,24 @@ size_t sicm_capacity(struct sicm_device* device) {
           factor *= 10;
         }
         return res;
+#else
+        fprintf(stderr, "DBG: %d sicm_capacity path=%s\n", __LINE__, path);
+        char data[128];
+        if (read(fd, data, 128) != 128) {
+            close(fd);
+            return -1;
+        }
+        close(fd);
+        size_t res = 0;
+        int rc = 0;
+        /* TODO: More testing */
+        rc = parse_meminfo(data, 128, "MemTotal", &res);
+        if (rc <= 0) {
+            fprintf(stderr, "Error: failed to get available memory for node %d\n", node);
+            return -1;
+        }
+        return res;
+#endif
       }
       else {
         snprintf(path, path_len, "/sys/devices/system/node/node%d/hugepages/hugepages-%dkB/nr_hugepages", node, page_size);
