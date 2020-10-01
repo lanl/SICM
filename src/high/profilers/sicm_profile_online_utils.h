@@ -43,11 +43,13 @@ void full_rebind(tree(site_info_ptr, int) sorted_sites) {
       dl = prof.profile_online.lower_dl;
       get_arena_online_prof(index)->dev = 0;
       fprintf(profopts.profile_online_debug_file,
-              "Binding down: %zu, %zu\n", index, get_profile_bw_arena_prof(index)->total);
+              "Binding down: %zu\n", index);
     }
     if(((dev == 0) || (dev == -1)) && !hot) {
       dl = prof.profile_online.lower_dl;
       get_arena_online_prof(index)->dev = 0;
+      fprintf(profopts.profile_online_debug_file,
+              "Binding down: %zu\n", index);
     }
     if(dl) {
       rebind_arena(index, dl, sit);
@@ -66,11 +68,13 @@ void full_rebind(tree(site_info_ptr, int) sorted_sites) {
       dl = prof.profile_online.upper_dl;
       get_arena_online_prof(index)->dev = 1;
       fprintf(profopts.profile_online_debug_file,
-              "Binding up: %zu, %zu\n", index, get_profile_bw_arena_prof(index)->total);
+              "Binding up: %zu\n", index);
     }
     if((dev == 1) && hot) {
       dl = prof.profile_online.upper_dl;
       get_arena_online_prof(index)->dev = 1;
+      fprintf(profopts.profile_online_debug_file,
+              "Binding up: %zu\n", index);
     }
     if(dl) {
       rebind_arena(index, dl, sit);

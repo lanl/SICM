@@ -13,7 +13,7 @@
 #include "sicm_profilers.h"
 #include "sicm_profile.h"
 
-void profile_all_arena_init(profile_all_info *);
+void profile_all_arena_init(per_arena_profile_all_info *);
 void profile_all_deinit();
 void profile_all_init();
 void *profile_all(void *);
@@ -60,7 +60,7 @@ void sh_get_profile_all_event() {
   }
 }
 
-void profile_all_arena_init(profile_all_info *info) {
+void profile_all_arena_init(per_arena_profile_all_info *info) {
   size_t i;
 
   info->events = orig_calloc(prof.profile->num_profile_all_events, sizeof(per_event_profile_all_info));
@@ -91,16 +91,16 @@ void profile_all_init() {
   pid_t pid;
   int cpu, group_fd;
   unsigned long flags;
-
+  
   prof.profile_all.tid = (unsigned long) syscall(SYS_gettid);
   prof.profile_all.pagesize = (size_t) sysconf(_SC_PAGESIZE);
 
   /* This array is for storing the per-cpu, per-event data_head values. Instead of calling `poll`, we
      can see if the current data_head value is different from the previous one, and when it is,
      we know we have some new values to read. */
-  prof.profile_all.prev_head = malloc(sizeof(uint64_t *) * profopts.num_profile_all_cpus);
+  prof.profile_all.prev_head = orig_malloc(sizeof(uint64_t *) * profopts.num_profile_all_cpus);
   for(n = 0; n < profopts.num_profile_all_cpus; n++) {
-    prof.profile_all.prev_head[n] = malloc(sizeof(uint64_t) * prof.profile->num_profile_all_events);
+    prof.profile_all.prev_head[n] = orig_malloc(sizeof(uint64_t) * prof.profile->num_profile_all_events);
     for(i = 0; i < prof.profile->num_profile_all_events; i++) {
       prof.profile_all.prev_head[n][i] = 0;
     }
@@ -192,8 +192,11 @@ void profile_all_interval(int s) {
   size_t i, n, x;
   arena_profile *aprof;
   per_event_profile_all_info *per_event_aprof;
+  profile_all_info *iprof;
   struct pollfd pfd;
-
+  unsigned index;
+  extent_info *extent;
+  
   /* Loop over all arenas and clear their accumulators */
   for(i = 0; i < prof.profile->num_profile_all_events; i++) {
     aprof_arr_for(n, aprof) {
@@ -201,6 +204,8 @@ void profile_all_interval(int s) {
       aprof->profile_all.events[i].current = 0;
     }
   }
+  
+  iprof = get_profile_all_prof();
 
   /* Loops over all CPUs */
   for(x = 0; x < profopts.num_profile_all_cpus; x++) {
@@ -240,7 +245,6 @@ void profile_all_interval(int s) {
       end = base + head % buf_size;
 
       /* Read all of the samples */
-      pthread_rwlock_rdlock(&tracker.extents_lock);
       while(begin <= (end - 8)) {
 
         header = (struct perf_event_header *)begin;
@@ -251,14 +255,36 @@ void profile_all_interval(int s) {
         addr = (void *) (sample->addr);
 
         if(addr) {
+          
+          if(pthread_rwlock_rdlock(&tracker.extents_lock) != 0) {
+            fprintf(stderr, "Failed to acquire the extents lock in profile_all. Aborting.\n");
+            exit(1);
+          }
+      
           /* Search for which extent it goes into */
           extent_arr_for(tracker.extents, n) {
-            if(!tracker.extents->arr[n].start && !tracker.extents->arr[n].end) continue;
-            arena = (arena_info *)tracker.extents->arr[n].arena;
-            if((addr >= tracker.extents->arr[n].start) && (addr <= tracker.extents->arr[n].end) && arena) {
-              /* Record this access */
-              get_arena_profile_all_event_prof(arena->index, i)->current++;
+            extent = &(tracker.extents->arr[n]);
+            /* Bail out quickly if either extent address isn't set yet */
+            if(!(extent->start) ||
+               !(extent->end)) {
+              continue;
             }
+            /* Now make sure this address is in this extent */
+            if((addr >= extent->start) &&
+               (addr <= extent->end)) {
+              /* This address belongs in this extent, so associate it with
+                 the arena that the extent is in. */
+              arena = (arena_info *) extent->arena;
+              if(!arena) continue;
+              aprof_check_good(arena->index, aprof);
+              (aprof->profile_all.events[i].current)++;
+              iprof->total++;
+            }
+          }
+          
+          if(pthread_rwlock_unlock(&tracker.extents_lock) != 0) {
+            fprintf(stderr, "Failed to unlock the extents lock in profile_all. Aborting.\n");
+            exit(1);
           }
         }
 
@@ -269,14 +295,14 @@ void profile_all_interval(int s) {
           begin = begin + header->size;
         }
       }
-      pthread_rwlock_unlock(&tracker.extents_lock);
-
+      
       /* Let perf know that we've read this far */
       prof.profile_all.metadata[x][i]->data_tail = head;
       __sync_synchronize();
     }
   }
   
+#if 0
   for(i = 0; i < prof.profile->num_profile_all_events; i++) {
     aprof_arr_for(n, aprof) {
       aprof_check_good(n, aprof);
@@ -286,19 +312,24 @@ void profile_all_interval(int s) {
       aprof->profile_all.events[i].total += aprof->profile_all.events[i].current;
     }
   }
+#endif
 }
 
 void profile_all_post_interval(arena_profile *aprof) {
   per_event_profile_all_info *per_event_aprof;
-  profile_all_info *aprof_all;
+  per_arena_profile_all_info *aprof_all;
   size_t i;
 
   /* All we need to do here is maintain the peak */
   aprof_all = &(aprof->profile_all);
   for(i = 0; i < prof.profile->num_profile_all_events; i++) {
     per_event_aprof = &(aprof_all->events[i]);
-    if(aprof_all->events[i].current > per_event_aprof->peak) {
-      per_event_aprof->peak = aprof_all->events[i].current;
+    if(profopts.profile_all_multipliers) {
+      per_event_aprof->current *= profopts.profile_all_multipliers[i];
+    }
+    per_event_aprof->total += per_event_aprof->current;
+    if(per_event_aprof->current > per_event_aprof->peak) {
+      per_event_aprof->peak = per_event_aprof->current;
     }
   }
 }

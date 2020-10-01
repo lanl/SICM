@@ -54,7 +54,7 @@ void sh_get_profile_latency_event() {
     
     /* We need to prepend the IMC string to the event name, because libpfm likes that.
         The resulting string will be the IMC name, two colons, then the event name. */
-    tmp = malloc(sizeof(char) * (strlen(profopts.profile_latency_clocktick_event) +
+    tmp = orig_malloc(sizeof(char) * (strlen(profopts.profile_latency_clocktick_event) +
                                  strlen(profopts.imcs[0]) + 3));
     sprintf(tmp, "%s::%s", profopts.imcs[0], profopts.profile_latency_clocktick_event);
     
@@ -83,7 +83,7 @@ void sh_get_profile_latency_event() {
         
         /* We need to prepend the IMC string to the event name, because libpfm likes that.
            The resulting string will be the IMC name, two colons, then the event name. */
-        tmp = malloc(sizeof(char) * (strlen(profopts.profile_latency_events[n]) +
+        tmp = orig_malloc(sizeof(char) * (strlen(profopts.profile_latency_events[n]) +
                                      strlen(profopts.imcs[p]) + 3));
         sprintf(tmp, "%s::%s", profopts.imcs[p], profopts.profile_latency_events[n]);
         

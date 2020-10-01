@@ -36,11 +36,13 @@ static inline size_t penalty_displace(size_t accesses) {
 }
 
 void profile_online_init_ski() {
-  prof.profile_online.ski = malloc(sizeof(profile_online_data_ski));
+  prof.profile_online.ski = orig_malloc(sizeof(profile_online_data_ski));
+  #if 0
   if(!(should_profile_bw())) {
     fprintf(stderr, "SH_PROFILE_ONLINE_STRAT_SKI requires SH_PROFILE_BW. Aborting.\n");
     exit(1);
   }
+  #endif
 }
 
 /* All this function will do is calculate:

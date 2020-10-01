@@ -54,7 +54,7 @@ typedef struct arena_profile {
   unsigned index;
   int num_alloc_sites, *alloc_sites;
 
-  profile_all_info profile_all;
+  per_arena_profile_all_info profile_all;
   profile_extent_size_info profile_extent_size;
   profile_allocs_info profile_allocs;
   per_arena_profile_rss_info profile_rss;
@@ -76,6 +76,7 @@ typedef struct interval_profile {
   profile_bw_info profile_bw;
   profile_online_info profile_online;
   profile_rss_info profile_rss;
+  profile_all_info profile_all;
 } interval_profile;
 
 /* Profiling information for a whole application */
@@ -167,6 +168,13 @@ void add_site_profile(int, int);
   a = tracker.arenas[i]; \
   p = prof.profile->this_interval.arenas[i]; \
   if((!a) || (!p)) continue;
+  
+#define aprof_arr_for(i, aprof) \
+  for(i = 0; i <= prof.profile->this_interval.max_index; i++)
+    
+#define aprof_check_good(i, aprof) \
+    aprof = prof.profile->this_interval.arenas[i]; \
+    if(!aprof) continue;
 
 static inline void copy_arena_profile(arena_profile *dst, arena_profile *src) {
   memcpy(dst, src, sizeof(arena_profile));
@@ -182,7 +190,6 @@ static inline void copy_arena_profile(arena_profile *dst, arena_profile *src) {
    (prof.profile->intervals). */
 static inline void copy_interval_profile(size_t index) {
   arena_profile *aprof;
-  arena_info *arena;
   interval_profile *interval, *this_interval;
   size_t size, i;
   
@@ -220,9 +227,14 @@ static inline void copy_interval_profile(size_t index) {
           size);
   }
   
+  /* Copy profile_all info, too */
+  if(should_profile_all()) {
+    interval->profile_all.total = this_interval->profile_all.total;
+  }
+  
   /* Iterate over all of the arenas in the interval, and copy them too */
-  arena_arr_for(i) {
-    //prof_check_good(arena, aprof, i);
+  aprof_arr_for(i, aprof) {
+    aprof_check_good(i, aprof);
     aprof = this_interval->arenas[i];
     if(!aprof) continue;
     
@@ -239,15 +251,12 @@ static inline void copy_interval_profile(size_t index) {
   this_interval->profile_rss.time = 0.0;
 }
 
-#define aprof_arr_for(i, aprof) \
-  for(i = 0; i <= prof.profile->this_interval.max_index; i++)
-    
-#define aprof_check_good(i, aprof) \
-    aprof = prof.profile->this_interval.arenas[i]; \
-    if(!aprof) continue;
 
 #define get_arena_prof(i) \
   prof.profile->this_interval.arenas[i]
+  
+#define get_profile_all_prof() \
+  (&(prof.profile->this_interval.profile_all))
   
 #define get_profile_bw_prof() \
   (&(prof.profile->this_interval.profile_bw))

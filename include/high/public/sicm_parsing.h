@@ -18,6 +18,7 @@ static void sh_print_profiling(application_profile *info, FILE *file) {
   arena_profile *aprof;
   arena_info *arena;
   profile_rss_info *profile_rss_aprof;
+  profile_all_info *profile_all_prof;
   per_skt_profile_bw_info *profile_bw_aprof;
   per_skt_profile_latency_info *profile_latency_aprof;
   
@@ -92,6 +93,12 @@ static void sh_print_profiling(application_profile *info, FILE *file) {
       }
       fprintf(file, "  END PROFILE_LATENCY\n");
     }
+    if(info->has_profile_all) {
+      profile_all_prof = &(info->intervals[cur_interval].profile_all);
+      fprintf(file, "  BEGIN PROFILE_ALL\n");
+      fprintf(file, "    Total: %zu\n", profile_all_prof->total);
+      fprintf(file, "  END PROFILE_ALL\n");
+    }
 
     for(i = 0; i <= info->intervals[cur_interval].max_index; i++) {
       aprof = info->intervals[cur_interval].arenas[i];
@@ -105,7 +112,7 @@ static void sh_print_profiling(application_profile *info, FILE *file) {
         fprintf(file, "%d ", aprof->alloc_sites[n]);
       }
       fprintf(file, "\n");
-
+      
       if(info->has_profile_all) {
         fprintf(file, "  BEGIN PROFILE_ALL\n");
         for(n = 0; n < info->num_profile_all_events; n++) {
@@ -226,7 +233,7 @@ static application_profile *sh_parse_profiling(FILE *file) {
       if(strncmp(line, "===== BEGIN INTERVAL", 20) == 0) {
         depth = 1;
         num_arenas = 0;
-        ret->num_intervals++;
+        (ret->num_intervals)++;
         ret->intervals = realloc(ret->intervals, ret->num_intervals * sizeof(interval_profile));
         cur_interval = ret->num_intervals - 1;
         cur_arena = NULL;
@@ -254,7 +261,7 @@ static application_profile *sh_parse_profiling(FILE *file) {
         /* ret->intervals[cur_interval].arenas = orig_calloc(num_arenas, sizeof(arena_profile *)); */
       } else if(sscanf(line, "Maximum index: %zu", &max_index) == 1) {
         ret->intervals[cur_interval].max_index = max_index;
-        ret->intervals[cur_interval].arenas = orig_calloc(max_index, sizeof(arena_profile *));
+        ret->intervals[cur_interval].arenas = orig_calloc(max_index + 1, sizeof(arena_profile *));
       } else if(sscanf(line, "Number of PROFILE_ALL events: %zu\n", &tmp_sizet) == 1) {
         ret->num_profile_all_events = tmp_sizet;
       } else if(sscanf(line, "Number of PROFILE_BW sockets: %zu\n", &tmp_sizet) == 1) {
@@ -265,9 +272,9 @@ static application_profile *sh_parse_profiling(FILE *file) {
         ret->lower_capacity = tmp_sizet;
       } else if(sscanf(line, "Time: %lf\n", &tmp_double) == 1) {
         ret->intervals[cur_interval].time = tmp_double;
-      } else if(sscanf(line, "Reconfigure: %d\n", &tmp_char) == 1) {
+      } else if(sscanf(line, "Reconfigure: %c\n", &tmp_char) == 1) {
         ret->intervals[cur_interval].profile_online.reconfigure = tmp_char;
-      } else if(sscanf(line, "Phase Change: %d\n", &tmp_char) == 1) {
+      } else if(sscanf(line, "Phase Change: %c\n", &tmp_char) == 1) {
         ret->intervals[cur_interval].profile_online.phase_change = tmp_char;
       } else if(strcmp(line, "  BEGIN PROFILE_BW\n") == 0) {
         /* Down in depth */
@@ -286,6 +293,11 @@ static application_profile *sh_parse_profiling(FILE *file) {
         depth = 2;
         profile_type = 3;
         ret->has_profile_rss = 1;
+      } else if(strcmp(line, "  BEGIN PROFILE_ALL\n") == 0) {
+        /* Down in depth */
+        depth = 2;
+        profile_type = 0;
+        ret->has_profile_all = 1;
       } else if(strcmp(line, "  BEGIN PROFILE_LATENCY\n") == 0) {
         /* Down in depth */
         depth = 2;
@@ -305,7 +317,7 @@ static application_profile *sh_parse_profiling(FILE *file) {
           fprintf(stderr, "Didn't find a maximum index. Aborting.\n");
           exit(1);
         }
-        if((cur_arena_index > max_index - 1)) {
+        if((cur_arena_index > max_index)) {
           fprintf(stderr, "Too many arenas (index %zu, max %zu) when parsing profiling info. Aborting.\n",
                   cur_arena_index, max_index);
           exit(1);
@@ -427,11 +439,24 @@ static application_profile *sh_parse_profiling(FILE *file) {
           ret->profile_skts[cur_skt_index] = tmp_int;
           profile_latency_cur_skt = &(ret->intervals[cur_interval].profile_latency.skt[cur_skt_index]);
           depth = 3;
-        } else {
-          fprintf(stderr, "Didn't recognize a line in the profiling information at depth %d. Aborting.\n", depth);
-          fprintf(stderr, "Line: %s\n", line);
-          exit(1);
-        }
+    		} else {
+    		  fprintf(stderr, "Didn't recognize a line in the profiling information at depth %d. Aborting.\n", depth);
+    		  fprintf(stderr, "Line: %s\n", line);
+    		  exit(1);
+    		}
+      } else if(profile_type == 0) {
+        /* This is the case where we're in a per-interval PROFILE_ALL block */
+        if(strcmp(line, "  END PROFILE_ALL\n") == 0) {
+    		  /* Up in depth */
+    		  depth = 1;
+    		  profile_type = -1;
+    		} else if(sscanf(line, "    Total: %zu\n", &tmp_sizet) == 1) {
+    		  ret->intervals[cur_interval].profile_all.total = tmp_sizet;
+    		} else {
+    		  fprintf(stderr, "Didn't recognize a line in the profiling information at depth %d. Aborting.\n", depth);
+    		  fprintf(stderr, "Line: %s\n", line);
+    		  exit(1);
+    		}
       } else {
         fprintf(stderr, "Didn't recognize a line in the profiling information at depth %d. Aborting.\n", depth);
         fprintf(stderr, "Line: %s\n", line);

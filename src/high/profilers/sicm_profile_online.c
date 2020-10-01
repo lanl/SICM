@@ -40,6 +40,7 @@ void profile_online_post_interval(arena_profile *);
 /* At the beginning of an interval, keeps track of stats and figures out what
    should happen during rebind. */
 tree(site_info_ptr, int) prepare_stats() {
+  char upper_contention;
 
   /* Trees and iterators to interface with the parsing/packing libraries */
   tree(site_info_ptr, int) sorted_sites;
@@ -51,18 +52,15 @@ tree(site_info_ptr, int) prepare_stats() {
   /* Look at how much the application has consumed on each tier */
   prof.profile_online.upper_avail = sicm_avail(tracker.upper_device) * 1024;
   prof.profile_online.lower_avail = sicm_avail(tracker.lower_device) * 1024;
-
+  
+  upper_contention = 0;
   if((prof.profile_online.lower_avail < prof.profile->lower_capacity) && (!prof.profile_online.upper_contention)) {
     /* If the lower tier is being used, we're going to assume that the
-       upper tier is under contention. Trip a flag and let the online
-       approach take over. Begin defaulting all new allocations to the lower
-       tier. */
+       upper tier is under contention. Trip a flag. */
     prof.profile_online.upper_contention = 1;
-    tracker.default_device = tracker.lower_device;
-    sorted_sites = sh_convert_to_site_tree(prof.profile, SIZE_MAX);
-    full_rebind_cold(sorted_sites);
+    upper_contention = 1;
   }
-
+  
   /* Convert to a tree of sites */
   sorted_sites = sh_convert_to_site_tree(prof.profile, SIZE_MAX);
 
@@ -88,6 +86,28 @@ tree(site_info_ptr, int) prepare_stats() {
     } else {
       get_arena_online_prof(tree_it_key(sit)->index)->hot = 0;
     }
+  }
+  
+  /* Using the local `upper_contention` is crucial here: we only want to trigger this if
+     this is the very first time that the online approach as noticed contention for the upper tier. */
+  if(upper_contention &&
+    (get_profile_all_prof()->total > profopts.profile_online_value_threshold)) {
+    /* This is when the online approach actually takes over. Default all subsequent allocations to the lower tier.
+       Bind all sites to the lower tier, until the chosen online strategy decides to bind them up. */
+    tracker.default_device = tracker.lower_device;
+    
+    if(profopts.profile_online_debug_file) {
+      fprintf(profopts.profile_online_debug_file, "Online approach taking over because the total is: %zu.\n", get_profile_all_prof()->total);
+      tree_traverse(merged_sorted_sites, sit) {
+        if(tree_it_key(sit)) {
+          fprintf(profopts.profile_online_debug_file, 
+                  "Index %d: %zu\n", tree_it_key(sit)->index,
+                                      tree_it_key(sit)->value);
+        }
+      }
+    }
+    
+    full_rebind(merged_sorted_sites);
   }
 
   /* Free up the offline profile, but not the online one */

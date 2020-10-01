@@ -18,8 +18,13 @@ static int global_signal;
    has added an allocation site to the arena. */
 void add_site_profile(int index, int site_id) {
   arena_profile *aprof;
+  int err;
   
-  pthread_rwlock_wrlock(&profile_lock);
+  err = pthread_rwlock_wrlock(&profile_lock);
+  if(err) {
+    fprintf(stderr, "add_site_profile failed to grab the profile_lock. Aborting.\n");
+    exit(1);
+  }
   if((index < 0) || (index > tracker.max_arenas)) {
     fprintf(stderr, "Can't add a site to an index (%d) larger than the maximum index (%d).\n", index, tracker.max_arenas);
     exit(1);
@@ -42,15 +47,21 @@ void add_site_profile(int index, int site_id) {
    profiling information about this arena. */
 void create_arena_profile(int index, int site_id) {
   arena_profile *aprof;
+  int err, i;
 
-  pthread_rwlock_wrlock(&profile_lock);
+  err = pthread_rwlock_wrlock(&profile_lock);
+  if(err) {
+    fprintf(stderr, "create_arena_profile failed to grab the profile_lock. Aborting.\n");
+    exit(1);
+  }
   
   if((index < 0) || (index > tracker.max_arenas)) {
     fprintf(stderr, "Can't add a site to an index (%d) larger than the maximum index (%d).\n", index, tracker.max_arenas);
     exit(1);
   }
   
-  aprof = orig_calloc(1, sizeof(arena_profile));
+  aprof = orig_valloc(sizeof(arena_profile));
+  memset(aprof, 0, sizeof(arena_profile));
 
   if(should_profile_all()) {
     profile_all_arena_init(&(aprof->profile_all));
@@ -73,11 +84,11 @@ void create_arena_profile(int index, int site_id) {
   aprof->num_alloc_sites = 1;
   aprof->alloc_sites = orig_malloc(sizeof(int) * tracker.max_sites_per_arena);
   aprof->alloc_sites[0] = site_id;
-  prof.profile->this_interval.arenas[index] = aprof;
   prof.profile->this_interval.num_arenas++;
   if(index > prof.profile->this_interval.max_index) {
     prof.profile->this_interval.max_index = index;
   }
+  prof.profile->this_interval.arenas[index] = aprof;
   
   pthread_rwlock_unlock(&profile_lock);
 }
@@ -90,13 +101,21 @@ void profile_master_interval(int s) {
   size_t i, n, x;
   char copy;
   double elapsed_time;
+  int err;
+  sigset_t mask;
 
   /* Convenience pointers */
   arena_profile *aprof;
   arena_info *arena;
   profile_thread *profthread;
   
-  pthread_rwlock_wrlock(&profile_lock);
+  /* Block the signal for a bit */
+  sigemptyset(&mask);
+  sigaddset(&mask, prof.master_signal);
+  if(sigprocmask(SIG_SETMASK, &mask, NULL) == -1) {
+    fprintf(stderr, "Error blocking signal. Aborting.\n");
+    exit(1);
+  }
   
   /* Here, we're checking to see if the time between this interval and
      the previous one is too short. If it is, this is likely a queued-up
@@ -111,9 +130,26 @@ void profile_master_interval(int s) {
   if(elapsed_time < (prof.target - (prof.target * 10 / 100))) {
     /* It's too soon since the last interval. */
     clock_gettime(CLOCK_MONOTONIC, &(prof.end));
+    /* Unblock the signal */
+    if(sigprocmask(SIG_UNBLOCK, &mask, NULL) == -1) {
+      fprintf(stderr, "Error unblocking signal. Aborting.\n");
+      exit(1);
+    }
     return;
   }
 
+  err = pthread_rwlock_wrlock(&profile_lock);
+  if(err) {
+    fprintf(stderr, "WARNING: Failed to acquire the profiling lock in an interval: %d\n", err);
+    /* Unblock the signal */
+    if(sigprocmask(SIG_UNBLOCK, &mask, NULL) == -1) {
+      fprintf(stderr, "Error unblocking signal. Aborting.\n");
+      exit(1);
+    }
+    pthread_rwlock_unlock(&profile_lock);
+    return;
+  }
+  
   /* Call the interval functions for each of the profiling types */
   for(i = 0; i < prof.num_profile_threads; i++) {
     profthread = &prof.profile_threads[i];
@@ -171,6 +207,12 @@ void profile_master_interval(int s) {
   
   /* We need this timer to actually end outside out of the lock */
   clock_gettime(CLOCK_MONOTONIC, &(prof.end));
+  
+  /* Unblock the signal */
+  if(sigprocmask(SIG_UNBLOCK, &mask, NULL) == -1) {
+    fprintf(stderr, "Error unblocking signal. Aborting.\n");
+    exit(1);
+  }
   
   pthread_rwlock_unlock(&profile_lock);
 }
@@ -355,8 +397,13 @@ void init_application_profile(application_profile *profile) {
 
 void initialize_profiling() {
   size_t i;
+  int err;
   
-  pthread_rwlock_wrlock(&profile_lock);
+  err = pthread_rwlock_wrlock(&profile_lock);
+  if(err) {
+    fprintf(stderr, "initialize_profiling failed to grab the profile_lock. Aborting.\n");
+    exit(1);
+  }
 
   /* Initialize the structs that store the profiling information */
   prof.profile = orig_calloc(1, sizeof(application_profile));

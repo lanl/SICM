@@ -11,6 +11,7 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <pthread.h>
+#include <sys/mman.h>
 
 /* Stores information about a jemalloc extent */
 typedef struct extent_info {
@@ -31,7 +32,7 @@ static inline extent_arr *extent_arr_init() {
   extent_arr *a;
   size_t i;
 
-  a = (extent_arr *) malloc(sizeof(extent_arr));
+  a = (extent_arr *) calloc(1, sizeof(extent_arr));
   a->max_extents = 2;
   a->index = 0;
   a->deleted = 0;

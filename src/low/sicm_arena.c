@@ -116,6 +116,10 @@ static sarena *sicm_arena_new(size_t sz, sicm_arena_flags flags, sicm_device_lis
 	new_hooks = &sa->hooks;
 	arena_ind_sz = sizeof(unsigned); // sa->arena_ind);
 	arena_ind = -1;
+  if(!new_hooks) {
+    fprintf(stderr, "Extent hooks NULL!\n");
+    exit(1);
+  }
 	err = je_mallctl("arenas.create", (void *) &arena_ind, &arena_ind_sz, (void *)&new_hooks, sizeof(extent_hooks_t *));
 	if (err != 0) {
 		fprintf(stderr, "can't create an arena: %d\n", err);

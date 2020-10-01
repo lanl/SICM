@@ -340,7 +340,7 @@ void set_guided_options() {
         sscanf(str, "%d", &node);
 
         /* Use the arrays of atomics to set this site to go to the proper device */
-        tracker.site_devices[site] = (atomic_intptr_t) get_device_from_numa_node(node);
+        tracker.site_devices[site] = get_device_from_numa_node(node);
         
       } else {
         if(!str) continue;
@@ -489,6 +489,12 @@ void set_profile_options() {
     profopts.profile_online_orig = 0;
     if(env) {
       profopts.profile_online_orig = 1;
+    }
+    
+    env = getenv("SH_PROFILE_ONLINE_VALUE_THRESHOLD");
+    profopts.profile_online_value_threshold = 0;
+    if(env) {
+      profopts.profile_online_value_threshold = strtoul(env, NULL, 0);
     }
 
     if(profopts.profile_online_orig) {
@@ -696,7 +702,7 @@ void set_profile_options() {
       while((str = strtok(env, ",")) != NULL) {
         profopts.num_profile_bw_events++;
         profopts.profile_bw_events = orig_realloc(profopts.profile_bw_events, sizeof(char *) * profopts.num_profile_bw_events);
-        profopts.profile_bw_events[profopts.num_profile_bw_events - 1] = malloc(sizeof(char) * (strlen(str) + 1));
+        profopts.profile_bw_events[profopts.num_profile_bw_events - 1] = orig_malloc(sizeof(char) * (strlen(str) + 1));
         strcpy(profopts.profile_bw_events[profopts.num_profile_bw_events - 1], str);
         env = NULL;
       }
@@ -749,7 +755,7 @@ void set_profile_options() {
       while((str = strtok(env, ",")) != NULL) {
         profopts.num_profile_latency_events++;
         profopts.profile_latency_events = orig_realloc(profopts.profile_latency_events, sizeof(char *) * profopts.num_profile_latency_events);
-        profopts.profile_latency_events[profopts.num_profile_latency_events - 1] = malloc(sizeof(char) * (strlen(str) + 1));
+        profopts.profile_latency_events[profopts.num_profile_latency_events - 1] = orig_malloc(sizeof(char) * (strlen(str) + 1));
         strcpy(profopts.profile_latency_events[profopts.num_profile_latency_events - 1], str);
         env = NULL;
       }
@@ -771,7 +777,7 @@ void set_profile_options() {
     env = getenv("SH_PROFILE_LATENCY_CLOCKTICK_EVENT");
     profopts.profile_latency_clocktick_event = NULL;
     if(env) {
-      profopts.profile_latency_clocktick_event = malloc(sizeof(char) * (strlen(env) + 1));
+      profopts.profile_latency_clocktick_event = orig_malloc(sizeof(char) * (strlen(env) + 1));
       strcpy(profopts.profile_latency_clocktick_event, env);
     }
     if(profopts.profile_latency_clocktick_event == NULL) {
@@ -878,6 +884,9 @@ void sh_init() {
   int i;
   long size;
   Dl_info dlinfo;
+  void *handle;
+  bool on;
+  int err;
 
   if(atomic_fetch_add(&sh_being_initialized, 1) > 0) {
     fprintf(stderr, "sh_init called more than once: %d\n", sh_being_initialized);
@@ -885,22 +894,41 @@ void sh_init() {
     return;
   }
   
-  orig_malloc_ptr = dlsym(RTLD_NEXT, "malloc");
-  orig_calloc_ptr = dlsym(RTLD_NEXT, "calloc");
-  orig_realloc_ptr = dlsym(RTLD_NEXT, "realloc");
-  orig_free_ptr = dlsym(RTLD_NEXT, "free");
-  if(!dladdr(orig_malloc_ptr, &dlinfo)) {
-    fprintf(stderr, "dladdr failed. Aborting.\n");
+  /* Disable the background thread in jemalloc to avoid a segfault */
+  on = false;
+  err = je_mallctl("background_thread", NULL, NULL, (void *)&on, sizeof(bool));
+  if(err) {
+    fprintf(stderr, "Failed to disable background threads: %d\n", err);
     exit(1);
   }
-  printf("Setting malloc to the one from: '%s'.\n", dlinfo.dli_fname);
-  fflush(stdout);
-  if(!dladdr(orig_realloc_ptr, &dlinfo)) {
-    fprintf(stderr, "dladdr failed. Aborting.\n");
+  
+  handle = dlopen("libc.so.6", RTLD_LAZY);
+  if(handle) {
+    orig_malloc_ptr = dlsym(handle, "malloc");
+    orig_valloc_ptr = dlsym(handle, "valloc");
+    orig_calloc_ptr = dlsym(handle, "calloc");
+    orig_realloc_ptr = dlsym(handle, "realloc");
+    orig_free_ptr = dlsym(handle, "free");
+    if((!orig_malloc_ptr) ||
+       (!orig_valloc_ptr) ||
+       (!orig_calloc_ptr) ||
+       (!orig_realloc_ptr) ||
+       (!orig_free_ptr)) {
+         fprintf(stderr, "Failed to acquire the allocation symbols from libc. Aborting.\n");
+         exit(1);
+    }
+    if(!dladdr(orig_malloc_ptr, &dlinfo)) {
+      fprintf(stderr, "dladdr failed. Aborting.\n");
+      exit(1);
+    }
+    if(!dladdr(orig_realloc_ptr, &dlinfo)) {
+      fprintf(stderr, "dladdr failed. Aborting.\n");
+      exit(1);
+    }
+  } else {
+    fprintf(stderr, "%s\n", dlerror());
     exit(1);
   }
-  printf("Setting realloc to the one from: '%s'.\n", dlinfo.dli_fname);
-  fflush(stdout);
 
   tracker.device_list = sicm_init();
 
@@ -954,12 +982,12 @@ void sh_init() {
     */
     tracker.site_bigs = (atomic_char *) orig_malloc((tracker.max_sites + 1) * sizeof(atomic_char));
     for(i = 0; i < tracker.max_sites + 1; i++) {
-      tracker.site_bigs[i] = (atomic_char) -1;
+      tracker.site_bigs[i] = -1;
     }
     tracker.site_sizes = (atomic_size_t *) orig_calloc(tracker.max_sites + 1, sizeof(atomic_size_t));
     tracker.site_devices = (atomic_intptr_t *) orig_malloc((tracker.max_sites + 1) * sizeof(atomic_intptr_t));
     for(i = 0; i < tracker.max_sites + 1; i++) {
-      tracker.site_devices[i] = (atomic_intptr_t) NULL;
+      tracker.site_devices[i] = NULL;
     }
     tracker.site_arenas = (atomic_int *) orig_malloc((tracker.max_sites + 1) * sizeof(atomic_int));
     for(i = 0; i < tracker.max_sites + 1; i++) {
@@ -995,13 +1023,21 @@ void sh_init() {
   }
   
   print_options();
+  
+  /* Re-enable the background thread in jemalloc to avoid a segfault */
+  on = true;
+  err = je_mallctl("background_thread", NULL, NULL, (void *)&on, sizeof(bool));
+  if(err) {
+    fprintf(stderr, "Failed to disable background threads: %d\n", err);
+    exit(1);
+  }
 
   sh_initialized = 1;
 }
 
 __attribute__((destructor))
 void sh_terminate() {
-  size_t i;
+  size_t i, n;
   arena_info *arena;
   int err;
   bool on;
@@ -1025,12 +1061,25 @@ void sh_terminate() {
     if(should_profile()) {
       sh_stop_profile_master_thread();
     }
+    
+    /* Print out some debugging information */
+    arena_arr_for(i) {
+      arena_check_good(arena, i);
+      printf("===== BEGIN ARENA %d =====\n", i);
+      for(n = 0; n < tracker.max_threads; n++) {
+        if(arena->thread_allocs[n]) {
+          printf("Thread %d: %d\n", n, arena->thread_allocs[n]);
+        }
+      }
+      printf("===== END ARENA %d =====\n", i);
+    }
 
     /* Clean up the arenas */
     arena_arr_for(i) {
       arena_check_good(arena, i);
-
-      sicm_arena_destroy(tracker.arenas[i]->arena);
+      if(tracker.arenas[i]->arena) {
+        sicm_arena_destroy(tracker.arenas[i]->arena);
+      }
       orig_free(tracker.arenas[i]);
     }
     orig_free(tracker.arenas);

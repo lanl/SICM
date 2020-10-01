@@ -41,9 +41,15 @@ typedef struct per_event_profile_all_info {
 
 void sh_get_profile_all_event();
 
-typedef struct profile_all_info {
+typedef struct per_arena_profile_all_info {
   /* profile_all */
   per_event_profile_all_info *events;
+} per_arena_profile_all_info;
+
+typedef struct profile_all_info {
+  /* Just counts up total accesses that are associated with
+     an arena. Overflows eventually. */
+  size_t total;
 } profile_all_info;
 
 typedef struct profile_all_data {
@@ -240,7 +246,7 @@ void *profile_all(void *);
 void profile_all_interval(int);
 void profile_all_post_interval(arena_profile *);
 void profile_all_skip_interval(int);
-void profile_all_arena_init(profile_all_info *);
+void profile_all_arena_init(per_arena_profile_all_info *);
 
 void *profile_rss(void *);
 void profile_rss_interval(int);

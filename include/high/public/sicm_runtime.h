@@ -15,6 +15,7 @@ typedef struct sarena sarena;
 
 extern atomic_int sh_initialized;
 extern void *(*orig_malloc_ptr)(size_t);
+extern void *(*orig_valloc_ptr)(size_t);
 extern void *(*orig_calloc_ptr)(size_t, size_t);
 extern void *(*orig_realloc_ptr)(void *, size_t);
 extern void (*orig_free_ptr)(void *);
@@ -43,6 +44,7 @@ typedef struct arena_info {
   unsigned index; /* Index into the arenas array */
   sicm_arena arena; /* SICM's low-level interface pointer */
   size_t size; /* The total size of the arena's allocations */
+  int *thread_allocs;
 } arena_info;
 
 /* Information about a single site */
@@ -160,6 +162,7 @@ typedef struct profiling_options {
   char *profile_online_sort;
   char *profile_online_packing_algo;
   unsigned long profile_online_reserved_bytes;
+  size_t profile_online_value_threshold;
 
   /* Array of cpu numbers for profile_all */
   size_t num_profile_all_cpus;
