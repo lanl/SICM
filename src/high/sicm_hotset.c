@@ -16,7 +16,6 @@
 #include "sicm_packing.h"
 
 static struct option long_options[] = {
-  {"verbose", no_argument, NULL, 'v'},
   {"value", required_argument, NULL, 'l'},  /* The type of profiling to use
                                                for determining the "value" of an arena.
                                                Defaults to `profile_all`. */
@@ -39,7 +38,7 @@ int main(int argc, char **argv) {
   int option_index;
   char c,
        *endptr;
-  size_t i;
+  size_t i, invalid_weight;
 
   packing_options *opts;
   long int node = -1;
@@ -67,9 +66,6 @@ int main(int argc, char **argv) {
     switch(c) {
       case 0:
         /* This is an option that just sets a flag. Ignore it. */
-        break;
-      case 'v':
-        opts->verbose = 1;
         break;
       case 'l':
         /* value */
@@ -109,7 +105,7 @@ int main(int argc, char **argv) {
         /* We're relying on getopt_long to print an error message. */
         break;
       default:
-        fprintf(stderr, "Didn't understand the return value of getopt_long. Debug this, please.\n");
+        fprintf(stderr, "Didn't understand the return value of getopt_long: '%c'. Debug this, please.\n", c);
         exit(1);
     }
   }
@@ -134,14 +130,14 @@ int main(int argc, char **argv) {
   sh_packing_init(info, &opts);
 
   /* For the sake of simplicity, convert the parsed profiling information into simpler trees */
-  site_tree = sh_convert_to_site_tree(info, info->num_intervals - 1);
+  site_tree = sh_convert_to_site_tree(info, info->num_intervals - 1, &invalid_weight);
 
   /* Scale the weight of each site down by this factor */
   if(scale) {
     sh_scale_sites(site_tree, scale);
   }
 
-  hot_site_tree = sh_get_hot_sites(site_tree, capacity);
+  hot_site_tree = sh_get_hot_sites(site_tree, capacity, invalid_weight);
 
   /* Print out the guidance file */
   printf("===== GUIDANCE =====\n");

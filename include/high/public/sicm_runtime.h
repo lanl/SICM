@@ -20,6 +20,8 @@ extern void *(*orig_calloc_ptr)(size_t, size_t);
 extern void *(*orig_realloc_ptr)(void *, size_t);
 extern void (*orig_free_ptr)(void *);
 
+static atomic_size_t unaccounted = 0;
+
 enum arena_layout {
   ONE_ARENA, /* One arena */
   EXCLUSIVE_ARENAS, /* One arena per thread */
@@ -84,7 +86,7 @@ typedef struct tracker_struct {
 
   /* Associates a site ID with the arena that it's in */
   atomic_int *site_arenas;
-  atomic_intptr_t *site_devices;
+  atomic_int **site_devices;
   atomic_char *site_bigs;
   atomic_size_t *site_sizes;
 
@@ -138,7 +140,8 @@ typedef struct profiling_options {
                 profile_latency_skip_intervals,
                 profile_extent_size_skip_intervals,
                 profile_allocs_skip_intervals,
-                profile_online_skip_intervals;
+                profile_online_skip_intervals,
+                profile_objmap_skip_intervals;
   int sample_freq;
   int max_sample_pages;
 
@@ -201,6 +204,8 @@ void sh_stop_profile_master_thread();
 void sh_create_extent(sarena *arena, void *begin, void *end);
 void sh_delete_extent(sarena *arena, void *begin, void *end);
 int get_arena_index(int id, size_t sz);
+void set_site_device(int id, deviceptr device);
+sicm_device *get_arena_device(int index);
 __attribute__((constructor)) void sh_init();
 __attribute__((destructor)) void sh_terminate();
 #ifdef __cplusplus
@@ -215,6 +220,7 @@ extern "C" {
   void* sh_calloc(int id, size_t num, size_t sz);
   void* sh_realloc(int id, void *ptr, size_t sz);
   void sh_free(void* ptr);
+  void sh_sized_free(void* ptr, size_t size);
 #ifdef __cplusplus
 }
 #endif
@@ -243,6 +249,8 @@ extern "C" {
   profopts.profile_type_flags & (1 << 5)
 #define should_profile_online() \
   profopts.profile_type_flags & (1 << 6)
+#define should_profile_objmap() \
+  profopts.profile_type_flags & (1 << 7)
   
 /* Used to set which types of profiling are enabled */
 #define enable_profile_all() \
@@ -259,3 +267,5 @@ extern "C" {
   profopts.profile_type_flags = profopts.profile_type_flags | (1 << 5)
 #define enable_profile_online() \
   profopts.profile_type_flags = profopts.profile_type_flags | (1 << 6)
+#define enable_profile_objmap() \
+  profopts.profile_type_flags = profopts.profile_type_flags | (1 << 7)

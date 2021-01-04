@@ -6,6 +6,8 @@
 #include <stdlib.h> /* For size_t */
 #include "sicm_tree.h"
 
+#include "proc_object_map.h"
+
 /* Going to be defined by sicm_profile.h */
 typedef struct arena_profile arena_profile;
 
@@ -147,6 +149,34 @@ typedef struct profile_rss_data {
 } profile_rss_data;
 
 /********************
+ * PROFILE_OBJECT_MAP
+ ********************/
+ 
+unsigned long long get_cgroup_node0_current();
+unsigned long long get_cgroup_node0_max();
+ 
+typedef struct profile_objmap_info {
+  double time;
+  size_t total_heap_bytes,
+         total_upper_heap_bytes, total_lower_heap_bytes;
+  unsigned long long cgroup_node0_current, cgroup_node1_current, cgroup_node0_max,
+                     cgroup_memory_current;
+} profile_objmap_info;
+
+typedef struct per_arena_profile_objmap_info {
+  /* profile_objmap */
+  size_t peak_present_bytes, current_present_bytes;
+} per_arena_profile_objmap_info;
+
+typedef struct profile_objmap_data {
+  /* profile_objmap */
+  size_t pagesize;
+  pid_t pid;
+  struct proc_object_map_t objmap;
+  FILE *smaps_file, *node0_current_file, *node1_current_file, *node0_max_file, *memory_current_file;
+} profile_objmap_data;
+
+/********************
  * PROFILE_EXTENT_SIZE
  ********************/
 
@@ -192,6 +222,7 @@ use_tree(int, size_t);
 typedef struct profile_online_info {
   char reconfigure; /* If there was a rebinding this interval */
   char phase_change;
+  size_t using_hotset_weight; /* The weight of the currently-bound hotset */
 } profile_online_info;
 
 typedef struct per_arena_profile_online_info {
@@ -218,9 +249,12 @@ typedef struct profile_online_data_ski {
 typedef struct profile_online_data {
   size_t profile_online_event_index;
   sicm_dev_ptr upper_dl, lower_dl;
-  char upper_contention; /* Upper tier full? */
-  tree(site_info_ptr, int) offline_sorted_sites;
-  size_t upper_avail, lower_avail;
+  char upper_contention, /* Upper tier full? */
+       first_upper_contention, /* First interval where upper tier full? */
+       first_online_interval; /* First interval where strategy can run? */
+  tree(site_info_ptr, int) offline_sorted_sites, using_sorted_sites;
+  tree(int, site_info_ptr) using_hotset;
+  size_t upper_avail, lower_avail, offline_invalid_weight;
 
   /* Strat-specific data */
   profile_online_data_orig *orig;
@@ -293,3 +327,11 @@ void *profile_latency(void *);
 void profile_latency_interval(int);
 void profile_latency_post_interval();
 void profile_latency_skip_interval(int);
+
+void *profile_objmap(void *);
+void profile_objmap_interval(int);
+void profile_objmap_skip_interval(int);
+void profile_objmap_post_interval(arena_profile *);
+void profile_objmap_init();
+void profile_objmap_deinit();
+void profile_objmap_arena_init(per_arena_profile_objmap_info *);

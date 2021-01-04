@@ -10,9 +10,12 @@
 #include "sicm_profile.h"
 #include "sicm_parsing.h"
 
+#include "proc_object_map.h"
+
 profiler prof;
 static pthread_rwlock_t profile_lock = PTHREAD_RWLOCK_INITIALIZER;
 static int global_signal;
+static char should_stop = 0;
 
 /* Runs when an arena has already been created, but the runtime library
    has added an allocation site to the arena. */
@@ -38,14 +41,14 @@ void add_site_profile(int index, int site_id) {
     fprintf(stderr, "The maximum number of sites per arena has been reached: %d\n", tracker.max_sites_per_arena);
     exit(1);
   }
-  aprof->alloc_sites[aprof->num_alloc_sites - 1] = site_id;
   aprof->num_alloc_sites++;
+  aprof->alloc_sites[aprof->num_alloc_sites - 1] = site_id;
   pthread_rwlock_unlock(&profile_lock);
 }
 
 /* Runs when a new arena is created. Allocates room to store
    profiling information about this arena. */
-void create_arena_profile(int index, int site_id) {
+void create_arena_profile(int index, int site_id, char invalid) {
   arena_profile *aprof;
   int err, i;
 
@@ -75,12 +78,16 @@ void create_arena_profile(int index, int site_id) {
   if(should_profile_allocs()) {
     profile_allocs_arena_init(&(aprof->profile_allocs));
   }
+  if(should_profile_objmap()) {
+    profile_objmap_arena_init(&(aprof->profile_objmap));
+  }
   if(should_profile_online()) {
     profile_online_arena_init(&(aprof->profile_online));
   }
 
   /* Creates a profile for this arena at the current interval */
   aprof->index = index;
+  aprof->invalid = invalid;
   aprof->num_alloc_sites = 1;
   aprof->alloc_sites = orig_malloc(sizeof(int) * tracker.max_sites_per_arena);
   aprof->alloc_sites[0] = site_id;
@@ -91,6 +98,27 @@ void create_arena_profile(int index, int site_id) {
   prof.profile->this_interval.arenas[index] = aprof;
   
   pthread_rwlock_unlock(&profile_lock);
+}
+
+/* Runs when a new extent is created. */
+void create_extent_objmap_entry(void *start, void *end) {
+  int err;
+  
+  err = objmap_add_range(&prof.profile_objmap.objmap, start, end);
+  if (err < 0) {
+    fprintf(stderr, "Couldn't add extent to object_map (error = %d). Aborting.\n", err);
+    exit(1);
+  }
+}
+
+/* Runs when a new extent is deleted. */
+void delete_extent_objmap_entry(void *start) {
+  int err;
+  
+  err = objmap_del_range(&prof.profile_objmap.objmap, start);
+  if ((err < 0) && (err != -22)) {
+    fprintf(stderr, "WARNING: Couldn't delete extent (%p) to object_map (error = %d).\n", start, err);
+  }
 }
 
 /* This is the signal handler for the Master thread, so
@@ -179,6 +207,9 @@ void profile_master_interval(int s) {
     if(should_profile_allocs()) {
       profile_allocs_post_interval(aprof);
     }
+    if(should_profile_objmap()) {
+      profile_objmap_post_interval(aprof);
+    }
     if(should_profile_online()) {
       profile_online_post_interval(aprof);
     }
@@ -220,7 +251,8 @@ void profile_master_interval(int s) {
 /* Stops the master thread */
 void profile_master_stop(int s) {
   timer_delete(prof.timerid);
-  pthread_exit(NULL);
+  should_stop = 1;
+  //pthread_exit(NULL);
 }
 
 void setup_profile_thread(void *(*main)(void *), /* Spinning loop function */
@@ -296,6 +328,12 @@ void *profile_master(void *a) {
                          &profile_allocs_skip_interval,
                          profopts.profile_allocs_skip_intervals);
   }
+  if(should_profile_objmap()) {
+    setup_profile_thread(&profile_objmap,
+                         &profile_objmap_interval,
+                         &profile_objmap_skip_interval,
+                         profopts.profile_objmap_skip_intervals);
+  }
   if(should_profile_online()) {
     setup_profile_thread(&profile_online,
                          &profile_online_interval,
@@ -361,7 +399,7 @@ void *profile_master(void *a) {
   /* Wait for either the timer to signal us to start a new interval,
    * or for the main thread to signal us to stop.
    */
-  while(1) {}
+  while(!should_stop) {}
 }
 
 void init_application_profile(application_profile *profile) {
@@ -380,6 +418,9 @@ void init_application_profile(application_profile *profile) {
   }
   if(should_profile_extent_size()) {
     prof.profile->has_profile_extent_size = 1;
+  }
+  if(should_profile_objmap()) {
+    prof.profile->has_profile_objmap = 1;
   }
   if(should_profile_online()) {
     prof.profile->has_profile_online = 1;
@@ -465,6 +506,9 @@ void initialize_profiling() {
   if(should_profile_allocs()) {
     profile_allocs_init();
   }
+  if(should_profile_objmap()) {
+    profile_objmap_init();
+  }
   if(should_profile_online()) {
     profile_online_init();
   }
@@ -512,6 +556,9 @@ void deinitialize_profiling() {
   }
   if(should_profile_allocs()) {
     profile_allocs_deinit();
+  }
+  if(should_profile_objmap()) {
+    profile_objmap_deinit();
   }
   if(should_profile_online()) {
     profile_online_deinit();

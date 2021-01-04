@@ -28,8 +28,24 @@ void *(*orig_calloc_ptr)(size_t, size_t);
 void *(*orig_realloc_ptr)(void *, size_t);
 void (*orig_free_ptr)(void *);
 
+void print_sizet(size_t val, const char *str) {
+  char buf[32], index;
+  
+  index = 0;
+  while(val != 0) {
+    buf[index] = (val % 10) + '0';
+    val /= 10;
+    index++;
+  }
+  buf[index] = '\n';
+  index++;
+  write(1, str, 3);
+  write(1, buf, index);
+  fflush(stdout);
+}
+
 /* Function declarations, so I can reorder them how I like */
-void sh_create_arena(int index, int id, sicm_device *device);
+void sh_create_arena(int index, int id, sicm_device *device, char invalid);
 
 /*************************************************
  *               ORIG_MALLOC                     *
@@ -38,37 +54,27 @@ void sh_create_arena(int index, int id, sicm_device *device);
  *  after the malloc wrappers have been defined.
  */
 void *__attribute__ ((noinline)) orig_malloc(size_t size) {
-#if 0
   return je_mallocx(size, MALLOCX_TCACHE_NONE);
-#endif
-  return (*orig_malloc_ptr)(size);
+  //return (*orig_malloc_ptr)(size);
 }
 void *__attribute__ ((noinline)) orig_calloc(size_t num, size_t size) {
-#if 0
   return je_mallocx(num * size, MALLOCX_TCACHE_NONE | MALLOCX_ZERO);
-#endif
-  return (*orig_calloc_ptr)(num, size);
+  //return (*orig_calloc_ptr)(num, size);
 }
 void *__attribute__ ((noinline)) orig_realloc(void *ptr, size_t size) {
-#if 0
   if(ptr == NULL) {
     return je_mallocx(size, MALLOCX_TCACHE_NONE);
   }
   return je_rallocx(ptr, size, MALLOCX_TCACHE_NONE);
-#endif
-  return (*orig_realloc_ptr)(ptr, size);
+  //return (*orig_realloc_ptr)(ptr, size);
 }
 void __attribute__ ((noinline)) orig_free(void *ptr) {
-#if 0
   je_dallocx(ptr, MALLOCX_TCACHE_NONE);
-#endif
-  (*orig_free_ptr)(ptr);
+  //(*orig_free_ptr)(ptr);
 }
 void *__attribute__ ((noinline)) orig_valloc(size_t size) {
-#if 0
   return je_mallocx(size, MALLOCX_TCACHE_NONE | MALLOCX_ALIGN(4096));
-#endif
-  return (*orig_valloc_ptr)(size);
+  //return (*orig_valloc_ptr)(size);
 }
 
 /*************************************************
@@ -180,6 +186,20 @@ int get_site_arena(int id, char *new_site) {
   return ret;
 }
 
+sicm_device *get_arena_device(int index) {
+  sicm_device_list devices;
+  sicm_device *retval;
+  
+  /* We're not safe here, because the only place this is used checks to make
+     sure the arena is there, and grabs a lock. */
+  devices = sicm_arena_get_devices(tracker.arenas[index]->arena);
+  if(devices.count > 0) {
+    retval = devices.devices[0];
+  }
+  sicm_device_list_free(&devices);
+  return retval;
+}
+
 /* Gets the device that this site has been assigned to. Returns
  * NULL if it's unset.
  */
@@ -192,6 +212,13 @@ sicm_device *get_site_device(int id) {
   }
 
   return device;
+}
+
+void set_site_device(int id, deviceptr device) {
+  if(device == NULL) {
+    device = tracker.default_device;
+  }
+  tracker.site_devices[id] = (atomic_int *) device;
 }
 
 /* Gets an offset (0 to `num_devices`) for the per-device arenas. */
@@ -214,19 +241,23 @@ int get_device_offset(deviceptr device) {
   return ret;
 }
 
-int get_big_small_arena(int id, size_t sz, deviceptr *device, char *new_site) {
+int get_big_small_arena(int id, size_t sz, deviceptr *device, char *new_site, char *invalid) {
   int ret;
   char prev_big;
   
   prev_big = tracker.site_bigs[id];
-  if(new_site && (prev_big == -1) && should_profile()) {
+  
+  if(new_site && (prev_big == -1)) {
+    *new_site = 1;
+  }
+  
+  if(prev_big == -1) {
     /* This is the condition that we haven't seen this site before, and that profiling is on.
        We set this variable so that the profiler knows to add it to the list of sites in the arena (which requires locking). */
-    *new_site = 1;
     tracker.site_bigs[id] = 0;
   }
   
-  if(((sz > tracker.big_small_threshold) || (tracker.site_sizes[id] > tracker.big_small_threshold))) {
+  if((sz + tracker.site_sizes[id] > tracker.big_small_threshold) && id) {
     /* If the site isn't already `big`, and if its size exceeds the threshold, mark it as `big`.
        Checked and set in this manner, the `site_bigs` atomics could be doubly set to `1`. That's fine. */
     tracker.site_bigs[id] = 1;
@@ -234,12 +265,13 @@ int get_big_small_arena(int id, size_t sz, deviceptr *device, char *new_site) {
   
   if(tracker.site_bigs[id] == 1) {
     ret = get_site_arena(id, NULL);
-    ret += tracker.max_threads + 1; /* We need to skip arena 0, as well as the per-thread arenas. */
+    ret += tracker.max_threads + 1; /* We need to skip the per-thread arenas. */
     *device = get_site_device(id);
+    *invalid = 0;
   } else {
-    /* We add one here because arena 0 is reserved for unknown allocations. */
-    ret = get_thread_index() + 1;
+    ret = get_thread_index();
     *device = tracker.upper_device;
+    *invalid = 1;
   }
   
   return ret;
@@ -250,8 +282,9 @@ int get_arena_index(int id, size_t sz) {
   int ret, thread_index;
   deviceptr device;
   siteinfo_ptr site;
-  char new_site;
+  char new_site, invalid;
 
+  invalid = 0;
   new_site = 0;
   ret = 0;
   device = NULL;
@@ -277,8 +310,7 @@ int get_arena_index(int id, size_t sz) {
       device = get_site_device(id);
       break;
     case BIG_SMALL_ARENAS:
-      /* See above function, `get_big_small_arena`. */
-      ret = get_big_small_arena(id, sz, &device, &new_site);
+      ret = get_big_small_arena(id, sz, &device, &new_site, &invalid);
       break;
     default:
       fprintf(stderr, "Invalid arena layout. Aborting.\n");
@@ -300,7 +332,7 @@ int get_arena_index(int id, size_t sz) {
       fprintf(stderr, "Failed to acquire arena lock. Aborting.\n");
       exit(1);
     }
-    sh_create_arena(ret, id, device);
+    sh_create_arena(ret, id, device, invalid);
     if(pthread_mutex_unlock(&tracker.arena_lock) != 0) {
       fprintf(stderr, "Failed to unlock arena lock. Aborting.\n");
       exit(1);
@@ -320,7 +352,7 @@ int get_arena_index(int id, size_t sz) {
  */
  
 /* Adds an arena to the `arenas` array. */
-void sh_create_arena(int index, int id, sicm_device *device) {
+void sh_create_arena(int index, int id, sicm_device *device, char invalid) {
   size_t i;
   arena_info *arena;
   siteinfo_ptr site;
@@ -350,7 +382,7 @@ void sh_create_arena(int index, int id, sicm_device *device) {
   
   /* Finally, tell the profiler about this arena */
   if(should_profile()) {
-    create_arena_profile(index, id);
+    create_arena_profile(index, id, invalid);
   }
 }
 
@@ -371,7 +403,11 @@ void sh_create_extent(sarena *arena, void *start, void *end) {
     fprintf(stderr, "Failed to acquire read/write lock. Aborting.\n");
     exit(1);
   }
+  /* Finally, tell the profiler about this extent */
   extent_arr_insert(tracker.extents, start, end, tracker.arenas[arena_index]);
+  if(should_profile_objmap()) {
+    create_extent_objmap_entry(start, end);
+  }
   if(pthread_rwlock_unlock(&tracker.extents_lock) != 0) {
     fprintf(stderr, "Failed to unlock read/write lock. Aborting.\n");
     exit(1);
@@ -384,7 +420,11 @@ void sh_delete_extent(sarena *arena, void *start, void *end) {
     exit(1);
   }
   extent_arr_delete(tracker.extents, start);
-  madvise(start, end - start, MADV_DONTNEED);
+  //madvise(start, end - start, MADV_DONTNEED);
+  /* Finally, tell the profiler that this extent is no more*/
+  if(should_profile_objmap()) {
+    delete_extent_objmap_entry(start);
+  }
   if(pthread_rwlock_unlock(&tracker.extents_lock) != 0) {
     fprintf(stderr, "Failed to unlock read/write lock. Aborting.\n");
     exit(1);
@@ -402,26 +442,45 @@ void* sh_realloc(int id, void *ptr, size_t sz) {
   int   index;
   void *ret;
   alloc_info_ptr aip;
-  size_t usable_size;
+  size_t new_usable_size, old_usable_size;
   char *charptr;
-
-  if(!sh_initialized || !id || (tracker.layout == INVALID_LAYOUT)) {
-    ret = je_realloc(ptr, sz + 4);
-    usable_size = je_malloc_usable_size(ret);
-    charptr = ret;
-    *((int *)(charptr + usable_size - 4)) = 0;
-    if(sh_initialized && (tracker.layout != INVALID_LAYOUT)) {
-      tracker.site_sizes[0] = usable_size;
+  
+  old_usable_size = 0;
+  if(!sh_initialized || (tracker.layout == INVALID_LAYOUT)) {
+    if(ptr) {
+      old_usable_size = je_malloc_usable_size(ptr);
     }
+    ret = je_realloc(ptr, sz + sizeof(int));
+    new_usable_size = je_malloc_usable_size(ret);
+    charptr = ret;
+    *((int *)(charptr + new_usable_size - sizeof(int))) = -1;
+    return ret;
+  } else if(id == 0) {
+    if(ptr) {
+      old_usable_size = je_malloc_usable_size(ptr);
+    }
+    ret = je_realloc(ptr, sz + sizeof(int));
+    new_usable_size = je_malloc_usable_size(ret);
+    charptr = ret;
+    *((int *)(charptr + new_usable_size - sizeof(int))) = 0;
+    tracker.site_sizes[0] -= old_usable_size;
+    tracker.site_sizes[0] += new_usable_size;
+    unaccounted -= old_usable_size;
+    unaccounted += new_usable_size;
+    //print_sizet(unaccounted, "re ");
     return ret;
   }
-
+  
   index = get_arena_index(id, sz);
-  ret = sicm_arena_realloc(tracker.arenas[index]->arena, ptr, sz + 4);
-  usable_size = je_malloc_usable_size(ret);
+  if(ptr) {
+    old_usable_size = je_malloc_usable_size(ptr);
+  }
+  ret = sicm_arena_realloc(tracker.arenas[index]->arena, ptr, sz + sizeof(int));
+  new_usable_size = je_malloc_usable_size(ret);
   charptr = ret;
-  *((int *)(charptr + usable_size - 4)) = id;
-  tracker.site_sizes[id] = usable_size;
+  *((int *)(charptr + new_usable_size - sizeof(int))) = id;
+  tracker.site_sizes[id] -= old_usable_size;
+  tracker.site_sizes[id] += new_usable_size;
 
   if(should_profile_allocs()) {
     profile_allocs_realloc(ptr, sz, index);
@@ -447,35 +506,40 @@ void* sh_alloc(int id, size_t sz) {
        assumption. */
     sz = 1;
   }
-  if(!sh_initialized || !id || (tracker.layout == INVALID_LAYOUT)) {
-    ret = je_mallocx(sz + 4, MALLOCX_TCACHE_NONE);
+  if(!sh_initialized || (tracker.layout == INVALID_LAYOUT)) {
+    ret = je_mallocx(sz + sizeof(int), MALLOCX_TCACHE_NONE);
     usable_size = je_malloc_usable_size(ret);
     charptr = ret;
-    *((int *)(charptr + usable_size - 4)) = 0;
-    if(sh_initialized && (tracker.layout != INVALID_LAYOUT)) {
-      tracker.site_sizes[0] += usable_size;
-    }
+    *((int *)(charptr + usable_size - sizeof(int))) = (int) -1;
+    return ret;
+  } else if(id == 0) {
+    ret = je_mallocx(sz + sizeof(int), MALLOCX_TCACHE_NONE);
+    usable_size = je_malloc_usable_size(ret);
+    charptr = ret;
+    *((int *)(charptr + usable_size - sizeof(int))) = (int) 0;
+    tracker.site_sizes[0] += usable_size;
+    unaccounted += usable_size;
+    //print_sizet(unaccounted, "al ");
     return ret;
   }
-
+  
   if(id >= tracker.max_sites) {
     fprintf(stderr, "Site %d went over maximum number of sites, %d.\n", id, tracker.max_sites);
     exit(1);
   }
   
-  
   /* Here, we'll actually grab 4 more bytes than the application asked for */
   index = get_arena_index(id, sz);
-  ret = sicm_arena_alloc(tracker.arenas[index]->arena, sz + 4);
+  ret = sicm_arena_alloc(tracker.arenas[index]->arena, sz + sizeof(int));
   usable_size = je_malloc_usable_size(ret);
   charptr = ret;
-  *((int *)(charptr + usable_size - 4)) = id;
+  *((int *)(charptr + usable_size - sizeof(int))) = id;
   tracker.site_sizes[id] += usable_size;
 
   if(should_profile_allocs()) {
     profile_allocs_alloc(ret, sz, index);
   }
-
+  
   if (profopts.should_run_rdspy) {
     sh_rdspy_alloc(ret, sz, id);
   }
@@ -489,29 +553,37 @@ void* sh_aligned_alloc(int id, size_t alignment, size_t sz) {
   size_t usable_size;
   char *charptr;
 
-  if(!sh_initialized || !id || (tracker.layout == INVALID_LAYOUT) || !sz) {
-    ret = je_mallocx(sz + 4, MALLOCX_TCACHE_NONE | MALLOCX_ALIGN(alignment));
+  if(!sz) {
+    sz = alignment;
+  }
+  if(!sh_initialized || (tracker.layout == INVALID_LAYOUT)) {
+    ret = je_mallocx(sz + sizeof(int), MALLOCX_TCACHE_NONE | MALLOCX_ALIGN(alignment));
     usable_size = je_malloc_usable_size(ret);
     charptr = ret;
-    *((int *)(charptr + usable_size - 4)) = 0;
-    if(sh_initialized && (tracker.layout != INVALID_LAYOUT)) {
-      tracker.site_sizes[0] += usable_size;
-    }
+    *((int *)(charptr + usable_size - sizeof(int))) = -1;
+    return ret;
+  } else if(id == 0) {
+    ret = je_mallocx(sz + sizeof(int), MALLOCX_TCACHE_NONE | MALLOCX_ALIGN(alignment));
+    usable_size = je_malloc_usable_size(ret);
+    charptr = ret;
+    *((int *)(charptr + usable_size - sizeof(int))) = 0;
+    tracker.site_sizes[0] += usable_size;
+    unaccounted += usable_size;
+    //print_sizet(unaccounted, "aa ");
     return ret;
   }
 
-  tracker.site_sizes[id] += sz;
   index = get_arena_index(id, sz);
-  ret = sicm_arena_alloc_aligned(tracker.arenas[index]->arena, sz + 4, alignment);
+  ret = sicm_arena_alloc_aligned(tracker.arenas[index]->arena, sz + sizeof(int), alignment);
   usable_size = je_malloc_usable_size(ret);
   charptr = ret;
-  *((int *)(charptr + usable_size - 4)) = id;
+  *((int *)(charptr + usable_size - sizeof(int))) = id;
   tracker.site_sizes[id] += usable_size;
 
   if(should_profile_allocs()) {
     profile_allocs_alloc(ret, sz, index);
   }
-
+  
   if (profopts.should_run_rdspy) {
     sh_rdspy_alloc(ret, sz, id);
   }
@@ -561,10 +633,51 @@ void sh_free(void* ptr) {
 
   /* Here, we know that at the end of this allocation, we've stored
      a 4-byte integer that represents the site ID. */
-  
   usable_size = je_malloc_usable_size(ptr);
   charptr = ptr;
-  id = *((int *)(charptr + usable_size - 4));
+  id = *((int *)(charptr + usable_size - sizeof(int)));
   tracker.site_sizes[id] -= usable_size;
+  if(id == 0) {
+    unaccounted -= usable_size;
+    //print_sizet(unaccounted, "fr ");
+  }
+  sicm_free(ptr);
+}
+
+void sh_sized_free(void* ptr, size_t size) {
+  int id;
+  size_t usable_size;
+  char *charptr;
+  
+  if(!ptr) {
+    return;
+  }
+
+  if(!sh_initialized || (tracker.layout == INVALID_LAYOUT)) {
+    je_sdallocx(ptr, size, MALLOCX_TCACHE_NONE);
+    return;
+  }
+
+  if(profopts.should_run_rdspy) {
+    sh_rdspy_free(ptr);
+  }
+
+  if(should_profile_allocs()) {
+    profile_allocs_free(ptr);
+  }
+
+  /* Here, we know that at the end of this allocation, we've stored
+     a 4-byte integer that represents the site ID. */
+  /* I don't know what to do with the `size` here, because
+     SICM's low-level arena allocator doesn't support freeing a specific
+     size. Most likely, this means that C++ sized allocations will break. */
+  usable_size = je_malloc_usable_size(ptr);
+  charptr = ptr;
+  id = *((int *)(charptr + usable_size - sizeof(int)));
+  tracker.site_sizes[id] -= usable_size;
+  if(id == 0) {
+    unaccounted -= usable_size;
+    //print_sizet(unaccounted, "sf ");
+  }
   sicm_free(ptr);
 }

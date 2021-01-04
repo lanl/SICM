@@ -53,6 +53,11 @@ static void timespec_diff(struct timespec *start, struct timespec *stop,
 typedef struct arena_profile {
   unsigned index;
   int num_alloc_sites, *alloc_sites;
+  
+  /* Boolean that indicates that this arena's profiling information is invalid.
+     One example of this is the per-thread arenas in some arena layouts, which
+     aggregate multiple sites' allocations. */
+  char invalid;
 
   per_arena_profile_all_info profile_all;
   profile_extent_size_info profile_extent_size;
@@ -60,6 +65,7 @@ typedef struct arena_profile {
   per_arena_profile_rss_info profile_rss;
   per_arena_profile_online_info profile_online;
   per_arena_profile_bw_info profile_bw;
+  per_arena_profile_objmap_info profile_objmap;
 } arena_profile;
 
 typedef struct interval_profile {
@@ -77,6 +83,7 @@ typedef struct interval_profile {
   profile_online_info profile_online;
   profile_rss_info profile_rss;
   profile_all_info profile_all;
+  profile_objmap_info profile_objmap;
 } interval_profile;
 
 /* Profiling information for a whole application */
@@ -90,7 +97,8 @@ typedef struct application_profile {
        has_profile_online,
        has_profile_bw,
        has_profile_bw_relative,
-       has_profile_latency;
+       has_profile_latency,
+       has_profile_objmap;
   
   size_t num_intervals, num_profile_all_events;
 
@@ -154,13 +162,16 @@ typedef struct profiler {
   profile_online_data profile_online;
   profile_bw_data profile_bw;
   profile_latency_data profile_latency;
+  profile_objmap_data profile_objmap;
 } profiler;
 
 extern profiler prof;
 
 void sh_start_profile_master_thread();
 void sh_stop_profile_master_thread();
-void create_arena_profile(int, int);
+void create_arena_profile(int, int, char);
+void create_extent_objmap_entry(void*, void*);
+void delete_extent_objmap_entry(void*);
 void add_site_profile(int, int);
 
 /* Given an arena and index, check to make sure it's not NULL */
@@ -201,7 +212,7 @@ static inline void copy_interval_profile(size_t index) {
      `this_interval` into `interval`. */
   interval = &(prof.profile->intervals[index]);
   this_interval = &(prof.profile->this_interval);
-                                         
+  
   /* Copy the interval_profile from this_interval to intervals[index] */
   interval->num_arenas = this_interval->num_arenas;
   interval->max_index = this_interval->max_index;
@@ -244,11 +255,20 @@ static inline void copy_interval_profile(size_t index) {
   
   interval->time = this_interval->time;
   interval->profile_online.reconfigure = this_interval->profile_online.reconfigure;
+  interval->profile_online.using_hotset_weight = this_interval->profile_online.using_hotset_weight;
   interval->profile_online.phase_change = this_interval->profile_online.phase_change;
   this_interval->profile_online.phase_change = 0;
   this_interval->profile_online.reconfigure = 0;
   interval->profile_rss.time = this_interval->profile_rss.time;
+  interval->profile_objmap.time = this_interval->profile_objmap.time;
+  interval->profile_objmap.total_heap_bytes = this_interval->profile_objmap.total_heap_bytes;
+  interval->profile_objmap.total_upper_heap_bytes = this_interval->profile_objmap.total_upper_heap_bytes;
+  interval->profile_objmap.total_lower_heap_bytes = this_interval->profile_objmap.total_lower_heap_bytes;
+  interval->profile_objmap.cgroup_node0_max = this_interval->profile_objmap.cgroup_node0_max;
+  interval->profile_objmap.cgroup_node0_current = this_interval->profile_objmap.cgroup_node0_current;
+  interval->profile_objmap.cgroup_memory_current = this_interval->profile_objmap.cgroup_memory_current;
   this_interval->profile_rss.time = 0.0;
+  this_interval->profile_objmap.time = 0.0;
 }
 
 
@@ -264,6 +284,9 @@ static inline void copy_interval_profile(size_t index) {
 #define get_profile_rss_prof() \
   (&(prof.profile->this_interval.profile_rss))
   
+#define get_profile_objmap_prof() \
+  (&(prof.profile->this_interval.profile_objmap))
+  
 #define get_profile_latency_prof() \
   (&(prof.profile->this_interval.profile_latency))
   
@@ -278,6 +301,9 @@ static inline void copy_interval_profile(size_t index) {
   
 #define get_arena_rss_prof(i) \
   (&(get_arena_prof(i)->profile_rss))
+
+#define get_arena_objmap_prof(i) \
+  (&(get_arena_prof(i)->profile_objmap))
 
 /* Since the profiling library stores an interval after it happens,
    the "previous interval" is actually the last one recorded */

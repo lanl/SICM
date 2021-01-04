@@ -43,6 +43,10 @@ void * aligned_alloc(size_t alignment, size_t size) {
   return sh_aligned_alloc(0, alignment, size);
 }
 
+void * _aligned_malloc(size_t alignment, size_t size) {
+  return sh_aligned_alloc(0, alignment, size);
+}
+
 void * memalign(size_t alignment, size_t size) {
   return sh_memalign(0, alignment, size);
 }

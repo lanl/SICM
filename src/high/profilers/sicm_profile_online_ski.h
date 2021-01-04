@@ -104,7 +104,9 @@ void prepare_stats_ski(tree(site_info_ptr, int) sorted_sites) {
             prof.profile_online.ski->penalty_stay,
             prof.profile_online.ski->penalty_displace);
     fprintf(profopts.profile_online_debug_file,
-            "Interval: %zu\n", prof.profile->num_intervals - 1);
+            "Interval: %zu\n", prof.profile->num_intervals);
+    fflush(profopts.profile_online_debug_file);
+    fflush(stdout);
   }
 }
 
@@ -114,6 +116,7 @@ void profile_online_interval_ski(tree(site_info_ptr, int) sorted_sites) {
   char dev;
   int index;
   tree_it(site_info_ptr, int) sit;
+  site_info_ptr tmp;
   
   /* The cost to "rent the skis" for another day is just penalty_stay;
      the amount of time that we, approximately, lose for keeping the "hot"
@@ -129,10 +132,46 @@ void profile_online_interval_ski(tree(site_info_ptr, int) sorted_sites) {
      
   /* We rebind everything to match the current hotset if the cumulative
      cost of "renting" exceeds the cost to "buy." */
-  if((rent_cost > 0.0) && (rent_cost >= buy_cost)) {
+  if(prof.profile_online.first_online_interval == 1) {
+    /* Here, we'll short-circuit the algorithm and rebind all sites no matter what, since
+       the online approach has just now taken over. */
+    if(profopts.profile_online_debug_file) {
+      fprintf(profopts.profile_online_debug_file, "First online interval. Rebinding.\n");
+    }
     get_profile_online_prof()->reconfigure = 1;
-    full_rebind(sorted_sites);
+    full_rebind_first(sorted_sites);
+    if(prof.profile_online.using_sorted_sites) {
+      tree_free(prof.profile_online.using_sorted_sites);
+    }
+    if(prof.profile_online.using_hotset) {
+      tree_free(prof.profile_online.using_hotset);
+    }
+    prof.profile_online.using_sorted_sites = copy_sorted_sites(sorted_sites);
+    
+    /* Here, we'll figured out the hotset and make a copy of it */
+    prof.profile_online.using_hotset = tree_make(int, site_info_ptr);
+    tree_traverse(sorted_sites, sit) {
+      
+      if(get_arena_online_prof(tree_it_key(sit)->index)->hot) {
+        tmp = malloc(sizeof(site_profile_info));
+        memcpy(tmp, tree_it_key(sit), sizeof(site_profile_info));
+        tree_insert(prof.profile_online.using_hotset, tree_it_val(sit), tmp);
+      }
+    }
+  } else if((prof.profile_online.first_online_interval == 2) && (rent_cost > 0.0) && (rent_cost >= buy_cost)) {
+    get_profile_online_prof()->reconfigure = 1;
+    //full_rebind(sorted_sites);
   } else {
     get_profile_online_prof()->reconfigure = 0;
+  }
+  if(profopts.profile_online_debug_file) {
+    fprintf(profopts.profile_online_debug_file,
+            "Upper tier: %llu / %llu\n", get_cgroup_node0_current(), get_cgroup_node0_max());
+    fflush(profopts.profile_online_debug_file);
+  }
+  
+  if(profopts.profile_online_debug_file) {
+    fflush(profopts.profile_online_debug_file);
+    fflush(stdout);
   }
 }

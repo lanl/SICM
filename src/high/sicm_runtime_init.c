@@ -3,6 +3,7 @@
 #include <dlfcn.h>
 #include <stdbool.h>
 #include <numa.h>
+#include <sys/time.h>
 #include <sys/resource.h>
 
 #define SICM_RUNTIME 1
@@ -111,6 +112,7 @@ sicm_device *get_device_from_numa_node(int id) {
   X(SH_PROFILE_ONLINE_VALUE) \
   X(SH_PROFILE_ONLINE_WEIGHT) \
   X(SH_PROFILE_ONLINE_SORT) \
+  X(SH_PROFILE_ONLINE_VALUE_THRESHOLD) \
   X(SH_PROFILE_ONLINE_PACKING_ALGO) \
   X(SH_PROFILE_ONLINE_USE_LAST_INTERVAL) \
   X(SH_PROFILE_ONLINE_LAST_ITER_VALUE) \
@@ -307,7 +309,7 @@ void set_guided_options() {
       fprintf(stderr, "Failed to open guidance file. Aborting.\n");
       exit(1);
     }
-
+    
     /* Read in the sites */
     guidance = 0;
     found_guidance = 0; /* Set if we find any site guidance at all */
@@ -340,7 +342,7 @@ void set_guided_options() {
         sscanf(str, "%d", &node);
 
         /* Use the arrays of atomics to set this site to go to the proper device */
-        tracker.site_devices[site] = get_device_from_numa_node(node);
+        tracker.site_devices[site] = (atomic_int *) get_device_from_numa_node(node);
         
       } else {
         if(!str) continue;
@@ -821,6 +823,17 @@ void set_profile_options() {
     }
   }
 
+  env = getenv("SH_PROFILE_OBJMAP");
+  if(env) {
+    enable_profile_objmap();
+
+    env = getenv("SH_PROFILE_OBJMAP_SKIP_INTERVALS");
+    profopts.profile_objmap_skip_intervals = 1;
+    if(env) {
+      profopts.profile_objmap_skip_intervals = strtoul(env, NULL, 0);
+    }
+  }
+
   /* What sample frequency should we use? Default is 2048. Higher
    * frequencies will fill up the sample pages (below) faster.
    */
@@ -887,12 +900,18 @@ void sh_init() {
   void *handle;
   bool on;
   int err;
+  struct rlimit rlim;
+  char *s;
 
   if(atomic_fetch_add(&sh_being_initialized, 1) > 0) {
     fprintf(stderr, "sh_init called more than once: %d\n", sh_being_initialized);
     fflush(stderr);
     return;
   }
+  
+  rlim.rlim_cur = -1;
+  rlim.rlim_max = -1;
+  setrlimit(RLIMIT_STACK, &rlim);
   
   /* Disable the background thread in jemalloc to avoid a segfault */
   on = false;
@@ -964,7 +983,6 @@ void sh_init() {
       break;
     case SHARED_SITE_ARENAS:
     case BIG_SMALL_ARENAS:
-      tracker.arenas_per_thread = 1;
     default:
       tracker.arenas_per_thread = 1;
       break;
@@ -985,9 +1003,9 @@ void sh_init() {
       tracker.site_bigs[i] = -1;
     }
     tracker.site_sizes = (atomic_size_t *) orig_calloc(tracker.max_sites + 1, sizeof(atomic_size_t));
-    tracker.site_devices = (atomic_intptr_t *) orig_malloc((tracker.max_sites + 1) * sizeof(atomic_intptr_t));
+    tracker.site_devices = (atomic_int **) orig_malloc((tracker.max_sites + 1) * sizeof(atomic_int *));
     for(i = 0; i < tracker.max_sites + 1; i++) {
-      tracker.site_devices[i] = NULL;
+      tracker.site_devices[i] = (atomic_int *) NULL;
     }
     tracker.site_arenas = (atomic_int *) orig_malloc((tracker.max_sites + 1) * sizeof(atomic_int));
     for(i = 0; i < tracker.max_sites + 1; i++) {
@@ -1006,9 +1024,7 @@ void sh_init() {
   set_profile_options();
   set_guided_options();
   
-  if(should_profile_all() ||
-      should_profile_rss() ||
-      should_profile_extent_size()) {
+  if(should_profile()) {
     /* Set the arena allocator's callback function */
     sicm_extent_alloc_callback = &sh_create_extent;
     sicm_extent_dalloc_callback = &sh_delete_extent;
@@ -1028,15 +1044,15 @@ void sh_init() {
   on = true;
   err = je_mallctl("background_thread", NULL, NULL, (void *)&on, sizeof(bool));
   if(err) {
-    fprintf(stderr, "Failed to disable background threads: %d\n", err);
+    fprintf(stderr, "Failed to re-enable background threads: %d\n", err);
     exit(1);
   }
 
   sh_initialized = 1;
 }
 
-__attribute__((destructor))
-void sh_terminate() {
+static pthread_once_t sh_term = PTHREAD_ONCE_INIT;
+void sh_terminate_helper() {
   size_t i, n;
   arena_info *arena;
   int err;
@@ -1047,7 +1063,15 @@ void sh_terminate() {
   }
   sh_initialized = 0;
   
-  /* Disable the background thread in jemalloc to avoid a segfault */
+  /* We need to stop the profiling first */
+  if(tracker.layout != INVALID_LAYOUT) {
+    if(should_profile()) {
+      sh_stop_profile_master_thread();
+    }
+  }
+    
+  /* Now disable background threads in jemalloc, so we don't get any allocations
+     happening while we're terminating */
   on = false;
   err = je_mallctl("background_thread", NULL, NULL, (void *)&on, sizeof(bool));
   if(err) {
@@ -1055,25 +1079,8 @@ void sh_terminate() {
     exit(1);
   }
 
+  /* Now that no allocations are happening, we can clean up the arenas */
   if(tracker.layout != INVALID_LAYOUT) {
-
-    /* Clean up the profiler */
-    if(should_profile()) {
-      sh_stop_profile_master_thread();
-    }
-    
-    /* Print out some debugging information */
-    arena_arr_for(i) {
-      arena_check_good(arena, i);
-      printf("===== BEGIN ARENA %d =====\n", i);
-      for(n = 0; n < tracker.max_threads; n++) {
-        if(arena->thread_allocs[n]) {
-          printf("Thread %d: %d\n", n, arena->thread_allocs[n]);
-        }
-      }
-      printf("===== END ARENA %d =====\n", i);
-    }
-
     /* Clean up the arenas */
     arena_arr_for(i) {
       arena_check_good(arena, i);
@@ -1089,8 +1096,12 @@ void sh_terminate() {
   /* Clean up the low-level interface */
   sicm_fini(&tracker.device_list);
 
-
   if(profopts.should_run_rdspy) {
     sh_rdspy_terminate();
   }
+}
+
+__attribute__((destructor))
+void sh_terminate() {
+  pthread_once(&sh_term, sh_terminate_helper);
 }

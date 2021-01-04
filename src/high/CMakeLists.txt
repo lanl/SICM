@@ -1,4 +1,5 @@
 add_library(sicm_runtime SHARED
+            proc_object_map.c
             sicm_runtime.c
             sicm_runtime_init.c
             sicm_rdspy.c
@@ -9,9 +10,11 @@ add_library(sicm_runtime SHARED
             profilers/sicm_profile_extent_size.c
             profilers/sicm_profile_online.c
             profilers/sicm_profile_bw.c
-            profilers/sicm_profile_latency.c)
+            profilers/sicm_profile_latency.c
+            profilers/sicm_profile_objmap.c)
 add_library(sicm_overrides SHARED
-            sicm_overrides.c)
+            sicm_overrides.c
+            sicm_cpp_overrides.cpp)
 add_library(sicm_compass SHARED sicm_compass.cpp)
 add_library(sicm_rdspy SHARED sicm_rdspy.cpp)
 add_executable(sicm_hotset sicm_hotset.c)
