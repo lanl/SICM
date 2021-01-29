@@ -103,10 +103,7 @@ void prepare_stats_ski(tree(site_info_ptr, int) sorted_sites) {
             prof.profile_online.ski->penalty_move,
             prof.profile_online.ski->penalty_stay,
             prof.profile_online.ski->penalty_displace);
-    fprintf(profopts.profile_online_debug_file,
-            "Interval: %zu\n", prof.profile->num_intervals);
     fflush(profopts.profile_online_debug_file);
-    fflush(stdout);
   }
 }
 
@@ -140,6 +137,9 @@ void profile_online_interval_ski(tree(site_info_ptr, int) sorted_sites) {
     }
     get_profile_online_prof()->reconfigure = 1;
     full_rebind_first(sorted_sites);
+    
+    /* Maintain `using_sorted_sites` and `using_hotset`, which are the sites that this
+       interval is using as its site tree and hotset. Update this when rebinds happen. */
     if(prof.profile_online.using_sorted_sites) {
       tree_free(prof.profile_online.using_sorted_sites);
     }
@@ -147,11 +147,8 @@ void profile_online_interval_ski(tree(site_info_ptr, int) sorted_sites) {
       tree_free(prof.profile_online.using_hotset);
     }
     prof.profile_online.using_sorted_sites = copy_sorted_sites(sorted_sites);
-    
-    /* Here, we'll figured out the hotset and make a copy of it */
     prof.profile_online.using_hotset = tree_make(int, site_info_ptr);
     tree_traverse(sorted_sites, sit) {
-      
       if(get_arena_online_prof(tree_it_key(sit)->index)->hot) {
         tmp = malloc(sizeof(site_profile_info));
         memcpy(tmp, tree_it_key(sit), sizeof(site_profile_info));
@@ -159,19 +156,10 @@ void profile_online_interval_ski(tree(site_info_ptr, int) sorted_sites) {
       }
     }
   } else if((prof.profile_online.first_online_interval == 2) && (rent_cost > 0.0) && (rent_cost >= buy_cost)) {
+    /* This is the case where it's not our first online interval, but the rent cost exceeds the cost to buy. */
     get_profile_online_prof()->reconfigure = 1;
-    //full_rebind(sorted_sites);
+    full_rebind(sorted_sites);
   } else {
     get_profile_online_prof()->reconfigure = 0;
-  }
-  if(profopts.profile_online_debug_file) {
-    fprintf(profopts.profile_online_debug_file,
-            "Upper tier: %llu / %llu\n", get_cgroup_node0_current(), get_cgroup_node0_max());
-    fflush(profopts.profile_online_debug_file);
-  }
-  
-  if(profopts.profile_online_debug_file) {
-    fflush(profopts.profile_online_debug_file);
-    fflush(stdout);
   }
 }

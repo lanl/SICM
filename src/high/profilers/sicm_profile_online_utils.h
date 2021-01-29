@@ -1,6 +1,129 @@
 #include "sicm_packing.h"
 #include <time.h>
 #include <sys/time.h>
+#include <signal.h>
+#include <dirent.h>
+#define _GNU_SOURCE
+#include <unistd.h>
+#include <sys/syscall.h>
+#include <sys/types.h>
+
+#define RESUME_SIG SIGUSR2
+#define SUSPEND_SIG SIGUSR1
+
+static sigset_t wait_mask;
+static __thread int suspended = 0; // per-thread flag
+
+void resume_handler(int sig) {
+  pid_t self_tid;
+  
+  self_tid = syscall(SYS_gettid);
+  if(profopts.profile_online_debug_file) {
+    /*
+    fprintf(profopts.profile_online_debug_file,
+      "Inside the thread, resuming %ld.\n", (long) self_tid);
+    fflush(profopts.profile_online_debug_file);
+    */
+  }
+  
+  suspended = 0;
+}
+
+void suspend_handler(int sig) {
+  if (suspended) return;
+  suspended = 1;
+  do sigsuspend(&wait_mask); while (suspended);
+}
+
+/* Set up signal handlers so that we can suspend/resume any threads we please. */
+void init_thread_suspension() {
+  struct sigaction sa;
+
+  sigfillset(&wait_mask);
+  sigdelset(&wait_mask, SUSPEND_SIG);
+  sigdelset(&wait_mask, RESUME_SIG);
+
+  sigfillset(&sa.sa_mask);
+  sa.sa_flags = 0;
+  sa.sa_handler = resume_handler;
+  sigaction(RESUME_SIG, &sa, NULL);
+
+  sa.sa_handler = suspend_handler;
+  sigaction(SUSPEND_SIG, &sa, NULL);
+}
+
+/* Uses proc to find all TIDs of the current process, and
+   sends SIGSTOP to all of them. */
+void suspend_all_threads() {
+  DIR *proc_dir;
+  char dirname[256];
+  pid_t tid, self_tid;
+  
+  self_tid = syscall(SYS_gettid);
+  sicm_arena_lock();
+
+  snprintf(dirname, sizeof(dirname), "/proc/%d/task", getpid());
+  proc_dir = opendir(dirname);
+  
+  if(profopts.profile_online_debug_file) {
+    fprintf(profopts.profile_online_debug_file,
+      "Own TID %ld.\n", (long) self_tid);
+    fflush(profopts.profile_online_debug_file);
+  }
+
+  if (proc_dir) {
+    /*  /proc available, iterate through tasks... */
+    struct dirent *entry;
+    while ((entry = readdir(proc_dir)) != NULL) {
+      if(entry->d_name[0] == '.')
+      continue;
+      tid = atoi(entry->d_name);
+      if(tid != self_tid) {
+        syscall(SYS_tkill, tid, SUSPEND_SIG);
+        if(profopts.profile_online_debug_file) {
+          fprintf(profopts.profile_online_debug_file,
+            "Suspend: %ld.\n", (long) tid);
+          fflush(profopts.profile_online_debug_file);
+        }
+      }
+    }
+    closedir(proc_dir);
+  }
+  
+  sicm_arena_unlock();
+}
+
+/* Uses proc to find all TIDs of the current process, and
+   sends SIGCONT to all of them. */
+void resume_all_threads() {
+  DIR *proc_dir;
+  char dirname[256];
+  pid_t tid, self_tid;
+  
+  self_tid = syscall(SYS_gettid);
+
+  snprintf(dirname, sizeof(dirname), "/proc/%d/task", getpid());
+  proc_dir = opendir(dirname);
+
+  if (proc_dir) {
+    /*  /proc available, iterate through tasks... */
+    struct dirent *entry;
+    while ((entry = readdir(proc_dir)) != NULL) {
+      if(entry->d_name[0] == '.')
+      continue;
+      tid = atoi(entry->d_name);
+      if(tid != self_tid) {
+        syscall(SYS_tkill, tid, RESUME_SIG);
+        if(profopts.profile_online_debug_file) {
+          fprintf(profopts.profile_online_debug_file,
+            "Resume: %ld.\n", (long) tid);
+          fflush(profopts.profile_online_debug_file);
+        }
+      }
+    }
+    closedir(proc_dir);
+  }
+}
 
 /* Makes a deep copy of the given hotset. */
 tree(int, site_info_ptr) copy_hotset(tree(int, site_info_ptr) hotset) {
@@ -66,6 +189,8 @@ void full_rebind(tree(site_info_ptr, int) sorted_sites) {
   if(profopts.profile_online_debug_file) {
     clock_gettime(CLOCK_MONOTONIC, &start);
   }
+  
+  suspend_all_threads();
 
   tree_traverse(sorted_sites, sit) {
     index = tree_it_key(sit)->index;
@@ -77,14 +202,10 @@ void full_rebind(tree(site_info_ptr, int) sorted_sites) {
       /* The site is in DRAM and isn't in the hotset */
       dl = prof.profile_online.lower_dl;
       get_arena_online_prof(index)->dev = 0;
-      fprintf(profopts.profile_online_debug_file,
-              "Binding down: %zu\n", index);
     }
     if(((dev == 0) || (dev == -1)) && !hot) {
       dl = prof.profile_online.lower_dl;
       get_arena_online_prof(index)->dev = 0;
-      fprintf(profopts.profile_online_debug_file,
-              "Binding down: %zu\n", index);
     }
     if(dl) {
       rebind_arena(index, dl, sit);
@@ -102,19 +223,17 @@ void full_rebind(tree(site_info_ptr, int) sorted_sites) {
       /* The site is in AEP, and is in the hotset. */
       dl = prof.profile_online.upper_dl;
       get_arena_online_prof(index)->dev = 1;
-      fprintf(profopts.profile_online_debug_file,
-              "Binding up: %zu\n", index);
     }
     if((dev == 1) && hot) {
       dl = prof.profile_online.upper_dl;
       get_arena_online_prof(index)->dev = 1;
-      fprintf(profopts.profile_online_debug_file,
-              "Binding up: %zu\n", index);
     }
     if(dl) {
       rebind_arena(index, dl, sit);
     }
   }
+  
+  resume_all_threads();
   
   if(profopts.profile_online_debug_file) {
     clock_gettime(CLOCK_MONOTONIC, &end);
@@ -143,11 +262,9 @@ void full_rebind_first(tree(site_info_ptr, int) sorted_sites) {
   if(profopts.profile_online_debug_file) {
     clock_gettime(CLOCK_MONOTONIC, &start);
   }
-
-  if(profopts.profile_online_debug_file) {
-    fprintf(profopts.profile_online_debug_file, "Doing the first rebind.\n");
-  }
   
+  suspend_all_threads();
+
   /* Rebind all of the cold arenas first */
   tree_traverse(sorted_sites, sit) {
     index = tree_it_key(sit)->index;
@@ -160,6 +277,9 @@ void full_rebind_first(tree(site_info_ptr, int) sorted_sites) {
     }
     
     if(dl) {
+      if(profopts.profile_online_debug_file) {
+        fprintf(profopts.profile_online_debug_file, "Rebinding site %d (arena %d) down.\n", tree_it_val(sit), index);
+      }
       set_site_device(tree_it_val(sit), dl->devices[0]);
       rebind_arena(index, dl, sit);
     }
@@ -177,56 +297,15 @@ void full_rebind_first(tree(site_info_ptr, int) sorted_sites) {
     }
     
     if(dl) {
+      if(profopts.profile_online_debug_file) {
+        fprintf(profopts.profile_online_debug_file, "Rebinding site %d (arena %d) up.\n", tree_it_val(sit), index);
+      }
       set_site_device(tree_it_val(sit), dl->devices[0]);
       rebind_arena(index, dl, sit);
     }
   }
   
-  if(profopts.profile_online_debug_file) {
-    clock_gettime(CLOCK_MONOTONIC, &end);
-    timespec_diff(&start, &end, &diff);
-    if(profopts.profile_online_ski) {
-      fprintf(profopts.profile_online_debug_file,
-        "Full rebind estimate: %zu ms, real: %ld.%09ld s.\n",
-        prof.profile_online.ski->penalty_move,
-        diff.tv_sec, diff.tv_nsec);
-      fflush(profopts.profile_online_debug_file);
-    }
-  }
-}
-
-/* Only rebinds sites down if they're cold, never up. */
-void full_rebind_down(tree(site_info_ptr, int) sorted_sites) {
-  sicm_dev_ptr dl;
-  int index;
-  tree_it(site_info_ptr, int) sit;
-  struct timespec start, end, diff;
-  char hot;
-
-  if(profopts.profile_online_debug_file) {
-    clock_gettime(CLOCK_MONOTONIC, &start);
-  }
-
-  /* Rebind all of the cold arenas first */
-  tree_traverse(sorted_sites, sit) {
-    index = tree_it_key(sit)->index;
-    hot = get_arena_online_prof(index)->hot;
-
-    dl = NULL;
-    if(!hot) {
-      dl = prof.profile_online.lower_dl;
-      get_arena_online_prof(index)->dev = 0;
-      if(profopts.profile_online_debug_file) {
-        fprintf(profopts.profile_online_debug_file,
-                "Binding down: %zu\n", index);
-      }
-    }
-    
-    if(dl) {
-      //set_site_device(tree_it_val(sit), dl->devices[0]);
-      rebind_arena(index, dl, sit);
-    }
-  }
+  resume_all_threads();
   
   if(profopts.profile_online_debug_file) {
     clock_gettime(CLOCK_MONOTONIC, &end);

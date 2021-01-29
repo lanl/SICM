@@ -373,7 +373,7 @@ static tree(site_info_ptr, int) sh_convert_to_site_tree(application_profile *inf
     /* If the user didn't specify an interval to use */
     #ifdef SICM_RUNTIME
       /* We're in the runtime library, so we can use the convenience pointer */
-      cur_interval = &(info->this_interval);
+      cur_interval = &(prof.cur_interval);
     #else
       /* We're not in the runtime library, so we don't have the convenience pointers.
          Just default to using the last interval. */
@@ -384,27 +384,6 @@ static tree(site_info_ptr, int) sh_convert_to_site_tree(application_profile *inf
     cur_interval = &(info->intervals[interval]);
   }
   
-  if(invalid_weight) {
-    /* In case the caller didn't do it */
-    *invalid_weight = 0;
-  }
-  
-#if 0
-  /* Figure out the discrepancy between the cgroup's report of RSS, and
-      our capacity profiling's. */
-  /* No longer relevant since a new kernel patch that uses the same method of profiling
-     for objmap */
-  if(info->has_profile_objmap && invalid_weight) {
-    if(cur_interval->profile_objmap.total_upper_heap_bytes < cur_interval->profile_objmap.cgroup_node0_current) {
-      *invalid_weight += (cur_interval->profile_objmap.cgroup_node0_current - cur_interval->profile_objmap.total_upper_heap_bytes);
-    }
-    printf("cgroup_node0_current is: %llu\n", cur_interval->profile_objmap.cgroup_node0_current);
-    printf("total_upper_heap_bytes is: %zu\n", cur_interval->profile_objmap.total_upper_heap_bytes);
-    fflush(stdout);
-    *invalid_weight += 734003200;
-  }
-#endif
-
   /* Iterate over the arenas, create a site_profile_info struct for each site,
      and simply insert them into the tree (which sorts them). */
   num_arenas = cur_interval->num_arenas;
@@ -412,7 +391,7 @@ static tree(site_info_ptr, int) sh_convert_to_site_tree(application_profile *inf
   for(i = 0; i <= max_index; i++) {
     aprof = cur_interval->arenas[i];
     if(!aprof) continue;
-    if(get_weight(aprof) == 0) continue;
+    //if(get_weight(aprof) == 0) continue;
     
     /* Add up the weight of the sites that, for this arena layout,
        are going to default to the upper tier. */
@@ -777,8 +756,12 @@ static tree(int, site_info_ptr) sh_get_top_sites(tree(site_info_ptr, int) site_t
 }
 
 /* Be careful, this function flips around the keys/values for its return value. */
-static tree(int, site_info_ptr) sh_get_hot_sites(tree(site_info_ptr, int) site_tree, uintmax_t capacity, size_t invalid_weight) {
+static tree(int, site_info_ptr) sh_get_hot_sites(tree(site_info_ptr, int) site_tree, size_t capacity, size_t invalid_weight) {
   tree(int, site_info_ptr) hot_site_tree;
+  
+  if(packopts->debug_file) {
+    fprintf(packopts->debug_file, "Packing into %zu bytes.\n", capacity);
+  }
 
   if(packopts->algo == HOTSET) {
     hot_site_tree = get_hotset(site_tree, capacity, invalid_weight);

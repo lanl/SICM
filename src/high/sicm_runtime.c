@@ -27,6 +27,7 @@ void *(*orig_valloc_ptr)(size_t);
 void *(*orig_calloc_ptr)(size_t, size_t);
 void *(*orig_realloc_ptr)(void *, size_t);
 void (*orig_free_ptr)(void *);
+atomic_size_t sicm_mem_usage = 0;
 
 void print_sizet(size_t val, const char *str) {
   char buf[32], index;
@@ -54,27 +55,47 @@ void sh_create_arena(int index, int id, sicm_device *device, char invalid);
  *  after the malloc wrappers have been defined.
  */
 void *__attribute__ ((noinline)) orig_malloc(size_t size) {
-  return je_mallocx(size, MALLOCX_TCACHE_NONE);
+  void *ptr;
+  ptr = je_mallocx(size, MALLOCX_TCACHE_NONE);
+  sicm_mem_usage += je_malloc_usable_size(ptr);
   //return (*orig_malloc_ptr)(size);
+  return ptr;
 }
 void *__attribute__ ((noinline)) orig_calloc(size_t num, size_t size) {
-  return je_mallocx(num * size, MALLOCX_TCACHE_NONE | MALLOCX_ZERO);
+  void *ptr;
+  ptr = je_mallocx(num * size, MALLOCX_TCACHE_NONE | MALLOCX_ZERO);
+  sicm_mem_usage += je_malloc_usable_size(ptr);
   //return (*orig_calloc_ptr)(num, size);
+  return ptr;
 }
 void *__attribute__ ((noinline)) orig_realloc(void *ptr, size_t size) {
+  void *new_ptr;
+  
   if(ptr == NULL) {
-    return je_mallocx(size, MALLOCX_TCACHE_NONE);
+    new_ptr = je_mallocx(size, MALLOCX_TCACHE_NONE);
+    sicm_mem_usage += je_malloc_usable_size(new_ptr);
+  } else {
+    sicm_mem_usage -= je_malloc_usable_size(ptr);
+    new_ptr = je_rallocx(ptr, size, MALLOCX_TCACHE_NONE);
+    sicm_mem_usage += je_malloc_usable_size(new_ptr);
   }
-  return je_rallocx(ptr, size, MALLOCX_TCACHE_NONE);
+  
+  return new_ptr;
   //return (*orig_realloc_ptr)(ptr, size);
 }
 void __attribute__ ((noinline)) orig_free(void *ptr) {
+  sicm_mem_usage -= je_malloc_usable_size(ptr);
+  
   je_dallocx(ptr, MALLOCX_TCACHE_NONE);
   //(*orig_free_ptr)(ptr);
 }
 void *__attribute__ ((noinline)) orig_valloc(size_t size) {
-  return je_mallocx(size, MALLOCX_TCACHE_NONE | MALLOCX_ALIGN(4096));
+  void *ptr;
+  
+  ptr = je_mallocx(size, MALLOCX_TCACHE_NONE | MALLOCX_ALIGN(4096));
+  sicm_mem_usage += je_malloc_usable_size(ptr);
   //return (*orig_valloc_ptr)(size);
+  return ptr;
 }
 
 /*************************************************

@@ -24,9 +24,7 @@ static int phase_changes = 0;
 
 void sh_profile_online_phase_change() {
   if(should_profile_online()) {
-    profile_online_info *online;
-    online = get_profile_online_prof();
-    online->phase_change = 1;
+    get_profile_online_prof()->phase_change = 1;
     phase_changes++;
   }
 }
@@ -50,10 +48,13 @@ tree(site_info_ptr, int) prepare_stats() {
   tree_it(site_info_ptr, int) sit;
   size_t invalid_weight, hotset_weight, diff;
 
-  /* Look at how much the application has consumed on each tier */
-  prof.profile_online.upper_avail = sicm_avail(tracker.upper_device) * 1024;
-  prof.profile_online.lower_avail = sicm_avail(tracker.lower_device) * 1024;
-  
+  /* Determine when the lower tier begins being consumed */
+  prof.profile_online.upper_max = get_profile_objmap_prof()->upper_max;
+  prof.profile_online.lower_used = get_profile_objmap_prof()->lower_current;
+  prof.profile_online.upper_used = get_profile_objmap_prof()->upper_current;
+  invalid_weight = 0;
+
+#if 0
   if(prof.profile_online.using_sorted_sites && prof.profile_online.using_hotset) {
     /* In this condition, we'll make sure that the online approach isn't overpacking. */
     
@@ -64,12 +65,12 @@ tree(site_info_ptr, int) prepare_stats() {
     }
     get_profile_online_prof()->using_hotset_weight = hotset_weight;
     
-    if(hotset_weight > prof.profile->upper_capacity) {
+    if(hotset_weight > get_profile_online_prof()->upper_capacity) {
       /* Here, we're overpacking. Try to fix it by rebinding without the coldest site(s). */
-      diff = hotset_weight - prof.profile->upper_capacity;
+      diff = hotset_weight - get_profile_online_prof()->upper_capacity;
       //printf("We're overpacking by %zu bytes (%zu/%zu)\n", diff, get_profile_objmap_prof()->cgroup_node0_current, get_profile_objmap_prof()->cgroup_node0_max);
     } else {
-      diff = prof.profile->upper_capacity - hotset_weight;
+      diff = get_profile_online_prof()->upper_capacity - hotset_weight;
       //printf("We're NOT overpacking by %zu bytes (%zu/%zu)\n", diff, get_profile_objmap_prof()->cgroup_node0_current, get_profile_objmap_prof()->cgroup_node0_max);
     }
     //fflush(stdout);
@@ -80,9 +81,10 @@ tree(site_info_ptr, int) prepare_stats() {
   } else {
     get_profile_online_prof()->using_hotset_weight = 0;
   }
+#endif
   
   prof.profile_online.first_upper_contention = 0;
-  if((prof.profile_online.lower_avail < prof.profile->lower_capacity) && (!(prof.profile_online.upper_contention))) {
+  if(prof.profile_online.lower_used && (!(prof.profile_online.upper_contention))) {
     /* If the lower tier is being used, we're going to assume that the
        upper tier is under contention. Trip a flag. */
     prof.profile_online.upper_contention = 1;
@@ -110,8 +112,10 @@ tree(site_info_ptr, int) prepare_stats() {
   /* Calculate the hotset, then mark each arena's hotness
      in the profiling so that it'll be recorded for this interval */
   hotset = sh_get_hot_sites(merged_sorted_sites,
-                            prof.profile->upper_capacity - profopts.profile_online_reserved_bytes,
+                            prof.profile_online.upper_max,
                             invalid_weight);
+                            
+  /* Calculate how much the current hotset weighs right now */
   hotset_weight = 0;
   tree_traverse(merged_sorted_sites, sit) {
     hit = tree_lookup(hotset, tree_it_val(sit));
@@ -125,17 +129,6 @@ tree(site_info_ptr, int) prepare_stats() {
   if(profopts.profile_online_debug_file) {
     fprintf(profopts.profile_online_debug_file,
             "Current hotset weight: %zu\n", hotset_weight);
-  }
-  hotset_weight = 0;
-  tree_traverse(merged_sorted_sites, sit) {
-    hit = tree_lookup(hotset, tree_it_val(sit));
-    if(tree_it_good(hit)) {
-      hotset_weight += get_arena_objmap_prof(tree_it_val(hit)->index)->peak_present_bytes;
-    }
-  }
-  if(profopts.profile_online_debug_file) {
-    fprintf(profopts.profile_online_debug_file,
-            "Peak hotset weight: %zu\n", hotset_weight);
   }
   
   if(prof.profile_online.first_online_interval == 1) {
@@ -192,7 +185,15 @@ void *profile_online(void *a) {
 void profile_online_interval(int s) {
   tree(site_info_ptr, int) sorted_sites;
   tree_it(site_info_ptr, int) sit;
-
+  
+  get_profile_online_prof()->phase_change = 0;
+  get_profile_online_prof()->reconfigure = 0;
+  
+  if(profopts.profile_online_debug_file) {
+    fprintf(profopts.profile_online_debug_file, "===== BEGIN INTERVAL %zu.\n", prof.profile->num_intervals);
+    fflush(profopts.profile_online_debug_file);
+  }
+  
   /* Call the appropriate strategy */
   sorted_sites = prepare_stats();
   if(profopts.profile_online_ski) {
@@ -203,6 +204,11 @@ void profile_online_interval(int s) {
     prepare_stats_orig(sorted_sites);
     profile_online_interval_orig(sorted_sites);
   }
+  if(profopts.profile_online_debug_file) {
+    fprintf(profopts.profile_online_debug_file,
+            "Upper tier: %llu / %llu\n", get_profile_objmap_prof()->upper_current, get_profile_objmap_prof()->upper_max);
+    fflush(profopts.profile_online_debug_file);
+  }
 
   /* Free up what we allocated */
   tree_traverse(sorted_sites, sit) {
@@ -211,6 +217,11 @@ void profile_online_interval(int s) {
     }
   }
   tree_free(sorted_sites);
+  
+  if(profopts.profile_online_debug_file) {
+    fprintf(profopts.profile_online_debug_file, "===== END INTERVAL %zu.\n", prof.profile->num_intervals);
+    fflush(profopts.profile_online_debug_file);
+  }
 }
 
 void profile_online_init() {
@@ -218,6 +229,13 @@ void profile_online_init() {
   char found;
   application_profile *offline_profile;
   packing_options *opts;
+  
+  if(!should_profile_objmap()) {
+    fprintf(stderr, "The online approach requires OBJMAP profiling. Aborting.\n");
+    exit(1);
+  }
+  
+  init_thread_suspension();
   
   opts = orig_calloc(sizeof(char), sizeof(packing_options));
   
@@ -251,13 +269,6 @@ void profile_online_init() {
     sh_packing_init(prof.profile, &opts);
   }
 
-  /* Figure out the amount of free memory that we're starting out with */
-  prof.profile->upper_capacity = (size_t) get_cgroup_node0_max();
-  if(!(prof.profile->upper_capacity)) {
-    prof.profile->upper_capacity = sicm_avail(tracker.upper_device) * 1024;
-  }
-  prof.profile->lower_capacity = sicm_avail(tracker.lower_device) * 1024;
-
   /* Since sicm_arena_set_devices accepts a device_list, construct these */
   prof.profile_online.upper_dl = orig_malloc(sizeof(struct sicm_device_list));
   prof.profile_online.upper_dl->count = 1;
@@ -287,4 +298,6 @@ void profile_online_post_interval(arena_profile *info) {
 }
 
 void profile_online_skip_interval(int s) {
+  get_profile_online_prof()->phase_change = 0;
+  get_profile_online_prof()->reconfigure = 0;
 }

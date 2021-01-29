@@ -418,12 +418,6 @@ void set_profile_options() {
       }
     }
     
-    env = getenv("SH_PROFILE_ONLINE_RESERVED_BYTES");
-    profopts.profile_online_reserved_bytes = 0;
-    if(env) {
-      profopts.profile_online_reserved_bytes = strtoul(env, NULL, 0);
-    }
-    
     /* Grace period at the beginning of a run. Until this number of profiling accesses is reached,
        the profile_online won't rebind any sites. */
     env = getenv("SH_PROFILE_ONLINE_GRACE_ACCESSES");
@@ -1062,6 +1056,8 @@ void sh_terminate_helper() {
     return;
   }
   sh_initialized = 0;
+  
+  printf("SICM used %zu bytes of memory.\n", sicm_mem_usage);
   
   /* We need to stop the profiling first */
   if(tracker.layout != INVALID_LAYOUT) {

@@ -74,7 +74,7 @@ void profile_bw_init() {
   prof.profile_bw.pagesize = (size_t) sysconf(_SC_PAGESIZE);
   
   /* Allocate room for the events profiling info */
-  prof.profile->this_interval.profile_bw.skt = 
+  get_profile_bw_prof()->skt = 
     orig_calloc(profopts.num_profile_skt_cpus,
                 sizeof(per_skt_profile_bw_info));
   

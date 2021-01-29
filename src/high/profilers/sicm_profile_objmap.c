@@ -26,6 +26,34 @@ void profile_objmap_post_interval(arena_profile *);
 
 #define RSS "Rss:"
 
+unsigned long long get_cgroup_memory_unaccounted_not_objmap() {
+  unsigned long long retval;
+  size_t size;
+  char *line;
+  ssize_t err;
+  
+  prof.profile_objmap.memory_unaccounted_not_objmap_file = fopen("/sys/fs/cgroup/0/memory.unaccounted_not_objmap", "r");
+  if(!prof.profile_objmap.memory_unaccounted_not_objmap_file) {
+    fprintf(stderr, "Failed to open memory_unaccounted_not_objmap file. Continuing anyway.\n");
+    return 0;
+  }
+  
+  retval = 0;
+  if(prof.profile_objmap.memory_unaccounted_not_objmap_file) {
+    line = NULL;
+    size = 0;
+    err = getline(&line, &size, prof.profile_objmap.memory_unaccounted_not_objmap_file);
+    if(err < 0) {
+      return 0;
+    }
+    retval = strtoull(line, NULL, 10);
+  }
+  
+  fclose(prof.profile_objmap.memory_unaccounted_not_objmap_file);
+  
+  return retval;
+}
+
 unsigned long long get_cgroup_memory_current() {
   unsigned long long retval;
   size_t size;
@@ -201,6 +229,7 @@ void *profile_objmap(void *a) {
 
 /* Just copies the previous value */
 void profile_objmap_skip_interval(int s) {
+  get_profile_objmap_prof()->time = 0;
 }
 
 void profile_objmap_interval(int s) {
@@ -229,14 +258,16 @@ void profile_objmap_interval(int s) {
     aprof->profile_objmap.current_present_bytes = 0;
   }
   
-  get_profile_objmap_prof()->cgroup_node0_current = get_cgroup_node0_current();
+  /* TODO: Fix, because this is very machine-dependent */
+  get_profile_objmap_prof()->upper_current = get_cgroup_node0_current();
+  get_profile_objmap_prof()->lower_current = get_cgroup_node1_current();
   get_profile_objmap_prof()->cgroup_memory_current = get_cgroup_memory_current();
-  get_profile_objmap_prof()->cgroup_node0_max = get_cgroup_node0_max();
+  get_profile_objmap_prof()->upper_max = get_cgroup_node0_max();
   
   /* Iterate over the chunks */
-  get_profile_objmap_prof()->total_heap_bytes = 0;
-  get_profile_objmap_prof()->total_lower_heap_bytes = 0;
-  get_profile_objmap_prof()->total_upper_heap_bytes = 0;
+  get_profile_objmap_prof()->heap_bytes = 0;
+  get_profile_objmap_prof()->lower_heap_bytes = 0;
+  get_profile_objmap_prof()->upper_heap_bytes = 0;
   extent_arr_for(tracker.extents, i) {
     start = (uint64_t) tracker.extents->arr[i].start;
     end = (uint64_t) tracker.extents->arr[i].end;
@@ -252,7 +283,7 @@ void profile_objmap_interval(int s) {
     if (status == 0) {
       tot = record.n_resident_pages * prof.profile_objmap.pagesize;
       aprof->profile_objmap.current_present_bytes += tot;
-      get_profile_objmap_prof()->total_heap_bytes += tot;
+      get_profile_objmap_prof()->heap_bytes += tot;
       
       /* Sometimes, `sh_create_extent` and `sh_delete_extent` will cause a deadlock if we don't
          release the lock here, because they grab the `sa->mutex` and then the `extents_lock`;
@@ -263,9 +294,9 @@ void profile_objmap_interval(int s) {
       
       if(dev) {
         if(dev == tracker.upper_device) {
-          get_profile_objmap_prof()->total_upper_heap_bytes += tot;
+          get_profile_objmap_prof()->upper_heap_bytes += tot;
         } else {
-          get_profile_objmap_prof()->total_lower_heap_bytes += tot;
+          get_profile_objmap_prof()->lower_heap_bytes += tot;
         }
       }
     }

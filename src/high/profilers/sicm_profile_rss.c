@@ -53,6 +53,7 @@ void *profile_rss(void *a) {
 
 /* Just copies the previous value */
 void profile_rss_skip_interval(int s) {
+  get_profile_rss_prof()->time = 0;
 }
 
 void profile_rss_interval(int s) {

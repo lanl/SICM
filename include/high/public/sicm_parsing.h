@@ -10,11 +10,8 @@
 #include "sicm_tree.h"
 #include "sicm_profile.h"
 
-/* Iterates over the application_profile
-   structure and prints it out so that it can
- * be seamlessly read back in */
-static void sh_print_profiling(application_profile *info, FILE *file) {
-  size_t i, n, x, cur_interval, first_interval;
+static void sh_print_interval_profile(interval_profile *interval, application_profile *app, size_t interval_num, FILE *file) {
+  size_t i, n, x;
   arena_profile *aprof;
   arena_info *arena;
   profile_rss_info *profile_rss_aprof;
@@ -23,165 +20,157 @@ static void sh_print_profiling(application_profile *info, FILE *file) {
   per_skt_profile_bw_info *profile_bw_aprof;
   per_skt_profile_latency_info *profile_latency_aprof;
   
-  /* If we're not printing every interval's profiling, just skip to the last
-     interval. If we're not in SICM's runtime library, we're just going to 
-     print all intervals no matter what. */
-#ifdef SICM_RUNTIME
-  if(profopts.print_profile_intervals) {
-#endif
-    first_interval = 0;
-#ifdef SICM_RUNTIME
-  } else {
-    first_interval = info->num_intervals - 1;
+  fprintf(file, "===== BEGIN INTERVAL %zu PROFILING =====\n", interval_num);
+  if(app->has_profile_all) {
+    fprintf(file, "Number of PROFILE_ALL events: %zu\n", app->num_profile_all_events);
   }
-#endif
+  if(app->has_profile_bw) {
+    fprintf(file, "Number of PROFILE_BW sockets: %zu\n", app->num_profile_skts);
+  }
+  fprintf(file, "Time: %.4lf\n", interval->time);
+  fprintf(file, "Number of arenas: %zu\n", interval->num_arenas);
+  fprintf(file, "Maximum index: %zu\n", interval->max_index);
+  
+  /* Non-arena profiling app */
+  if(app->has_profile_online) {
+    fprintf(file, "BEGIN PROFILE_ONLINE\n");
+    fprintf(file, "  Reconfigure: %d\n", interval->profile_online.reconfigure);
+    fprintf(file, "  Phase Change: %d\n", interval->profile_online.phase_change);
+    fprintf(file, "  Hotset Weight: %zu\n", interval->profile_online.using_hotset_weight);
+    fprintf(file, "END PROFILE_ONLINE\n");
+  }
+  if(app->has_profile_bw) {
+    fprintf(file, "BEGIN PROFILE_BW\n");
+    for(n = 0; n < app->num_profile_skts; n++) {
+      profile_bw_aprof = &(interval->profile_bw.skt[n]);
+      fprintf(file, "  BEGIN SOCKET %d\n", app->profile_skts[n]);
+      fprintf(file, "    Current: %zu\n", profile_bw_aprof->current);
+      fprintf(file, "    Peak: %zu\n", profile_bw_aprof->peak);
+      fprintf(file, "  END SOCKET %d\n", app->profile_skts[n]);
+    }
+    fprintf(file, "END PROFILE_BW\n");
+  }
+  if(app->has_profile_rss) {
+    fprintf(file, "BEGIN PROFILE_RSS\n");
+    profile_rss_aprof = &(interval->profile_rss);
+    fprintf(file, "  Time: %f\n", profile_rss_aprof->time);
+    fprintf(file, "END PROFILE_RSS\n");
+  }
+  if(app->has_profile_objmap) {
+    fprintf(file, "BEGIN PROFILE_OBJMAP\n");
+    profile_objmap_aprof = &(interval->profile_objmap);
+    fprintf(file, "  Time: %f\n", profile_objmap_aprof->time);
+    fprintf(file, "  Heap Size: %zu\n", profile_objmap_aprof->heap_bytes);
+    fprintf(file, "  Upper Heap Size: %zu\n", profile_objmap_aprof->upper_heap_bytes);
+    fprintf(file, "  Lower Heap Size: %zu\n", profile_objmap_aprof->lower_heap_bytes);
+    fprintf(file, "  Upper Current: %llu\n", profile_objmap_aprof->upper_current);
+    fprintf(file, "  Lower Current: %llu\n", profile_objmap_aprof->lower_current);
+    fprintf(file, "  Upper Maximum: %llu\n", profile_objmap_aprof->upper_max);
+    fprintf(file, "  Memory Current: %llu\n", profile_objmap_aprof->cgroup_memory_current);
+    fprintf(file, "END PROFILE_OBJMAP\n");
+  }
+  if(app->has_profile_latency) {
+    fprintf(file, "BEGIN PROFILE_LATENCY\n");
+    for(n = 0; n < app->num_profile_skts; n++) {
+      profile_latency_aprof = &(interval->profile_latency.skt[n]);
+      fprintf(file, "  BEGIN SOCKET %d\n", app->profile_skts[n]);
+      fprintf(file, "    Upper Read Current: %f\n", profile_latency_aprof->upper_read_current);
+      fprintf(file, "    Upper Read Peak: %f\n", profile_latency_aprof->upper_read_peak);
+      fprintf(file, "    Upper Write Current: %f\n", profile_latency_aprof->upper_write_current);
+      fprintf(file, "    Upper Write Peak: %f\n", profile_latency_aprof->upper_write_peak);
+      fprintf(file, "    Lower Read Current: %f\n", profile_latency_aprof->lower_read_current);
+      fprintf(file, "    Lower Read Peak: %f\n", profile_latency_aprof->lower_read_peak);
+      fprintf(file, "    Lower Write Current: %f\n", profile_latency_aprof->lower_write_current);
+      fprintf(file, "    Lower Write Peak: %f\n", profile_latency_aprof->lower_write_peak);
+      fprintf(file, "    Read Ratio: %f\n", profile_latency_aprof->read_ratio);
+      fprintf(file, "    Write Ratio: %f\n", profile_latency_aprof->write_ratio);
+      fprintf(file, "    Read Ratio CMA: %f\n", profile_latency_aprof->read_ratio_cma);
+      fprintf(file, "    Write Ratio CMA: %f\n", profile_latency_aprof->write_ratio_cma);
+      fprintf(file, "  END SOCKET %d\n", app->profile_skts[n]);
+    }
+    fprintf(file, "END PROFILE_LATENCY\n");
+  }
+  if(app->has_profile_all) {
+    profile_all_prof = &(interval->profile_all);
+    fprintf(file, "BEGIN PROFILE_ALL\n");
+    fprintf(file, "  Total: %zu\n", profile_all_prof->total);
+    fprintf(file, "END PROFILE_ALL\n");
+  }
 
-  for(cur_interval = first_interval; cur_interval < info->num_intervals; cur_interval++) {
-    /* Common information for the whole application */
-    fprintf(file, "===== BEGIN INTERVAL %zu PROFILING =====\n", cur_interval);
-    if(info->has_profile_all) {
-      fprintf(file, "Number of PROFILE_ALL events: %zu\n", info->num_profile_all_events);
+  for(i = 0; i <= interval->max_index; i++) {
+    aprof = interval->arenas[i];
+    if(!aprof) continue;
+
+    /* Arena apprmation and sites that are in this one arena */
+    fprintf(file, "BEGIN ARENA %u\n", aprof->index);
+    fprintf(file, "  Invalid: %d\n", aprof->invalid);
+    fprintf(file, "  Number of allocation sites: %d\n", aprof->num_alloc_sites);
+    fprintf(file, "  Allocation sites: ");
+    for(n = 0; n < aprof->num_alloc_sites; n++) {
+      fprintf(file, "%d ", aprof->alloc_sites[n]);
     }
-    if(info->has_profile_bw) {
-      fprintf(file, "Number of PROFILE_BW sockets: %zu\n", info->num_profile_skts);
-    }
-    fprintf(file, "Time: %.4lf\n", info->intervals[cur_interval].time);
-    if(info->has_profile_online) {
-      fprintf(file, "Reconfigure: %d\n", info->intervals[cur_interval].profile_online.reconfigure);
-      fprintf(file, "Phase Change: %d\n", info->intervals[cur_interval].profile_online.phase_change);
-      fprintf(file, "Hotset Weight: %zu\n", info->intervals[cur_interval].profile_online.using_hotset_weight);
-      fprintf(file, "Upper Capacity: %zu\n", info->upper_capacity);
-      fprintf(file, "Lower Capacity: %zu\n", info->lower_capacity);
-    }
-    fprintf(file, "Number of arenas: %zu\n", info->intervals[cur_interval].num_arenas);
-    fprintf(file, "Maximum index: %zu\n", info->intervals[cur_interval].max_index);
+    fprintf(file, "\n");
     
-    /* Non-arena profiling info */
-    if(info->has_profile_bw) {
-      fprintf(file, "BEGIN PROFILE_BW\n");
-      for(n = 0; n < info->num_profile_skts; n++) {
-        profile_bw_aprof = &(info->intervals[cur_interval].profile_bw.skt[n]);
-        fprintf(file, "  BEGIN SOCKET %d\n", info->profile_skts[n]);
-        fprintf(file, "    Current: %zu\n", profile_bw_aprof->current);
-        fprintf(file, "    Peak: %zu\n", profile_bw_aprof->peak);
-        fprintf(file, "  END SOCKET %d\n", info->profile_skts[n]);
+    if(app->has_profile_all) {
+      fprintf(file, "  BEGIN PROFILE_ALL\n");
+      for(n = 0; n < app->num_profile_all_events; n++) {
+        fprintf(file, "    BEGIN EVENT %s\n", app->profile_all_events[n]);
+        fprintf(file, "      Total: %zu\n", aprof->profile_all.events[n].total);
+        fprintf(file, "      Current: %zu\n", aprof->profile_all.events[n].current);
+        fprintf(file, "      Peak: %zu\n", aprof->profile_all.events[n].peak);
+        fprintf(file, "    END EVENT %s\n", app->profile_all_events[n]);
       }
-      fprintf(file, "END PROFILE_BW\n");
+      fprintf(file, "  END PROFILE_ALL\n");
     }
-    if(info->has_profile_rss) {
-      fprintf(file, "BEGIN PROFILE_RSS\n");
-      profile_rss_aprof = &(info->intervals[cur_interval].profile_rss);
-      fprintf(file, "  Time: %f\n", profile_rss_aprof->time);
-      fprintf(file, "END PROFILE_RSS\n");
+    if(app->has_profile_allocs) {
+      fprintf(file, "  BEGIN PROFILE_ALLOCS\n");
+      fprintf(file, "    Peak: %zu\n", aprof->profile_allocs.peak);
+      fprintf(file, "    Current: %zu\n", aprof->profile_allocs.current);
+      fprintf(file, "  END PROFILE_ALLOCS\n");
     }
-    if(info->has_profile_objmap) {
-      fprintf(file, "BEGIN PROFILE_OBJMAP\n");
-      profile_objmap_aprof = &(info->intervals[cur_interval].profile_objmap);
-      fprintf(file, "  Time: %f\n", profile_objmap_aprof->time);
-      fprintf(file, "  Total Heap Size: %zu\n", profile_objmap_aprof->total_heap_bytes);
-      fprintf(file, "  Upper Heap Size: %zu\n", profile_objmap_aprof->total_upper_heap_bytes);
-      fprintf(file, "  Lower Heap Size: %zu\n", profile_objmap_aprof->total_lower_heap_bytes);
-      fprintf(file, "  Node0 Current: %llu\n", profile_objmap_aprof->cgroup_node0_current);
-      fprintf(file, "  Node1 Current: %llu\n", profile_objmap_aprof->cgroup_node1_current);
-      fprintf(file, "  Node0 Maximum: %llu\n", profile_objmap_aprof->cgroup_node0_max);
-      fprintf(file, "  Memory Current: %llu\n", profile_objmap_aprof->cgroup_memory_current);
-      fprintf(file, "END PROFILE_OBJMAP\n");
+    if(app->has_profile_rss) {
+      fprintf(file, "  BEGIN PROFILE_RSS\n");
+      fprintf(file, "    Peak: %zu\n", aprof->profile_rss.peak);
+      fprintf(file, "    Current: %zu\n", aprof->profile_rss.current);
+      fprintf(file, "  END PROFILE_RSS\n");
     }
-    if(info->has_profile_latency) {
-      fprintf(file, "BEGIN PROFILE_LATENCY\n");
-      for(n = 0; n < info->num_profile_skts; n++) {
-        profile_latency_aprof = &(info->intervals[cur_interval].profile_latency.skt[n]);
-        fprintf(file, "  BEGIN SOCKET %d\n", info->profile_skts[n]);
-        fprintf(file, "    Upper Read Current: %f\n", profile_latency_aprof->upper_read_current);
-        fprintf(file, "    Upper Read Peak: %f\n", profile_latency_aprof->upper_read_peak);
-        fprintf(file, "    Upper Write Current: %f\n", profile_latency_aprof->upper_write_current);
-        fprintf(file, "    Upper Write Peak: %f\n", profile_latency_aprof->upper_write_peak);
-        fprintf(file, "    Lower Read Current: %f\n", profile_latency_aprof->lower_read_current);
-        fprintf(file, "    Lower Read Peak: %f\n", profile_latency_aprof->lower_read_peak);
-        fprintf(file, "    Lower Write Current: %f\n", profile_latency_aprof->lower_write_current);
-        fprintf(file, "    Lower Write Peak: %f\n", profile_latency_aprof->lower_write_peak);
-        fprintf(file, "    Read Ratio: %f\n", profile_latency_aprof->read_ratio);
-        fprintf(file, "    Write Ratio: %f\n", profile_latency_aprof->write_ratio);
-        fprintf(file, "    Read Ratio CMA: %f\n", profile_latency_aprof->read_ratio_cma);
-        fprintf(file, "    Write Ratio CMA: %f\n", profile_latency_aprof->write_ratio_cma);
-        fprintf(file, "  END SOCKET %d\n", info->profile_skts[n]);
-      }
-      fprintf(file, "END PROFILE_LATENCY\n");
+    if(app->has_profile_objmap) {
+      fprintf(file, "  BEGIN PROFILE_OBJMAP\n");
+      fprintf(file, "    Peak: %zu\n", aprof->profile_objmap.peak_present_bytes);
+      fprintf(file, "    Current: %zu\n", aprof->profile_objmap.current_present_bytes);
+      fprintf(file, "  END PROFILE_OBJMAP\n");
     }
-    if(info->has_profile_all) {
-      profile_all_prof = &(info->intervals[cur_interval].profile_all);
-      fprintf(file, "BEGIN PROFILE_ALL\n");
-      fprintf(file, "  Total: %zu\n", profile_all_prof->total);
-      fprintf(file, "END PROFILE_ALL\n");
+    if(app->has_profile_extent_size) {
+      fprintf(file, "  BEGIN PROFILE_EXTENT_SIZE\n");
+      fprintf(file, "    Peak: %zu\n", aprof->profile_extent_size.peak);
+      fprintf(file, "    Current: %zu\n", aprof->profile_extent_size.current);
+      fprintf(file, "  END PROFILE_EXTENT_SIZE\n");
     }
+    if(app->has_profile_bw_relative) {
+      fprintf(file, "  BEGIN PROFILE_BW_RELATIVE\n");
+      fprintf(file, "    Total: %zu\n", aprof->profile_bw.total);
+      fprintf(file, "    Current: %zu\n", aprof->profile_bw.current);
+      fprintf(file, "    Peak: %zu\n", aprof->profile_bw.peak);
+      fprintf(file, "  END PROFILE_BW_RELATIVE\n");
+    }
+    if(app->has_profile_online) {
+      fprintf(file, "  BEGIN PROFILE_ONLINE\n");
+      fprintf(file, "    Device: %d\n", aprof->profile_online.dev);
+      fprintf(file, "    Hot: %d\n", aprof->profile_online.hot);
+      fprintf(file, "    Hot Intervals: %zu\n",
+              aprof->profile_online.num_hot_intervals);
+      fprintf(file, "  END PROFILE_ONLINE\n");
+    }
+    fprintf(file, "END ARENA %u\n", aprof->index);
+  }
+  fprintf(file, "===== END INTERVAL PROFILING =====\n");
+}
 
-    for(i = 0; i <= info->intervals[cur_interval].max_index; i++) {
-      aprof = info->intervals[cur_interval].arenas[i];
-      if(!aprof) continue;
-
-      /* Arena information and sites that are in this one arena */
-      fprintf(file, "BEGIN ARENA %u\n", aprof->index);
-      fprintf(file, "  Invalid: %d\n", aprof->invalid);
-      fprintf(file, "  Number of allocation sites: %d\n", aprof->num_alloc_sites);
-      fprintf(file, "  Allocation sites: ");
-      for(n = 0; n < aprof->num_alloc_sites; n++) {
-        fprintf(file, "%d ", aprof->alloc_sites[n]);
-      }
-      fprintf(file, "\n");
-      
-      if(info->has_profile_all) {
-        fprintf(file, "  BEGIN PROFILE_ALL\n");
-        for(n = 0; n < info->num_profile_all_events; n++) {
-          fprintf(file, "    BEGIN EVENT %s\n", info->profile_all_events[n]);
-          fprintf(file, "      Total: %zu\n", aprof->profile_all.events[n].total);
-          fprintf(file, "      Current: %zu\n", aprof->profile_all.events[n].current);
-          fprintf(file, "      Peak: %zu\n", aprof->profile_all.events[n].peak);
-          fprintf(file, "    END EVENT %s\n", info->profile_all_events[n]);
-        }
-        fprintf(file, "  END PROFILE_ALL\n");
-      }
-      if(info->has_profile_allocs) {
-        fprintf(file, "  BEGIN PROFILE_ALLOCS\n");
-        fprintf(file, "    Peak: %zu\n", aprof->profile_allocs.peak);
-        fprintf(file, "    Current: %zu\n", aprof->profile_allocs.current);
-        fprintf(file, "  END PROFILE_ALLOCS\n");
-      }
-      if(info->has_profile_rss) {
-        fprintf(file, "  BEGIN PROFILE_RSS\n");
-        fprintf(file, "    Peak: %zu\n", aprof->profile_rss.peak);
-        fprintf(file, "    Current: %zu\n", aprof->profile_rss.current);
-        fprintf(file, "  END PROFILE_RSS\n");
-      }
-      if(info->has_profile_objmap) {
-        fprintf(file, "  BEGIN PROFILE_OBJMAP\n");
-        fprintf(file, "    Peak: %zu\n", aprof->profile_objmap.peak_present_bytes);
-        fprintf(file, "    Current: %zu\n", aprof->profile_objmap.current_present_bytes);
-        fprintf(file, "  END PROFILE_OBJMAP\n");
-      }
-      if(info->has_profile_extent_size) {
-        fprintf(file, "  BEGIN PROFILE_EXTENT_SIZE\n");
-        fprintf(file, "    Peak: %zu\n", aprof->profile_extent_size.peak);
-        fprintf(file, "    Current: %zu\n", aprof->profile_extent_size.current);
-        fprintf(file, "  END PROFILE_EXTENT_SIZE\n");
-      }
-      if(info->has_profile_bw_relative) {
-        fprintf(file, "  BEGIN PROFILE_BW_RELATIVE\n");
-        fprintf(file, "    Total: %zu\n", aprof->profile_bw.total);
-        fprintf(file, "    Current: %zu\n", aprof->profile_bw.current);
-        fprintf(file, "    Peak: %zu\n", aprof->profile_bw.peak);
-        fprintf(file, "  END PROFILE_BW_RELATIVE\n");
-      }
-      if(info->has_profile_online) {
-        fprintf(file, "  BEGIN PROFILE_ONLINE\n");
-        fprintf(file, "    Device: %d\n", aprof->profile_online.dev);
-        fprintf(file, "    Hot: %d\n", aprof->profile_online.hot);
-        fprintf(file, "    Hot Intervals: %zu\n",
-                aprof->profile_online.num_hot_intervals);
-        fprintf(file, "  END PROFILE_ONLINE\n");
-      }
-      fprintf(file, "END ARENA %u\n", aprof->index);
-    }
-    fprintf(file, "===== END INTERVAL PROFILING =====\n");
+static void sh_print_application_profile(application_profile *info, FILE *file) {
+  size_t i;
+  
+  for(i = 0; i < info->num_intervals; i++) {
+    sh_print_interval_profile(&info->intervals[i], info, i, file);
   }
 }
 
@@ -265,6 +254,7 @@ static application_profile *sh_parse_profiling(FILE *file) {
         cur_arena_index = 0;
         cur_event_index = 0;
         cur_skt_index = 0;
+        max_index = -1;
       }
 
     /* At this level, we're looking for three things:
@@ -289,18 +279,8 @@ static application_profile *sh_parse_profiling(FILE *file) {
         ret->num_profile_all_events = tmp_sizet;
       } else if(sscanf(line, "Number of PROFILE_BW sockets: %zu\n", &tmp_sizet) == 1) {
         ret->num_profile_skts = tmp_sizet;
-      } else if(sscanf(line, "Upper Capacity: %zu\n", &tmp_sizet) == 1) {
-        ret->upper_capacity = tmp_sizet;
-      } else if(sscanf(line, "Lower Capacity: %zu\n", &tmp_sizet) == 1) {
-        ret->lower_capacity = tmp_sizet;
       } else if(sscanf(line, "Time: %lf\n", &tmp_double) == 1) {
         ret->intervals[cur_interval].time = tmp_double;
-      } else if(sscanf(line, "Reconfigure: %c\n", &tmp_char) == 1) {
-        ret->intervals[cur_interval].profile_online.reconfigure = tmp_char;
-      } else if(sscanf(line, "Phase Change: %c\n", &tmp_char) == 1) {
-        ret->intervals[cur_interval].profile_online.phase_change = tmp_char;
-      } else if(sscanf(line, "Hotset Weight: %zu\n", &tmp_sizet) == 1) {
-        ret->intervals[cur_interval].profile_online.using_hotset_weight = tmp_sizet;
       } else if(strcmp(line, "BEGIN PROFILE_BW\n") == 0) {
         /* Down in depth */
         depth = 2;
@@ -313,6 +293,11 @@ static application_profile *sh_parse_profiling(FILE *file) {
                                                                    sizeof(per_skt_profile_bw_info));
         cur_skt_index = 0;
         profile_bw_cur_skt = &(ret->intervals[cur_interval].profile_bw.skt[cur_skt_index]);
+      } else if(strcmp(line, "BEGIN PROFILE_ONLINE\n") == 0) {
+        /* Down in depth */
+        depth = 2;
+        profile_type = 4;
+        ret->has_profile_online = 1;
       } else if(strcmp(line, "BEGIN PROFILE_RSS\n") == 0) {
         /* Down in depth */
         depth = 2;
@@ -343,7 +328,7 @@ static application_profile *sh_parse_profiling(FILE *file) {
       } else if(sscanf(line, "BEGIN ARENA %u", &index) == 1) {
         /* Down in depth */
         depth = 2;
-        if(!max_index) {
+        if(max_index == -1) {
           fprintf(stderr, "Didn't find a maximum index. Aborting.\n");
           exit(1);
         }
@@ -447,6 +432,23 @@ static application_profile *sh_parse_profiling(FILE *file) {
           fprintf(stderr, "Line: %s\n", line);
           exit(1);
         }
+      } else if(profile_type == 4) {
+        /* This is the case where we're in a non-per-arena PROFILE_ONLINE block */
+        if(strcmp(line, "END PROFILE_ONLINE\n") == 0) {
+          /* Up in depth */
+          depth = 1;
+          profile_type = -1;
+        } else if(sscanf(line, "  Reconfigure: %c\n", &tmp_char) == 1) {
+          ret->intervals[cur_interval].profile_online.reconfigure = tmp_char;
+        } else if(sscanf(line, "  Phase Change: %c\n", &tmp_char) == 1) {
+          ret->intervals[cur_interval].profile_online.phase_change = tmp_char;
+        } else if(sscanf(line, "  Hotset Weight: %zu\n", &tmp_sizet) == 1) {
+          ret->intervals[cur_interval].profile_online.using_hotset_weight = tmp_sizet;
+        } else {
+          fprintf(stderr, "Didn't recognize a line in the profiling information at depth %d. Aborting.\n", depth);
+          fprintf(stderr, "Line: %s\n", line);
+          exit(1);
+        }
       } else if(profile_type == 3) {
         /* This is the case where we're in a PROFILE_RSS block */
         if(strcmp(line, "END PROFILE_RSS\n") == 0) {
@@ -468,20 +470,18 @@ static application_profile *sh_parse_profiling(FILE *file) {
           profile_type = -1;
         } else if(sscanf(line, "  Time: %lf\n", &tmp_double) == 1) {
           ret->intervals[cur_interval].profile_objmap.time = tmp_double;
-    		} else if(sscanf(line, "  Total Heap Size: %zu\n", &tmp_sizet) == 1) {
-    		  ret->intervals[cur_interval].profile_objmap.total_heap_bytes = tmp_sizet;
-    		} else if(sscanf(line, "  Upper Heap Size: %zu\n", &tmp_sizet) == 1) {
-    		  ret->intervals[cur_interval].profile_objmap.total_upper_heap_bytes = tmp_sizet;
+    		} else if(sscanf(line, "  Heap Size: %zu\n", &tmp_sizet) == 1) {
+    		  ret->intervals[cur_interval].profile_objmap.heap_bytes = tmp_sizet;
     		} else if(sscanf(line, "  Lower Heap Size: %zu\n", &tmp_sizet) == 1) {
-    		  ret->intervals[cur_interval].profile_objmap.total_lower_heap_bytes = tmp_sizet;
+    		  ret->intervals[cur_interval].profile_objmap.lower_heap_bytes = tmp_sizet;
     		} else if(sscanf(line, "  Upper Heap Size: %zu\n", &tmp_sizet) == 1) {
-    		  ret->intervals[cur_interval].profile_objmap.total_upper_heap_bytes = tmp_sizet;
-    		} else if(sscanf(line, "  Node0 Current: %zu\n", &tmp_sizet) == 1) {
-    		  ret->intervals[cur_interval].profile_objmap.cgroup_node0_current = tmp_sizet;
-    		} else if(sscanf(line, "  Node1 Current: %zu\n", &tmp_sizet) == 1) {
-    		  ret->intervals[cur_interval].profile_objmap.cgroup_node1_current = tmp_sizet;
-    		} else if(sscanf(line, "  Node0 Maximum: %zu\n", &tmp_sizet) == 1) {
-    		  ret->intervals[cur_interval].profile_objmap.cgroup_node0_max = tmp_sizet;
+    		  ret->intervals[cur_interval].profile_objmap.upper_heap_bytes = tmp_sizet;
+    		} else if(sscanf(line, "  Upper Current: %zu\n", &tmp_sizet) == 1) {
+    		  ret->intervals[cur_interval].profile_objmap.upper_current = tmp_sizet;
+    		} else if(sscanf(line, "  Lower Current: %zu\n", &tmp_sizet) == 1) {
+    		  ret->intervals[cur_interval].profile_objmap.lower_current = tmp_sizet;
+    		} else if(sscanf(line, "  Upper Maximum: %zu\n", &tmp_sizet) == 1) {
+    		  ret->intervals[cur_interval].profile_objmap.upper_max = tmp_sizet;
     		} else if(sscanf(line, "  Memory Current: %zu\n", &tmp_sizet) == 1) {
     		  ret->intervals[cur_interval].profile_objmap.cgroup_memory_current = tmp_sizet;
         } else {

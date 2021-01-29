@@ -453,6 +453,26 @@ sicm_arena sicm_arena_lookup(void *ptr) {
 	return sarena_ptr2sarena(ptr);
 }
 
+/* Locks all of the per-arena locks. */
+void sicm_arena_lock() {
+  sarena *sa;
+  
+	pthread_mutex_lock(&sa_mutex);
+	for(sa = sa_list; sa != NULL; sa = sa->next) {
+  	pthread_mutex_lock(sa->mutex);
+	}
+}
+
+/* Unlocks all of the per-arena locks. */
+void sicm_arena_unlock() {
+  sarena *sa;
+  
+	for(sa = sa_list; sa != NULL; sa = sa->next) {
+  	pthread_mutex_unlock(sa->mutex);
+	}
+	pthread_mutex_unlock(&sa_mutex);
+}
+
 static void *sa_alloc(extent_hooks_t *, void *, size_t, size_t, bool *, bool *, unsigned);
 static bool sa_dalloc(extent_hooks_t *, void *, size_t, bool, unsigned);
 static void sa_destroy(extent_hooks_t *, void *, size_t, bool, unsigned);

@@ -91,11 +91,11 @@ void create_arena_profile(int index, int site_id, char invalid) {
   aprof->num_alloc_sites = 1;
   aprof->alloc_sites = orig_malloc(sizeof(int) * tracker.max_sites_per_arena);
   aprof->alloc_sites[0] = site_id;
-  prof.profile->this_interval.num_arenas++;
-  if(index > prof.profile->this_interval.max_index) {
-    prof.profile->this_interval.max_index = index;
+  prof.cur_interval.num_arenas++;
+  if(index > prof.cur_interval.max_index) {
+    prof.cur_interval.max_index = index;
   }
-  prof.profile->this_interval.arenas[index] = aprof;
+  prof.cur_interval.arenas[index] = aprof;
   
   pthread_rwlock_unlock(&profile_lock);
 }
@@ -224,17 +224,14 @@ void profile_master_interval(int s) {
   /* Store the time that this interval took */
   clock_gettime(CLOCK_MONOTONIC, &(prof.end));
   timespec_diff(&(prof.start), &(prof.end), &actual);
-  prof.profile->this_interval.time = actual.tv_sec + (((double) actual.tv_nsec) / 1000000000);
-  
-  /* End the interval */
-  if(prof.profile->num_intervals) {
-    /* If we've had at least one interval of profiling already,
-       store that pointer in `prev_interval` */
-    prof.prev_interval = &(prof.profile->intervals[prof.profile->num_intervals - 1]);
+  prof.cur_interval.time = actual.tv_sec + (((double) actual.tv_nsec) / 1000000000);
+   
+  if(profopts.profile_output_file) {
+    sh_print_interval_profile(&prof.cur_interval, prof.profile, prof.profile->num_intervals, profopts.profile_output_file);
+    fflush(profopts.profile_output_file);
   }
   prof.profile->num_intervals++;
-  copy_interval_profile(prof.profile->num_intervals - 1);
-  prof.cur_interval = &(prof.profile->intervals[prof.profile->num_intervals - 1]);
+  copy_interval_profile(&prof.prev_interval, &prof.cur_interval);
   
   /* We need this timer to actually end outside out of the lock */
   clock_gettime(CLOCK_MONOTONIC, &(prof.end));
@@ -450,13 +447,10 @@ void initialize_profiling() {
   prof.profile = orig_calloc(1, sizeof(application_profile));
   init_application_profile(prof.profile);
 
-  prof.cur_interval = NULL;
-  prof.prev_interval = NULL;
-
   /* Stores the current interval's profiling */
-  prof.profile->this_interval.num_arenas = 0;
-  prof.profile->this_interval.max_index = 0;
-  prof.profile->this_interval.arenas = orig_calloc(tracker.max_arenas, sizeof(arena_profile *));
+  prof.cur_interval.num_arenas = 0;
+  prof.cur_interval.max_index = 0;
+  prof.cur_interval.arenas = orig_calloc(tracker.max_arenas, sizeof(arena_profile *));
 
   /* Store the profile_all event strings */
   prof.profile->num_profile_all_events = profopts.num_profile_all_events;
@@ -465,6 +459,8 @@ void initialize_profiling() {
     prof.profile->profile_all_events[i] = orig_malloc((strlen(profopts.profile_all_events[i]) + 1) * sizeof(char));
     strcpy(prof.profile->profile_all_events[i], profopts.profile_all_events[i]);
   }
+  printf("Number of PROFILE_ALL events: %zu\n", profopts.num_profile_all_events);
+  fflush(stdout);
   
   /* Store which sockets we profiled */
   prof.profile->num_profile_skts = profopts.num_profile_skt_cpus;
@@ -570,8 +566,5 @@ void sh_stop_profile_master_thread() {
   pthread_kill(prof.master_id, prof.stop_signal);
   pthread_join(prof.master_id, NULL);
 
-  if(profopts.profile_output_file) {
-    sh_print_profiling(prof.profile, profopts.profile_output_file);
-  }
   deinitialize_profiling();
 }

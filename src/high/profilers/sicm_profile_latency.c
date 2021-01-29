@@ -109,7 +109,7 @@ void profile_latency_init() {
   unsigned long flags;
   
   /* Allocate room for the events profiling info */
-  prof.profile->this_interval.profile_latency.skt = 
+  get_profile_latency_prof()->skt = 
     orig_calloc(profopts.num_profile_skt_cpus,
                 sizeof(per_skt_profile_latency_info));
   

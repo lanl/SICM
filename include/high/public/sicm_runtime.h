@@ -21,6 +21,7 @@ extern void *(*orig_realloc_ptr)(void *, size_t);
 extern void (*orig_free_ptr)(void *);
 
 static atomic_size_t unaccounted = 0;
+extern atomic_size_t sicm_mem_usage;
 
 enum arena_layout {
   ONE_ARENA, /* One arena */
@@ -164,7 +165,6 @@ typedef struct profiling_options {
   char *profile_online_weight;
   char *profile_online_sort;
   char *profile_online_packing_algo;
-  unsigned long profile_online_reserved_bytes;
   size_t profile_online_value_threshold;
 
   /* Array of cpu numbers for profile_all */

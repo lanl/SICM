@@ -152,15 +152,12 @@ typedef struct profile_rss_data {
  * PROFILE_OBJECT_MAP
  ********************/
  
-unsigned long long get_cgroup_node0_current();
-unsigned long long get_cgroup_node0_max();
- 
 typedef struct profile_objmap_info {
   double time;
-  size_t total_heap_bytes,
-         total_upper_heap_bytes, total_lower_heap_bytes;
-  unsigned long long cgroup_node0_current, cgroup_node1_current, cgroup_node0_max,
-                     cgroup_memory_current;
+  size_t heap_bytes,
+         upper_heap_bytes,
+         lower_heap_bytes;
+  unsigned long long upper_current, lower_current, upper_max, cgroup_memory_current;
 } profile_objmap_info;
 
 typedef struct per_arena_profile_objmap_info {
@@ -173,7 +170,8 @@ typedef struct profile_objmap_data {
   size_t pagesize;
   pid_t pid;
   struct proc_object_map_t objmap;
-  FILE *smaps_file, *node0_current_file, *node1_current_file, *node0_max_file, *memory_current_file;
+  FILE *smaps_file, *node0_current_file, *node1_current_file, *node0_max_file, *memory_current_file, 
+       *memory_unaccounted_not_objmap_file;
 } profile_objmap_data;
 
 /********************
@@ -254,7 +252,9 @@ typedef struct profile_online_data {
        first_online_interval; /* First interval where strategy can run? */
   tree(site_info_ptr, int) offline_sorted_sites, using_sorted_sites;
   tree(int, site_info_ptr) using_hotset;
-  size_t upper_avail, lower_avail, offline_invalid_weight;
+  size_t upper_max,
+         upper_used, lower_used,
+         offline_invalid_weight;
 
   /* Strat-specific data */
   profile_online_data_orig *orig;

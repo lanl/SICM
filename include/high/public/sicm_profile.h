@@ -100,17 +100,13 @@ typedef struct application_profile {
        has_profile_latency,
        has_profile_objmap;
   
-  size_t num_intervals, num_profile_all_events;
+  size_t num_intervals;
 
-  size_t upper_capacity, lower_capacity;
-
-  interval_profile this_interval;
-
-  /* Array of event strings in the profiling */
+  /* Array of PROFILE_ALL event strings */
+  size_t num_profile_all_events;
   char **profile_all_events;
   
-  /* Array of integers that are the NUMA nodes of the sockets
-     that we got the bandwidth of */
+  /* Array of NUMA IDs for PROFILE_BW */
   size_t num_profile_skts;
   int *profile_skts;
 
@@ -137,9 +133,6 @@ typedef struct profiler {
   profile_thread *profile_threads;
   size_t num_profile_threads;
 
-  /* Convenience pointers */
-  interval_profile *cur_interval, *prev_interval;
-
   /* Sync the threads */
   pthread_mutex_t mtx;
   pthread_cond_t cond;
@@ -151,8 +144,10 @@ typedef struct profiler {
   struct timespec start, end;
   double target;
 
-  /* Profiling information for the currently-running application */
+  /* Profiling so far */
   application_profile *profile;
+  
+  interval_profile cur_interval, prev_interval;
 
   /* Data for each profile thread */
   profile_all_data profile_all;
@@ -177,121 +172,97 @@ void add_site_profile(int, int);
 /* Given an arena and index, check to make sure it's not NULL */
 #define prof_check_good(a, p, i) \
   a = tracker.arenas[i]; \
-  p = prof.profile->this_interval.arenas[i]; \
+  p = prof.cur_interval.arenas[i]; \
   if((!a) || (!p)) continue;
   
 #define aprof_arr_for(i, aprof) \
-  for(i = 0; i <= prof.profile->this_interval.max_index; i++)
+  for(i = 0; i <= prof.cur_interval.max_index; i++)
     
 #define aprof_check_good(i, aprof) \
-    aprof = prof.profile->this_interval.arenas[i]; \
+    aprof = prof.cur_interval.arenas[i]; \
     if(!aprof) continue;
 
 static inline void copy_arena_profile(arena_profile *dst, arena_profile *src) {
   memcpy(dst, src, sizeof(arena_profile));
-  dst->alloc_sites = orig_malloc(sizeof(int) * tracker.max_sites_per_arena);
+  if(!(dst->alloc_sites)) {
+    dst->alloc_sites = orig_malloc(sizeof(int) * tracker.max_sites_per_arena);
+  }
   memcpy(dst->alloc_sites, src->alloc_sites, sizeof(int) * tracker.max_sites_per_arena);
-  dst->profile_all.events = orig_malloc(sizeof(per_event_profile_all_info) * prof.profile->num_profile_all_events);
+  if(!(dst->profile_all.events)) {
+    dst->profile_all.events = orig_malloc(sizeof(per_event_profile_all_info) * prof.profile->num_profile_all_events);
+  }
   memcpy(dst->profile_all.events, src->profile_all.events, sizeof(per_event_profile_all_info) * prof.profile->num_profile_all_events);
 }
 
-/* Copies an interval profile from the current one
-   (stored in prof.profile->this_interval)
-   into the array of intervals
-   (prof.profile->intervals). */
-static inline void copy_interval_profile(size_t index) {
+static inline void copy_interval_profile(interval_profile *dest, interval_profile *src) {
   arena_profile *aprof;
-  interval_profile *interval, *this_interval;
   size_t size, i;
   
-  /* Allocate room for the interval that just finished */
-  prof.profile->intervals = orig_realloc(prof.profile->intervals,
-                                         (index + 1) * sizeof(interval_profile));
-                                         
-  /* Convenience pointers. We want to copy the contents of
-     `this_interval` into `interval`. */
-  interval = &(prof.profile->intervals[index]);
-  this_interval = &(prof.profile->this_interval);
+  if(!src || !dest) {
+    return;
+  }
   
-  /* Copy the interval_profile from this_interval to intervals[index] */
-  interval->num_arenas = this_interval->num_arenas;
-  interval->max_index = this_interval->max_index;
-  interval->arenas = orig_calloc(tracker.max_arenas, sizeof(arena_profile *));
+  memcpy(dest, src, sizeof(interval_profile));
+  
+  if(!(dest->arenas)) {
+    dest->arenas = orig_calloc(tracker.max_arenas, sizeof(arena_profile *));
+  }
     
-  /* Copy profile_bw profiling info, too */
-  interval->profile_bw.skt = NULL;
+  dest->profile_bw.skt = NULL;
   if(should_profile_bw()) {
     size = profopts.num_profile_skt_cpus * sizeof(per_skt_profile_bw_info);
-    interval->profile_bw.skt = orig_malloc(size);
-    memcpy(interval->profile_bw.skt,
-          this_interval->profile_bw.skt,
+    if(!(dest->profile_bw.skt)) {
+      dest->profile_bw.skt = orig_malloc(size);
+    }
+    memcpy(dest->profile_bw.skt,
+          src->profile_bw.skt,
           size);
   }
   
-  /* Copy profile_latency profiling info, too */
-  interval->profile_latency.skt = NULL;
+  dest->profile_latency.skt = NULL;
   if(should_profile_latency()) {
     size = profopts.num_profile_skt_cpus * sizeof(per_skt_profile_latency_info);
-    interval->profile_latency.skt = orig_malloc(size);
-    memcpy(interval->profile_latency.skt,
-          this_interval->profile_latency.skt,
+    if(!(dest->profile_latency.skt)) {
+      dest->profile_latency.skt = orig_malloc(size);
+    }
+    memcpy(dest->profile_latency.skt,
+          src->profile_latency.skt,
           size);
   }
   
-  /* Copy profile_all info, too */
-  if(should_profile_all()) {
-    interval->profile_all.total = this_interval->profile_all.total;
-  }
-  
-  /* Iterate over all of the arenas in the interval, and copy them too */
   aprof_arr_for(i, aprof) {
     aprof_check_good(i, aprof);
-    aprof = this_interval->arenas[i];
+    aprof = src->arenas[i];
     if(!aprof) continue;
     
-    interval->arenas[i] = orig_malloc(sizeof(arena_profile));
-    copy_arena_profile(interval->arenas[i], aprof);
+    if(!(dest->arenas[i])) {
+      dest->arenas[i] = orig_malloc(sizeof(arena_profile));
+    }
+    copy_arena_profile(dest->arenas[i], aprof);
   }
-  
-  interval->time = this_interval->time;
-  interval->profile_online.reconfigure = this_interval->profile_online.reconfigure;
-  interval->profile_online.using_hotset_weight = this_interval->profile_online.using_hotset_weight;
-  interval->profile_online.phase_change = this_interval->profile_online.phase_change;
-  this_interval->profile_online.phase_change = 0;
-  this_interval->profile_online.reconfigure = 0;
-  interval->profile_rss.time = this_interval->profile_rss.time;
-  interval->profile_objmap.time = this_interval->profile_objmap.time;
-  interval->profile_objmap.total_heap_bytes = this_interval->profile_objmap.total_heap_bytes;
-  interval->profile_objmap.total_upper_heap_bytes = this_interval->profile_objmap.total_upper_heap_bytes;
-  interval->profile_objmap.total_lower_heap_bytes = this_interval->profile_objmap.total_lower_heap_bytes;
-  interval->profile_objmap.cgroup_node0_max = this_interval->profile_objmap.cgroup_node0_max;
-  interval->profile_objmap.cgroup_node0_current = this_interval->profile_objmap.cgroup_node0_current;
-  interval->profile_objmap.cgroup_memory_current = this_interval->profile_objmap.cgroup_memory_current;
-  this_interval->profile_rss.time = 0.0;
-  this_interval->profile_objmap.time = 0.0;
 }
 
 
 #define get_arena_prof(i) \
-  prof.profile->this_interval.arenas[i]
+  prof.cur_interval.arenas[i]
   
 #define get_profile_all_prof() \
-  (&(prof.profile->this_interval.profile_all))
+  (&(prof.cur_interval.profile_all))
   
 #define get_profile_bw_prof() \
-  (&(prof.profile->this_interval.profile_bw))
+  (&(prof.cur_interval.profile_bw))
   
 #define get_profile_rss_prof() \
-  (&(prof.profile->this_interval.profile_rss))
+  (&(prof.cur_interval.profile_rss))
   
 #define get_profile_objmap_prof() \
-  (&(prof.profile->this_interval.profile_objmap))
+  (&(prof.cur_interval.profile_objmap))
   
 #define get_profile_latency_prof() \
-  (&(prof.profile->this_interval.profile_latency))
+  (&(prof.cur_interval.profile_latency))
   
 #define get_profile_online_prof() \
-  (&(prof.profile->this_interval.profile_online))
+  (&(prof.cur_interval.profile_online))
   
 #define get_arena_online_prof(i) \
   (&(get_arena_prof(i)->profile_online))
@@ -305,10 +276,8 @@ static inline void copy_interval_profile(size_t index) {
 #define get_arena_objmap_prof(i) \
   (&(get_arena_prof(i)->profile_objmap))
 
-/* Since the profiling library stores an interval after it happens,
-   the "previous interval" is actually the last one recorded */
 #define get_prev_arena_prof(i) \
-  prof.cur_interval->arenas[i]
+  prof.prev_interval.arenas[i]
 
 #define get_prev_arena_online_prof(i) \
   (&(get_prev_arena_prof(i)->profile_online))
