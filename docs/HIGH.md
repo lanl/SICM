@@ -52,8 +52,7 @@ Common options are those that apply to all SICM high-level runs. They are parsed
 | `SH_LOWER_NODE` | This is the NUMA node integer ID which SICM treats as the "lower" tier of memory. |
 | `SH_DEFAULT_NODE` | This is a NUMA node integer ID which you'd like allocations to default to. |
 | `SH_MAX_SITES_PER_ARENA` | This is the maximum number of allocations sites that SICM will allow into each arena. |
-| `SH_MAX_THREADS` | This is the maximum number of threads that SICM will allow allocations from.
-                     For an OpenMP application, for example, I'll set this to `OMP_NUM_THREADS + 1`. |
+| `SH_MAX_THREADS` | This is the maximum number of threads that SICM will allow allocations from. For an OpenMP application, for example, I'll set this to `OMP_NUM_THREADS + 1`. |
 | `SH_MAX_ARENAS` | This is the maximum number of arenas. Defaults to 4096. Usually, this is limited by your arena allocator (in this case, `jemalloc`). |
 | `SH_MAX_SITES` | This is the maximum number of allocation sites. You can find this experimentally. |
 | `SH_LOG_FILE` | This is a file which SICM outputs its configuration to, on initialization. |
@@ -86,5 +85,4 @@ Profiling options are those that control how SICM profiles the application. This
 events on Intel processors), coupled with some method of gathering the capacity of each allocation site. This profiling can either
 be output to file, where it is parsed and converted into memory tier guidance, or it can be used as an online profile to guide
 the current runtime's placement decisions.
-
 
