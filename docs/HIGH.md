@@ -39,11 +39,12 @@ In general, there are four types of SICM high-level runs:
    
 What the high-level interface does depends on the values
 of a number of environment variables. These variables are parsed in `src/high/sicm_runtime_init.c`,
-and for organizational purposes are split into two categories: "common" and "profiling."
+and for organizational purposes are split into three categories: "common", "guided", and "profiling."
 
 ## Common Options
 
-Common options are those that apply to all SICM high-level runs.
+Common options are those that apply to all SICM high-level runs. They are parsed by the function `set_common_options` in
+`src/high/sicm_runtime_init.c`.
 
 | Environment Variable | Description |
 |---------------|-------------|
@@ -51,6 +52,39 @@ Common options are those that apply to all SICM high-level runs.
 | `SH_LOWER_NODE` | This is the NUMA node integer ID which SICM treats as the "lower" tier of memory. |
 | `SH_DEFAULT_NODE` | This is a NUMA node integer ID which you'd like allocations to default to. |
 | `SH_MAX_SITES_PER_ARENA` | This is the maximum number of allocations sites that SICM will allow into each arena. |
-| `SH_MAX_THREADS` | This is the maximum number of threads that SICM will allow allocations from. |
+| `SH_MAX_THREADS` | This is the maximum number of threads that SICM will allow allocations from.
+                     For an OpenMP application, for example, I'll set this to `OMP_NUM_THREADS + 1`. |
 | `SH_MAX_ARENAS` | This is the maximum number of arenas. Defaults to 4096. Usually, this is limited by your arena allocator (in this case, `jemalloc`). |
-| `SH_ARENA_LAYOUT` | This is how SICM associates allocation sites and arenas. See section "Arena Layout" for more information. |
+| `SH_MAX_SITES` | This is the maximum number of allocation sites. You can find this experimentally. |
+| `SH_LOG_FILE` | This is a file which SICM outputs its configuration to, on initialization. |
+| `SH_ARENA_LAYOUT` | This is how SICM allocates data from allocation sites into the various arenas. See section "Arena Layout" for more information. |
+
+## Guided Options
+
+Guided options are those that apply to SICM high-level runs which use offline profiling to guide their placement decisions. They are parsed by
+the function `set_guided_options` in `src/high/sicm_runtime_init.c`.
+
+| Environment Variable | Description |
+|---------------|-------------|
+| `SH_GUIDANCE_FILE` | This is a path to the guidance file. The guidance file is described later in this section. |
+
+The guidance file is simply a text file in a format which tells SICM which tier to place each allocation site on. The first
+line is `===== GUIDANCE =====` and the last line is `===== END GUIDANCE =====`. Each line in between includes
+an allocation site ID (the very same that are listed in `contexts.txt`), followed by a space, followed by a NUMA node number.
+
+If you know the intricacies of your application, you can manually construct a guidance file if you so choose. The example below should
+be sufficient to tell you how to do this.
+
+Under normal conditions, however, this file should be generated. SICM provides a small program, in the form of `src/high/sicm_hotset.c`,
+to help do this with a variety of packing algorithms. This program takes as input offline profiling data, and outputs a guidance
+file which packs allocation sites into a user-defined capacity. When you installed SICM, it will be installed as an executable called
+`sicm_hotset`.
+
+## Profiling Options
+
+Profiling options are those that control how SICM profiles the application. This includes some kind of value capacity (generally PEBS
+events on Intel processors), coupled with some method of gathering the capacity of each allocation site. This profiling can either
+be output to file, where it is parsed and converted into memory tier guidance, or it can be used as an online profile to guide
+the current runtime's placement decisions.
+
+
