@@ -79,10 +79,18 @@ to help do this with a variety of packing algorithms. This program takes as inpu
 file which packs allocation sites into a user-defined capacity. When you installed SICM, it will be installed as an executable called
 `sicm_hotset`.
 
+The only two arguments to `sicm_hotset` are the capacity and the NUMA node to pack onto. On standard input, it accepts offline SICM profiling data
+(see "Profiling Options" for how to generate this). One simple example, using completely default settings, would be:
+```
+cat profile.txt | sicm_hotset --capacity=4294967296 --node=0 > guidance.txt
+```
+This example has `sicm_hotset` read in profiling from `profile.txt`, and pack allocation sites onto NUMA node 0. Depending on the packing algorithm
+used, it will use approximately 4GB. After running, `guidance.txt` will include some output from `sicm_hotset` as it makes its packing decisions,
+and also a list of allocation sites which it thinks will most efficiently use the memory on NUMA node 0.
+
 ## Profiling Options
 
 Profiling options are those that control how SICM profiles the application. This includes some kind of value capacity (generally PEBS
 events on Intel processors), coupled with some method of gathering the capacity of each allocation site. This profiling can either
 be output to file, where it is parsed and converted into memory tier guidance, or it can be used as an online profile to guide
 the current runtime's placement decisions.
-
