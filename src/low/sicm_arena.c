@@ -242,8 +242,19 @@ static void sicm_arena_range_move(void *aux, void *start, void *end) {
 		sa->err = err;
 }
 
+int sicm_arena_set_device(sicm_arena sa, sicm_device *dev) {
+    return sicm_arena_set_device_array(sa, &dev, 1);
+}
+
+int sicm_arena_set_device_array(sicm_arena sa, sicm_device **devs, size_t count) {
+    sicm_device_list list;
+    list.count = count;
+    list.devices = devs;
+    return sicm_arena_set_device_list(sa, &list);
+}
+
 // FIXME: doesn't support moving to huge pages
-int sicm_arena_set_devices(sicm_arena a, sicm_device_list *devs) {
+int sicm_arena_set_device_list(sicm_arena a, sicm_device_list *devs) {
 	int err, node, oldnumaid;
 	size_t i;
 	sarena *sa;

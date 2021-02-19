@@ -223,13 +223,30 @@ sicm_arena sicm_arena_get_default(void);
  */
 sicm_device_list sicm_arena_get_devices(sicm_arena sa);
 
+/// Set a single devices to be used for the arena's allocations
+/**
+ * @param sa arena
+ * @param dev a singe device assigned to the arena
+ * @return zero if the operation is successful
+ */
+int sicm_arena_set_device(sicm_arena sa, sicm_device *dev);
+
+/// Set an array of devices to be used for the arena's allocations
+/**
+ * @param sa arena
+ * @param devs array of devices assigned to the arena
+ * @param count number of devices in the array
+ * @return zero if the operation is successful
+ */
+int sicm_arena_set_device_array(sicm_arena sa, sicm_device **devs, size_t count);
+
 /// Set the list of devices to be used for the arena's allocations
 /**
  * @param sa arena
  * @param devs list of devices assigned to the arena
  * @return zero if the operation is successful
  */
-int sicm_arena_set_devices(sicm_arena sa, sicm_device_list *devs);
+int sicm_arena_set_device_list(sicm_arena sa, sicm_device_list *devs);
 
 /// Get arena size
 /**
