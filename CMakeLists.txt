@@ -31,3 +31,6 @@ add_subdirectory(contrib)
 # Compile some tests
 enable_testing()
 add_subdirectory(test)
+
+# Compile examples
+add_subdirectory(examples)
