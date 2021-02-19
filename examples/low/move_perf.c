@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <sys/mman.h>
 
+#include "nano.h"
 #include "sicm_low.h"
 
 struct ThreadArgs {
@@ -14,18 +15,6 @@ struct ThreadArgs {
     size_t allocations;
     size_t *sizes;
 };
-
-double nano(struct timespec *start, struct timespec *end) {
-    double s = start->tv_sec;
-    s *= 1e9;
-    s += start->tv_nsec;
-
-    double e = end->tv_sec;
-    e *= 1e9;
-    e += end->tv_nsec;
-
-    return e - s;
-}
 
 void *thread_common(struct ThreadArgs *args,
                     void (*ALLOC)(void **, const size_t, const size_t, sicm_device *),
