@@ -43,7 +43,7 @@ int main() {
 		return -1;
 	}
 
-	if (sicm_arena_set_devices(s2, &ds) < 0) {
+	if (sicm_arena_set_device_list(s2, &ds) < 0) {
 		fprintf(stderr, "move failed\n");
 		return -1;
 	}
@@ -58,7 +58,7 @@ int main() {
 //	sleep(60);
 
 	printf("moving second huge alloc (s1) to device 2...\n");
-	if (sicm_arena_set_devices(s1, &ds) < 0) {
+	if (sicm_arena_set_device_list(s1, &ds) < 0) {
 		fprintf(stderr, "move failed gracefully\n");
 		return 0;
 	}

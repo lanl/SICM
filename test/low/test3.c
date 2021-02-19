@@ -53,7 +53,7 @@ int main() {
 	}
 
 	ds.devices = &d1;
-	if (sicm_arena_set_devices(s1, &ds) < 0) {
+	if (sicm_arena_set_device_list(s1, &ds) < 0) {
 		fprintf(stderr, "can't change memory policy\n");
 		return -1;
 	}
@@ -73,7 +73,7 @@ int main() {
 
 	printf("moving second huge alloc (s1) to device 2...\n");
 	ds.devices = &d2;
-	if (sicm_arena_set_devices(s1, &ds) < 0) {
+	if (sicm_arena_set_device_list(s1, &ds) < 0) {
 		fprintf(stderr, "move failed gracefully\n");
 		return 0;
 	}
