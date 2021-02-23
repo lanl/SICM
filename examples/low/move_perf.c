@@ -24,7 +24,10 @@ void *thread_common(struct ThreadArgs *args,
     void **ptrs = numa_alloc_onnode(size, 0);
     memset(ptrs, 0, size);
 
-    /* allocate (not timed) */
+    struct timespec start, end;
+    clock_gettime(CLOCK_MONOTONIC, &start);
+
+    /* allocate */
     for(size_t i = 0; i < args->allocations; i++) {
         ALLOC(ptrs, i, args->sizes[i], args->src);
         if (!ptrs[i]) {
@@ -33,21 +36,19 @@ void *thread_common(struct ThreadArgs *args,
     }
 
     /* move */
-    struct timespec start, end;
-    clock_gettime(CLOCK_MONOTONIC, &start);
     for(size_t i = 0; i < args->allocations; i++) {
         MOVE(ptrs[i], args->sizes[i], args->src, args->dst);
     }
-    clock_gettime(CLOCK_MONOTONIC, &end);
 
-    double *elapsed = numa_alloc_onnode(sizeof(double), 0);
-    *elapsed = nano(&start, &end);
-
-    /* free (not timed) */
+    /* free */
     for(size_t i = 0; i < args->allocations; i++) {
         FREE(ptrs[i], args->sizes[i], args->dst);
         ptrs[i] = NULL;
     }
+
+    clock_gettime(CLOCK_MONOTONIC, &end);
+    double *elapsed = numa_alloc_onnode(sizeof(double), 0);
+    *elapsed = nano(&start, &end);
 
     numa_free(ptrs, size);
 
