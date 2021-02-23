@@ -1,5 +1,9 @@
 add_library(nano OBJECT nano.c)
 
+add_executable(move move.c)
+target_link_libraries(move PUBLIC sicm_SHARED)
+target_link_libraries(move PRIVATE "${JEMALLOC_LDFLAGS}")
+
 add_executable(move_perf move_perf.c)
 target_link_libraries(move_perf PUBLIC sicm_SHARED nano)
 target_link_libraries(move_perf PRIVATE "${JEMALLOC_LDFLAGS}")
