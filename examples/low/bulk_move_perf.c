@@ -22,11 +22,14 @@ void *mmap_thread(void *ptr) {
     void **ptrs = numa_alloc_onnode(ptr_size, 0);
     memset(ptrs, 0, ptr_size);
 
+    struct timespec start, end;
+    clock_gettime(CLOCK_MONOTONIC, &start);
+
     const size_t int_size = args->allocations * sizeof(int);
     int *nodes = numa_alloc_onnode(int_size, 0);
     int *statuses = numa_alloc_onnode(int_size, 0);
 
-    /* allocate (not timed) */
+    /* allocate */
     for(size_t i = 0; i < args->allocations; i++) {
         nodes[i] = args->src->node;
 
@@ -50,19 +53,13 @@ void *mmap_thread(void *ptr) {
     }
 
     /* bulk move */
-    struct timespec start, end;
-    clock_gettime(CLOCK_MONOTONIC, &start);
     if (numa_move_pages(0, args->allocations, ptrs, nodes, statuses, 0) != 0) {
         const int err = errno;
         fprintf(stderr, "Move pages to src failed: %s %d\n", strerror(err), err);
         return NULL;
     }
 
-    clock_gettime(CLOCK_MONOTONIC, &end);
-    double *elapsed = numa_alloc_onnode(sizeof(double), 0);
-    *elapsed = nano(&start, &end);
-
-    /* free (not timed) */
+    /* free */
     for(size_t i = 0; i < args->allocations; i++) {
         munmap(ptrs[i], args->sizes[i]);
         ptrs[i] = NULL;
@@ -70,6 +67,11 @@ void *mmap_thread(void *ptr) {
 
     numa_free(statuses, int_size);
     numa_free(nodes, int_size);
+
+    clock_gettime(CLOCK_MONOTONIC, &end);
+    double *elapsed = numa_alloc_onnode(sizeof(double), 0);
+    *elapsed = nano(&start, &end);
+
     numa_free(ptrs, ptr_size);
 
     return elapsed;
@@ -81,11 +83,14 @@ void *numa_thread(void *ptr) {
     void **ptrs = numa_alloc_onnode(ptr_size, 0);
     memset(ptrs, 0, ptr_size);
 
+    struct timespec start, end;
+    clock_gettime(CLOCK_MONOTONIC, &start);
+
     const size_t int_size = args->allocations * sizeof(int);
     int *nodes = numa_alloc_onnode(int_size, 0);
     int *statuses = numa_alloc_onnode(int_size, 0);
 
-    /* allocate (not timed) */
+    /* allocate */
     for(size_t i = 0; i < args->allocations; i++) {
         nodes[i] = args->src->node;
 
@@ -108,19 +113,13 @@ void *numa_thread(void *ptr) {
     }
 
     /* bulk move */
-    struct timespec start, end;
-    clock_gettime(CLOCK_MONOTONIC, &start);
     if (numa_move_pages(0, args->allocations, ptrs, nodes, statuses, 0) != 0) {
         const int err = errno;
         fprintf(stderr, "Move pages to src failed: %s %d\n", strerror(err), err);
         return NULL;
     }
 
-    clock_gettime(CLOCK_MONOTONIC, &end);
-    double *elapsed = numa_alloc_onnode(sizeof(double), 0);
-    *elapsed = nano(&start, &end);
-
-    /* free (not timed) */
+    /* free */
     for(size_t i = 0; i < args->allocations; i++) {
         munmap(ptrs[i], args->sizes[i]);
         ptrs[i] = NULL;
@@ -128,6 +127,11 @@ void *numa_thread(void *ptr) {
 
     numa_free(statuses, int_size);
     numa_free(nodes, int_size);
+
+    clock_gettime(CLOCK_MONOTONIC, &end);
+    double *elapsed = numa_alloc_onnode(sizeof(double), 0);
+    *elapsed = nano(&start, &end);
+
     numa_free(ptrs, ptr_size);
 
     return elapsed;
@@ -139,13 +143,16 @@ void *sicm_thread(void *ptr) {
     void **ptrs = numa_alloc_onnode(ptr_size, 0);
     memset(ptrs, 0, ptr_size);
 
+    struct timespec start, end;
+    clock_gettime(CLOCK_MONOTONIC, &start);
+
     sicm_device_list srcs;
     srcs.count = 1;
     srcs.devices = &args->src;
 
     sicm_arena arena = sicm_arena_create(0, 0, &srcs);
 
-    /* allocate (not timed) */
+    /* allocate */
     for(size_t i = 0; i < args->allocations; i++) {
         ptrs[i] = sicm_arena_alloc(arena, args->sizes[i]);
         if (!ptrs[i]) {
@@ -156,20 +163,15 @@ void *sicm_thread(void *ptr) {
     }
 
     /* bulk move */
-    struct timespec start, end;
-    clock_gettime(CLOCK_MONOTONIC, &start);
     sicm_arena_set_device(arena, args->dst);
+
+    /* frees all pointers in the arena*/
+    sicm_arena_destroy(arena);
+
     clock_gettime(CLOCK_MONOTONIC, &end);
     double *elapsed = numa_alloc_onnode(sizeof(double), 0);
     *elapsed = nano(&start, &end);
 
-    /* free (not timed) */
-    for(size_t i = 0; i < args->allocations; i++) {
-        sicm_free(ptrs[i]);
-        ptrs[i] = NULL;
-    }
-
-    sicm_arena_destroy(arena);
     numa_free(ptrs, ptr_size);
 
     return elapsed;
