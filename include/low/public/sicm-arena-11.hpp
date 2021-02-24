@@ -26,7 +26,7 @@ public:
     friend class SICMArenaAllocator;
 
     SICMArenaAllocator(sicm_arena a = ARENA_DEFAULT) noexcept
-        : arena(a)
+        : arena(a), cleanup(false)
     {}
 
     SICMArenaAllocator(sicm_device *dev,
@@ -40,21 +40,33 @@ public:
     {
         sicm_device_list devs = { .count = count, .arenas = dev_array };
         arena = sicm_arena_create(max_size, 0, &devs);
+        cleanup = true;
     }
 
     SICMArenaAllocator(sicm_device_list *dev_list,
                        const std::size_t max_size = 0) noexcept
-        : arena(sicm_arena_create(max_size, 0, dev_list))
+        : arena(sicm_arena_create(max_size, 0, dev_list)), cleanup(true)
     {}
 
     template <class U> SICMArenaAllocator(SICMArenaAllocator<U> const& u) noexcept
-        : arena(u.arena)
+        : arena(u.arena), cleanup(false)
     {}
+
+    ~SICMArenaAllocator() {
+        if (cleanup) {
+            sicm_arena_destroy(arena);
+        }
+    }
 
     value_type*  // Use pointer if pointer is not a value_type*
     allocate(std::size_t n)
     {
-        return static_cast<value_type*>(sicm_arena_alloc(arena, n*sizeof(value_type)));
+        void *mem = NULL;
+        if (!(mem = sicm_arena_alloc(arena, n * sizeof(value_type)))) {
+            throw std::bad_alloc();
+        }
+
+        return (value_type *) mem;
     }
 
     void
@@ -120,6 +132,7 @@ public:
 
 private:
     sicm_arena arena;
+    bool cleanup;
 };
 
 template <class T, class U>

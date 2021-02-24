@@ -47,43 +47,48 @@ public:
     template <class U>
     friend class SICMArenaAllocator;
 
-    SICMArenaAllocator(sicm_arena arena = ARENA_DEFAULT) throw() {
-        sicm_arena = arena;
+    SICMArenaAllocator(sicm_arena a = ARENA_DEFAULT) throw() {
+        arena = a;
+        cleanup = false;
     }
 
     SICMArenaAllocator(sicm_device *dev,
                        const size_t max_size = 0) throw() {
         sicm_device_list devs = { .count = 1, .devices = &dev };
-        sicm_arena = sicm_arena_create(max_size, 0, devs);
+        arena = sicm_arena_create(max_size, 0, &devs);
+        cleanup = true;
     }
 
     SICMArenaAllocator(sicm_device **dev_array, const size_t count,
                        const size_t max_size = 0) throw() {
         sicm_device_list devs = { .count = count, .devices = dev_array };
-        sicm_arena = sicm_arena_create(max_size, 0, devs);
+        arena = sicm_arena_create(max_size, 0, &devs);
+        cleanup = true;
     }
 
     SICMArenaAllocator(sicm_device_list *dev_list,
                        const size_t max_size = 0) throw() {
-        sicm_arena = sicm_arena_create(max_size, 0, dev_list);
+        arena = sicm_arena_create(max_size, 0, dev_list);
+        cleanup = true;
     }
 
     template <class U> SICMArenaAllocator(SICMArenaAllocator<U> const& u) throw() {
-        sicm_arena = u.sicm_arena;
+        arena = u.arena;
+        cleanup = false;
+    }
+
+    ~SICMArenaAllocator() {
+        if (cleanup) {
+            sicm_arena_destroy(arena);
+        }
     }
 
     pointer
     allocate(size_type n, SICMArenaAllocator<void>::const_pointer = 0)
     {
         void *mem = NULL;
-
-        if (sicm_arena) {
-            if (!(mem = sicm_arena_alloc(sicm_arena, n * sizeof(value_type)))) {
-                throw std::bad_alloc();
-            }
-        }
-        else {
-            mem = ::operator new (n * sizeof(value_type));
+        if (!(mem = sicm_arena_alloc(arena, n * sizeof(value_type)))) {
+            throw std::bad_alloc();
         }
 
         return (pointer) mem;
@@ -92,12 +97,7 @@ public:
     void
     deallocate(pointer p, size_type)
     {
-        if (sicm_arena) {
-            sicm_free(p);
-        }
-        else {
-            ::operator delete(p);
-        }
+        sicm_free(p);
     }
 
     void
@@ -149,7 +149,8 @@ public:
     }
 
 private:
-    sicm_arena *sicm_arena;
+    sicm_arena arena;
+    bool cleanup;
 };
 
 template <class T, class U>
