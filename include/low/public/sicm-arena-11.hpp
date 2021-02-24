@@ -1,10 +1,10 @@
-#ifndef SICM_CXX_11_ALLOCATOR
-#define SICM_CXX_11_ALLOCATOR
+#ifndef SICM_ARENA_CXX_11_ALLOCATOR
+#define SICM_ARENA_CXX_11_ALLOCATOR
 
 #include "sicm_low.h"
 
 template <class T>
-class SICMAllocator
+class SICMArenaAllocator
 {
 public:
     using value_type    = T;
@@ -23,26 +23,44 @@ public:
 //     template <class U> struct rebind {typedef allocator<U> other;};
 
     template <class U>
-    friend class SICMAllocator;
+    friend class SICMArenaAllocator;
 
-    SICMAllocator(sicm_device *dev = sicm_default_device(-1)) noexcept
-        : sicm_dev(dev)
+    SICMArenaAllocator(sicm_arena a = ARENA_DEFAULT) noexcept
+        : arena(a)
     {}
 
-    template <class U> SICMAllocator(SICMAllocator<U> const& u) noexcept
-        : sicm_dev(u.sicm_dev)
+    SICMArenaAllocator(sicm_device *dev,
+                       const std::size_t max_size = 0) noexcept
+        : SICMArenaAllocator(&dev, 1, max_size)
+    {}
+
+    SICMArenaAllocator(sicm_device **dev_array, const std::size_t count,
+                       const std::size_t max_size = 0) noexcept
+        : SICMArenaAllocator()
+    {
+        sicm_device_list devs = { .count = count, .arenas = dev_array };
+        arena = sicm_arena_create(max_size, 0, &devs);
+    }
+
+    SICMArenaAllocator(sicm_device_list *dev_list,
+                       const std::size_t max_size = 0) noexcept
+        : arena(sicm_arena_create(max_size, 0, dev_list))
+    {}
+
+    template <class U> SICMArenaAllocator(SICMArenaAllocator<U> const& u) noexcept
+        : arena(u.arena)
     {}
 
     value_type*  // Use pointer if pointer is not a value_type*
     allocate(std::size_t n)
     {
-        return static_cast<value_type*>(sicm_device_alloc(sicm_dev, n*sizeof(value_type)));
+        return static_cast<value_type*>(sicm_arena_alloc(arena, n*sizeof(value_type)));
     }
 
     void
-    deallocate(value_type* p, std::size_t n) noexcept  // Use pointer if pointer is not a value_type*
+    deallocate(value_type* p, std::size_t) noexcept  // Use pointer if pointer is not a value_type*
     {
-        sicm_device_free(sicm_dev, p, n * sizeof(value_type));
+        sicm_free(p);
     }
 
 //     value_type*
@@ -82,20 +100,38 @@ public:
 //     using propagate_on_container_swap            = std::false_type;
 //     using is_always_equal                        = std::is_empty<allocator>;
 
+    int
+    ChangeDevice(sicm_device *dev)
+    {
+        return sicm_arena_set_device(arena, dev);
+    }
+
+    int
+    ChangeDevices(sicm_device **dev_array, const size_t count)
+    {
+        return sicm_arena_set_device_array(arena, dev_array, count);
+    }
+
+    int
+    ChangeDevices(sicm_device_list *devs)
+    {
+        return sicm_arena_set_device_list(arena, devs);
+    }
+
 private:
-    sicm_device *sicm_dev;
+    sicm_arena arena;
 };
 
 template <class T, class U>
 bool
-operator==(SICMAllocator<T> const&, SICMAllocator<U> const&) noexcept
+operator==(SICMArenaAllocator<T> const&, SICMArenaAllocator<U> const&) noexcept
 {
     return true;
 }
 
 template <class T, class U>
 bool
-operator!=(SICMAllocator<T> const& x, SICMAllocator<U> const& y) noexcept
+operator!=(SICMArenaAllocator<T> const& x, SICMArenaAllocator<U> const& y) noexcept
 {
     return !(x == y);
 }

@@ -1,5 +1,5 @@
-#ifndef SICM_CXX_03_ALLOCATOR
-#define SICM_CXX_03_ALLOCATOR
+#ifndef SICM_DEVICE_CXX_03_ALLOCATOR
+#define SICM_DEVICE_CXX_03_ALLOCATOR
 
 #include <limits>
 #include <memory>
@@ -7,10 +7,10 @@
 
 #include "sicm_low.h"
 
-template <class T> class SICMAllocator;
+template <class T> class SICMDeviceAllocator;
 
 template <>
-class SICMAllocator<void>
+class SICMDeviceAllocator<void>
 {
 public:
     typedef void              value_type;
@@ -22,12 +22,12 @@ public:
     template <class U>
     struct rebind
     {
-        typedef SICMAllocator<U> other;
+        typedef SICMDeviceAllocator<U> other;
     };
 };
 
 template <class T>
-class SICMAllocator
+class SICMDeviceAllocator
 {
 public:
     typedef T                 value_type;
@@ -41,22 +41,22 @@ public:
     template <class U>
     struct rebind
     {
-        typedef SICMAllocator<U> other;
+        typedef SICMDeviceAllocator<U> other;
     };
 
     template <class U>
-    friend class SICMAllocator;
+    friend class SICMDeviceAllocator;
 
-    SICMAllocator(sicm_device *dev = sicm_default_device(-1)) throw() {
+    SICMDeviceAllocator(sicm_device *dev = sicm_default_device(-1)) throw() {
         sicm_dev = dev;
     }
 
-    template <class U> SICMAllocator(SICMAllocator<U> const& u) throw() {
+    template <class U> SICMDeviceAllocator(SICMDeviceAllocator<U> const& u) throw() {
         sicm_dev = u.sicm_dev;
     }
 
     pointer
-    allocate(size_type n, SICMAllocator<void>::const_pointer = 0)
+    allocate(size_type n, SICMDeviceAllocator<void>::const_pointer = 0)
     {
         void *mem = NULL;
 
@@ -119,14 +119,14 @@ private:
 
 template <class T, class U>
 bool
-operator==(SICMAllocator<T> const&, SICMAllocator<U> const&)
+operator==(SICMDeviceAllocator<T> const&, SICMDeviceAllocator<U> const&)
 {
     return true;
 }
 
 template <class T, class U>
 bool
-operator!=(SICMAllocator<T> const& x, SICMAllocator<U> const& y)
+operator!=(SICMDeviceAllocator<T> const& x, SICMDeviceAllocator<U> const& y)
 {
     return !(x == y);
 }
