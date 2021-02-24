@@ -14,3 +14,9 @@ target_link_libraries(loop_move_perf PRIVATE "${JEMALLOC_LDFLAGS}")
 add_executable(bulk_move_perf bulk_move_perf.c nano)
 target_link_libraries(bulk_move_perf PUBLIC sicm_SHARED)
 target_link_libraries(bulk_move_perf PRIVATE "${JEMALLOC_LDFLAGS}")
+
+# C++ example
+add_executable(allocator_example allocator.cpp)
+set_target_properties(allocator_example PROPERTIES OUTPUT_NAME "allocator")
+target_link_libraries(allocator_example PUBLIC sicm_SHARED)
+target_link_libraries(allocator_example PRIVATE "${JEMALLOC_LDFLAGS}")
