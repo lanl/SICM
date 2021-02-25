@@ -38,14 +38,14 @@ public:
                        const std::size_t max_size = 0) noexcept
         : SICMArenaAllocator()
     {
-        sicm_device_list devs = { .count = count, .arenas = dev_array };
-        arena = sicm_arena_create(max_size, 0, &devs);
+        sicm_device_list devs = { .count = (decltype(devs.count)) count, .devices = dev_array };
+        arena = sicm_arena_create(max_size, (sicm_arena_flags) 0, &devs);
         cleanup = true;
     }
 
     SICMArenaAllocator(sicm_device_list *dev_list,
                        const std::size_t max_size = 0) noexcept
-        : arena(sicm_arena_create(max_size, 0, dev_list)), cleanup(true)
+        : arena(sicm_arena_create(max_size, (sicm_arena_flags) 0, dev_list)), cleanup(true)
     {}
 
     template <class U> SICMArenaAllocator(SICMArenaAllocator<U> const& u) noexcept
