@@ -37,7 +37,7 @@ int main() {
 
     for(unsigned i = 0; i < devs.count; i += 3) {
         sicm_device *dev = devs.devices[i];
-        SICMAllocator<int> sa(dev); // use this SICMAllocator instance for all containers
+        SICMArenaAllocator<int> sa(dev); // use this SICMArenaAllocator instance for all containers
 
         bool correct = true;
 
@@ -45,7 +45,7 @@ int main() {
         {
             std::size_t size = 1;
             for(std::size_t j = 0; j < size_exponent; j++) {
-                std::deque <int, SICMAllocator <int> > deque(sa);
+                std::deque <int, SICMArenaAllocator <int> > deque(sa);
                 deque.resize(size);
                 size *= size_multiplier;
 
@@ -60,7 +60,7 @@ int main() {
         {
             std::size_t size = 1;
             for(std::size_t j = 0; j < size_exponent; j++) {
-                std::list <int, SICMAllocator <int> > list(sa);
+                std::list <int, SICMArenaAllocator <int> > list(sa);
                 list.resize(size);
                 size *= size_multiplier;
 
@@ -73,8 +73,7 @@ int main() {
 
         // map
         {
-            std::size_t size = 1;
-            std::map <int, int, std::less <int>, SICMAllocator <int> > map(sa);
+            std::map <int, int, std::less <int>, SICMArenaAllocator <std::pair<const int, int> > > map(sa);
             for(std::size_t j = 0; j < size_exponent; j++) {
                 map[i] = i;
             }
@@ -89,7 +88,7 @@ int main() {
         {
             std::size_t size = 1;
             for(std::size_t j = 0; j < size_exponent; j++) {
-                std::vector <int, SICMAllocator <int> > vector(sa);
+                std::vector <int, SICMArenaAllocator <int> > vector(sa);
                 vector.resize(size);
                 size *= size_multiplier;
 

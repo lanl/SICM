@@ -60,7 +60,7 @@ void alloc_mmap(void **ptrs, const size_t i, const size_t size, sicm_device *src
     ptrs[i] = mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
     if (numa_move_pages(0, 1, &ptrs[i], &src->node, &status, 0) < 0) {
         const int err = errno;
-        fprintf(stderr, "Could not move ptrs[%d]=%p to %d: %d %s\n",
+        fprintf(stderr, "Could not move ptrs[%zu]=%p to %d: %d %s\n",
                 i, ptrs[i], src->node, err, strerror(err));
         return;
     }
