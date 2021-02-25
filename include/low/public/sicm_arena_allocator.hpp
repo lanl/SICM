@@ -1,6 +1,8 @@
 #ifndef SICM_ARENA_CXX_11_ALLOCATOR
 #define SICM_ARENA_CXX_11_ALLOCATOR
 
+#include <memory>
+
 #include "sicm_low.h"
 
 template <class T>
@@ -25,8 +27,17 @@ public:
     template <class U>
     friend class SICMArenaAllocator;
 
+private:
+    static void sicm_arena_cleanup(sicm_arena *sa) {
+        sicm_arena_destroy(*sa);
+        delete sa;
+    }
+
+public:
+
     SICMArenaAllocator(sicm_arena a = ARENA_DEFAULT) noexcept
-        : arena(a), cleanup(false)
+        : arena(std::shared_ptr<sicm_arena>(new sicm_arena(a),
+                                            sicm_arena_cleanup))
     {}
 
     SICMArenaAllocator(sicm_device *dev,
@@ -38,31 +49,31 @@ public:
                        const std::size_t max_size = 0) noexcept
         : SICMArenaAllocator()
     {
-        sicm_device_list devs = { .count = (decltype(devs.count)) count, .devices = dev_array };
-        arena = sicm_arena_create(max_size, (sicm_arena_flags) 0, &devs);
-        cleanup = true;
+        sicm_device_list devs;
+        devs.count = count;
+        devs.devices = dev_array;
+
+        arena = std::shared_ptr<sicm_arena>(
+            new sicm_arena(sicm_arena_create(max_size, (sicm_arena_flags) 0, &devs)),
+            sicm_arena_cleanup);
     }
 
     SICMArenaAllocator(sicm_device_list *dev_list,
                        const std::size_t max_size = 0) noexcept
-        : arena(sicm_arena_create(max_size, (sicm_arena_flags) 0, dev_list)), cleanup(true)
+        : arena(std::shared_ptr<sicm_arena>(
+                    new sicm_arena(sicm_arena_create(max_size, (sicm_arena_flags) 0, dev_list)),
+                    sicm_arena_cleanup))
     {}
 
     template <class U> SICMArenaAllocator(SICMArenaAllocator<U> const& u) noexcept
-        : arena(u.arena), cleanup(false)
+        : arena(u.arena)
     {}
-
-    ~SICMArenaAllocator() {
-        if (cleanup) {
-            sicm_arena_destroy(arena);
-        }
-    }
 
     value_type*  // Use pointer if pointer is not a value_type*
     allocate(std::size_t n)
     {
-        void *mem = NULL;
-        if (!(mem = sicm_arena_alloc(arena, n * sizeof(value_type)))) {
+        void *mem = sicm_arena_alloc(*(arena.get()), n * sizeof(value_type));
+        if (!mem) {
             throw std::bad_alloc();
         }
 
@@ -115,24 +126,23 @@ public:
     int
     ChangeDevice(sicm_device *dev)
     {
-        return sicm_arena_set_device(arena, dev);
+        return sicm_arena_set_device(*(arena.get()), dev);
     }
 
     int
     ChangeDevices(sicm_device **dev_array, const size_t count)
     {
-        return sicm_arena_set_device_array(arena, dev_array, count);
+        return sicm_arena_set_device_array(*(arena.get()), dev_array, count);
     }
 
     int
     ChangeDevices(sicm_device_list *devs)
     {
-        return sicm_arena_set_device_list(arena, devs);
+        return sicm_arena_set_device_list(*(arena.get()), devs);
     }
 
 private:
-    sicm_arena arena;
-    bool cleanup;
+    std::shared_ptr<sicm_arena> arena;
 };
 
 template <class T, class U>

@@ -12,6 +12,6 @@ foreach(NUM 1 2 3 4 5)
   sicm_test(test${NUM}.c)
 endforeach()
 
-sicm_test(arena_allocator.cpp)
-sicm_test(device_allocator.cpp)
 sicm_test(default_device.c)
+
+add_test(allocator  ${CMAKE_BINARY_DIR}/examples/low/allocators)
