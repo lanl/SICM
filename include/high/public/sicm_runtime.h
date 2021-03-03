@@ -94,6 +94,7 @@ typedef struct tracker_struct {
   /* Arena layout */
   enum arena_layout layout;
   size_t big_small_threshold;
+  char lazy_migration;
 
   /* Keeps track of arenas */
   arena_info **arenas;

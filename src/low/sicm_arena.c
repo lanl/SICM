@@ -254,7 +254,10 @@ static void sicm_arena_range_move(void *aux, void *start, void *end) {
   if (!(sa->flags & SICM_MOVE_RELAXED)) {
     flags = MPOL_MF_MOVE;
   }
-
+  if (sa->flags & SICM_MOVE_LAZY) {
+    flags |= MPOL_MF_LAZY;
+  }
+  
 	err = mbind((void *) start, (char*) end - (char*) start, mpol, nodemaskp, maxnode, flags);
 	if (err < 0 && sa->err == 0)
 		sa->err = err;
@@ -495,6 +498,7 @@ static extent_hooks_t sa_hooks = {
 
 static void *sa_alloc(extent_hooks_t *h, void *new_addr, size_t size, size_t alignment, bool *zero, bool *commit, unsigned arena_ind) {
 	int mpol;
+  unsigned flags;
 	unsigned long *nodemaskp, maxnode;
 	sarena *sa;
 	uintptr_t n, m;
@@ -582,9 +586,14 @@ static void *sa_alloc(extent_hooks_t *h, void *new_addr, size_t size, size_t ali
   size = size - (m-n);
 
 success:
-	if (mbind(ret, size, mpol, nodemaskp, maxnode, MPOL_MF_MOVE) < 0) {
+  flags = MPOL_MF_MOVE;
+  if (sa->flags & SICM_MOVE_LAZY) {
+    flags |= MPOL_MF_LAZY;
+  }
+	if (mbind(ret, size, mpol, nodemaskp, maxnode, flags) < 0) {
     perror("mbind");
     fprintf(stderr, "Allocated: %p to %p\nUnmapped: %p to %p\nm: %p", n, n + size, n, n + m - n, m);
+    fflush(stderr);
 		munmap(ret, size);
 		ret = NULL;
 		goto restore_mempolicy;

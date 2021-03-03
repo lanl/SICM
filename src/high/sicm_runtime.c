@@ -379,6 +379,7 @@ void sh_create_arena(int index, int id, sicm_device *device, char invalid) {
   siteinfo_ptr site;
   sicm_device_list dl;
   int err;
+  sicm_arena_flags flags;
   
   /* Put an upper bound on the indices that need to be searched. */
   if(index > tracker.max_index) {
@@ -388,14 +389,19 @@ void sh_create_arena(int index, int id, sicm_device *device, char invalid) {
   if(!device) {
     device = tracker.default_device;
   }
-
+  
+  flags = SICM_ALLOC_RELAXED;
+  if(tracker.lazy_migration) {
+    flags |= SICM_MOVE_LAZY;
+  }
+  
   arena = orig_calloc(1, sizeof(arena_info));
   arena->index = index;
   arena->thread_allocs = orig_calloc(tracker.max_threads, sizeof(int));
   dl.count = 1;
   dl.devices = orig_malloc(sizeof(sicm_device *) * 1);
   dl.devices[0] = device;
-  arena->arena = sicm_arena_create(0, SICM_ALLOC_RELAXED, &dl);
+  arena->arena = sicm_arena_create(0, flags, &dl);
   orig_free(dl.devices);
 
   /* Now add the arena to the array of arenas */

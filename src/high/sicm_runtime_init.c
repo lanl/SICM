@@ -90,6 +90,7 @@ sicm_device *get_device_from_numa_node(int id) {
 #define COMMON_OPTIONS \
   X(SH_LOG_FILE) \
   X(SH_ARENA_LAYOUT) \
+  X(SH_LAZY_MIGRATION) \
   X(SH_BIG_SMALL_THRESHOLD) \
   X(SH_MAX_THREADS) \
   X(SH_MAX_ARENAS) \
@@ -191,6 +192,13 @@ void set_common_options() {
     tracker.layout = parse_layout(env);
   } else {
     tracker.layout = DEFAULT_ARENA_LAYOUT;
+  }
+  
+  /* This sets the SICM_MOVE_LAZY flag for all arenas */
+  env = getenv("SH_LAZY_MIGRATION");
+  tracker.lazy_migration = 0;
+  if(env) {
+    tracker.lazy_migration = 1;
   }
 
   /* Get the threshold for a "big" or "small" arena, in bytes */
