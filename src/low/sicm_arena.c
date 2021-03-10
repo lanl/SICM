@@ -121,6 +121,7 @@ static sarena *sicm_arena_new(size_t sz, sicm_arena_flags flags, sicm_device_lis
 		fprintf(stderr, "can't create an arena: %d\n", err);
 		pthread_mutex_destroy(sa->mutex);
 		munmap(sa->mutex, sizeof(pthread_mutex_t));
+		free(sa->devs.devices);
 		free(sa);
 		return NULL;
 	}
@@ -540,17 +541,19 @@ static void *sa_alloc(extent_hooks_t *h, void *new_addr, size_t size, size_t ali
 		goto restore_mempolicy;
 	}
 
-	n = (uintptr_t) ret;
-	m = n + alignment - (n%alignment);
-	munmap(ret, m-n);
-	ret = (void *) m;
-
 success:
 	if (mbind(ret, size, mpol, nodemaskp, maxnode, MPOL_MF_MOVE) < 0) {
 		munmap(ret, size);
 		perror("mbind");
 		ret = NULL;
 		goto restore_mempolicy;
+	}
+
+	if (!(alignment == 0 || ((uintptr_t) ret)%alignment == 0)) {
+		n = (uintptr_t) ret;
+		m = n + alignment - (n%alignment);
+		ret = (void *) m;
+		size -= alignment;
 	}
 
 	/* Add the extent to the array of extents */
