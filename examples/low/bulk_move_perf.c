@@ -16,6 +16,68 @@ struct ThreadArgs {
     size_t *sizes;
 };
 
+void *malloc_thread(void *ptr) {
+    struct ThreadArgs *args = ptr;
+    const size_t ptr_size = args->allocations * sizeof(void *);
+    void **ptrs = numa_alloc_onnode(ptr_size, 0);
+    memset(ptrs, 0, ptr_size);
+
+    struct timespec start, end;
+    clock_gettime(CLOCK_MONOTONIC, &start);
+
+    const size_t int_size = args->allocations * sizeof(int);
+    int *nodes = numa_alloc_onnode(int_size, 0);
+    int *statuses = numa_alloc_onnode(int_size, 0);
+
+    /* allocate */
+    for(size_t i = 0; i < args->allocations; i++) {
+        nodes[i] = args->src->node;
+
+        ptrs[i] = malloc(args->sizes[i]);
+
+        if (!ptrs[i]) {
+            fprintf(stderr, "Could not allocate ptrs[%zu]\n", i);
+        }
+
+        memset(ptrs[i], 0, args->sizes[i]);
+    }
+
+    if (numa_move_pages(0, args->allocations, ptrs, nodes, statuses, 0) != 0) {
+        const int err = errno;
+        fprintf(stderr, "Move pages to src failed: %s %d\n", strerror(err), err);
+        return NULL;
+    }
+
+    for(size_t i = 0; i < args->allocations; i++) {
+        nodes[i] = args->dst->node;
+    }
+
+    /* bulk move */
+    if (numa_move_pages(0, args->allocations, ptrs, nodes, statuses, 0) != 0) {
+        const int err = errno;
+        fprintf(stderr, "Move pages to src failed: %s %d\n", strerror(err), err);
+        return NULL;
+    }
+
+    /* free */
+    for(size_t i = 0; i < args->allocations; i++) {
+        munmap(ptrs[i], args->sizes[i]);
+        ptrs[i] = NULL;
+    }
+
+    numa_free(statuses, int_size);
+    numa_free(nodes, int_size);
+
+    clock_gettime(CLOCK_MONOTONIC, &end);
+    double *elapsed = numa_alloc_onnode(sizeof(double), 0);
+    *elapsed = nano(&start, &end);
+
+    numa_free(ptrs, ptr_size);
+
+    return elapsed;
+}
+
+
 void *mmap_thread(void *ptr) {
     struct ThreadArgs *args = ptr;
     const size_t ptr_size = args->allocations * sizeof(void *);
@@ -274,9 +336,10 @@ int main(int argc, char *argv[]) {
     }
 
     printf("%10s        %12s   %12s\n", "", "RealTime", "ThreadTime");
-    run(&devs, thread_count, allocations, sizes, "mmap", mmap_thread);
-    run(&devs, thread_count, allocations, sizes, "numa", numa_thread);
-    run(&devs, thread_count, allocations, sizes, "sicm", sicm_thread);
+    /* run(&devs, thread_count, allocations, sizes, "malloc", malloc_thread); */
+    /* run(&devs, thread_count, allocations, sizes, "mmap",   mmap_thread); */
+    run(&devs, thread_count, allocations, sizes, "numa",   numa_thread);
+    /* run(&devs, thread_count, allocations, sizes, "sicm",   sicm_thread); */
 
     sicm_fini();
 
