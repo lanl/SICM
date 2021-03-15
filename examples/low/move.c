@@ -13,8 +13,70 @@
 */
 
 /*
+   malloc is simple
+   Allocating to the same device requires allocation policy modifications
+   No guarantee that allocations are located close to each other
+*/
+void **malloc_create(size_t *sizes, size_t count, int node) {
+    void **ptrs = malloc(count * sizeof(void *));
+    for(size_t i = 0; i < count; i++) {
+        ptrs[i] = malloc(sizes[i]);
+    }
+
+    return ptrs;
+}
+
+/*
+   Freeing is simple
+*/
+void malloc_destroy(void **ptrs, size_t count) {
+    for(size_t i = 0; i < count; i++) {
+        free(ptrs[i]);
+    }
+
+    free(ptrs);
+}
+
+void malloc_example(size_t *sizes, size_t count, int src, int dst) {
+    void **ptrs = malloc_create(sizes, count, src);
+
+    /*
+      Moving malloc-ed pointers using an array of destinations
+      requires 2 extra arrays to be allocated
+    */
+    {
+        int *dsts     = malloc(count * sizeof(int));
+        int *statuses = malloc(count * sizeof(int));
+
+        for(size_t i = 0; i < count; i++) {
+            dsts[i] = dst;
+            statuses[i] = -1;
+        }
+
+        numa_move_pages(0, count, ptrs, dsts, statuses, 0);
+
+        free(dsts);
+        free(statuses);
+    }
+
+    /*
+      Moving malloc-ed pointers using a loop requires walking through each
+      pointer
+    */
+    {
+        int status = -1;
+        for(size_t i = 0; i < count; i++) {
+            numa_move_pages(0, 1, &ptrs[i], &dst, &status, 0);
+        }
+    }
+
+    malloc_destroy(ptrs, count);
+}
+
+/*
    mmap arguments are awkward
    Allocating to the same device requires allocation policy modifications
+   No guarantee that allocations are located close to each other
 */
 void **mmap_create(size_t *sizes, size_t count, int node) {
     void **ptrs = malloc(count * sizeof(void *));
@@ -66,7 +128,7 @@ void mmap_example(size_t *sizes, size_t count, int src, int dst) {
     {
         int status = -1;
         for(size_t i = 0; i < count; i++) {
-            numa_move_pages(0, 1, ptrs[i], &dst, &status, 0);
+            numa_move_pages(0, 1, &ptrs[i], &dst, &status, 0);
         }
     }
 
@@ -128,7 +190,7 @@ void numa_example(size_t *sizes, size_t count, int src, int dst) {
     {
         int status = -1;
         for(size_t i = 0; i < count; i++) {
-            numa_move_pages(0, 1, ptrs[i], &dst, &status, 0);
+            numa_move_pages(0, 1, &ptrs[i], &dst, &status, 0);
         }
     }
     numa_destroy(ptrs, sizes, count);
@@ -207,9 +269,10 @@ int main(int argc, char *argv[]) {
         /* printf("    %zu %zu\n", i, sizes[i]); */
     }
 
-    mmap_example(       sizes, allocations, devs.devices[0]->node, devs.devices[3]->node);
-    numa_example(       sizes, allocations, devs.devices[0]->node, devs.devices[3]->node);
-    sicm_example(&devs, sizes, allocations, devs.devices[0],       devs.devices[3]);
+    malloc_example(       sizes, allocations, devs.devices[0]->node, devs.devices[3]->node);
+    mmap_example  (       sizes, allocations, devs.devices[0]->node, devs.devices[3]->node);
+    numa_example  (       sizes, allocations, devs.devices[0]->node, devs.devices[3]->node);
+    sicm_example  (&devs, sizes, allocations, devs.devices[0],       devs.devices[3]);
 
     free(sizes);
 

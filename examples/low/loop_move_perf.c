@@ -55,6 +55,34 @@ void *thread_common(struct ThreadArgs *args,
     return elapsed;
 }
 
+void alloc_malloc(void **ptrs, const size_t i, const size_t size, sicm_device *src) {
+    int status = 0;
+    ptrs[i] = malloc(size);
+    if (numa_move_pages(0, 1, &ptrs[i], &src->node, &status, 0) < 0) {
+        const int err = errno;
+        fprintf(stderr, "Could not move ptrs[%zu]=%p to %d: %d %s\n",
+                i, ptrs[i], src->node, err, strerror(err));
+        return;
+    }
+}
+
+void move_malloc(void *ptr, const size_t size, sicm_device *src, sicm_device *dst) {
+    int status = 0;
+    if (numa_move_pages(0, 1, &ptr, &dst->node, &status, 0) < 0) {
+        const int err = errno;
+        fprintf(stderr, "Could not move %p to %d: %d %s\n",
+                ptr, dst->node, err, strerror(err));
+    }
+}
+
+void free_malloc(void *ptr, const size_t size, sicm_device *location) {
+    free(ptr);
+}
+
+void *malloc_thread(void *ptr) {
+    return thread_common(ptr, alloc_malloc, move_malloc, free_malloc);
+}
+
 void alloc_mmap(void **ptrs, const size_t i, const size_t size, sicm_device *src) {
     int status = 0;
     ptrs[i] = mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
@@ -217,9 +245,10 @@ int main(int argc, char *argv[]) {
     }
 
     printf("%10s        %12s   %12s\n", "", "RealTime", "ThreadTime");
-    run(&devs, thread_count, allocations, sizes, "mmap", mmap_thread);
-    run(&devs, thread_count, allocations, sizes, "numa", numa_thread);
-    run(&devs, thread_count, allocations, sizes, "sicm", sicm_thread);
+    run(&devs, thread_count, allocations, sizes, "malloc", malloc_thread);
+    run(&devs, thread_count, allocations, sizes, "mmap",   mmap_thread);
+    run(&devs, thread_count, allocations, sizes, "numa",   numa_thread);
+    run(&devs, thread_count, allocations, sizes, "sicm",   sicm_thread);
 
     sicm_fini();
 
