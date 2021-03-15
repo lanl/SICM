@@ -7,6 +7,7 @@
 
 #include "nano.h"
 #include "sicm_low.h"
+#include "sizes.h"
 
 struct ThreadArgs {
     sicm_device_list *devs;
@@ -294,18 +295,12 @@ void run(sicm_device_list *devs,
 }
 
 int main(int argc, char *argv[]) {
-    srand(time(NULL));
-
-    if (argc < 4) {
-        fprintf(stderr, "Syntax: %s max_size thread_count allocation_count\n", argv[0]);
+    if (argc < 5) {
+        fprintf(stderr, "Syntax: %s alloc_func threads size_count sizes\n", argv[0]);
         return 1;
     }
 
-    size_t max_size = 0;
-    if ((sscanf(argv[1], "%zu", &max_size) != 1) || !max_size) {
-        fprintf(stderr, "Bad max size: %s\n", argv[1]);
-        return 1;
-    }
+    char *alloc_func = argv[1];
 
     size_t thread_count = 0;
     if (sscanf(argv[2], "%zu", &thread_count) != 1) {
@@ -313,18 +308,16 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
-    size_t allocations = 0;
-    if (sscanf(argv[3], "%zu", &allocations) != 1) {
+    size_t count = 0;
+    if (sscanf(argv[3], "%zu", &count) != 1) {
         fprintf(stderr, "Bad allocation count: %s\n", argv[3]);
         return 1;
     }
 
-    /* printf("Allocating %zu randomly sized buffers on %zu threads each:\n", allocations, thread_count); */
-
-    size_t *sizes = calloc(allocations, sizeof(size_t));
-    for(size_t i = 0; i < allocations; i++) {
-        while ((sizes[i] = (rand() * rand() * rand()) % max_size) == 0);
-        /* printf("    %zu %zu\n", i, sizes[i]); */
+    size_t *sizes = read_sizes(argv[4], count);
+    if (!sizes) {
+        fprintf(stderr, "Bad size file: %s\n", argv[4]);
+        return 1;
     }
 
     sicm_device_list devs = sicm_init();
@@ -336,10 +329,27 @@ int main(int argc, char *argv[]) {
     }
 
     printf("%10s        %12s   %12s\n", "", "RealTime", "ThreadTime");
-    /* run(&devs, thread_count, allocations, sizes, "malloc", malloc_thread); */
-    /* run(&devs, thread_count, allocations, sizes, "mmap",   mmap_thread); */
-    run(&devs, thread_count, allocations, sizes, "numa",   numa_thread);
-    /* run(&devs, thread_count, allocations, sizes, "sicm",   sicm_thread); */
+    void *(*thread)(void *) = NULL;
+    const size_t len = strlen(alloc_func);
+    if ((len == 6) && (strncmp(alloc_func, "malloc", len) == 0)) {
+        thread = malloc_thread;
+    }
+    else if ((len == 4) && (strncmp(alloc_func, "mmap", len) == 0)) {
+        thread = mmap_thread;
+    }
+    else if ((len == 4) && (strncmp(alloc_func, "numa", len) == 0)) {
+        thread = numa_thread;
+    }
+    else if ((len == 4) && (strncmp(alloc_func, "sicm", len) == 0)) {
+        thread = sicm_thread;
+    }
+    else {
+        fprintf(stderr, "Bad allocator function: %s\n", alloc_func);
+    }
+
+    if (thread) {
+        run(&devs, thread_count, count, sizes, alloc_func, thread);
+    }
 
     sicm_fini();
 

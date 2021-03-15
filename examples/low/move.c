@@ -6,6 +6,7 @@
 #include <sys/mman.h>
 
 #include "sicm_low.h"
+#include "sizes.h"
 
 /*
   This C program is not really meant to run. Rather, it is meant to
@@ -241,8 +242,6 @@ void sicm_example(sicm_device_list *devs, size_t *sizes, size_t count, sicm_devi
 }
 
 int main(int argc, char *argv[]) {
-    srand(time(NULL));
-
     if (argc < 3) {
         fprintf(stderr, "Syntax: %s max_size allocation_count\n", argv[0]);
         return 1;
@@ -263,11 +262,7 @@ int main(int argc, char *argv[]) {
     sicm_device_list devs = sicm_init();
 
     /* randomly generate sizes to represent allocations of some process */
-    size_t *sizes = calloc(allocations, sizeof(size_t));
-    for(size_t i = 0; i < allocations; i++) {
-        while ((sizes[i] = (rand() * rand() * rand()) % max_size) == 0);
-        /* printf("    %zu %zu\n", i, sizes[i]); */
-    }
+    size_t *sizes = select_sizes(max_size, allocations);
 
     malloc_example(       sizes, allocations, devs.devices[0]->node, devs.devices[3]->node);
     mmap_example  (       sizes, allocations, devs.devices[0]->node, devs.devices[3]->node);
