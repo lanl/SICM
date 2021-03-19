@@ -158,10 +158,11 @@ void run(sicm_device_list *devs,
          void *(*func)(void *)) {
 
     /* move from all NUMA nodes to all NUMA nodes */
-    for(int src_idx = 0; src_idx < devs->count; src_idx += 3) {
-        for(int dst_idx = 0; dst_idx < devs->count; dst_idx += 3) {
-            pthread_t *threads          = calloc(thread_count, sizeof(pthread_t));
-            struct ThreadArgs *args     = calloc(thread_count, sizeof(struct ThreadArgs));
+    for(int dst_idx = 0; dst_idx < devs->count; dst_idx += 3) {
+        printf("%d", devs->devices[dst_idx]->node);
+        for(int src_idx = 0; src_idx < devs->count; src_idx += 3) {
+            pthread_t *threads      = calloc(thread_count, sizeof(pthread_t));
+            struct ThreadArgs *args = calloc(thread_count, sizeof(struct ThreadArgs));
 
             struct timespec start, end;
             clock_gettime(CLOCK_MONOTONIC, &start);
@@ -194,12 +195,9 @@ void run(sicm_device_list *devs,
             free(args);
             free(threads);
 
-            printf("%-10s %d -> %d %10.3fs %12.3fs\n",
-                   name,
-                   devs->devices[src_idx]->node,
-                   devs->devices[dst_idx]->node,
-                   nano(&start, &end) / 1e9, elapsed / 1e9);
+            printf(" %.3f", nano(&start, &end) / 1e9);
         }
+        printf("\n");
     }
 }
 
@@ -231,13 +229,12 @@ int main(int argc, char *argv[]) {
 
     sicm_device_list devs = sicm_init();
 
-    printf("Found %u NUMA nodes:\n", devs.count / 3);
+    printf("%d", devs.count / 3);
     for(size_t i = 0; i < devs.count; i += 3) {
-        printf("    %d %s\n", devs.devices[i]->node,
-               sicm_device_tag_str(devs.devices[i]->tag));
+        printf(" %d", devs.devices[i]->node);
     }
+    printf("\n");
 
-    printf("%10s        %12s   %12s\n", "", "RealTime", "ThreadTime");
     void *(*thread)(void *) = NULL;
     const size_t len = strlen(alloc_func);
     if ((len == 6) && (strncmp(alloc_func, "malloc", len) == 0)) {
