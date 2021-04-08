@@ -10,8 +10,8 @@ struct ThreadArgs {
     sicm_device_list *devs;
     sicm_device *src;
     sicm_device *dst;
-    size_t allocations;
     size_t *sizes;
+    size_t count;
 
     struct timespec start;
     struct timespec end;
@@ -23,7 +23,8 @@ void run(sicm_device_list *devs,
          const size_t thread_count,
          const size_t allocations,
          size_t *sizes,
-         size_t reps,
+         int src_numa,
+         int dst_numa,
          const char *name,
          void *(*func)(void *));
 
