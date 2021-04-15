@@ -28,64 +28,64 @@ int void2int(void *dst) {
 int move_ptrs(void **ptrs, size_t *sizes, size_t count, void *src, void *dst_ptr) {
     const int dst = void2int(dst_ptr);
 
-    int *dsts     = malloc(count * sizeof(int));
-    int *statuses = malloc(count * sizeof(int));
-
-    for(size_t i = 0; i < count; i++) {
-        dsts[i] = dst;
-        statuses[i] = -1;
-    }
-
-    const int rc = numa_move_pages(0, count, ptrs, dsts, statuses, 0);
-    const int err = errno;
-
-    free(dsts);
-    free(statuses);
-
-    /* size_t page_count = 0;                                /\* total number of pages across all ptrs *\/ */
-    /* size_t *page_counts = malloc(count * sizeof(size_t)); /\* number of pages each ptr[i] has *\/ */
-    /* size_t *offsets = malloc(count * sizeof(size_t));     /\* offsets to find start of ptrs[i] page *\/ */
+    /* int *dsts     = malloc(count * sizeof(int)); */
+    /* int *statuses = malloc(count * sizeof(int)); */
 
     /* for(size_t i = 0; i < count; i++) { */
-    /*     offsets[i] = sizes[i] % PAGE_SIZE; */
-    /*     page_counts[i] = (sizes[i] / PAGE_SIZE) + !!offsets[i]; */
-    /*     page_count += page_counts[i]; */
+    /*     dsts[i] = dst; */
+    /*     statuses[i] = -1; */
     /* } */
 
-    /* size_t p = 0; */
-    /* void **pages = malloc(page_count * sizeof(void *)); */
-    /* int *dsts = malloc(page_count * sizeof(int)); */
-    /* int *statuses = malloc(page_count * sizeof(int)); */
-
-    /* for(size_t i = 0; i < count; i++) { */
-    /*     /\* first page *\/ */
-    /*     pages[p] = ptrs[i]; */
-    /*     if (offsets[p]) { */
-    /*         pages[p] = (void *) (((uintptr_t) pages[p]) - offsets[p]); */
-    /*         dsts[p] = dst; */
-    /*         statuses[p] = -1; */
-    /*     } */
-
-    /*     p++; */
-
-    /*     /\* rest of pages *\/ */
-    /*     for(size_t j = 1; j < page_counts[i]; j++) { */
-    /*         pages[p] = (void *) (((uintptr_t) pages[p - 1]) + PAGE_SIZE); */
-    /*         dsts[p] = dst; */
-    /*         statuses[p] = -1; */
-    /*         p++; */
-    /*     } */
-    /* } */
-
-    /* /\* do the move *\/ */
-    /* const int rc = numa_move_pages(0, page_count, pages, dsts, statuses, 0); */
+    /* const int rc = numa_move_pages(0, count, ptrs, dsts, statuses, 0); */
     /* const int err = errno; */
 
-    /* free(statuses); */
     /* free(dsts); */
-    /* free(pages); */
-    /* free(offsets); */
-    /* free(page_counts); */
+    /* free(statuses); */
+
+    size_t page_count = 0;                                /* total number of pages across all ptrs */
+    size_t *page_counts = malloc(count * sizeof(size_t)); /* number of pages each ptr[i] has */
+    size_t *offsets = malloc(count * sizeof(size_t));     /* offsets to find start of ptrs[i] page */
+
+    for(size_t i = 0; i < count; i++) {
+        offsets[i] = sizes[i] % PAGE_SIZE;
+        page_counts[i] = (sizes[i] / PAGE_SIZE) + !!offsets[i];
+        page_count += page_counts[i];
+    }
+
+    size_t p = 0;
+    void **pages = malloc(page_count * sizeof(void *));
+    int *dsts = malloc(page_count * sizeof(int));
+    int *statuses = malloc(page_count * sizeof(int));
+
+    for(size_t i = 0; i < count; i++) {
+        /* first page */
+        pages[p] = ptrs[i];
+        if (offsets[p]) {
+            /* pages[p] = (void *) (((uintptr_t) pages[p]) - offsets[p]); */
+        }
+        dsts[p] = dst;
+        statuses[p] = -1;
+
+        p++;
+
+        /* rest of pages */
+        for(size_t j = 1; j < page_counts[i]; j++) {
+            pages[p] = (void *) (((uintptr_t) pages[p - 1]) + PAGE_SIZE);
+            dsts[p] = dst;
+            statuses[p] = -1;
+            p++;
+        }
+    }
+
+    /* do the move */
+    const int rc = numa_move_pages(0, page_count, pages, dsts, statuses, 0);
+    const int err = errno;
+
+    free(statuses);
+    free(dsts);
+    free(pages);
+    free(offsets);
+    free(page_counts);
 
     if (rc < 0) {
         fprintf(stderr, "Could not move pages to %d: %d %s\n",
@@ -100,7 +100,7 @@ void *alloc_posix_memalign(size_t size, void *src) {
     void *ptr = NULL;
     if (posix_memalign(&ptr, PAGE_SIZE, size) != 0) {
         const int err = errno;
-        fprintf(stderr, "posix_memalign failed: %s (d)\n", strerror(err), err);
+        fprintf(stderr, "posix_memalign failed: %s (%d)\n", strerror(err), err);
         return NULL;
     }
 
@@ -187,6 +187,7 @@ void *common(void *data,
 
     void *src = get_src(args->src);
 
+    /* allocate pointers and move them to their source NUMA nodes */
     void **ptrs = numa_alloc_onnode(args->count * sizeof(void *), args->src->node);
     for(size_t i = 0; i < args->count; i++) {
         ptrs[i] = alloc(args->sizes[i], src);
@@ -196,9 +197,11 @@ void *common(void *data,
             goto cleanup_ptrs;
         }
 
+        /* touch all pages; allow for prefetching effects to speed this up */
         memset(ptrs[i], 0, args->sizes[i]);
     }
 
+    /* move the pointers to their destination NUMA nodes */
     clock_gettime(CLOCK_MONOTONIC, &args->start);
     move(ptrs, args->sizes, args->count, src, get_dst(args->dst));
     clock_gettime(CLOCK_MONOTONIC, &args->end);
