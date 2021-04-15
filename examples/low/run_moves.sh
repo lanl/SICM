@@ -35,7 +35,7 @@ do
                 do
                     times+=($(${DIR}/move_perf "${alloc}" "$(nproc --all)" "${count}" "${size_file}" "${src}" "${dst}"))
                 done
-                avg=$(python -c "times=[float(x) for x in '$(echo ${times[@]})'.split()]; print(sum(times) / len(times))")
+                avg=$(python3 -c "times=[float(x) for x in '$(echo ${times[@]})'.split()]; print(sum(times) / len(times))")
                 echo -n " ${avg}"
             done
             echo

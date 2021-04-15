@@ -62,7 +62,7 @@ void run(sicm_device_list *devs,
     clock_gettime(CLOCK_MONOTONIC, &start);
     for(size_t i = 0; i < thread_count; i++) {
         if (pthread_create(&threads[i], NULL, func, &args[i]) != 0) {
-            fprintf(stderr, "Could not create thread %d of %s\n", i, name);
+            fprintf(stderr, "Could not create thread %zu of %s\n", i, name);
             for(int j = 0; j < thread_count; j++) {
                 pthread_join(threads[j], NULL);
                 threads[j] = 0;

@@ -29,19 +29,19 @@ set cblabel "RealTime (s)"
 set format cb "%.2f"
 
 set title "posix\\\_memalign"
-plot "${prefix}.posix_memalign" matrix rowheaders columnheaders using 1:2:3 with image notitle, \
+plot "${prefix}.posix_memalign" matrix rowheaders columnheaders using 1:2:3 with image pixels notitle, \
      ""                         matrix rowheaders columnheaders using 1:2:(sprintf("%.2f s", \$3)) with labels notitle
 
 set title "mmap"
-plot "${prefix}.mmap" matrix rowheaders columnheaders using 1:2:3 with image notitle, \
+plot "${prefix}.mmap" matrix rowheaders columnheaders using 1:2:3 with image pixels notitle, \
      ""               matrix rowheaders columnheaders using 1:2:(sprintf("%.2f s", \$3)) with labels notitle
 
 set title "numa"
-plot "${prefix}.numa" matrix rowheaders columnheaders using 1:2:3 with image notitle, \
+plot "${prefix}.numa" matrix rowheaders columnheaders using 1:2:3 with image pixels notitle, \
      ""               matrix rowheaders columnheaders using 1:2:(sprintf("%.2f s", \$3)) with labels notitle
 
 set title "sicm"
-plot "${prefix}.sicm" matrix rowheaders columnheaders using 1:2:3 with image notitle, \
+plot "${prefix}.sicm" matrix rowheaders columnheaders using 1:2:3 with image pixels notitle, \
      ""               matrix rowheaders columnheaders using 1:2:(sprintf("%.2f s", \$3)) with labels notitle
 
 
