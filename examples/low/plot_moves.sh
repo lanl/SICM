@@ -2,22 +2,23 @@
 
 set -e
 
-if [[ "$#" -lt 2 ]]
+if [[ "$#" -lt "4" ]]
 then
-    echo "Syntax: $0 path-prefix count size [cbmax]" 1>&2
+    echo "Syntax: $0 path-prefix count size threads [cbmax]" 1>&2
     exit 1
 fi
 
 prefix="$1"
 count="$2"
 size="$3"
-cbmax="$4"
+threads="$4"
+cbmax="$5"
 
 gnuplot <<EOF
 
 set terminal svg size 1024,1024 font ",12"
 set output '${prefix}.svg'
-set multiplot layout 2,2 title "Comparison of ${count} x ${size} Allocation Moves"
+set multiplot layout 2,2 title "Comparison of ${count} x ${size} x ${threads} Threads Allocation Moves"
 set key outside right
 unset key
 
