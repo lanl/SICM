@@ -44,11 +44,10 @@ int move_ptrs(void **ptrs, size_t *sizes, size_t count, void *src, void *dst_ptr
 
     size_t page_count = 0;                                /* total number of pages across all ptrs */
     size_t *page_counts = malloc(count * sizeof(size_t)); /* number of pages each ptr[i] has */
-    size_t *offsets = malloc(count * sizeof(size_t));     /* offsets to find start of ptrs[i] page */
 
     for(size_t i = 0; i < count; i++) {
-        offsets[i] = sizes[i] % PAGE_SIZE;
-        page_counts[i] = (sizes[i] / PAGE_SIZE) + !!offsets[i];
+        const size_t rem = sizes[i] % PAGE_SIZE;
+        page_counts[i] = (sizes[i] / PAGE_SIZE) + !!rem;
         page_count += page_counts[i];
     }
 
@@ -60,9 +59,6 @@ int move_ptrs(void **ptrs, size_t *sizes, size_t count, void *src, void *dst_ptr
     for(size_t i = 0; i < count; i++) {
         /* first page */
         pages[p] = ptrs[i];
-        if (offsets[p]) {
-            /* pages[p] = (void *) (((uintptr_t) pages[p]) - offsets[p]); */
-        }
         dsts[p] = dst;
         statuses[p] = -1;
 
@@ -81,10 +77,30 @@ int move_ptrs(void **ptrs, size_t *sizes, size_t count, void *src, void *dst_ptr
     const int rc = numa_move_pages(0, page_count, pages, dsts, statuses, 0);
     const int err = errno;
 
+    p = 0;
+    for(size_t i = 0; i < count; i++) {
+        int good = 1;
+
+        for(size_t j = 0; j < page_counts[i]; j++) {
+            if (statuses[p + j] < 0) {
+                good = 0;
+                break;
+            }
+        }
+
+        if (!good){
+            printf("allocated %p %zu %zu\n", ptrs[i], sizes[i], page_counts[i]);
+            for(size_t j = 0; j < page_counts[i]; j++) {
+                printf("    %p %d\n", pages[p + j], statuses[p + j]);
+            }
+        }
+
+        p += page_counts[i];
+    }
+
     free(statuses);
     free(dsts);
     free(pages);
-    free(offsets);
     free(page_counts);
 
     if (rc < 0) {
@@ -104,6 +120,8 @@ void *alloc_posix_memalign(size_t size, void *src) {
         return NULL;
     }
 
+    memset(ptr, 42, size);
+
     if (move_ptrs(&ptr, &size, 1, NULL, src) != 0) {
         free(ptr);
         return NULL;
@@ -120,6 +138,12 @@ void free_posix_memalign(void **ptrs, size_t *sizes, size_t count) {
 
 void *alloc_mmap(size_t size, void *src) {
     void *ptr = mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+    if (ptr == MAP_FAILED) {
+        return NULL;
+    }
+
+    memset(ptr, 42, size);
+
     if (move_ptrs(&ptr, &size, 1, NULL, src) != 0) {
         munmap(ptr, size);
         return NULL;
@@ -135,7 +159,9 @@ void free_mmap(void **ptrs, size_t *sizes, size_t count) {
 }
 
 void *alloc_numa(size_t size, void *src) {
-    return numa_alloc_onnode(size, void2int(src));
+    void *ptr = numa_alloc_onnode(size, void2int(src));
+    memset(ptr, 42, size);
+    return ptr;
 }
 
 void free_numa(void **ptrs, size_t *sizes, size_t count) {
@@ -156,7 +182,9 @@ sicm_arena void2arena(void *arena) {
 }
 
 void *alloc_sicm(size_t size, void *arena) {
-    return sicm_arena_alloc(arena, size);
+    void *ptr = sicm_arena_alloc(arena, size);
+    memset(ptr, 42, size);
+    return ptr;
 }
 
 void *device2device(sicm_device *dst) {
@@ -196,9 +224,6 @@ void *common(void *data,
             fprintf(stderr, "Could not allocate ptrs[%zu]\n", i);
             goto cleanup_ptrs;
         }
-
-        /* touch all pages; allow for prefetching effects to speed this up */
-        memset(ptrs[i], 0, args->sizes[i]);
     }
 
     /* move the pointers to their destination NUMA nodes */
