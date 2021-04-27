@@ -60,7 +60,7 @@ int move_ptrs(void **ptrs, size_t *sizes, size_t count, void *src, void *dst_ptr
         /* first page */
         pages[p] = ptrs[i];
         dsts[p] = dst;
-        statuses[p] = -1;
+        statuses[p] = dst;
 
         p++;
 
@@ -68,7 +68,7 @@ int move_ptrs(void **ptrs, size_t *sizes, size_t count, void *src, void *dst_ptr
         for(size_t j = 1; j < page_counts[i]; j++) {
             pages[p] = (void *) (((uintptr_t) pages[p - 1]) + PAGE_SIZE);
             dsts[p] = dst;
-            statuses[p] = -1;
+            statuses[p] = dst;
             p++;
         }
     }
@@ -82,16 +82,16 @@ int move_ptrs(void **ptrs, size_t *sizes, size_t count, void *src, void *dst_ptr
         int good = 1;
 
         for(size_t j = 0; j < page_counts[i]; j++) {
-            if (statuses[p + j] < 0) {
+            if (statuses[p + j] != dst) {
                 good = 0;
                 break;
             }
         }
 
         if (!good){
-            printf("allocated %p %zu %zu\n", ptrs[i], sizes[i], page_counts[i]);
+            fprintf(stderr, "allocated %p %zu %zu\n", ptrs[i], sizes[i], page_counts[i]);
             for(size_t j = 0; j < page_counts[i]; j++) {
-                printf("    %p %d\n", pages[p + j], statuses[p + j]);
+                fprintf(stderr, "    %zu %p %d\n", j, pages[p + j], statuses[p + j]);
             }
         }
 
