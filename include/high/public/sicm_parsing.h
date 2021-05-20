@@ -478,20 +478,20 @@ static application_profile *sh_parse_profiling(FILE *file) {
           profile_type = -1;
         } else if(sscanf(line, "  Time: %lf\n", &tmp_double) == 1) {
           ret->intervals[cur_interval].profile_objmap.time = tmp_double;
-    		} else if(sscanf(line, "  Heap Size: %zu\n", &tmp_sizet) == 1) {
-    		  ret->intervals[cur_interval].profile_objmap.heap_bytes = tmp_sizet;
-    		} else if(sscanf(line, "  Lower Heap Size: %zu\n", &tmp_sizet) == 1) {
-    		  ret->intervals[cur_interval].profile_objmap.lower_heap_bytes = tmp_sizet;
-    		} else if(sscanf(line, "  Upper Heap Size: %zu\n", &tmp_sizet) == 1) {
-    		  ret->intervals[cur_interval].profile_objmap.upper_heap_bytes = tmp_sizet;
-    		} else if(sscanf(line, "  Upper Current: %zu\n", &tmp_sizet) == 1) {
-    		  ret->intervals[cur_interval].profile_objmap.upper_current = tmp_sizet;
-    		} else if(sscanf(line, "  Lower Current: %zu\n", &tmp_sizet) == 1) {
-    		  ret->intervals[cur_interval].profile_objmap.lower_current = tmp_sizet;
-    		} else if(sscanf(line, "  Upper Maximum: %zu\n", &tmp_sizet) == 1) {
-    		  ret->intervals[cur_interval].profile_objmap.upper_max = tmp_sizet;
-    		} else if(sscanf(line, "  Memory Current: %zu\n", &tmp_sizet) == 1) {
-    		  ret->intervals[cur_interval].profile_objmap.cgroup_memory_current = tmp_sizet;
+        } else if(sscanf(line, "  Heap Size: %zu\n", &tmp_sizet) == 1) {
+          ret->intervals[cur_interval].profile_objmap.heap_bytes = tmp_sizet;
+        } else if(sscanf(line, "  Lower Heap Size: %zu\n", &tmp_sizet) == 1) {
+          ret->intervals[cur_interval].profile_objmap.lower_heap_bytes = tmp_sizet;
+        } else if(sscanf(line, "  Upper Heap Size: %zu\n", &tmp_sizet) == 1) {
+          ret->intervals[cur_interval].profile_objmap.upper_heap_bytes = tmp_sizet;
+        } else if(sscanf(line, "  Upper Current: %zu\n", &tmp_sizet) == 1) {
+          ret->intervals[cur_interval].profile_objmap.upper_current = tmp_sizet;
+        } else if(sscanf(line, "  Lower Current: %zu\n", &tmp_sizet) == 1) {
+          ret->intervals[cur_interval].profile_objmap.lower_current = tmp_sizet;
+        } else if(sscanf(line, "  Upper Maximum: %zu\n", &tmp_sizet) == 1) {
+          ret->intervals[cur_interval].profile_objmap.upper_max = tmp_sizet;
+        } else if(sscanf(line, "  Memory Current: %zu\n", &tmp_sizet) == 1) {
+          ret->intervals[cur_interval].profile_objmap.cgroup_memory_current = tmp_sizet;
         } else {
           fprintf(stderr, "Didn't recognize a line in the profiling information at depth %d. Aborting.\n", depth);
           fprintf(stderr, "Line: %s\n", line);
@@ -512,24 +512,24 @@ static application_profile *sh_parse_profiling(FILE *file) {
           ret->profile_skts[cur_skt_index] = tmp_int;
           profile_latency_cur_skt = &(ret->intervals[cur_interval].profile_latency.skt[cur_skt_index]);
           depth = 3;
-    		} else {
-    		  fprintf(stderr, "Didn't recognize a line in the profiling information at depth %d. Aborting.\n", depth);
-    		  fprintf(stderr, "Line: %s\n", line);
-    		  exit(1);
-    		}
+        } else {
+          fprintf(stderr, "Didn't recognize a line in the profiling information at depth %d. Aborting.\n", depth);
+          fprintf(stderr, "Line: %s\n", line);
+          exit(1);
+        }
       } else if(profile_type == 0) {
         /* This is the case where we're in a per-interval PROFILE_PEBS block */
         if(strcmp(line, "END PROFILE_PEBS\n") == 0) {
-    		  /* Up in depth */
-    		  depth = 1;
-    		  profile_type = -1;
-    		} else if(sscanf(line, "    Total: %zu\n", &tmp_sizet) == 1) {
-    		  ret->intervals[cur_interval].profile_pebs.total = tmp_sizet;
-    		} else {
-    		  fprintf(stderr, "Didn't recognize a line in the profiling information at depth %d. Aborting.\n", depth);
-    		  fprintf(stderr, "Line: %s\n", line);
-    		  exit(1);
-    		}
+          /* Up in depth */
+          depth = 1;
+          profile_type = -1;
+        } else if(sscanf(line, "    Total: %zu\n", &tmp_sizet) == 1) {
+          ret->intervals[cur_interval].profile_pebs.total = tmp_sizet;
+        } else {
+          fprintf(stderr, "Didn't recognize a line in the profiling information at depth %d. Aborting.\n", depth);
+          fprintf(stderr, "Line: %s\n", line);
+          exit(1);
+        }
       } else {
         fprintf(stderr, "Didn't recognize a line in the profiling information at depth %d. Aborting.\n", depth);
         fprintf(stderr, "Line: %s\n", line);

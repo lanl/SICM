@@ -117,7 +117,7 @@ struct compass : public ModulePass {
         nsites_file(nullptr),
         nclones_file(nullptr) {
 
-	/* C */
+  /* C */
         allocFnMap["malloc"] = "sh_alloc";
         allocFnMap["calloc"] = "sh_calloc";
         allocFnMap["realloc"] = "sh_realloc";
@@ -126,13 +126,13 @@ struct compass : public ModulePass {
         allocFnMap["memalign"] = "sh_memalign";
         dallocFnMap["free"] = "sh_free";
 
-	/* C++ */
+  /* C++ */
         allocFnMap["_Znam"] = "sh_alloc";
         allocFnMap["_Znwm"] = "sh_alloc";
         dallocFnMap["_ZdaPv"] = "sh_free";
         dallocFnMap["_ZdlPv"] = "sh_free";
 
-	/* Fortran */
+  /* Fortran */
         allocFnMap["f90_alloc"] = "f90_sh_alloc";
         allocFnMap["f90_alloca"] = "f90_sh_alloca";
         allocFnMap["f90_alloc03"] = "f90_sh_alloc03";

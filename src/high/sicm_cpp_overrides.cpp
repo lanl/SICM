@@ -21,115 +21,115 @@ void sh_sized_free(void* ptr, size_t size);
 }
 #endif
 
-void	*operator new(std::size_t size);
-void	*operator new[](std::size_t size);
-void	*operator new(std::size_t size, const std::nothrow_t &) noexcept;
-void	*operator new[](std::size_t size, const std::nothrow_t &) noexcept;
-void	operator delete(void *ptr) noexcept;
-void	operator delete[](void *ptr) noexcept;
-void	operator delete(void *ptr, const std::nothrow_t &) noexcept;
-void	operator delete[](void *ptr, const std::nothrow_t &) noexcept;
+void  *operator new(std::size_t size);
+void  *operator new[](std::size_t size);
+void  *operator new(std::size_t size, const std::nothrow_t &) noexcept;
+void  *operator new[](std::size_t size, const std::nothrow_t &) noexcept;
+void  operator delete(void *ptr) noexcept;
+void  operator delete[](void *ptr) noexcept;
+void  operator delete(void *ptr, const std::nothrow_t &) noexcept;
+void  operator delete[](void *ptr, const std::nothrow_t &) noexcept;
 
 #if __cpp_sized_deallocation >= 201309
 /* C++14's sized-delete operators. */
-void	operator delete(void *ptr, std::size_t size) noexcept;
-void	operator delete[](void *ptr, std::size_t size) noexcept;
+void  operator delete(void *ptr, std::size_t size) noexcept;
+void  operator delete[](void *ptr, std::size_t size) noexcept;
 #endif
 
 static void *
 handleOOM(std::size_t size, bool nothrow) {
-	void *ptr = nullptr;
+  void *ptr = nullptr;
 
-	while (ptr == nullptr) {
-		std::new_handler handler;
-		// GCC-4.8 and clang 4.0 do not have std::get_new_handler.
-		{
-			static std::mutex mtx;
-			std::lock_guard<std::mutex> lock(mtx);
+  while (ptr == nullptr) {
+    std::new_handler handler;
+    // GCC-4.8 and clang 4.0 do not have std::get_new_handler.
+    {
+      static std::mutex mtx;
+      std::lock_guard<std::mutex> lock(mtx);
 
-			handler = std::set_new_handler(nullptr);
-			std::set_new_handler(handler);
-		}
-		if (handler == nullptr)
-			break;
+      handler = std::set_new_handler(nullptr);
+      std::set_new_handler(handler);
+    }
+    if (handler == nullptr)
+      break;
 
-		try {
-			handler();
-		} catch (const std::bad_alloc &) {
-			break;
-		}
+    try {
+      handler();
+    } catch (const std::bad_alloc &) {
+      break;
+    }
 
-		ptr = sh_alloc(0, size);
-	}
+    ptr = sh_alloc(0, size);
+  }
 
-	if (ptr == nullptr && !nothrow)
-		std::__throw_bad_alloc();
-	return ptr;
+  if (ptr == nullptr && !nothrow)
+    std::__throw_bad_alloc();
+  return ptr;
 }
 
 template <bool IsNoExcept>
 void *
 newImpl(std::size_t size) noexcept(IsNoExcept) {
-	void *ptr = sh_alloc(0, size);
-	if (likely(ptr != nullptr))
-		return ptr;
+  void *ptr = sh_alloc(0, size);
+  if (likely(ptr != nullptr))
+    return ptr;
 
-	return handleOOM(size, IsNoExcept);
+  return handleOOM(size, IsNoExcept);
 }
 
 void *
 operator new(std::size_t size) {
-	return newImpl<false>(size);
+  return newImpl<false>(size);
 }
 
 void *
 operator new[](std::size_t size) {
-	return newImpl<false>(size);
+  return newImpl<false>(size);
 }
 
 void *
 operator new(std::size_t size, const std::nothrow_t &) noexcept {
-	return newImpl<true>(size);
+  return newImpl<true>(size);
 }
 
 void *
 operator new[](std::size_t size, const std::nothrow_t &) noexcept {
-	return newImpl<true>(size);
+  return newImpl<true>(size);
 }
 
 void
 operator delete(void *ptr) noexcept {
-	sh_free(ptr);
+  sh_free(ptr);
 }
 
 void
 operator delete[](void *ptr) noexcept {
-	sh_free(ptr);
+  sh_free(ptr);
 }
 
 void
 operator delete(void *ptr, const std::nothrow_t &) noexcept {
-	sh_free(ptr);
+  sh_free(ptr);
 }
 
 void operator delete[](void *ptr, const std::nothrow_t &) noexcept {
-	sh_free(ptr);
+  sh_free(ptr);
 }
 
 #if __cpp_sized_deallocation >= 201309
 
 void
 operator delete(void *ptr, std::size_t size) noexcept {
-	if (unlikely(ptr == nullptr)) {
-		return;
-	}
+  if (unlikely(ptr == nullptr)) {
+    return;
+  }
   sh_sized_free(ptr, size);
 }
 
 void operator delete[](void *ptr, std::size_t size) noexcept {
-	if (unlikely(ptr == nullptr)) {
-		return;
-	}
+  if (unlikely(ptr == nullptr)) {
+    return;
+  }
   sh_sized_free(ptr, size);
 }
 
