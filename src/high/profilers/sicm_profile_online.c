@@ -14,7 +14,6 @@
 
 /* Include the various online implementations */
 #include "sicm_profile_online_utils.h"
-#include "sicm_profile_online_orig.h"
 #include "sicm_profile_online_ski.h"
 
 /* Helper functions called by the application, for debugging purposes. */
@@ -24,9 +23,90 @@ static int phase_changes = 0;
 
 void sh_profile_online_phase_change() {
   if(should_profile_online()) {
-    get_profile_online_prof()->phase_change = 1;
+    get_online_prof()->phase_change = 1;
     phase_changes++;
+    if(profopts.profile_online_debug_file) {
+      fprintf(profopts.profile_online_debug_file, "Phase change.\n");
+      fflush(profopts.profile_online_debug_file);
+    }
   }
+}
+
+/* Generates a hotset, then returns a tree of *all* sites, with the hot ones marked */
+tree(site_info_ptr, int) calculate_hotset() {
+  tree(site_info_ptr, int) online_sites;
+  tree(site_info_ptr, int) merged_sites;
+  tree(int, site_info_ptr) hotset;
+  tree_it(int, site_info_ptr) hit;
+  tree_it(site_info_ptr, int) sit;
+  size_t site_invalid_weight, invalid_weight, internal_usage, i, n;
+  
+  internal_usage = peak_internal_present_usage(profopts.profile_online_debug_file) * prof.profile_pebs.pagesize;
+  #if 0
+  if(profopts.profile_online_debug_file) {
+    for(n = 0; n < profopts.num_profile_pebs_cpus; n++) {
+      for(i = 0; i < prof.profile->num_profile_pebs_events; i++) {
+        fprintf(profopts.profile_online_debug_file, "PEBS buffer: %p\n", prof.profile_pebs.metadata[n][i]);
+      }
+    }
+  }
+  fflush(profopts.profile_online_debug_file);
+  print_smaps_info();
+  
+  /* We want to add all that we know of to `invalid_weight`, so that the packing algorithm
+     doesn't accidentally overpack if there's a lot of other data in the upper tier. */
+  if(profopts.profile_online_debug_file) {
+    fprintf(profopts.profile_online_debug_file, "Internal present bytes: %zu\n", internal_usage);
+    fflush(profopts.profile_online_debug_file);
+  }
+  #endif
+  invalid_weight = internal_usage;
+  invalid_weight += (profopts.num_profile_pebs_cpus *
+                    prof.profile->num_profile_pebs_events *
+                    (prof.profile_pebs.pagesize + (prof.profile_pebs.pagesize * profopts.max_sample_pages)));
+  
+  /* Get the sorted sites, taking into account a possible offline profile
+     Please note that here, we're taking into account peak SICM memory usage, which
+     is the peak usage that we've used in our `internal_` functions for internal allocations. */
+  site_invalid_weight = 0;
+  online_sites = sh_convert_to_site_tree(prof.profile, SIZE_MAX, &site_invalid_weight);
+  invalid_weight += site_invalid_weight;
+  if(profopts.profile_online_debug_file) {
+    fprintf(profopts.profile_online_debug_file, "Invalid site bytes: %zu\n", site_invalid_weight);
+    fflush(profopts.profile_online_debug_file);
+  }
+  if(get_online_data()->offline_sorted_sites) {
+    /* If we have a previous run's profiling, take that into account */
+    merged_sites = sh_merge_site_trees(get_online_data()->offline_sorted_sites,
+                                              online_sites,
+                                              profopts.profile_online_last_iter_value,
+                                              profopts.profile_online_last_iter_weight);
+  } else {
+    /* If there's no offline profile, we can just copy `online_sites` to `merged_sites`. */
+    merged_sites = copy_site_tree(online_sites);
+  }
+  if(profopts.profile_online_debug_file) {
+    fprintf(profopts.profile_online_debug_file, "%zu bytes are defaulting to the upper tier.\n", invalid_weight);
+    fflush(profopts.profile_online_debug_file);
+  }
+  
+  /* From the sorted sites, generate a hotset and mark them in the tree */
+  hotset = sh_get_hot_sites(merged_sites,
+                            get_online_data()->upper_max,
+                            invalid_weight);
+  tree_traverse(merged_sites, sit) {
+    hit = tree_lookup(hotset, tree_it_val(sit));
+    if(tree_it_good(hit)) {
+      get_online_arena_prof(tree_it_key(sit)->index)->hot = 1;
+    } else {
+      get_online_arena_prof(tree_it_key(sit)->index)->hot = 0;
+    }
+  }
+  
+  /* Clean up */
+  free_site_tree(online_sites);
+  
+  return merged_sites;
 }
 
 void profile_online_arena_init(per_arena_profile_online_info *);
@@ -37,143 +117,10 @@ void profile_online_interval(int);
 void profile_online_skip_interval(int);
 void profile_online_post_interval(arena_profile *);
 
-/* At the beginning of an interval, keeps track of stats and figures out what
-   should happen during rebind. */
-tree(site_info_ptr, int) prepare_stats() {
-  /* Trees and iterators to interface with the parsing/packing libraries */
-  tree(site_info_ptr, int) sorted_sites;
-  tree(site_info_ptr, int) merged_sorted_sites;
-  tree(int, site_info_ptr) hotset;
-  tree_it(int, site_info_ptr) hit;
-  tree_it(site_info_ptr, int) sit;
-  size_t invalid_weight, hotset_weight, diff;
-
-  /* Determine when the lower tier begins being consumed */
-  prof.profile_online.upper_max = get_profile_objmap_prof()->upper_max;
-  prof.profile_online.lower_used = get_profile_objmap_prof()->lower_current;
-  prof.profile_online.upper_used = get_profile_objmap_prof()->upper_current;
-  invalid_weight = 0;
-
-#if 0
-  if(prof.profile_online.using_sorted_sites && prof.profile_online.using_hotset) {
-    /* In this condition, we'll make sure that the online approach isn't overpacking. */
-    
-    /* Here, we'll figure out the total (new) capacity of the current hotset */
-    hotset_weight = 0;
-    tree_traverse(prof.profile_online.using_hotset, hit) {
-      hotset_weight += get_arena_objmap_prof(tree_it_val(hit)->index)->current_present_bytes;
-    }
-    get_profile_online_prof()->using_hotset_weight = hotset_weight;
-    
-    if(hotset_weight > get_profile_online_prof()->upper_capacity) {
-      /* Here, we're overpacking. Try to fix it by rebinding without the coldest site(s). */
-      diff = hotset_weight - get_profile_online_prof()->upper_capacity;
-      //printf("We're overpacking by %zu bytes (%zu/%zu)\n", diff, get_profile_objmap_prof()->cgroup_node0_current, get_profile_objmap_prof()->cgroup_node0_max);
-    } else {
-      diff = get_profile_online_prof()->upper_capacity - hotset_weight;
-      //printf("We're NOT overpacking by %zu bytes (%zu/%zu)\n", diff, get_profile_objmap_prof()->cgroup_node0_current, get_profile_objmap_prof()->cgroup_node0_max);
-    }
-    //fflush(stdout);
-    
-    //full_rebind_down(prof.profile_online.using_sorted_sites);
-    //full_rebind_first(prof.profile_online.using_sorted_sites);
-    //get_profile_online_prof()->reconfigure = 1;
-  } else {
-    get_profile_online_prof()->using_hotset_weight = 0;
-  }
-#endif
-  
-  prof.profile_online.first_upper_contention = 0;
-  if(prof.profile_online.lower_used && (!(prof.profile_online.upper_contention))) {
-    /* If the lower tier is being used, we're going to assume that the
-       upper tier is under contention. Trip a flag. */
-    prof.profile_online.upper_contention = 1;
-    prof.profile_online.first_upper_contention = 1;
-    if(profopts.profile_online_debug_file) {
-      fprintf(profopts.profile_online_debug_file, "First upper contention.\n");
-      fflush(profopts.profile_online_debug_file);
-    }
-  }
-  
-  /* Convert to a tree of sites */
-  sorted_sites = sh_convert_to_site_tree(prof.profile, SIZE_MAX, &invalid_weight);
-
-  /* If we've got offline profiling, use it */
-  if(prof.profile_online.offline_sorted_sites) {
-    /* If we have a previous run's profiling, take that into account */
-    merged_sorted_sites = sh_merge_site_trees(prof.profile_online.offline_sorted_sites,
-                                              sorted_sites,
-                                              profopts.profile_online_last_iter_value,
-                                              profopts.profile_online_last_iter_weight);
-  } else {
-    merged_sorted_sites = sorted_sites;
-  }
-
-  /* Calculate the hotset, then mark each arena's hotness
-     in the profiling so that it'll be recorded for this interval */
-  hotset = sh_get_hot_sites(merged_sorted_sites,
-                            prof.profile_online.upper_max,
-                            invalid_weight);
-                            
-  /* Calculate how much the current hotset weighs right now */
-  hotset_weight = 0;
-  tree_traverse(merged_sorted_sites, sit) {
-    hit = tree_lookup(hotset, tree_it_val(sit));
-    if(tree_it_good(hit)) {
-      get_arena_online_prof(tree_it_key(sit)->index)->hot = 1;
-      hotset_weight += get_arena_objmap_prof(tree_it_val(hit)->index)->current_present_bytes;
-    } else {
-      get_arena_online_prof(tree_it_key(sit)->index)->hot = 0;
-    }
-  }
-  if(profopts.profile_online_debug_file) {
-    fprintf(profopts.profile_online_debug_file,
-            "Current hotset weight: %zu\n", hotset_weight);
-  }
-  
-  if(prof.profile_online.first_online_interval == 1) {
-    /* We've already had our first interval with the online approach having taken over,
-       so now indicate that we're in our second or greater interval. */
-    prof.profile_online.first_online_interval = 2;
-  }
-  
-  /* Using the `first_upper_contention` is crucial here: we only want to trigger this if
-     this is the very first time that the online approach has noticed contention for the upper tier, AND
-     when we've got enough profiling information to make an informed decision. */
-  if(prof.profile_online.first_upper_contention) {
-    if((get_profile_all_prof()->total > profopts.profile_online_value_threshold)) {
-      /* This is when the online approach actually takes over. Default all subsequent allocations to the lower tier.
-        Bind all sites to the lower tier, until the chosen online strategy decides to bind them up. */
-      tracker.default_device = tracker.lower_device;
-      prof.profile_online.first_online_interval = 1;
-      
-      if(profopts.profile_online_debug_file) {
-        fprintf(profopts.profile_online_debug_file, "Online approach taking over because the total is: %zu.\n", get_profile_all_prof()->total);
-      }
-    } else {
-      /* We're not quite ready to do our first rebind yet. Reset and try again. */
-      prof.profile_online.upper_contention = 0;
-    }
-  }
-
-  /* Free up the offline profile, but not the online one */
-  if(prof.profile_online.offline_sorted_sites) {
-    tree_traverse(sorted_sites, sit) {
-      if(tree_it_key(sit)) {
-        orig_free(tree_it_key(sit));
-      }
-    }
-    tree_free(sorted_sites);
-  }
-
-  return merged_sorted_sites;
-}
-
 /* Initializes the profiling information for one arena for one interval */
 void profile_online_arena_init(per_arena_profile_online_info *info) {
   info->dev = -1;
   info->hot = -1;
-  info->num_hot_intervals = 0;
 }
 
 void *profile_online(void *a) {
@@ -183,45 +130,58 @@ void *profile_online(void *a) {
 }
 
 void profile_online_interval(int s) {
-  tree(site_info_ptr, int) sorted_sites;
+  tree(site_info_ptr, int) merged_sites;
   tree_it(site_info_ptr, int) sit;
-  
-  get_profile_online_prof()->phase_change = 0;
-  get_profile_online_prof()->reconfigure = 0;
   
   if(profopts.profile_online_debug_file) {
     fprintf(profopts.profile_online_debug_file, "===== BEGIN INTERVAL %zu.\n", prof.profile->num_intervals);
     fflush(profopts.profile_online_debug_file);
   }
   
-  /* Call the appropriate strategy */
-  sorted_sites = prepare_stats();
-  if(profopts.profile_online_ski) {
-    prepare_stats_ski(sorted_sites);
-    profile_online_interval_ski(sorted_sites);
-  } else {
-    /* Default to the original strategy */
-    prepare_stats_orig(sorted_sites);
-    profile_online_interval_orig(sorted_sites);
-  }
-  if(profopts.profile_online_debug_file) {
-    fprintf(profopts.profile_online_debug_file,
-            "Upper tier: %llu / %llu\n", get_profile_objmap_prof()->upper_current, get_profile_objmap_prof()->upper_max);
-    fflush(profopts.profile_online_debug_file);
-  }
+  /* Determine when the lower tier begins being consumed */
+  get_online_data()->upper_max = get_cgroup_node0_max();
+  get_online_data()->lower_used = get_cgroup_node1_current();
+  get_online_data()->upper_used = get_cgroup_node0_current();
+  get_online_prof()->phase_change = 0;
+  get_online_prof()->reconfigure = 0;
 
-  /* Free up what we allocated */
-  tree_traverse(sorted_sites, sit) {
-    if(tree_it_key(sit)) {
-      orig_free(tree_it_key(sit));
+  /* In this block, we'll determine:
+     1. upper_contention: whether or not the upper tier is contended for.
+     2. first_upper_contention: whether or not this is the first contended interval.
+     3. first_online_interval: whether or not we've had an online interval yet. */
+  get_online_data()->first_upper_contention = 0;
+  if(get_online_data()->lower_used && (!(get_online_data()->upper_contention))) {
+    /* If the lower tier is being used, we're going to assume that the
+       upper tier is under contention. Trip a flag. */
+    get_online_data()->upper_contention = 1;
+    get_online_data()->first_upper_contention = 1;
+  }
+  if(get_online_data()->first_online_interval == 1) {
+    /* We've already had our first interval with the online approach having taken over,
+       so now indicate that we're in our second or greater interval. */
+    get_online_data()->first_online_interval = 2;
+  }
+  if(get_online_data()->first_upper_contention) {
+    if((get_pebs_prof()->total > profopts.profile_online_value_threshold)) {
+      tracker.default_device = tracker.lower_device;
+      get_online_data()->first_online_interval = 1;
+    } else {
+      get_online_data()->upper_contention = 0;
     }
   }
-  tree_free(sorted_sites);
+  merged_sites = calculate_hotset();
+  prepare_stats_ski(merged_sites);
+  profile_online_interval_ski(merged_sites);
   
   if(profopts.profile_online_debug_file) {
+    fprintf(profopts.profile_online_debug_file,
+            "Upper tier: %llu / %llu\n", get_cgroup_node0_current(), get_cgroup_node0_max());
     fprintf(profopts.profile_online_debug_file, "===== END INTERVAL %zu.\n", prof.profile->num_intervals);
     fflush(profopts.profile_online_debug_file);
   }
+  
+  /* Clean up */
+  free_site_tree(merged_sites);
 }
 
 void profile_online_init() {
@@ -230,14 +190,9 @@ void profile_online_init() {
   application_profile *offline_profile;
   packing_options *opts;
   
-  if(!should_profile_objmap()) {
-    fprintf(stderr, "The online approach requires OBJMAP profiling. Aborting.\n");
-    exit(1);
-  }
-  
   init_thread_suspension();
   
-  opts = orig_calloc(sizeof(char), sizeof(packing_options));
+  opts = internal_calloc(sizeof(char), sizeof(packing_options));
   
   /* Let the user choose these, but sh_packing_init will set defaults if not */
   if(profopts.profile_online_value) {
@@ -255,40 +210,41 @@ void profile_online_init() {
   if(profopts.profile_online_debug_file) {
     opts->debug_file = profopts.profile_online_debug_file;
   }
+  opts->alpha = profopts.profile_online_alpha;
   
   /* The previous and current profiling *need* to have the same type of profiling for this
      to make sense. Otherwise, you're just going to get errors. */
   offline_profile = NULL;
-  prof.profile_online.offline_sorted_sites = NULL;
-  prof.profile_online.offline_invalid_weight = 0;
+  get_online_data()->offline_sorted_sites = NULL;
+  get_online_data()->offline_invalid_weight = 0;
   if(profopts.profile_input_file) {
     offline_profile = sh_parse_profiling(profopts.profile_input_file);
     sh_packing_init(offline_profile, &opts);
-    prof.profile_online.offline_sorted_sites = sh_convert_to_site_tree(offline_profile, offline_profile->num_intervals - 1, &(prof.profile_online.offline_invalid_weight));
+    get_online_data()->offline_sorted_sites = sh_convert_to_site_tree(offline_profile, offline_profile->num_intervals - 1, &(get_online_data()->offline_invalid_weight));
   } else {
     sh_packing_init(prof.profile, &opts);
   }
 
   /* Since sicm_arena_set_devices accepts a device_list, construct these */
-  prof.profile_online.upper_dl = orig_malloc(sizeof(struct sicm_device_list));
-  prof.profile_online.upper_dl->count = 1;
-  prof.profile_online.upper_dl->devices = orig_malloc(sizeof(deviceptr));
-  prof.profile_online.upper_dl->devices[0] = tracker.upper_device;
-  prof.profile_online.lower_dl = orig_malloc(sizeof(struct sicm_device_list));
-  prof.profile_online.lower_dl->count = 1;
-  prof.profile_online.lower_dl->devices = orig_malloc(sizeof(deviceptr));
-  prof.profile_online.lower_dl->devices[0] = tracker.lower_device;
+  get_online_data()->upper_dl = internal_malloc(sizeof(struct sicm_device_list));
+  get_online_data()->upper_dl->count = 1;
+  get_online_data()->upper_dl->devices = internal_malloc(sizeof(deviceptr));
+  get_online_data()->upper_dl->devices[0] = tracker.upper_device;
+  get_online_data()->lower_dl = internal_malloc(sizeof(struct sicm_device_list));
+  get_online_data()->lower_dl->count = 1;
+  get_online_data()->lower_dl->devices = internal_malloc(sizeof(deviceptr));
+  get_online_data()->lower_dl->devices[0] = tracker.lower_device;
 
-  prof.profile_online.upper_contention = 0;
-  prof.profile_online.first_online_interval = 0;
-  prof.profile_online.using_sorted_sites = NULL;
+  get_online_data()->upper_contention = 0;
+  get_online_data()->first_online_interval = 0;
+  get_online_data()->prev_bw = 0;
+  get_online_data()->cur_bw = 0;
+  get_online_data()->prev_interval_reconfigure = 0;
+  
+  get_online_data()->cur_sorted_sites = NULL;
+  get_online_data()->prev_sorted_sites = NULL;
 
-  /* Initialize the strategy-specific stuff */
-  if(profopts.profile_online_orig) {
-    profile_online_init_orig();
-  } else if(profopts.profile_online_ski) {
-    profile_online_init_ski();
-  }
+  get_online_data()->ski = internal_malloc(sizeof(profile_online_data_ski));
 }
 
 void profile_online_deinit() {
@@ -298,6 +254,6 @@ void profile_online_post_interval(arena_profile *info) {
 }
 
 void profile_online_skip_interval(int s) {
-  get_profile_online_prof()->phase_change = 0;
-  get_profile_online_prof()->reconfigure = 0;
+  get_online_prof()->phase_change = 0;
+  get_online_prof()->reconfigure = 0;
 }

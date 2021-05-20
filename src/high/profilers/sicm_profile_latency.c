@@ -37,7 +37,7 @@ void sh_get_profile_latency_event() {
   pfm_perf_encode_arg_t pfm;
   char *tmp;
 
-  if(!should_profile_all()) {
+  if(!should_profile_pebs()) {
     /* We don't want to initialize twice, so only initialize if
        we haven't already */
     pfm_initialize();
@@ -54,7 +54,7 @@ void sh_get_profile_latency_event() {
     
     /* We need to prepend the IMC string to the event name, because libpfm likes that.
         The resulting string will be the IMC name, two colons, then the event name. */
-    tmp = orig_malloc(sizeof(char) * (strlen(profopts.profile_latency_clocktick_event) +
+    tmp = internal_malloc(sizeof(char) * (strlen(profopts.profile_latency_clocktick_event) +
                                  strlen(profopts.imcs[0]) + 3));
     sprintf(tmp, "%s::%s", profopts.imcs[0], profopts.profile_latency_clocktick_event);
     
@@ -83,7 +83,7 @@ void sh_get_profile_latency_event() {
         
         /* We need to prepend the IMC string to the event name, because libpfm likes that.
            The resulting string will be the IMC name, two colons, then the event name. */
-        tmp = orig_malloc(sizeof(char) * (strlen(profopts.profile_latency_events[n]) +
+        tmp = internal_malloc(sizeof(char) * (strlen(profopts.profile_latency_events[n]) +
                                      strlen(profopts.imcs[p]) + 3));
         sprintf(tmp, "%s::%s", profopts.imcs[p], profopts.profile_latency_events[n]);
         
@@ -109,33 +109,33 @@ void profile_latency_init() {
   unsigned long flags;
   
   /* Allocate room for the events profiling info */
-  get_profile_latency_prof()->skt = 
-    orig_calloc(profopts.num_profile_skt_cpus,
+  get_latency_prof()->skt = 
+    internal_calloc(profopts.num_profile_skt_cpus,
                 sizeof(per_skt_profile_latency_info));
   
   /* Allocate perf structs */
-  prof.profile_latency.pes = orig_malloc(sizeof(struct perf_event_attr ***) *
+  prof.profile_latency.pes = internal_malloc(sizeof(struct perf_event_attr ***) *
                                      profopts.num_profile_skt_cpus);
-  prof.profile_latency.fds = orig_malloc(sizeof(int **) *
+  prof.profile_latency.fds = internal_malloc(sizeof(int **) *
                                      profopts.num_profile_skt_cpus);
-  prof.profile_latency.clocktick_pes = orig_malloc(sizeof(struct perf_event_attr *) *
+  prof.profile_latency.clocktick_pes = internal_malloc(sizeof(struct perf_event_attr *) *
                                      profopts.num_profile_skt_cpus);
-  prof.profile_latency.clocktick_fds = orig_malloc(sizeof(int) *
+  prof.profile_latency.clocktick_fds = internal_malloc(sizeof(int) *
                                      profopts.num_profile_skt_cpus);
   for(i = 0; i < profopts.num_profile_skt_cpus; i++) {
-    prof.profile_latency.clocktick_pes[i] = orig_malloc(sizeof(struct perf_event_attr));
+    prof.profile_latency.clocktick_pes[i] = internal_malloc(sizeof(struct perf_event_attr));
     prof.profile_latency.clocktick_fds[i] = 0;
-    prof.profile_latency.pes[i] = orig_malloc(sizeof(struct perf_event_attr **) *
+    prof.profile_latency.pes[i] = internal_malloc(sizeof(struct perf_event_attr **) *
                                           profopts.num_imcs);
-    prof.profile_latency.fds[i] = orig_malloc(sizeof(int *) *
+    prof.profile_latency.fds[i] = internal_malloc(sizeof(int *) *
                                           profopts.num_imcs);
     for(p = 0; p < profopts.num_imcs; p++) {
-      prof.profile_latency.pes[i][p] = orig_malloc(sizeof(struct perf_event_attr *) *
+      prof.profile_latency.pes[i][p] = internal_malloc(sizeof(struct perf_event_attr *) *
                                             profopts.num_profile_latency_events);
-      prof.profile_latency.fds[i][p] = orig_malloc(sizeof(int) *
+      prof.profile_latency.fds[i][p] = internal_malloc(sizeof(int) *
                                             profopts.num_profile_latency_events);
       for(n = 0; n < profopts.num_profile_latency_events; n++) {
-        prof.profile_latency.pes[i][p][n] = orig_malloc(sizeof(struct perf_event_attr));
+        prof.profile_latency.pes[i][p][n] = internal_malloc(sizeof(struct perf_event_attr));
         prof.profile_latency.fds[i][p][n] = 0;
       }
     }
@@ -221,12 +221,12 @@ void profile_latency_interval(int s) {
   /* Freeze all the counters, and zero out the current values */       
   for(i = 0; i < profopts.num_profile_skt_cpus; i++) {
     ioctl(prof.profile_latency.clocktick_fds[i], PERF_EVENT_IOC_DISABLE, 0);
-    get_profile_latency_skt_prof(i)->upper_read_current = 0;
-    get_profile_latency_skt_prof(i)->upper_write_current = 0;
-    get_profile_latency_skt_prof(i)->lower_read_current = 0;
-    get_profile_latency_skt_prof(i)->lower_write_current = 0;
-    get_profile_latency_skt_prof(i)->read_ratio = 0;
-    get_profile_latency_skt_prof(i)->write_ratio = 0;
+    get_latency_skt_prof(i)->upper_read_current = 0;
+    get_latency_skt_prof(i)->upper_write_current = 0;
+    get_latency_skt_prof(i)->lower_read_current = 0;
+    get_latency_skt_prof(i)->lower_write_current = 0;
+    get_latency_skt_prof(i)->read_ratio = 0;
+    get_latency_skt_prof(i)->write_ratio = 0;
     for(p = 0; p < profopts.num_imcs; p++) {
       for(n = 0; n < profopts.num_profile_latency_events; n++) {
         ioctl(prof.profile_latency.fds[i][p][n], PERF_EVENT_IOC_DISABLE, 0);
@@ -273,59 +273,59 @@ void profile_latency_interval(int s) {
     
     /* Now we can calculate our one value for this socket. */
     if(upper_read_occupancy && upper_read_inserts) {
-      get_profile_latency_skt_prof(i)->upper_read_current = (upper_read_occupancy / upper_read_inserts) / dram_speed;
+      get_latency_skt_prof(i)->upper_read_current = (upper_read_occupancy / upper_read_inserts) / dram_speed;
     }
     if(upper_write_occupancy && upper_write_inserts) {
-      get_profile_latency_skt_prof(i)->upper_write_current = (upper_write_occupancy / upper_write_inserts) / dram_speed;
+      get_latency_skt_prof(i)->upper_write_current = (upper_write_occupancy / upper_write_inserts) / dram_speed;
     }
     if(lower_read_occupancy && lower_read_inserts) {
-      get_profile_latency_skt_prof(i)->lower_read_current = (lower_read_occupancy / lower_read_inserts) / dram_speed;
+      get_latency_skt_prof(i)->lower_read_current = (lower_read_occupancy / lower_read_inserts) / dram_speed;
     }
     if(lower_write_occupancy && lower_write_inserts) {
-      get_profile_latency_skt_prof(i)->lower_write_current = (lower_write_occupancy / lower_write_inserts) / dram_speed;
+      get_latency_skt_prof(i)->lower_write_current = (lower_write_occupancy / lower_write_inserts) / dram_speed;
     }
-    if(get_profile_latency_skt_prof(i)->upper_read_current &&
-       get_profile_latency_skt_prof(i)->lower_read_current) {
-      get_profile_latency_skt_prof(i)->read_ratio = (get_profile_latency_skt_prof(i)->lower_read_current /
-                                                     get_profile_latency_skt_prof(i)->upper_read_current);
-      get_profile_latency_skt_prof(i)->read_ratio_cma = ((prof.profile_latency.prev_read_cma[i] * prof.profile_latency.num_samples) +
-                                                         get_profile_latency_skt_prof(i)->read_ratio) /
+    if(get_latency_skt_prof(i)->upper_read_current &&
+       get_latency_skt_prof(i)->lower_read_current) {
+      get_latency_skt_prof(i)->read_ratio = (get_latency_skt_prof(i)->lower_read_current /
+                                                     get_latency_skt_prof(i)->upper_read_current);
+      get_latency_skt_prof(i)->read_ratio_cma = ((prof.profile_latency.prev_read_cma[i] * prof.profile_latency.num_samples) +
+                                                         get_latency_skt_prof(i)->read_ratio) /
                                                         (prof.profile_latency.num_samples + 1);
     } else {
-      get_profile_latency_skt_prof(i)->read_ratio_cma = prof.profile_latency.prev_read_cma[i];
+      get_latency_skt_prof(i)->read_ratio_cma = prof.profile_latency.prev_read_cma[i];
     }
-    prof.profile_latency.prev_read_cma[i] = get_profile_latency_skt_prof(i)->read_ratio_cma;
-    if(get_profile_latency_skt_prof(i)->upper_write_current &&
-       get_profile_latency_skt_prof(i)->lower_write_current) {
-      get_profile_latency_skt_prof(i)->write_ratio = (get_profile_latency_skt_prof(i)->lower_write_current /
-                                                     get_profile_latency_skt_prof(i)->upper_write_current);
-      get_profile_latency_skt_prof(i)->write_ratio_cma = ((prof.profile_latency.prev_write_cma[i] * prof.profile_latency.num_samples) +
-                                                         get_profile_latency_skt_prof(i)->write_ratio) /
+    prof.profile_latency.prev_read_cma[i] = get_latency_skt_prof(i)->read_ratio_cma;
+    if(get_latency_skt_prof(i)->upper_write_current &&
+       get_latency_skt_prof(i)->lower_write_current) {
+      get_latency_skt_prof(i)->write_ratio = (get_latency_skt_prof(i)->lower_write_current /
+                                                     get_latency_skt_prof(i)->upper_write_current);
+      get_latency_skt_prof(i)->write_ratio_cma = ((prof.profile_latency.prev_write_cma[i] * prof.profile_latency.num_samples) +
+                                                         get_latency_skt_prof(i)->write_ratio) /
                                                         (prof.profile_latency.num_samples + 1);
     } else {
-      get_profile_latency_skt_prof(i)->write_ratio_cma = prof.profile_latency.prev_write_cma[i];
+      get_latency_skt_prof(i)->write_ratio_cma = prof.profile_latency.prev_write_cma[i];
     }
-    prof.profile_latency.prev_write_cma[i] = get_profile_latency_skt_prof(i)->write_ratio_cma;
+    prof.profile_latency.prev_write_cma[i] = get_latency_skt_prof(i)->write_ratio_cma;
   }
   
   if(profopts.profile_latency_set_multipliers) {
     /* We'll take the geometric mean of all sockets' latency ratios,
-      and use that to modify the multipliers to weight PROFILE_ALL
+      and use that to modify the multipliers to weight PROFILE_PEBS
       accesses. This feature depends on there being at least two
-      PROFILE_ALL events, and the first even being for the upper tier,
+      PROFILE_PEBS events, and the first even being for the upper tier,
       and the second being for the lower tier. */
     geomean = 0.0;
     for(i = 0; i < profopts.num_profile_skt_cpus; i++) {
-      geomean += log(get_profile_latency_skt_prof(i)->read_ratio_cma);
+      geomean += log(get_latency_skt_prof(i)->read_ratio_cma);
     }
     geomean /= profopts.num_profile_skt_cpus;
     geomean = exp(geomean);
-    if(profopts.num_profile_all_multipliers >= 2) {
-      profopts.profile_all_multipliers[0] = 1;
-      if(profopts.profile_all_multipliers[1] > 1) {
-        profopts.profile_all_multipliers[1] = geomean;
+    if(profopts.num_profile_pebs_multipliers >= 2) {
+      profopts.profile_pebs_multipliers[0] = 1;
+      if(profopts.profile_pebs_multipliers[1] > 1) {
+        profopts.profile_pebs_multipliers[1] = geomean;
       } else {
-        profopts.profile_all_multipliers[1] = 1;
+        profopts.profile_pebs_multipliers[1] = 1;
       }
     }
   }
@@ -352,7 +352,7 @@ void profile_latency_post_interval() {
 
   /* All we need to do here is maintain the peak */
   for(i = 0; i < profopts.num_profile_skt_cpus; i++) {
-    per_skt_aprof = get_profile_latency_skt_prof(i);
+    per_skt_aprof = get_latency_skt_prof(i);
     if(per_skt_aprof->upper_read_current > per_skt_aprof->upper_read_peak) {
       per_skt_aprof->upper_read_peak = per_skt_aprof->upper_read_current;
     }

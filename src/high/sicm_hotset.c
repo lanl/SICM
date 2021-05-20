@@ -18,7 +18,7 @@
 static struct option long_options[] = {
   {"value", required_argument, NULL, 'l'},  /* The type of profiling to use
                                                for determining the "value" of an arena.
-                                               Defaults to `profile_all`. */
+                                               Defaults to `profile_pebs`. */
   {"weight", required_argument, NULL, 'w'}, /* The type of profiling to use as the "weight" of an arena.
                                                Defaults to `profile_extent_size`. */
   {"algo", required_argument, NULL, 'a'},   /* The packing algorithm. Defaults to `hotset`. */
@@ -53,7 +53,7 @@ int main(int argc, char **argv) {
   tree(int, site_info_ptr) hot_site_tree;
   tree_it(int, site_info_ptr) sit;
   
-  opts = orig_calloc(sizeof(char), sizeof(packing_options));
+  opts = internal_calloc(sizeof(char), sizeof(packing_options));
 
   /* Use getopt to read in the options. */
   option_index = 0;

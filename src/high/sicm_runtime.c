@@ -1,5 +1,6 @@
 #define _GNU_SOURCE
 #include <fcntl.h>
+#include <dlfcn.h>
 #include <numa.h>
 #include <numaif.h>
 #include <stdlib.h>
@@ -10,6 +11,7 @@
 #include <string.h>
 #include <inttypes.h>
 #include <pthread.h>
+#include <sys/syscall.h>
 #include <jemalloc/jemalloc.h>
 
 #define SICM_RUNTIME 1
@@ -22,12 +24,18 @@ __thread int thread_index = -1;
 __thread int pending_index = -1;
 
 atomic_int sh_initialized = 0;
-void *(*orig_malloc_ptr)(size_t);
-void *(*orig_valloc_ptr)(size_t);
-void *(*orig_calloc_ptr)(size_t, size_t);
-void *(*orig_realloc_ptr)(void *, size_t);
-void (*orig_free_ptr)(void *);
-atomic_size_t sicm_mem_usage = 0;
+
+/* For the internal allocator */
+pthread_once_t internal_init_once = PTHREAD_ONCE_INIT;
+pthread_rwlock_t internal_extents_lock = PTHREAD_RWLOCK_INITIALIZER;
+extent_arr *internal_extents = NULL;
+unsigned internal_arena_ind;
+struct proc_object_map_t internal_objmap;
+pid_t internal_pid;
+size_t peak_internal_usage_present_pages = 0;
+size_t peak_internal_usage_pages = 0;
+unsigned int internal_pagesize = 0;
+atomic_int internal_initialized = 0;
 
 void print_sizet(size_t val, const char *str) {
   char buf[32], index;
@@ -49,56 +57,6 @@ void print_sizet(size_t val, const char *str) {
 void sh_create_arena(int index, int id, sicm_device *device, char invalid);
 
 /*************************************************
- *               ORIG_MALLOC                     *
- *************************************************
- *  Used for allocating data structures in SICM
- *  after the malloc wrappers have been defined.
- */
-void *__attribute__ ((noinline)) orig_malloc(size_t size) {
-  void *ptr;
-  ptr = je_mallocx(size, MALLOCX_TCACHE_NONE);
-  sicm_mem_usage += je_malloc_usable_size(ptr);
-  //return (*orig_malloc_ptr)(size);
-  return ptr;
-}
-void *__attribute__ ((noinline)) orig_calloc(size_t num, size_t size) {
-  void *ptr;
-  ptr = je_mallocx(num * size, MALLOCX_TCACHE_NONE | MALLOCX_ZERO);
-  sicm_mem_usage += je_malloc_usable_size(ptr);
-  //return (*orig_calloc_ptr)(num, size);
-  return ptr;
-}
-void *__attribute__ ((noinline)) orig_realloc(void *ptr, size_t size) {
-  void *new_ptr;
-  
-  if(ptr == NULL) {
-    new_ptr = je_mallocx(size, MALLOCX_TCACHE_NONE);
-    sicm_mem_usage += je_malloc_usable_size(new_ptr);
-  } else {
-    sicm_mem_usage -= je_malloc_usable_size(ptr);
-    new_ptr = je_rallocx(ptr, size, MALLOCX_TCACHE_NONE);
-    sicm_mem_usage += je_malloc_usable_size(new_ptr);
-  }
-  
-  return new_ptr;
-  //return (*orig_realloc_ptr)(ptr, size);
-}
-void __attribute__ ((noinline)) orig_free(void *ptr) {
-  sicm_mem_usage -= je_malloc_usable_size(ptr);
-  
-  je_dallocx(ptr, MALLOCX_TCACHE_NONE);
-  //(*orig_free_ptr)(ptr);
-}
-void *__attribute__ ((noinline)) orig_valloc(size_t size) {
-  void *ptr;
-  
-  ptr = je_mallocx(size, MALLOCX_TCACHE_NONE | MALLOCX_ALIGN(4096));
-  sicm_mem_usage += je_malloc_usable_size(ptr);
-  //return (*orig_valloc_ptr)(size);
-  return ptr;
-}
-
-/*************************************************
  *            PROFILE_ALLOCS                     *
  *************************************************
  *  Used to record each allocation. Enable with
@@ -111,7 +69,7 @@ void profile_allocs_alloc(void *ptr, size_t size, int index) {
   tracker.arenas[index]->size += size;
 
   /* Construct the alloc_info struct */
-  aip = (alloc_info_ptr) orig_malloc(sizeof(alloc_info));
+  aip = (alloc_info_ptr) internal_malloc(sizeof(alloc_info));
   aip->size = size;
   aip->index = index;
 
@@ -128,7 +86,7 @@ void profile_allocs_realloc(void *ptr, size_t size, int index) {
 
   /* Construct the struct that logs this allocation's arena
    * index and size of the allocation */
-  aip = (alloc_info_ptr) orig_malloc(sizeof(alloc_info));
+  aip = (alloc_info_ptr) internal_malloc(sizeof(alloc_info));
   aip->size = size;
   aip->index = index;
 
@@ -287,12 +245,20 @@ int get_big_small_arena(int id, size_t sz, deviceptr *device, char *new_site, ch
   if(tracker.site_bigs[id] == 1) {
     ret = get_site_arena(id, NULL);
     ret += tracker.max_threads + 1; /* We need to skip the per-thread arenas. */
-    *device = get_site_device(id);
-    *invalid = 0;
+    if(device) {
+      *device = get_site_device(id);
+    }
+    if(invalid) {
+      *invalid = 0;
+    }
   } else {
     ret = get_thread_index();
-    *device = tracker.upper_device;
-    *invalid = 1;
+    if(device) {
+      *device = tracker.upper_device;
+    }
+    if(invalid) {
+      *invalid = 1;
+    }
   }
   
   return ret;
@@ -344,7 +310,7 @@ int get_arena_index(int id, size_t sz) {
     ret = ret % tracker.max_arenas;
   }
   
-  /* Assuming thread_index is specific to this thread,
+  /* Assuming pending_index is specific to this thread,
      we don't need a lock here. */
   pending_index = ret;
   if(tracker.arenas[ret] == NULL) {
@@ -362,6 +328,51 @@ int get_arena_index(int id, size_t sz) {
     add_site_profile(ret, id);
   }
   (tracker.arenas[ret]->thread_allocs[get_thread_index()])++;
+  
+  return ret;
+}
+
+/* Gets the index that the allocation site's allocations went into */
+int get_arena_index_free(int id) {
+  int ret, thread_index;
+  deviceptr device;
+  siteinfo_ptr site;
+
+  ret = 0;
+  device = NULL;
+  switch(tracker.layout) {
+    case ONE_ARENA:
+      ret = 0;
+      break;
+    case EXCLUSIVE_ARENAS:
+      /* One arena per thread. */
+      thread_index = get_thread_index() + 1;
+      ret = thread_index;
+      break;
+    case EXCLUSIVE_DEVICE_ARENAS:
+      /* Two arenas per thread: one for each memory tier. */
+      thread_index = get_thread_index();
+      device = get_site_device(id);
+      ret = get_device_offset(device);
+      ret = (thread_index * tracker.arenas_per_thread) + ret + 1;
+      break;
+    case SHARED_SITE_ARENAS:
+      /* One (shared) arena per allocation site. */
+      ret = get_site_arena(id, NULL);
+      device = get_site_device(id);
+      break;
+    case BIG_SMALL_ARENAS:
+      ret = get_big_small_arena(id, 0, NULL, NULL, NULL);
+      break;
+    default:
+      fprintf(stderr, "Invalid arena layout. Aborting.\n");
+      exit(1);
+      break;
+  };
+  
+  /* Assuming pending_index is specific to this thread,
+     we don't need a lock here. */
+  pending_index = ret;
   
   return ret;
 }
@@ -395,17 +406,16 @@ void sh_create_arena(int index, int id, sicm_device *device, char invalid) {
     flags |= SICM_MOVE_LAZY;
   }
   
-  arena = orig_calloc(1, sizeof(arena_info));
+  arena = internal_calloc(1, sizeof(arena_info));
   arena->index = index;
-  arena->thread_allocs = orig_calloc(tracker.max_threads, sizeof(int));
+  arena->thread_allocs = internal_calloc(tracker.max_threads, sizeof(int));
   dl.count = 1;
-  dl.devices = orig_malloc(sizeof(sicm_device *) * 1);
+  dl.devices = internal_malloc(sizeof(sicm_device *) * 1);
   dl.devices[0] = device;
-  arena->arena = sicm_arena_create(0, flags, &dl);
-  orig_free(dl.devices);
-
   /* Now add the arena to the array of arenas */
   tracker.arenas[index] = arena;
+  arena->arena = sicm_arena_create(0, flags, &dl);
+  internal_free(dl.devices);
   
   /* Finally, tell the profiler about this arena */
   if(should_profile()) {
@@ -413,25 +423,92 @@ void sh_create_arena(int index, int id, sicm_device *device, char invalid) {
   }
 }
 
+/* Splits up an extent, starting at `start + size`, in the extents array.
+   This differs from a call to both `sh_create_extent` and `sh_delete_extent`
+   because it holds the lock while it does both (to prevent a race condition). */
+void sh_split_extent(sarena *arena, void *start, void *end, size_t size) {
+  int arena_index, err;
+  size_t i;
+  arena_info *arena_ptr;
+  
+  err = pthread_rwlock_wrlock(&tracker.extents_lock);
+  if(err != 0) {
+    fprintf(stderr, "Failed to acquire read/write lock while creating an extent: %d. Aborting.\n", err);
+    exit(1);
+  }
+  
+  arena_index = pending_index;
+  if((arena_index == -1) && arena) {
+    for(i = 0; i <= tracker.max_index; i++) {
+      if(tracker.arenas[i]) {
+        if(arena == tracker.arenas[i]->arena) {
+          arena_index = i;
+          break;
+        }
+      }
+    }
+  }
+
+  arena_ptr = NULL;
+  if(arena_index == -1) {
+    fprintf(stderr, "Couldn't figure out the arena index of a splitting allocation: %p-%p\n", start, end);
+    fprintf(stderr, "The sarena pointer was %p.\n", arena);
+    fflush(stderr);
+  } else {
+    arena_ptr = tracker.arenas[arena_index];
+  }
+
+  extent_arr_delete(tracker.extents, start);
+  if(should_profile_objmap()) {
+    delete_extent_objmap_entry(start);
+  }
+  extent_arr_insert(tracker.extents, start + size, end, arena_ptr);
+  if(should_profile_objmap()) {
+    create_extent_objmap_entry(start + size, end);
+  }
+  if(pthread_rwlock_unlock(&tracker.extents_lock) != 0) {
+    fprintf(stderr, "Failed to unlock read/write lock. Aborting.\n");
+    exit(1);
+  }
+}
+
 /* Adds an extent to the `extents` array. */
 void sh_create_extent(sarena *arena, void *start, void *end) {
-  int arena_index;
+  int arena_index, err;
+  size_t i;
+  arena_info *arena_ptr;
   
-  /* Get this thread's current arena index from `pending_indices` */
+  err = pthread_rwlock_wrlock(&tracker.extents_lock);
+  if(err != 0) {
+    fprintf(stderr, "Failed to acquire read/write lock while creating an extent: %d. Aborting.\n", err);
+    exit(1);
+  }
+  
   arena_index = pending_index;
-
-  /* A extent allocation is happening without an sh_alloc... */
+  if((arena_index == -1) && arena) {
+    for(i = 0; i <= tracker.max_index; i++) {
+      if(tracker.arenas[i]) {
+        if(arena == tracker.arenas[i]->arena) {
+          arena_index = i;
+          break;
+        }
+      }
+    }
+  }
+  
+  arena_ptr = NULL;
   if(arena_index == -1) {
-    fprintf(stderr, "Unknown extent allocation. Aborting.\n");
-    exit(1);
+    fprintf(stderr, "Couldn't figure out the arena index of an allocation: %p-%p\n", start, end);
+    fflush(stderr);
+  } else {
+    arena_ptr = tracker.arenas[arena_index];
+    if(pending_index == -1) {
+      fprintf(stderr, "Found an arena pointer by searching.\n");
+      fflush(stderr);
+    }
   }
 
-  if(pthread_rwlock_wrlock(&tracker.extents_lock) != 0) {
-    fprintf(stderr, "Failed to acquire read/write lock. Aborting.\n");
-    exit(1);
-  }
-  /* Finally, tell the profiler about this extent */
-  extent_arr_insert(tracker.extents, start, end, tracker.arenas[arena_index]);
+  extent_arr_insert(tracker.extents, start, end, arena_ptr);
   if(should_profile_objmap()) {
     create_extent_objmap_entry(start, end);
   }
@@ -442,18 +519,27 @@ void sh_create_extent(sarena *arena, void *start, void *end) {
 }
 
 void sh_delete_extent(sarena *arena, void *start, void *end) {
-  if(pthread_rwlock_wrlock(&tracker.extents_lock) != 0) {
-    fprintf(stderr, "Failed to acquire read/write lock. Aborting.\n");
+  int err;
+  
+  err = pthread_rwlock_wrlock(&tracker.extents_lock);
+  if(err != 0) {
+    fprintf(stderr, "Failed to acquire read/write lock while deleting an extent: %d. Aborting.\n", err);
+    fflush(stderr);
     exit(1);
   }
   extent_arr_delete(tracker.extents, start);
-  //madvise(start, end - start, MADV_DONTNEED);
-  /* Finally, tell the profiler that this extent is no more*/
+#if 0
+  if(profopts.profile_online_debug_file) {
+    fprintf(profopts.profile_online_debug_file, "Extent delete: %p-%p\n", start, end);
+    fflush(profopts.profile_online_debug_file);
+  }
+#endif
   if(should_profile_objmap()) {
     delete_extent_objmap_entry(start);
   }
   if(pthread_rwlock_unlock(&tracker.extents_lock) != 0) {
     fprintf(stderr, "Failed to unlock read/write lock. Aborting.\n");
+    fflush(stderr);
     exit(1);
   }
 }
@@ -668,6 +754,7 @@ void sh_free(void* ptr) {
     unaccounted -= usable_size;
     //print_sizet(unaccounted, "fr ");
   }
+  //get_arena_index_free(id);
   sicm_free(ptr);
 }
 
@@ -706,5 +793,6 @@ void sh_sized_free(void* ptr, size_t size) {
     unaccounted -= usable_size;
     //print_sizet(unaccounted, "sf ");
   }
+  //get_arena_index_free(id);
   sicm_free(ptr);
 }

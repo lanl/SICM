@@ -118,16 +118,13 @@ sicm_device *get_device_from_numa_node(int id) {
   X(SH_PROFILE_ONLINE_USE_LAST_INTERVAL) \
   X(SH_PROFILE_ONLINE_LAST_ITER_VALUE) \
   X(SH_PROFILE_ONLINE_LAST_ITER_WEIGHT) \
-  X(SH_PROFILE_ONLINE_STRAT_ORIG) \
-  X(SH_PROFILE_ONLINE_RECONF_WEIGHT_RATIO) \
-  X(SH_PROFILE_ONLINE_HOT_INTERVALS) \
-  X(SH_PROFILE_ONLINE_STRAT_SKI) \
+  X(SH_PROFILE_ONLINE_ALPHA) \
   X(SH_PROFILE_RATE_NSECONDS) \
   X(SH_PROFILE_NODES) \
-  X(SH_PROFILE_ALL) \
-  X(SH_PROFILE_ALL_EVENTS) \
-  X(SH_PROFILE_ALL_MULTIPLIERS) \
-  X(SH_PROFILE_ALL_SKIP_INTERVALS) \
+  X(SH_PROFILE_PEBS) \
+  X(SH_PROFILE_PEBS_EVENTS) \
+  X(SH_PROFILE_PEBS_MULTIPLIERS) \
+  X(SH_PROFILE_PEBS_SKIP_INTERVALS) \
   X(SH_PROFILE_IMC) \
   X(SH_PROFILE_BW) \
   X(SH_PROFILE_BW_SKIP_INTERVALS) \
@@ -373,7 +370,7 @@ void set_guided_options() {
 }
 
 void set_profile_options() {
-  char *env, *str;
+  char *env, *str, *tmp_str;
   long long tmp_val;
   deviceptr device;
   size_t i, n;
@@ -409,250 +406,55 @@ void set_profile_options() {
   if(env) {
     profopts.print_profile_intervals = 1;
   }
-
-  /* Do we want to use the online approach, moving arenas around devices automatically? */
-  env = getenv("SH_PROFILE_ONLINE");
-  profopts.profile_online_skip_intervals = 0;
-  if(env) {
-    enable_profile_online();
-
-    env = getenv("SH_PROFILE_ONLINE_DEBUG_FILE");
-    profopts.profile_online_debug_file = NULL;
-    if(env) {
-      profopts.profile_online_debug_file = fopen(env, "w");
-      if(!profopts.profile_online_debug_file) {
-        fprintf(stderr, "Failed to open profile_online debug file. Aborting.\n");
-        exit(1);
-      }
-    }
-    
-    /* Grace period at the beginning of a run. Until this number of profiling accesses is reached,
-       the profile_online won't rebind any sites. */
-    env = getenv("SH_PROFILE_ONLINE_GRACE_ACCESSES");
-    profopts.profile_online_grace_accesses = 0;
-    if(env) {
-      profopts.profile_online_grace_accesses = strtoul(env, NULL, 0);
-    }
-
-    /* Purely to measure the overhead of the online approach without doing any special binding */
-    env = getenv("SH_PROFILE_ONLINE_NOBIND");
-    profopts.profile_online_nobind = 0;
-    if(env) {
-      profopts.profile_online_nobind = 1;
-    }
-
-    env = getenv("SH_PROFILE_ONLINE_SKIP_INTERVALS");
-    profopts.profile_online_skip_intervals = 1;
-    if(env) {
-      profopts.profile_online_skip_intervals = strtoul(env, NULL, 0);
-    }
-    
-    env = getenv("SH_PROFILE_ONLINE_VALUE");
-    if(env) {
-      profopts.profile_online_value = orig_malloc((strlen(env) + 1) * sizeof(char));
-      strcpy(profopts.profile_online_value, env);
-    }
-    
-    env = getenv("SH_PROFILE_ONLINE_WEIGHT");
-    if(env) {
-      profopts.profile_online_weight = orig_malloc((strlen(env) + 1) * sizeof(char));
-      strcpy(profopts.profile_online_weight, env);
-    }
-
-    env = getenv("SH_PROFILE_ONLINE_SORT");
-    if(env) {
-      profopts.profile_online_sort = orig_malloc((strlen(env) + 1) * sizeof(char));
-      strcpy(profopts.profile_online_sort, env);
-    }
-    
-    env = getenv("SH_PROFILE_ONLINE_PACKING_ALGO");
-    if(env) {
-      profopts.profile_online_packing_algo = orig_malloc((strlen(env) + 1) * sizeof(char));
-      strcpy(profopts.profile_online_packing_algo, env);
-    }
-    
-    env = getenv("SH_PROFILE_ONLINE_USE_LAST_INTERVAL");
-    profopts.profile_online_use_last_interval = 0;
-    if(env) {
-      profopts.profile_online_use_last_interval = 1;
-    }
-
-    env = getenv("SH_PROFILE_ONLINE_LAST_ITER_VALUE");
-    profopts.profile_online_last_iter_value = 0.0;
-    if(env) {
-      profopts.profile_online_last_iter_value = strtof(env, NULL);
-    }
-
-    env = getenv("SH_PROFILE_ONLINE_LAST_ITER_WEIGHT");
-    profopts.profile_online_last_iter_weight = 0.0;
-    if(env) {
-      profopts.profile_online_last_iter_weight = strtof(env, NULL);
-    }
-
-    env = getenv("SH_PROFILE_ONLINE_STRAT_ORIG");
-    profopts.profile_online_orig = 0;
-    if(env) {
-      profopts.profile_online_orig = 1;
-    }
-    
-    env = getenv("SH_PROFILE_ONLINE_VALUE_THRESHOLD");
-    profopts.profile_online_value_threshold = 0;
-    if(env) {
-      profopts.profile_online_value_threshold = strtoul(env, NULL, 0);
-    }
-
-    if(profopts.profile_online_orig) {
-      /* Orig-specific configuration */
-
-      env = getenv("SH_PROFILE_ONLINE_RECONF_WEIGHT_RATIO");
-      profopts.profile_online_reconf_weight_ratio = 0.0;
-      if(env) {
-        profopts.profile_online_reconf_weight_ratio = strtof(env, NULL);
-      }
-
-      env = getenv("SH_PROFILE_ONLINE_HOT_INTERVALS");
-      profopts.profile_online_hot_intervals = 0;
-      if(env) {
-        profopts.profile_online_hot_intervals = strtoul(env, NULL, 0);
-      }
-    }
-
-    env = getenv("SH_PROFILE_ONLINE_STRAT_SKI");
-    profopts.profile_online_ski = 0;
-    if(env) {
-      profopts.profile_online_ski = 1;
-    }
-  }
-
-
-  /* Controls the profiling rate of all profiling types */
-  profopts.profile_rate_nseconds = 0;
-  env = getenv("SH_PROFILE_RATE_NSECONDS");
-  if(env) {
-    profopts.profile_rate_nseconds = strtoimax(env, NULL, 10);
-  }
-
-  /* The user can specify a number of NUMA nodes to profile on. For profile_all,
-     all CPUs on the node(s) will be profiled. For profile_bw, one CPU from
-     each node will be chosen to record the bandwidth on the IMC. */
-  env = getenv("SH_PROFILE_NODES");
-  profopts.num_profile_all_cpus = 0;
-  profopts.num_profile_skt_cpus = 0;
-  profopts.profile_all_cpus = NULL;
-  profopts.profile_skt_cpus = NULL;
-  profopts.profile_skts = NULL;
-  if(env) {
-    /* First, get a list of nodes that the user specified */
-    nodes = numa_parse_nodestring(env);
-    cpus = numa_allocate_cpumask();
-    num_cpus = numa_num_configured_cpus();
-    num_nodes = numa_num_configured_nodes();
-    /* Iterate over the nodes in the `nodes` bitmask */
-    for(node = 0; node < num_nodes; node++) {
-      if(numa_bitmask_isbitset(nodes, node)) {
-        numa_bitmask_clearall(cpus);
-        numa_node_to_cpus(node, cpus);
-        flag = 0;
-        /* Now iterate over the CPUs on those nodes */
-        for(cpu = 0; cpu < num_cpus; cpu++) {
-          if(numa_bitmask_isbitset(cpus, cpu)) {
-            /* Here, we'll add one (1) CPU from this list to profile_skt_cpus */
-            if(!flag) {
-              profopts.num_profile_skt_cpus++;
-              profopts.profile_skt_cpus = orig_realloc(profopts.profile_skt_cpus,
-                                                      sizeof(int) * profopts.num_profile_skt_cpus);
-              profopts.profile_skts = orig_realloc(profopts.profile_skt_cpus,
-                                                       sizeof(int) * profopts.num_profile_skt_cpus);
-              profopts.profile_skt_cpus[profopts.num_profile_skt_cpus - 1] = cpu;
-              profopts.profile_skts[profopts.num_profile_skt_cpus - 1] = node;
-              flag = 1;
-            }
-            /* ...and add all of the CPUs to profile_all */
-            profopts.num_profile_all_cpus++;
-            profopts.profile_all_cpus = orig_realloc(profopts.profile_all_cpus, sizeof(int) * profopts.num_profile_all_cpus);
-            profopts.profile_all_cpus[profopts.num_profile_all_cpus - 1] = cpu;
-          }
-        }
-      }
-    }
-  } else {
-    /* If the user doesn't set this, default to using the CPUs on the NUMA nodes that this
-        process is allowed on */
-    cpus = numa_all_cpus_ptr;
-    num_cpus = numa_num_configured_cpus();
-    flag = 0;
-    for(cpu = 0; cpu < num_cpus; cpu++) {
-      if(numa_bitmask_isbitset(cpus, cpu)) {
-        if(!flag) {
-          profopts.num_profile_skt_cpus++;
-          profopts.profile_skt_cpus = orig_realloc(profopts.profile_skt_cpus,
-                                                  sizeof(int) * profopts.num_profile_skt_cpus);
-          profopts.profile_skts = orig_realloc(profopts.profile_skts,
-                                                  sizeof(int) * profopts.num_profile_skt_cpus);
-          profopts.profile_skt_cpus[profopts.num_profile_skt_cpus - 1] = cpu;
-          profopts.profile_skts[profopts.num_profile_skt_cpus - 1] = numa_node_of_cpu(cpu);
-          flag = 1;
-        }
-        profopts.num_profile_all_cpus++;
-        profopts.profile_all_cpus = orig_realloc(profopts.profile_all_cpus, sizeof(int) * profopts.num_profile_all_cpus);
-        profopts.profile_all_cpus[profopts.num_profile_all_cpus - 1] = cpu;
-      }
-    }
-  }
-
+  
   /* Should we profile all allocation sites using sampling-based profiling? */
-  env = getenv("SH_PROFILE_ALL");
+  env = getenv("SH_PROFILE_PEBS");
   if(env) {
-    enable_profile_all();
+    enable_profile_pebs();
   }
-  if(should_profile_all()) {
+  if(should_profile_pebs()) {
 
-    env = getenv("SH_PROFILE_ALL_EVENTS");
-    profopts.num_profile_all_events = 0;
-    profopts.profile_all_events = NULL;
+    env = getenv("SH_PROFILE_PEBS_EVENTS");
+    profopts.num_profile_pebs_events = 0;
+    profopts.profile_pebs_events = NULL;
     if(env) {
       /* Parse out the events into an array */
-      while((str = strtok(env, ",")) != NULL) {
-        profopts.num_profile_all_events++;
-        profopts.profile_all_events = orig_realloc(profopts.profile_all_events, sizeof(char *) * profopts.num_profile_all_events);
-        profopts.profile_all_events[profopts.num_profile_all_events - 1] = orig_malloc(sizeof(char) * (strlen(str) + 1));
-        strcpy(profopts.profile_all_events[profopts.num_profile_all_events - 1], str);
-        env = NULL;
+      tmp_str = env;
+      while((str = strtok(tmp_str, ",")) != NULL) {
+        profopts.num_profile_pebs_events++;
+        profopts.profile_pebs_events = internal_realloc(profopts.profile_pebs_events, sizeof(char *) * profopts.num_profile_pebs_events);
+        profopts.profile_pebs_events[profopts.num_profile_pebs_events - 1] = internal_malloc(sizeof(char) * (strlen(str) + 1));
+        strcpy(profopts.profile_pebs_events[profopts.num_profile_pebs_events - 1], str);
+        tmp_str = NULL;
       }
     }
-    if(profopts.num_profile_all_events == 0) {
+    if(profopts.num_profile_pebs_events == 0) {
       fprintf(stderr, "No profiling events given. Can't profile with sampling.\n");
       exit(1);
     }
     
-    env = getenv("SH_PROFILE_ALL_MULTIPLIERS");
-    profopts.num_profile_all_multipliers = 0;
-    profopts.profile_all_multipliers = NULL;
+    env = getenv("SH_PROFILE_PEBS_MULTIPLIERS");
+    profopts.num_profile_pebs_multipliers = 0;
+    profopts.profile_pebs_multipliers = NULL;
     if(env) {
       /* Parse out the events into an array */
       while((str = strtok(env, ",")) != NULL) {
-        profopts.num_profile_all_multipliers++;
-        profopts.profile_all_multipliers = orig_realloc(profopts.profile_all_multipliers, sizeof(float) * profopts.num_profile_all_multipliers);
-        profopts.profile_all_multipliers[profopts.num_profile_all_multipliers - 1] = strtof(str, NULL);
+        profopts.num_profile_pebs_multipliers++;
+        profopts.profile_pebs_multipliers = internal_realloc(profopts.profile_pebs_multipliers, sizeof(float) * profopts.num_profile_pebs_multipliers);
+        profopts.profile_pebs_multipliers[profopts.num_profile_pebs_multipliers - 1] = strtof(str, NULL);
         env = NULL;
       }
-      if(profopts.num_profile_all_multipliers != profopts.num_profile_all_events) {
-        fprintf(stderr, "Number of multipliers doesn't equal the number of PROFILE_ALL events. Aborting.\n");
+      if(profopts.num_profile_pebs_multipliers != profopts.num_profile_pebs_events) {
+        fprintf(stderr, "Number of multipliers doesn't equal the number of PROFILE_PEBS events. Aborting.\n");
         exit(1);
       }
     }
 
-    env = getenv("SH_PROFILE_ALL_SKIP_INTERVALS");
-    profopts.profile_all_skip_intervals = 1;
+    env = getenv("SH_PROFILE_PEBS_SKIP_INTERVALS");
+    profopts.profile_pebs_skip_intervals = 1;
     if(env) {
-      profopts.profile_all_skip_intervals = strtoul(env, NULL, 0);
+      profopts.profile_pebs_skip_intervals = strtoul(env, NULL, 0);
     }
-  }
-
-  /* Should we keep track of when each allocation happened, in intervals? */
-  env = getenv("SH_PROFILE_ALLOCS");
-  if(env) {
-    enable_profile_allocs();
   }
   
   /* The user should specify a comma-delimited list of IMCs to read the
@@ -668,7 +470,7 @@ void set_profile_options() {
     /* Parse out the IMCs into an array */
     while((str = strtok(env, ",")) != NULL) {
       profopts.num_imcs++;
-      profopts.imcs = orig_realloc(profopts.imcs, sizeof(char *) * profopts.num_imcs);
+      profopts.imcs = internal_realloc(profopts.imcs, sizeof(char *) * profopts.num_imcs);
       profopts.imcs[profopts.num_imcs - 1] = str;
       env = NULL;
     }
@@ -705,8 +507,8 @@ void set_profile_options() {
       /* Parse out the events into an array */
       while((str = strtok(env, ",")) != NULL) {
         profopts.num_profile_bw_events++;
-        profopts.profile_bw_events = orig_realloc(profopts.profile_bw_events, sizeof(char *) * profopts.num_profile_bw_events);
-        profopts.profile_bw_events[profopts.num_profile_bw_events - 1] = orig_malloc(sizeof(char) * (strlen(str) + 1));
+        profopts.profile_bw_events = internal_realloc(profopts.profile_bw_events, sizeof(char *) * profopts.num_profile_bw_events);
+        profopts.profile_bw_events[profopts.num_profile_bw_events - 1] = internal_malloc(sizeof(char) * (strlen(str) + 1));
         strcpy(profopts.profile_bw_events[profopts.num_profile_bw_events - 1], str);
         env = NULL;
       }
@@ -715,14 +517,197 @@ void set_profile_options() {
       fprintf(stderr, "No profiling events given. Can't profile one arena.\n");
       exit(1);
     }
-    
-    /* Should we try to associate bandwidth with arenas, using their
-       relative profile_all values? */
-    env = getenv("SH_PROFILE_BW_RELATIVE");
-    profopts.profile_bw_relative = 0;
+  }
+
+  env = getenv("SH_PROFILE_OBJMAP");
+  if(env) {
+    enable_profile_objmap();
+
+    env = getenv("SH_PROFILE_OBJMAP_SKIP_INTERVALS");
+    profopts.profile_objmap_skip_intervals = 1;
     if(env) {
-      profopts.profile_bw_relative = 1;
+      profopts.profile_objmap_skip_intervals = strtoul(env, NULL, 0);
     }
+  }
+
+  /* Do we want to use the online approach, moving arenas around devices automatically? */
+  env = getenv("SH_PROFILE_ONLINE");
+  profopts.profile_online_skip_intervals = 0;
+  if(env) {
+    if(!should_profile_objmap() || !should_profile_bw() || !should_profile_pebs()) {
+      fprintf(stderr, "The online approach requires OBJMAP, BW, and PEBS profiling. Aborting.\n");
+      exit(1);
+    }
+    
+    enable_profile_online();
+    
+    env = getenv("SH_PROFILE_ONLINE_DEBUG_FILE");
+    profopts.profile_online_debug_file = NULL;
+    if(env) {
+      profopts.profile_online_debug_file = fopen(env, "w");
+      if(!profopts.profile_online_debug_file) {
+        fprintf(stderr, "Failed to open profile_online debug file. Aborting.\n");
+        exit(1);
+      }
+    }
+    
+    /* Grace period at the beginning of a run. Until this number of profiling accesses is reached,
+       the profile_online won't rebind any sites. */
+    env = getenv("SH_PROFILE_ONLINE_GRACE_ACCESSES");
+    profopts.profile_online_grace_accesses = 0;
+    if(env) {
+      profopts.profile_online_grace_accesses = strtoul(env, NULL, 0);
+    }
+
+    /* Purely to measure the overhead of the online approach without doing any special binding */
+    env = getenv("SH_PROFILE_ONLINE_NOBIND");
+    profopts.profile_online_nobind = 0;
+    if(env) {
+      profopts.profile_online_nobind = 1;
+    }
+
+    env = getenv("SH_PROFILE_ONLINE_SKIP_INTERVALS");
+    profopts.profile_online_skip_intervals = 1;
+    if(env) {
+      profopts.profile_online_skip_intervals = strtoul(env, NULL, 0);
+    }
+    
+    env = getenv("SH_PROFILE_ONLINE_VALUE");
+    if(env) {
+      profopts.profile_online_value = internal_malloc((strlen(env) + 1) * sizeof(char));
+      strcpy(profopts.profile_online_value, env);
+    }
+    
+    env = getenv("SH_PROFILE_ONLINE_WEIGHT");
+    if(env) {
+      profopts.profile_online_weight = internal_malloc((strlen(env) + 1) * sizeof(char));
+      strcpy(profopts.profile_online_weight, env);
+    }
+
+    env = getenv("SH_PROFILE_ONLINE_SORT");
+    if(env) {
+      profopts.profile_online_sort = internal_malloc((strlen(env) + 1) * sizeof(char));
+      strcpy(profopts.profile_online_sort, env);
+    }
+    
+    env = getenv("SH_PROFILE_ONLINE_PACKING_ALGO");
+    if(env) {
+      profopts.profile_online_packing_algo = internal_malloc((strlen(env) + 1) * sizeof(char));
+      strcpy(profopts.profile_online_packing_algo, env);
+    }
+    
+    env = getenv("SH_PROFILE_ONLINE_USE_LAST_INTERVAL");
+    profopts.profile_online_use_last_interval = 0;
+    if(env) {
+      profopts.profile_online_use_last_interval = 1;
+    }
+
+    env = getenv("SH_PROFILE_ONLINE_LAST_ITER_VALUE");
+    profopts.profile_online_last_iter_value = 0.0;
+    if(env) {
+      profopts.profile_online_last_iter_value = strtof(env, NULL);
+    }
+
+    env = getenv("SH_PROFILE_ONLINE_LAST_ITER_WEIGHT");
+    profopts.profile_online_last_iter_weight = 0.0;
+    if(env) {
+      profopts.profile_online_last_iter_weight = strtof(env, NULL);
+    }
+    
+    env = getenv("SH_PROFILE_ONLINE_ALPHA");
+    profopts.profile_online_alpha = -1.0;
+    if(env) {
+      profopts.profile_online_alpha = strtof(env, NULL);
+    }
+
+    env = getenv("SH_PROFILE_ONLINE_VALUE_THRESHOLD");
+    profopts.profile_online_value_threshold = 0;
+    if(env) {
+      profopts.profile_online_value_threshold = strtoul(env, NULL, 0);
+    }
+  }
+
+
+  /* Controls the profiling rate of all profiling types */
+  profopts.profile_rate_nseconds = 0;
+  env = getenv("SH_PROFILE_RATE_NSECONDS");
+  if(env) {
+    profopts.profile_rate_nseconds = strtoimax(env, NULL, 10);
+  }
+
+  /* The user can specify a number of NUMA nodes to profile on. For profile_pebs,
+     all CPUs on the node(s) will be profiled. For profile_bw, one CPU from
+     each node will be chosen to record the bandwidth on the IMC. */
+  env = getenv("SH_PROFILE_NODES");
+  profopts.num_profile_pebs_cpus = 0;
+  profopts.num_profile_skt_cpus = 0;
+  profopts.profile_pebs_cpus = NULL;
+  profopts.profile_skt_cpus = NULL;
+  profopts.profile_skts = NULL;
+  if(env) {
+    /* First, get a list of nodes that the user specified */
+    nodes = numa_parse_nodestring(env);
+    cpus = numa_allocate_cpumask();
+    num_cpus = numa_num_configured_cpus();
+    num_nodes = numa_num_configured_nodes();
+    /* Iterate over the nodes in the `nodes` bitmask */
+    for(node = 0; node < num_nodes; node++) {
+      if(numa_bitmask_isbitset(nodes, node)) {
+        numa_bitmask_clearall(cpus);
+        numa_node_to_cpus(node, cpus);
+        flag = 0;
+        /* Now iterate over the CPUs on those nodes */
+        for(cpu = 0; cpu < num_cpus; cpu++) {
+          if(numa_bitmask_isbitset(cpus, cpu)) {
+            /* Here, we'll add one (1) CPU from this list to profile_skt_cpus */
+            if(!flag) {
+              profopts.num_profile_skt_cpus++;
+              profopts.profile_skt_cpus = internal_realloc(profopts.profile_skt_cpus,
+                                                      sizeof(int) * profopts.num_profile_skt_cpus);
+              profopts.profile_skts = internal_realloc(profopts.profile_skt_cpus,
+                                                       sizeof(int) * profopts.num_profile_skt_cpus);
+              profopts.profile_skt_cpus[profopts.num_profile_skt_cpus - 1] = cpu;
+              profopts.profile_skts[profopts.num_profile_skt_cpus - 1] = node;
+              flag = 1;
+            }
+            /* ...and add all of the CPUs to profile_pebs */
+            profopts.num_profile_pebs_cpus++;
+            profopts.profile_pebs_cpus = internal_realloc(profopts.profile_pebs_cpus, sizeof(int) * profopts.num_profile_pebs_cpus);
+            profopts.profile_pebs_cpus[profopts.num_profile_pebs_cpus - 1] = cpu;
+          }
+        }
+      }
+    }
+  } else {
+    /* If the user doesn't set this, default to using the CPUs on the NUMA nodes that this
+        process is allowed on */
+    cpus = numa_all_cpus_ptr;
+    num_cpus = numa_num_configured_cpus();
+    flag = 0;
+    for(cpu = 0; cpu < num_cpus; cpu++) {
+      if(numa_bitmask_isbitset(cpus, cpu)) {
+        if(!flag) {
+          profopts.num_profile_skt_cpus++;
+          profopts.profile_skt_cpus = internal_realloc(profopts.profile_skt_cpus,
+                                                  sizeof(int) * profopts.num_profile_skt_cpus);
+          profopts.profile_skts = internal_realloc(profopts.profile_skts,
+                                                  sizeof(int) * profopts.num_profile_skt_cpus);
+          profopts.profile_skt_cpus[profopts.num_profile_skt_cpus - 1] = cpu;
+          profopts.profile_skts[profopts.num_profile_skt_cpus - 1] = numa_node_of_cpu(cpu);
+          flag = 1;
+        }
+        profopts.num_profile_pebs_cpus++;
+        profopts.profile_pebs_cpus = internal_realloc(profopts.profile_pebs_cpus, sizeof(int) * profopts.num_profile_pebs_cpus);
+        profopts.profile_pebs_cpus[profopts.num_profile_pebs_cpus - 1] = cpu;
+      }
+    }
+  }
+
+
+  /* Should we keep track of when each allocation happened, in intervals? */
+  env = getenv("SH_PROFILE_ALLOCS");
+  if(env) {
+    enable_profile_allocs();
   }
   
   /* Should we profile latency on a specific socket? */
@@ -758,8 +743,8 @@ void set_profile_options() {
       /* Parse out the events into an array */
       while((str = strtok(env, ",")) != NULL) {
         profopts.num_profile_latency_events++;
-        profopts.profile_latency_events = orig_realloc(profopts.profile_latency_events, sizeof(char *) * profopts.num_profile_latency_events);
-        profopts.profile_latency_events[profopts.num_profile_latency_events - 1] = orig_malloc(sizeof(char) * (strlen(str) + 1));
+        profopts.profile_latency_events = internal_realloc(profopts.profile_latency_events, sizeof(char *) * profopts.num_profile_latency_events);
+        profopts.profile_latency_events[profopts.num_profile_latency_events - 1] = internal_malloc(sizeof(char) * (strlen(str) + 1));
         strcpy(profopts.profile_latency_events[profopts.num_profile_latency_events - 1], str);
         env = NULL;
       }
@@ -781,7 +766,7 @@ void set_profile_options() {
     env = getenv("SH_PROFILE_LATENCY_CLOCKTICK_EVENT");
     profopts.profile_latency_clocktick_event = NULL;
     if(env) {
-      profopts.profile_latency_clocktick_event = orig_malloc(sizeof(char) * (strlen(env) + 1));
+      profopts.profile_latency_clocktick_event = internal_malloc(sizeof(char) * (strlen(env) + 1));
       strcpy(profopts.profile_latency_clocktick_event, env);
     }
     if(profopts.profile_latency_clocktick_event == NULL) {
@@ -822,17 +807,6 @@ void set_profile_options() {
     profopts.profile_allocs_skip_intervals = 1;
     if(env) {
       profopts.profile_allocs_skip_intervals = strtoul(env, NULL, 0);
-    }
-  }
-
-  env = getenv("SH_PROFILE_OBJMAP");
-  if(env) {
-    enable_profile_objmap();
-
-    env = getenv("SH_PROFILE_OBJMAP_SKIP_INTERVALS");
-    profopts.profile_objmap_skip_intervals = 1;
-    if(env) {
-      profopts.profile_objmap_skip_intervals = strtoul(env, NULL, 0);
     }
   }
 
@@ -923,34 +897,6 @@ void sh_init() {
     exit(1);
   }
   
-  handle = dlopen("libc.so.6", RTLD_LAZY);
-  if(handle) {
-    orig_malloc_ptr = dlsym(handle, "malloc");
-    orig_valloc_ptr = dlsym(handle, "valloc");
-    orig_calloc_ptr = dlsym(handle, "calloc");
-    orig_realloc_ptr = dlsym(handle, "realloc");
-    orig_free_ptr = dlsym(handle, "free");
-    if((!orig_malloc_ptr) ||
-       (!orig_valloc_ptr) ||
-       (!orig_calloc_ptr) ||
-       (!orig_realloc_ptr) ||
-       (!orig_free_ptr)) {
-         fprintf(stderr, "Failed to acquire the allocation symbols from libc. Aborting.\n");
-         exit(1);
-    }
-    if(!dladdr(orig_malloc_ptr, &dlinfo)) {
-      fprintf(stderr, "dladdr failed. Aborting.\n");
-      exit(1);
-    }
-    if(!dladdr(orig_realloc_ptr, &dlinfo)) {
-      fprintf(stderr, "dladdr failed. Aborting.\n");
-      exit(1);
-    }
-  } else {
-    fprintf(stderr, "%s\n", dlerror());
-    exit(1);
-  }
-
   tracker.device_list = sicm_init();
 
   /* Initialize all of the locks */
@@ -992,7 +938,7 @@ void sh_init() {
 
 
   if(tracker.layout != INVALID_LAYOUT) {
-    tracker.arenas = (arena_info **) orig_calloc(tracker.max_arenas, sizeof(arena_info *));
+    tracker.arenas = (arena_info **) internal_calloc(tracker.max_arenas, sizeof(arena_info *));
     
     /* These atomics keep track of per-site information, such as:
        1. `site_bigs`: boolean for if the site is above big_small_threshold or not.
@@ -1000,16 +946,16 @@ void sh_init() {
        3. `site_devices`: a pointer to the device that this site should be bound to.
        4. `site_arenas`: an integer index of the arena this site gets allocated to.
     */
-    tracker.site_bigs = (atomic_char *) orig_malloc((tracker.max_sites + 1) * sizeof(atomic_char));
+    tracker.site_bigs = (atomic_char *) internal_malloc((tracker.max_sites + 1) * sizeof(atomic_char));
     for(i = 0; i < tracker.max_sites + 1; i++) {
       tracker.site_bigs[i] = -1;
     }
-    tracker.site_sizes = (atomic_size_t *) orig_calloc(tracker.max_sites + 1, sizeof(atomic_size_t));
-    tracker.site_devices = (atomic_int **) orig_malloc((tracker.max_sites + 1) * sizeof(atomic_int *));
+    tracker.site_sizes = (atomic_size_t *) internal_calloc(tracker.max_sites + 1, sizeof(atomic_size_t));
+    tracker.site_devices = (atomic_int **) internal_malloc((tracker.max_sites + 1) * sizeof(atomic_int *));
     for(i = 0; i < tracker.max_sites + 1; i++) {
       tracker.site_devices[i] = (atomic_int *) NULL;
     }
-    tracker.site_arenas = (atomic_int *) orig_malloc((tracker.max_sites + 1) * sizeof(atomic_int));
+    tracker.site_arenas = (atomic_int *) internal_malloc((tracker.max_sites + 1) * sizeof(atomic_int));
     for(i = 0; i < tracker.max_sites + 1; i++) {
       tracker.site_arenas[i] = -1;
     }
@@ -1030,6 +976,7 @@ void sh_init() {
     /* Set the arena allocator's callback function */
     sicm_extent_alloc_callback = &sh_create_extent;
     sicm_extent_dalloc_callback = &sh_delete_extent;
+    sicm_extent_split_callback = &sh_split_extent;
   }
 
   if(should_profile()) {
@@ -1065,7 +1012,7 @@ void sh_terminate_helper() {
   }
   sh_initialized = 0;
   
-  printf("SICM used %zu bytes of memory.\n", sicm_mem_usage);
+  //printf("SICM's peak memory usage was %zu bytes.\n", peak_sicm_mem_usage);
   
   /* We need to stop the profiling first */
   if(tracker.layout != INVALID_LAYOUT) {
@@ -1091,9 +1038,9 @@ void sh_terminate_helper() {
       if(tracker.arenas[i]->arena) {
         sicm_arena_destroy(tracker.arenas[i]->arena);
       }
-      orig_free(tracker.arenas[i]);
+      internal_free(tracker.arenas[i]);
     }
-    orig_free(tracker.arenas);
+    internal_free(tracker.arenas);
     extent_arr_free(tracker.extents);
   }
 

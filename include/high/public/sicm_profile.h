@@ -59,7 +59,7 @@ typedef struct arena_profile {
      aggregate multiple sites' allocations. */
   char invalid;
 
-  per_arena_profile_all_info profile_all;
+  per_arena_profile_pebs_info profile_pebs;
   profile_extent_size_info profile_extent_size;
   profile_allocs_info profile_allocs;
   per_arena_profile_rss_info profile_rss;
@@ -82,7 +82,7 @@ typedef struct interval_profile {
   profile_bw_info profile_bw;
   profile_online_info profile_online;
   profile_rss_info profile_rss;
-  profile_all_info profile_all;
+  profile_pebs_info profile_pebs;
   profile_objmap_info profile_objmap;
 } interval_profile;
 
@@ -90,7 +90,7 @@ typedef struct interval_profile {
 typedef struct application_profile {
   /* Flags that get set if this profile has these types of
      profiling in it */
-  char has_profile_all,
+  char has_profile_pebs,
        has_profile_allocs,
        has_profile_extent_size,
        has_profile_rss,
@@ -102,9 +102,9 @@ typedef struct application_profile {
   
   size_t num_intervals;
 
-  /* Array of PROFILE_ALL event strings */
-  size_t num_profile_all_events;
-  char **profile_all_events;
+  /* Array of PROFILE_PEBS event strings */
+  size_t num_profile_pebs_events;
+  char **profile_pebs_events;
   
   /* Array of NUMA IDs for PROFILE_BW */
   size_t num_profile_skts;
@@ -150,7 +150,7 @@ typedef struct profiler {
   interval_profile cur_interval, prev_interval;
 
   /* Data for each profile thread */
-  profile_all_data profile_all;
+  profile_pebs_data profile_pebs;
   profile_rss_data profile_rss;
   profile_extent_size_data profile_extent_size;
   profile_allocs_data profile_allocs;
@@ -185,13 +185,17 @@ void add_site_profile(int, int);
 static inline void copy_arena_profile(arena_profile *dst, arena_profile *src) {
   memcpy(dst, src, sizeof(arena_profile));
   if(!(dst->alloc_sites)) {
-    dst->alloc_sites = orig_malloc(sizeof(int) * tracker.max_sites_per_arena);
+    dst->alloc_sites = internal_malloc(sizeof(int) * tracker.max_sites_per_arena);
   }
   memcpy(dst->alloc_sites, src->alloc_sites, sizeof(int) * tracker.max_sites_per_arena);
-  if(!(dst->profile_all.events)) {
-    dst->profile_all.events = orig_malloc(sizeof(per_event_profile_all_info) * prof.profile->num_profile_all_events);
+  if(!(dst->profile_pebs.events)) {
+    dst->profile_pebs.events = internal_malloc(sizeof(per_event_profile_pebs_info) * prof.profile->num_profile_pebs_events);
   }
-  memcpy(dst->profile_all.events, src->profile_all.events, sizeof(per_event_profile_all_info) * prof.profile->num_profile_all_events);
+  memcpy(dst->profile_pebs.events, src->profile_pebs.events, sizeof(per_event_profile_pebs_info) * prof.profile->num_profile_pebs_events);
+  if(!(dst->profile_bw.events)) {
+    dst->profile_bw.events = internal_malloc(sizeof(per_event_profile_bw_info) * prof.profile->num_profile_pebs_events);
+  }
+  memcpy(dst->profile_bw.events, src->profile_bw.events, sizeof(per_event_profile_bw_info) * prof.profile->num_profile_pebs_events);
 }
 
 static inline void copy_interval_profile(interval_profile *dest, interval_profile *src) {
@@ -205,14 +209,14 @@ static inline void copy_interval_profile(interval_profile *dest, interval_profil
   memcpy(dest, src, sizeof(interval_profile));
   
   if(!(dest->arenas)) {
-    dest->arenas = orig_calloc(tracker.max_arenas, sizeof(arena_profile *));
+    dest->arenas = internal_calloc(tracker.max_arenas, sizeof(arena_profile *));
   }
     
   dest->profile_bw.skt = NULL;
   if(should_profile_bw()) {
     size = profopts.num_profile_skt_cpus * sizeof(per_skt_profile_bw_info);
     if(!(dest->profile_bw.skt)) {
-      dest->profile_bw.skt = orig_malloc(size);
+      dest->profile_bw.skt = internal_malloc(size);
     }
     memcpy(dest->profile_bw.skt,
           src->profile_bw.skt,
@@ -223,7 +227,7 @@ static inline void copy_interval_profile(interval_profile *dest, interval_profil
   if(should_profile_latency()) {
     size = profopts.num_profile_skt_cpus * sizeof(per_skt_profile_latency_info);
     if(!(dest->profile_latency.skt)) {
-      dest->profile_latency.skt = orig_malloc(size);
+      dest->profile_latency.skt = internal_malloc(size);
     }
     memcpy(dest->profile_latency.skt,
           src->profile_latency.skt,
@@ -236,60 +240,67 @@ static inline void copy_interval_profile(interval_profile *dest, interval_profil
     if(!aprof) continue;
     
     if(!(dest->arenas[i])) {
-      dest->arenas[i] = orig_malloc(sizeof(arena_profile));
+      dest->arenas[i] = internal_malloc(sizeof(arena_profile));
     }
     copy_arena_profile(dest->arenas[i], aprof);
   }
 }
 
-
+/* These are all convenience "functions" for accessing
+   parts of the profile. */
 #define get_arena_prof(i) \
   prof.cur_interval.arenas[i]
-  
-#define get_profile_all_prof() \
-  (&(prof.cur_interval.profile_all))
-  
-#define get_profile_bw_prof() \
-  (&(prof.cur_interval.profile_bw))
-  
-#define get_profile_rss_prof() \
-  (&(prof.cur_interval.profile_rss))
-  
-#define get_profile_objmap_prof() \
-  (&(prof.cur_interval.profile_objmap))
-  
-#define get_profile_latency_prof() \
-  (&(prof.cur_interval.profile_latency))
-  
-#define get_profile_online_prof() \
-  (&(prof.cur_interval.profile_online))
-  
-#define get_arena_online_prof(i) \
-  (&(get_arena_prof(i)->profile_online))
-
-#define get_arena_all_prof(i) \
-  (&(get_arena_prof(i)->profile_all))
-  
-#define get_arena_rss_prof(i) \
-  (&(get_arena_prof(i)->profile_rss))
-
-#define get_arena_objmap_prof(i) \
-  (&(get_arena_prof(i)->profile_objmap))
-
 #define get_prev_arena_prof(i) \
   prof.prev_interval.arenas[i]
-
-#define get_prev_arena_online_prof(i) \
-  (&(get_prev_arena_prof(i)->profile_online))
-
-#define get_arena_profile_all_event_prof(i, n) \
-  (&(get_arena_all_prof(i)->events[n]))
   
-#define get_profile_bw_skt_prof(i) \
-  (&(get_profile_bw_prof()->skt[i]))
+/* profile_pebs */
+#define get_pebs_prof() \
+  (&(prof.cur_interval.profile_pebs))
+#define get_pebs_arena_prof(i) \
+  (&(get_arena_prof(i)->profile_pebs))
+#define get_pebs_event_prof(i, n) \
+  (&(get_pebs_arena_prof(i)->events[n]))
   
-#define get_profile_latency_skt_prof(i) \
-  (&(get_profile_latency_prof()->skt[i]))
+/* profile_allocs */
+#define get_allocs_prof() \
+  (&(prof.cur_interval.profile_allocs))
+#define get_allocs_arena_prof(i) \
+  (&(get_arena_prof(i)->profile_allocs))
   
-#define get_profile_bw_arena_prof(i) \
+/* profile_bw */
+#define get_bw_prof() \
+  (&(prof.cur_interval.profile_bw))
+#define get_bw_arena_prof(i) \
   (&(get_arena_prof(i)->profile_bw))
+#define get_bw_event_prof(i, n) \
+  (&(get_bw_arena_prof(i)->events[n]))
+#define get_bw_skt_prof(i) \
+  (&(get_bw_prof()->skt[i]))
+  
+/* profile_rss */
+#define get_rss_prof() \
+  (&(prof.cur_interval.profile_rss))
+#define get_rss_arena_prof(i) \
+  (&(get_arena_prof(i)->profile_rss))
+  
+/* profile_online */
+#define get_online_prof() \
+  (&(prof.cur_interval.profile_online))
+#define get_online_arena_prof(i) \
+  (&(get_arena_prof(i)->profile_online))
+#define get_online_prev_arena_prof(i) \
+  (&(get_prev_arena_prof(i)->profile_online))
+#define get_online_data() \
+  (&(prof.profile_online))
+  
+/* profile_obmap */
+#define get_objmap_prof() \
+  (&(prof.cur_interval.profile_objmap))
+#define get_objmap_arena_prof(i) \
+  (&(get_arena_prof(i)->profile_objmap))
+  
+/* profile_latency */
+#define get_latency_prof() \
+  (&(prof.cur_interval.profile_latency))
+#define get_latency_skt_prof(i) \
+  (&(get_latency_prof()->skt[i]))

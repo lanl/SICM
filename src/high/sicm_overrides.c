@@ -51,4 +51,14 @@ void * memalign(size_t alignment, size_t size) {
   return sh_memalign(0, alignment, size);
 }
 
+/*
+void *mmap(void *addr, size_t length, int prot, int flags, int fd, off_t offset) {
+  return sh_mmap(addr, length, prot, flags, fd, offset);
+}
+
+int munmap(void *addr, size_t length) {
+  return sh_munmap(addr, length);
+}
+*/
+
 #endif

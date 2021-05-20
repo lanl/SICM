@@ -24,15 +24,13 @@ void profile_objmap_interval(int);
 void profile_objmap_skip_interval(int);
 void profile_objmap_post_interval(arena_profile *);
 
-#define RSS "Rss:"
-
 unsigned long long get_cgroup_memory_unaccounted_not_objmap() {
   unsigned long long retval;
   size_t size;
   char *line;
   ssize_t err;
   
-  prof.profile_objmap.memory_unaccounted_not_objmap_file = fopen("/sys/fs/cgroup/0/memory.unaccounted_not_objmap", "r");
+  prof.profile_objmap.memory_unaccounted_not_objmap_file = fopen("/sys/fs/cgroup/unified/0/memory.unaccounted_not_objmap", "r");
   if(!prof.profile_objmap.memory_unaccounted_not_objmap_file) {
     fprintf(stderr, "Failed to open memory_unaccounted_not_objmap file. Continuing anyway.\n");
     return 0;
@@ -40,13 +38,14 @@ unsigned long long get_cgroup_memory_unaccounted_not_objmap() {
   
   retval = 0;
   if(prof.profile_objmap.memory_unaccounted_not_objmap_file) {
-    line = NULL;
-    size = 0;
+    line = internal_malloc(64);
+    size = 64;
     err = getline(&line, &size, prof.profile_objmap.memory_unaccounted_not_objmap_file);
     if(err < 0) {
       return 0;
     }
     retval = strtoull(line, NULL, 10);
+    internal_free(line);
   }
   
   fclose(prof.profile_objmap.memory_unaccounted_not_objmap_file);
@@ -60,7 +59,7 @@ unsigned long long get_cgroup_memory_current() {
   char *line;
   ssize_t err;
   
-  prof.profile_objmap.memory_current_file = fopen("/sys/fs/cgroup/0/memory.current", "r");
+  prof.profile_objmap.memory_current_file = fopen("/sys/fs/cgroup/unified/0/memory.current", "r");
   if(!prof.profile_objmap.memory_current_file) {
     fprintf(stderr, "Failed to open memory_current file. Continuing anyway.\n");
     return 0;
@@ -68,13 +67,14 @@ unsigned long long get_cgroup_memory_current() {
   
   retval = 0;
   if(prof.profile_objmap.memory_current_file) {
-    line = NULL;
-    size = 0;
+    line = internal_malloc(64);
+    size = 64;
     err = getline(&line, &size, prof.profile_objmap.memory_current_file);
     if(err < 0) {
       return 0;
     }
     retval = strtoull(line, NULL, 10);
+    internal_free(line);
   }
   
   fclose(prof.profile_objmap.memory_current_file);
@@ -88,7 +88,7 @@ unsigned long long get_cgroup_node0_current() {
   char *line;
   ssize_t err;
   
-  prof.profile_objmap.node0_current_file = fopen("/sys/fs/cgroup/0/memory.node0_current", "r");
+  prof.profile_objmap.node0_current_file = fopen("/sys/fs/cgroup/unified/0/memory.node0_current", "r");
   if(!prof.profile_objmap.node0_current_file) {
     fprintf(stderr, "Failed to open node0_current file. Continuing anyway.\n");
     return 0;
@@ -96,13 +96,14 @@ unsigned long long get_cgroup_node0_current() {
   
   retval = 0;
   if(prof.profile_objmap.node0_current_file) {
-    line = NULL;
-    size = 0;
+    line = internal_malloc(64);
+    size = 64;
     err = getline(&line, &size, prof.profile_objmap.node0_current_file);
     if(err < 0) {
       return 0;
     }
     retval = strtoull(line, NULL, 10);
+    internal_free(line);
   }
   
   fclose(prof.profile_objmap.node0_current_file);
@@ -116,7 +117,7 @@ unsigned long long get_cgroup_node1_current() {
   char *line;
   ssize_t err;
   
-  prof.profile_objmap.node1_current_file = fopen("/sys/fs/cgroup/0/memory.node1_current", "r");
+  prof.profile_objmap.node1_current_file = fopen("/sys/fs/cgroup/unified/0/memory.node1_current", "r");
   if(!prof.profile_objmap.node1_current_file) {
     fprintf(stderr, "Failed to open node1_current file. Continuing anyway.\n");
     return 0;
@@ -124,13 +125,14 @@ unsigned long long get_cgroup_node1_current() {
   
   retval = 0;
   if(prof.profile_objmap.node1_current_file) {
-    line = NULL;
-    size = 0;
+    line = internal_malloc(64);
+    size = 64;
     err = getline(&line, &size, prof.profile_objmap.node1_current_file);
     if(err < 0) {
       return 0;
     }
     retval = strtoull(line, NULL, 10);
+    internal_free(line);
   }
   
   fclose(prof.profile_objmap.node1_current_file);
@@ -144,52 +146,25 @@ unsigned long long get_cgroup_node0_max() {
   char *line;
   ssize_t err;
   
-  prof.profile_objmap.node0_max_file = fopen("/sys/fs/cgroup/0/memory.node0_max", "r");
+  prof.profile_objmap.node0_max_file = fopen("/sys/fs/cgroup/unified/0/memory.node0_max", "r");
   if(!prof.profile_objmap.node0_max_file) {
     fprintf(stderr, "Failed to open node0_max file. Continuing anyway.\n");
   }
   
   retval = 0;
   if(prof.profile_objmap.node0_max_file) {
-    line = NULL;
-    size = 0;
+    line = internal_malloc(64);
+    size = 64;
     err = getline(&line, &size, prof.profile_objmap.node0_max_file);
     if(err < 0) {
       return 0;
     }
     retval = strtoull(line, NULL, 10);
+    internal_free(line);
   }
   fclose(prof.profile_objmap.node0_max_file);
   
   return retval;
-}
-
-size_t get_rss() {
-  char *line, *value_ptr;
-  size_t value, size, total;
-
-  line = NULL;
-  size = 0;
-  total = 0;
-  while (getline(&line, &size, prof.profile_objmap.smaps_file) > 0) {
-    if (!strstr(line, RSS)) {
-      free(line);
-      line = NULL;
-      size = 0;
-      continue;
-    }
-
-    value_ptr = line + strlen(RSS);
-    if (sscanf(value_ptr, "%zu kB", &value) < 1) {
-      fprintf(stderr, "Failed to get an RSS from smaps. Aborting.\n");
-      exit(1);
-    }
-    total += value;
-  }
-  fseek(prof.profile_objmap.smaps_file, 0, SEEK_SET);
-
-  /* The return value here is in bytes */
-  return total * 1024;
 }
 
 void profile_objmap_arena_init(per_arena_profile_objmap_info *info) {
@@ -229,7 +204,7 @@ void *profile_objmap(void *a) {
 
 /* Just copies the previous value */
 void profile_objmap_skip_interval(int s) {
-  get_profile_objmap_prof()->time = 0;
+  get_objmap_prof()->time = 0;
 }
 
 void profile_objmap_interval(int s) {
@@ -259,15 +234,15 @@ void profile_objmap_interval(int s) {
   }
   
   /* TODO: Fix, because this is very machine-dependent */
-  get_profile_objmap_prof()->upper_current = get_cgroup_node0_current();
-  get_profile_objmap_prof()->lower_current = get_cgroup_node1_current();
-  get_profile_objmap_prof()->cgroup_memory_current = get_cgroup_memory_current();
-  get_profile_objmap_prof()->upper_max = get_cgroup_node0_max();
+  get_objmap_prof()->upper_current = get_cgroup_node0_current();
+  get_objmap_prof()->lower_current = get_cgroup_node1_current();
+  get_objmap_prof()->cgroup_memory_current = get_cgroup_memory_current();
+  get_objmap_prof()->upper_max = get_cgroup_node0_max();
   
   /* Iterate over the chunks */
-  get_profile_objmap_prof()->heap_bytes = 0;
-  get_profile_objmap_prof()->lower_heap_bytes = 0;
-  get_profile_objmap_prof()->upper_heap_bytes = 0;
+  get_objmap_prof()->heap_bytes = 0;
+  get_objmap_prof()->lower_heap_bytes = 0;
+  get_objmap_prof()->upper_heap_bytes = 0;
   extent_arr_for(tracker.extents, i) {
     start = (uint64_t) tracker.extents->arr[i].start;
     end = (uint64_t) tracker.extents->arr[i].end;
@@ -283,7 +258,7 @@ void profile_objmap_interval(int s) {
     if (status == 0) {
       tot = record.n_resident_pages * prof.profile_objmap.pagesize;
       aprof->profile_objmap.current_present_bytes += tot;
-      get_profile_objmap_prof()->heap_bytes += tot;
+      get_objmap_prof()->heap_bytes += tot;
       
       /* Sometimes, `sh_create_extent` and `sh_delete_extent` will cause a deadlock if we don't
          release the lock here, because they grab the `sa->mutex` and then the `extents_lock`;
@@ -294,9 +269,9 @@ void profile_objmap_interval(int s) {
       
       if(dev) {
         if(dev == tracker.upper_device) {
-          get_profile_objmap_prof()->upper_heap_bytes += tot;
+          get_objmap_prof()->upper_heap_bytes += tot;
         } else {
-          get_profile_objmap_prof()->lower_heap_bytes += tot;
+          get_objmap_prof()->lower_heap_bytes += tot;
         }
       }
     }
@@ -306,7 +281,7 @@ void profile_objmap_interval(int s) {
   
   clock_gettime(CLOCK_MONOTONIC, &end_time);
   timespec_diff(&start_time, &end_time, &actual);
-  get_profile_objmap_prof()->time = actual.tv_sec + (((double) actual.tv_nsec) / 1000000000);
+  get_objmap_prof()->time = actual.tv_sec + (((double) actual.tv_nsec) / 1000000000);
 }
 
 void profile_objmap_post_interval(arena_profile *info) {

@@ -2,7 +2,7 @@
 
 #include <inttypes.h>
 #include <stdatomic.h>
-#include "sicm_malloc_free.h"
+#include "sicm_internal_alloc.h"
 #include "sicm_low.h"
 #include "sicm_tree.h"
 
@@ -14,14 +14,8 @@ typedef struct sarena sarena;
 #endif
 
 extern atomic_int sh_initialized;
-extern void *(*orig_malloc_ptr)(size_t);
-extern void *(*orig_valloc_ptr)(size_t);
-extern void *(*orig_calloc_ptr)(size_t, size_t);
-extern void *(*orig_realloc_ptr)(void *, size_t);
-extern void (*orig_free_ptr)(void *);
 
 static atomic_size_t unaccounted = 0;
-extern atomic_size_t sicm_mem_usage;
 
 enum arena_layout {
   ONE_ARENA, /* One arena */
@@ -130,14 +124,13 @@ typedef struct profiling_options {
   int should_run_rdspy;
   int profile_latency_set_multipliers;
   int print_profile_intervals;
-  int profile_bw_relative;
-  size_t num_profile_all_multipliers;
-  float *profile_all_multipliers;
+  size_t num_profile_pebs_multipliers;
+  float *profile_pebs_multipliers;
 
   /* Sample rates */
   size_t profile_rate_nseconds;
   unsigned long profile_rss_skip_intervals,
-                profile_all_skip_intervals,
+                profile_pebs_skip_intervals,
                 profile_bw_skip_intervals,
                 profile_latency_skip_intervals,
                 profile_extent_size_skip_intervals,
@@ -153,28 +146,25 @@ typedef struct profiling_options {
   FILE *profile_online_debug_file; /* For the verbose online approach */
 
   /* Online */
-  float profile_online_reconf_weight_ratio;
   char profile_online_nobind;
   float profile_online_last_iter_value;
   float profile_online_last_iter_weight;
   unsigned long profile_online_grace_accesses;
-  size_t profile_online_hot_intervals;
   int profile_online_use_last_interval;
-  char profile_online_orig; /* Online strat */
-  char profile_online_ski; /* Online strat */
   char *profile_online_value;
   char *profile_online_weight;
   char *profile_online_sort;
   char *profile_online_packing_algo;
   size_t profile_online_value_threshold;
+  float profile_online_alpha;
 
-  /* Array of cpu numbers for profile_all */
-  size_t num_profile_all_cpus;
-  int *profile_all_cpus;
+  /* Array of cpu numbers for profile_pebs */
+  size_t num_profile_pebs_cpus;
+  int *profile_pebs_cpus;
 
-  /* Array of strings for profile_all events */
-  size_t num_profile_all_events;
-  char **profile_all_events;
+  /* Array of strings for profile_pebs events */
+  size_t num_profile_pebs_events;
+  char **profile_pebs_events;
 
   /* Array of sockets to profile on, and one CPU per socket to use to profile */
   size_t num_profile_skt_cpus;
@@ -204,6 +194,7 @@ void sh_start_profile_master_thread();
 void sh_stop_profile_master_thread();
 void sh_create_extent(sarena *arena, void *begin, void *end);
 void sh_delete_extent(sarena *arena, void *begin, void *end);
+void sh_split_extent(sarena *arena, void *begin, void *end, size_t size);
 int get_arena_index(int id, size_t sz);
 void set_site_device(int id, deviceptr device);
 sicm_device *get_arena_device(int index);
@@ -236,7 +227,7 @@ extern "C" {
 /* Used to determine which types of profiling are enabled */
 #define should_profile() \
   profopts.profile_type_flags
-#define should_profile_all() \
+#define should_profile_pebs() \
   profopts.profile_type_flags & (1 << 0)
 #define should_profile_rss() \
   profopts.profile_type_flags & (1 << 1)
@@ -254,7 +245,7 @@ extern "C" {
   profopts.profile_type_flags & (1 << 7)
   
 /* Used to set which types of profiling are enabled */
-#define enable_profile_all() \
+#define enable_profile_pebs() \
   profopts.profile_type_flags = profopts.profile_type_flags | 1
 #define enable_profile_rss() \
   profopts.profile_type_flags = profopts.profile_type_flags | (1 << 1)

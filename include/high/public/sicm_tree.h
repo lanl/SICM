@@ -14,7 +14,7 @@
 #include <stdint.h>
 #include <stdlib.h> /* malloc, free */
 #include <string.h> /* memcpy */
-#include "sicm_malloc_free.h"
+#include "sicm_internal_alloc.h"
 
 #define tree_make(K_T, V_T) (CAT2(tree(K_T, V_T), _make)(NULL))
 #define tree_make_c(K_T, V_T, CMP) (CAT2(tree(K_T, V_T), _make)(CMP))
@@ -150,7 +150,7 @@
     static inline tree_node(K_T, V_T)                                          \
         CAT2(tree_node(K_T, V_T), _make)(K_T key, V_T val) {                   \
         tree_node(K_T, V_T) node =                                             \
-            (tree_node(K_T, V_T))orig_malloc(sizeof(struct _tree_node(K_T, V_T)));  \
+            (tree_node(K_T, V_T))internal_malloc(sizeof(struct _tree_node(K_T, V_T)));  \
                                                                                \
         node->_red = 1;                                                        \
         node->_children[0] = node->_children[1] = node->_parent = NULL;        \
@@ -165,7 +165,7 @@
         if (node) {                                                            \
             CAT2(tree_node(K_T, V_T), _free)(node->_children[0]);              \
             CAT2(tree_node(K_T, V_T), _free)(node->_children[1]);              \
-            orig_free(node);                                                   \
+            internal_free(node);                                                   \
         }                                                                      \
     }                                                                          \
                                                                                \
@@ -493,7 +493,7 @@
     static inline void CAT2(tree(K_T, V_T), _free)(tree(K_T, V_T) t) {         \
         if (t->_root)                                                          \
             CAT2(tree_node(K_T, V_T), _free)(t->_root);                        \
-        orig_free(t);                                                          \
+        internal_free(t);                                                          \
     }                                                                          \
                                                                                \
     static inline tree_it(K_T, V_T)                                            \
@@ -530,7 +530,7 @@
                                                                                \
     static inline tree(K_T, V_T) CAT2(tree(K_T, V_T), _make)(void * cmp) {     \
         tree(K_T, V_T) t =                                                     \
-            (tree(K_T, V_T))orig_malloc(sizeof(struct _tree(K_T, V_T)));       \
+            (tree(K_T, V_T))internal_malloc(sizeof(struct _tree(K_T, V_T)));       \
                                                                                \
         struct _tree(K_T, V_T)                                                 \
             init = {._root = NULL,                                             \

@@ -15,11 +15,11 @@
 #include "sicm_parsing.h"
 
 /* Value flags */
-#define PROFILE_ALL_TOTAL 1<<0
-#define PROFILE_ALL_CURRENT 1<<1
+#define PROFILE_PEBS_TOTAL 1<<0
+#define PROFILE_PEBS_CURRENT 1<<1
 #define PROFILE_BW_RELATIVE_TOTAL 1<<2
 #define PROFILE_BW_RELATIVE_CURRENT 1<<3
-#define PROFILE_ALL_TOTAL_CAPPED 1<<4
+#define PROFILE_BW_RELATIVE_ALPHA 1<<4
 
 /* Weight flags */
 #define PROFILE_ALLOCS_PEAK 1<<0
@@ -46,14 +46,16 @@
 #define DEFAULT_SORT VALUE_PER_WEIGHT
 
 char *sh_packing_value_str(unsigned int flag) {
-  if(flag == PROFILE_ALL_TOTAL) {
-    return "profile_all_total";
-  } else if(flag == PROFILE_ALL_CURRENT) {
-    return "profile_all_current";
+  if(flag == PROFILE_PEBS_TOTAL) {
+    return "profile_pebs_total";
+  } else if(flag == PROFILE_PEBS_CURRENT) {
+    return "profile_pebs_current";
   } else if(flag == PROFILE_BW_RELATIVE_TOTAL) {
     return "profile_bw_relative_total";
   } else if(flag == PROFILE_BW_RELATIVE_CURRENT) {
     return "profile_bw_relative_current";
+  } else if(flag == PROFILE_BW_RELATIVE_ALPHA) {
+    return "profile_bw_relative_alpha";
   } else {
     fprintf(stderr, "Invalid value flag. Aborting.\n");
     exit(1);
@@ -61,14 +63,16 @@ char *sh_packing_value_str(unsigned int flag) {
 }
 
 unsigned int sh_packing_value_flag(char *flag) {
-  if(strcmp(flag, "profile_all_total") == 0) {
-    return PROFILE_ALL_TOTAL;
-  } else if(strcmp(flag, "profile_all_current") == 0) {
-    return PROFILE_ALL_CURRENT;
+  if(strcmp(flag, "profile_pebs_total") == 0) {
+    return PROFILE_PEBS_TOTAL;
+  } else if(strcmp(flag, "profile_pebs_current") == 0) {
+    return PROFILE_PEBS_CURRENT;
   } else if(strcmp(flag, "profile_bw_relative_total") == 0) {
     return PROFILE_BW_RELATIVE_TOTAL;
   } else if(strcmp(flag, "profile_bw_relative_current") == 0) {
     return PROFILE_BW_RELATIVE_CURRENT;
+  } else if(strcmp(flag, "profile_bw_relative_alpha") == 0) {
+    return PROFILE_BW_RELATIVE_ALPHA;
   } else {
     fprintf(stderr, "Invalid value string. Aborting.\n");
     exit(1);
@@ -181,18 +185,22 @@ typedef struct packing_options {
   unsigned int algo : 4;
   unsigned int sort : 3;
   
-  /* Only for PROFILE_ALL_TOTAL and PROFILE_ALL_CURRENT.
+  /* Only for PROFILE_PEBS_TOTAL and PROFILE_PEBS_CURRENT.
      Array of floats to weight each event by. */
-  size_t num_profile_all_events,
+  size_t num_profile_pebs_events,
          num_profile_skts;
+         
+  /* Only for PROFILE_BW_RELATIVE_ALPHA. Floating-point value
+     to use as an alpha value for weighting the "past" and "current"
+     intervals. */
+  float alpha;
   
   FILE *debug_file;
 } packing_options;
 static packing_options *packopts = NULL;
 
 typedef struct site_profile_info {
-  size_t value, weight, num_hot_intervals,
-         *value_arr;
+  size_t value, weight, *value_arr;
   double value_per_weight;
   int index;
   char dev, hot;
@@ -205,34 +213,88 @@ use_tree(site_info_ptr, int);
 use_tree(int, site_info_ptr);
 #endif
 
+site_info_ptr copy_site_profile_info(site_info_ptr src) {
+  site_info_ptr dest;
+  
+  dest = internal_malloc(sizeof(site_profile_info));
+  memcpy(dest, src, sizeof(site_profile_info));
+  dest->value_arr = internal_malloc(sizeof(size_t) * packopts->num_profile_pebs_events);
+  memcpy(dest->value_arr, src->value_arr, sizeof(size_t) * packopts->num_profile_pebs_events);
+      
+  return dest;
+}
+
+/* Returns a deep-copied site tree */
+tree(site_info_ptr, int) copy_site_tree(tree(site_info_ptr, int) input) {
+  tree(site_info_ptr, int) output;
+  tree_it(site_info_ptr, int) sit;
+  
+  output = tree_make(site_info_ptr, int);
+  tree_traverse(input, sit) {
+    tree_insert(output, copy_site_profile_info(tree_it_key(sit)), tree_it_val(sit));
+  }
+  
+  return output;
+}
+
+/* Frees up a site tree */
+void free_site_tree(tree(site_info_ptr, int) input) {
+  tree_it(site_info_ptr, int) sit;
+  
+  tree_traverse(input, sit) {
+    if(tree_it_key(sit)) {
+      if(tree_it_key(sit)->value_arr) {
+        internal_free(tree_it_key(sit)->value_arr);
+      }
+      internal_free(tree_it_key(sit));
+    }
+  }
+  tree_free(input);
+}
+
 /* Gets a value for the given arena in aprof, and sets `value` and `value_arr` */
 static inline void set_value(arena_profile *aprof,
                              site_info_ptr site) {
-  size_t i, tmp;
+  size_t i, tmp,
+         past, cur;
 
   site->value = 0;
-  if(packopts->value == PROFILE_ALL_TOTAL) {
-    site->value_arr = malloc(sizeof(size_t) * packopts->num_profile_all_events);
-    for(i = 0; i < packopts->num_profile_all_events; i++) {
-      tmp = (aprof->profile_all.events[i].total);
+  if(packopts->value == PROFILE_PEBS_TOTAL) {
+    site->value_arr = internal_malloc(sizeof(size_t) * packopts->num_profile_pebs_events);
+    for(i = 0; i < packopts->num_profile_pebs_events; i++) {
+      tmp = (aprof->profile_pebs.events[i].total);
       site->value += tmp;
       site->value_arr[i] = tmp;
     }
-  } else if(packopts->value == PROFILE_ALL_CURRENT) {
-    site->value_arr = malloc(sizeof(size_t) * packopts->num_profile_all_events);
-    for(i = 0; i < packopts->num_profile_all_events; i++) {
-      tmp = (aprof->profile_all.events[i].current);
+  } else if(packopts->value == PROFILE_PEBS_CURRENT) {
+    site->value_arr = internal_malloc(sizeof(size_t) * packopts->num_profile_pebs_events);
+    for(i = 0; i < packopts->num_profile_pebs_events; i++) {
+      tmp = (aprof->profile_pebs.events[i].current);
       site->value += tmp;
       site->value_arr[i] = tmp;
     }
   } else if(packopts->value == PROFILE_BW_RELATIVE_TOTAL) {
-    site->value_arr = malloc(sizeof(size_t));
-    site->value_arr[0] = aprof->profile_bw.total;
-    site->value = aprof->profile_bw.total;
+    site->value_arr = internal_malloc(sizeof(size_t) * packopts->num_profile_pebs_events);
+    for(i = 0; i < packopts->num_profile_pebs_events; i++) {
+      tmp = (aprof->profile_bw.events[i].total);
+      site->value += tmp;
+      site->value_arr[i] = tmp;
+    }
   } else if(packopts->value == PROFILE_BW_RELATIVE_CURRENT) {
-    site->value_arr = malloc(sizeof(size_t));
-    site->value_arr[0] = aprof->profile_bw.current;
-    site->value = aprof->profile_bw.current;
+    site->value_arr = internal_malloc(sizeof(size_t) * packopts->num_profile_pebs_events);
+    for(i = 0; i < packopts->num_profile_pebs_events; i++) {
+      tmp = (aprof->profile_bw.events[i].current);
+      site->value += tmp;
+      site->value_arr[i] = tmp;
+    }
+  } else if(packopts->value == PROFILE_BW_RELATIVE_ALPHA) {
+    site->value_arr = internal_malloc(sizeof(size_t) * packopts->num_profile_pebs_events);
+    for(i = 0; i < packopts->num_profile_pebs_events; i++) {
+      past = (aprof->profile_bw.events[i].total) - (aprof->profile_bw.events[i].current);
+      cur = aprof->profile_bw.events[i].current;
+      site->value += (((1 - packopts->alpha) * past) + (packopts->alpha * cur));
+      site->value_arr[i] = ((1 - packopts->alpha) * past) + (packopts->alpha * cur);
+    }
   } else {
     fprintf(stderr, "Invalid value type detected. Aborting.\n");
     exit(1);
@@ -335,7 +397,7 @@ static tree(site_info_ptr, int) sh_merge_site_trees(tree(site_info_ptr, int) fir
   merged = tree_make_c(site_info_ptr, int, &site_tree_cmp);
   tree_traverse(second, sit) {
     fit = tree_lookup(new_first, tree_it_val(sit));
-    site = orig_malloc(sizeof(site_profile_info));
+    site = internal_malloc(sizeof(site_profile_info));
     site->index = tree_it_key(sit)->index;
     if(tree_it_good(fit)) {
       site->value = (tree_it_val(fit)->value * value_ratio) + (tree_it_key(sit)->value * (1 - value_ratio));
@@ -398,33 +460,30 @@ static tree(site_info_ptr, int) sh_convert_to_site_tree(application_profile *inf
     if(aprof->invalid) {
       if(invalid_weight) {
         *invalid_weight += get_weight(aprof);
+        if(packopts->debug_file) {
+          fprintf(packopts->debug_file, "Arena %zu bumped invalid_weight by %zu bytes.\n", i, get_weight(aprof));
+        }
       }
       continue;
     }
 
-    site = orig_malloc(sizeof(site_profile_info));
+    site = internal_malloc(sizeof(site_profile_info));
     set_value(aprof, site);
     site->weight = get_weight(aprof);
     site->value_per_weight = ((double) site->value) / site->weight;
     site->index = aprof->index;
     site->dev = aprof->profile_online.dev;
     site->hot = aprof->profile_online.hot;
-    site->num_hot_intervals = aprof->profile_online.num_hot_intervals;
 
     for(n = 0; n < aprof->num_alloc_sites; n++) {
       /* We make a copy of this struct for each site to aid freeing this up in the future */
-      site_copy = orig_malloc(sizeof(site_profile_info));
+      site_copy = internal_malloc(sizeof(site_profile_info));
       memcpy(site_copy, site, sizeof(site_profile_info));
       tree_insert(site_tree, site_copy, aprof->alloc_sites[n]);
     }
-    orig_free(site);
+    internal_free(site);
   }
   
-  if(packopts->debug_file) {
-    fprintf(packopts->debug_file, "Invalid weight is: %zu\n", *invalid_weight);
-    fflush(packopts->debug_file);
-  }
-
   return site_tree;
 }
 
@@ -507,10 +566,16 @@ static tree(int, site_info_ptr) get_knapsack(tree(site_info_ptr, int) site_tree,
    * sites and 'j' is the number of weights (multiples of the gcd, though). We
    * can find 'j' by dividing the peak RSS of the whole application by the GCD.
    */
+  knapsack = tree_make(int, site_info_ptr);
   gcd = get_gcd(site_tree);
+  if(gcd == 0) {
+    /* This most likely means that there are either zero sites,
+       or one of their weights is zero. Return an empty hotset. */
+    return knapsack;
+  }
   num_sites = tree_len(site_tree);
   num_weights = (capacity / gcd) + 1;
-  table = malloc(sizeof(size_t) * (num_sites + 1));
+  table = internal_malloc(sizeof(size_t) * (num_sites + 1));
   for(i = 0; i <= num_sites; i++) {
     table[i] = calloc(num_weights, sizeof(size_t));
   }
@@ -547,7 +612,6 @@ static tree(int, site_info_ptr) get_knapsack(tree(site_info_ptr, int) site_tree,
   /* Now figure out which sites that included by walking
    * the table backwards and accumulating the sites in the
    * output structure */
-  knapsack = tree_make(int, site_info_ptr);
   sit = tree_last(site_tree);
   i = num_sites;
   j = num_weights - 1;
@@ -573,9 +637,9 @@ static tree(int, site_info_ptr) get_knapsack(tree(site_info_ptr, int) site_tree,
   }
 
   for(i = 0; i <= num_sites; i++) {
-    free(table[i]);
+    internal_free(table[i]);
   }
-  free(table);
+  internal_free(table);
 
   return knapsack;
 }
@@ -589,11 +653,11 @@ static tree(int, site_info_ptr) get_debug(tree(site_info_ptr, int) site_tree, si
   ret = tree_make(int, site_info_ptr);
 
   break_next_site = 0;
-  packed_size = invalid_weight + 2147483648;
+  packed_size = invalid_weight;
   tree_traverse(site_tree, sit) {
     /* If we're over capacity, break. We've already added the site,
      * so we overflow by exactly one site. */
-    if(packed_size >= capacity) {
+    if((packed_size + tree_it_key(sit)->weight) >= capacity) {
       break;
     }
     /* Ignore the site if the value is zero. */
@@ -793,14 +857,15 @@ static void sh_packing_init(application_profile *info, packing_options **opts) {
   }
   
   if(!packopts) {
-    packopts = orig_calloc(sizeof(char), sizeof(packing_options));
+    packopts = internal_calloc(sizeof(char), sizeof(packing_options));
+    packopts->alpha = -1.0;
   }
 
   if(!(packopts->value)) {
     if(info->has_profile_bw_relative) {
       packopts->value = PROFILE_BW_RELATIVE_TOTAL;
-    } else if(info->has_profile_all) {
-      packopts->value = PROFILE_ALL_TOTAL;
+    } else if(info->has_profile_pebs) {
+      packopts->value = PROFILE_PEBS_TOTAL;
     } else {
       fprintf(stderr, "No value profiling specified, and no value profiling found in the application_profile. Aborting.\n");
       exit(1);
@@ -825,12 +890,16 @@ static void sh_packing_init(application_profile *info, packing_options **opts) {
   if(!(packopts->sort)) {
     packopts->sort = DEFAULT_SORT;
   }
+  if((packopts->alpha == -1.0) && (packopts->value == PROFILE_BW_RELATIVE_ALPHA)) {
+    fprintf(stderr, "User chose to use PROFILE_BW_RELATIVE_ALPHA, but provided no alpha value. Aborting.\n");
+    exit(1);
+  }
   
   /* Check to make sure the application_profile has the right
      profiling information to fulfill the user's choices. */
-  if(((packopts->value == PROFILE_ALL_TOTAL) || (packopts->value == PROFILE_ALL_CURRENT)) &&
-     !(info->has_profile_all)) {
-    fprintf(stderr, "User chose to use PROFILE_ALL_*, but the application_profile doesn't have that in it.\n");
+  if(((packopts->value == PROFILE_PEBS_TOTAL) || (packopts->value == PROFILE_PEBS_CURRENT)) &&
+     !(info->has_profile_pebs)) {
+    fprintf(stderr, "User chose to use PROFILE_PEBS_*, but the application_profile doesn't have that in it.\n");
     exit(1);
   }
   if(((packopts->value == PROFILE_BW_RELATIVE_TOTAL) || (packopts->value == PROFILE_BW_RELATIVE_CURRENT)) &&
@@ -839,11 +908,9 @@ static void sh_packing_init(application_profile *info, packing_options **opts) {
     exit(1);
   }
   
-  /* Keep track of the number of profile_all and profile_bw events */
-  if((packopts->value == PROFILE_ALL_TOTAL) ||
-     (packopts->value == PROFILE_ALL_CURRENT)) {
-    packopts->num_profile_all_events = info->num_profile_all_events;
-  }
+  /* Keep track of the number of profile_pebs and profile_bw events */
+  packopts->num_profile_pebs_events = info->num_profile_pebs_events;
+  
   if(packopts->value == PROFILE_BW_RELATIVE_TOTAL) {
     packopts->num_profile_skts = info->num_profile_skts;
   }
@@ -855,6 +922,7 @@ static void sh_packing_init(application_profile *info, packing_options **opts) {
     fprintf(packopts->debug_file, "Weight: %s\n", sh_packing_weight_str(packopts->weight));
     fprintf(packopts->debug_file, "Algo: %s\n", sh_packing_algo_str(packopts->algo));
     fprintf(packopts->debug_file, "Sort: %s\n", sh_packing_sort_str(packopts->sort));
+    fprintf(packopts->debug_file, "Alpha: %f\n", packopts->alpha);
     fprintf(packopts->debug_file, "===== END PACKING OPTIONS =====\n");
   }
   

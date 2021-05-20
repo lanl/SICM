@@ -63,11 +63,11 @@ void create_arena_profile(int index, int site_id, char invalid) {
     exit(1);
   }
   
-  aprof = orig_valloc(sizeof(arena_profile));
+  aprof = internal_valloc(sizeof(arena_profile));
   memset(aprof, 0, sizeof(arena_profile));
 
-  if(should_profile_all()) {
-    profile_all_arena_init(&(aprof->profile_all));
+  if(should_profile_pebs()) {
+    profile_pebs_arena_init(&(aprof->profile_pebs));
   }
   if(should_profile_rss()) {
     profile_rss_arena_init(&(aprof->profile_rss));
@@ -84,12 +84,15 @@ void create_arena_profile(int index, int site_id, char invalid) {
   if(should_profile_online()) {
     profile_online_arena_init(&(aprof->profile_online));
   }
+  if(should_profile_bw()) {
+    profile_bw_arena_init(&(aprof->profile_bw));
+  }
 
   /* Creates a profile for this arena at the current interval */
   aprof->index = index;
   aprof->invalid = invalid;
   aprof->num_alloc_sites = 1;
-  aprof->alloc_sites = orig_malloc(sizeof(int) * tracker.max_sites_per_arena);
+  aprof->alloc_sites = internal_malloc(sizeof(int) * tracker.max_sites_per_arena);
   aprof->alloc_sites[0] = site_id;
   prof.cur_interval.num_arenas++;
   if(index > prof.cur_interval.max_index) {
@@ -106,7 +109,7 @@ void create_extent_objmap_entry(void *start, void *end) {
   
   err = objmap_add_range(&prof.profile_objmap.objmap, start, end);
   if (err < 0) {
-    fprintf(stderr, "Couldn't add extent to object_map (error = %d). Aborting.\n", err);
+    fprintf(stderr, "Couldn't add extent (start=%p, end=%p) to object_map (error = %d). Aborting.\n", start, end, err);
     exit(1);
   }
 }
@@ -195,8 +198,8 @@ void profile_master_interval(int s) {
   aprof_arr_for(i, aprof) {
     aprof_check_good(i, aprof);
 
-    if(should_profile_all()) {
-      profile_all_post_interval(aprof);
+    if(should_profile_pebs()) {
+      profile_pebs_post_interval(aprof);
     }
     if(should_profile_rss()) {
       profile_rss_post_interval(aprof);
@@ -261,7 +264,7 @@ void setup_profile_thread(void *(*main)(void *), /* Spinning loop function */
 
   /* Add a new profile_thread struct for it */
   prof.num_profile_threads++;
-  prof.profile_threads = orig_realloc(prof.profile_threads, sizeof(profile_thread) * prof.num_profile_threads);
+  prof.profile_threads = internal_realloc(prof.profile_threads, sizeof(profile_thread) * prof.num_profile_threads);
   profthread = &(prof.profile_threads[prof.num_profile_threads - 1]);
 
   profthread->interval_func      = interval;
@@ -295,11 +298,11 @@ void *profile_master(void *a) {
                          &profile_latency_skip_interval,
                          profopts.profile_latency_skip_intervals);
   }
-  if(should_profile_all()) {
-    setup_profile_thread(&profile_all,
-                         &profile_all_interval,
-                         &profile_all_skip_interval,
-                         profopts.profile_all_skip_intervals);
+  if(should_profile_pebs()) {
+    setup_profile_thread(&profile_pebs,
+                         &profile_pebs_interval,
+                         &profile_pebs_skip_interval,
+                         profopts.profile_pebs_skip_intervals);
   }
   if(should_profile_rss()) {
     setup_profile_thread(&profile_rss,
@@ -404,8 +407,8 @@ void init_application_profile(application_profile *profile) {
   prof.profile->intervals = NULL;
   
   /* Set flags for what type of profiling we'll store */
-  if(should_profile_all()) {
-    prof.profile->has_profile_all = 1;
+  if(should_profile_pebs()) {
+    prof.profile->has_profile_pebs = 1;
   }
   if(should_profile_rss()) {
     prof.profile->has_profile_rss = 1;
@@ -428,7 +431,7 @@ void init_application_profile(application_profile *profile) {
   if(should_profile_latency()) {
     prof.profile->has_profile_latency = 1;
   }
-  if(profopts.profile_bw_relative) {
+  if(should_profile_pebs() && should_profile_bw()) {
     prof.profile->has_profile_bw_relative = 1;
   }
 }
@@ -444,30 +447,30 @@ void initialize_profiling() {
   }
 
   /* Initialize the structs that store the profiling information */
-  prof.profile = orig_calloc(1, sizeof(application_profile));
+  prof.profile = internal_calloc(1, sizeof(application_profile));
   init_application_profile(prof.profile);
 
   /* Stores the current interval's profiling */
   prof.cur_interval.num_arenas = 0;
   prof.cur_interval.max_index = 0;
-  prof.cur_interval.arenas = orig_calloc(tracker.max_arenas, sizeof(arena_profile *));
+  prof.cur_interval.arenas = internal_calloc(tracker.max_arenas, sizeof(arena_profile *));
 
-  /* Store the profile_all event strings */
-  prof.profile->num_profile_all_events = profopts.num_profile_all_events;
-  prof.profile->profile_all_events = orig_calloc(prof.profile->num_profile_all_events, sizeof(char *));
-  for(i = 0; i < profopts.num_profile_all_events; i++) {
-    prof.profile->profile_all_events[i] = orig_malloc((strlen(profopts.profile_all_events[i]) + 1) * sizeof(char));
-    strcpy(prof.profile->profile_all_events[i], profopts.profile_all_events[i]);
+  /* Store the profile_pebs event strings */
+  prof.profile->num_profile_pebs_events = profopts.num_profile_pebs_events;
+  prof.profile->profile_pebs_events = internal_calloc(prof.profile->num_profile_pebs_events, sizeof(char *));
+  for(i = 0; i < profopts.num_profile_pebs_events; i++) {
+    prof.profile->profile_pebs_events[i] = internal_malloc((strlen(profopts.profile_pebs_events[i]) + 1) * sizeof(char));
+    strcpy(prof.profile->profile_pebs_events[i], profopts.profile_pebs_events[i]);
   }
-  printf("Number of PROFILE_ALL events: %zu\n", profopts.num_profile_all_events);
-  fflush(stdout);
   
+  #if 0
   /* Store which sockets we profiled */
   prof.profile->num_profile_skts = profopts.num_profile_skt_cpus;
-  prof.profile->profile_skts = orig_calloc(prof.profile->num_profile_skts, sizeof(int));
-  for(i = 0; i < profopts.num_profile_skt_cpus; i++) {
+  prof.profile->profile_skts = internal_calloc(prof.profile->num_profile_skts, sizeof(int));
+  for(i = 0; i < prof.profile->num_profile_skts; i++) {
     prof.profile->profile_skts[i] = profopts.profile_skts[i];
   }
+  #endif
   
   /* The signal that will stop the master thread */
   global_signal = SIGRTMIN;
@@ -484,8 +487,8 @@ void initialize_profiling() {
    * the current thread, but instead will only profile the thread that
    * it was run in.
    */
-  if(should_profile_all()) {
-    profile_all_init();
+  if(should_profile_pebs()) {
+    profile_pebs_init();
   }
   if(should_profile_rss()) {
     profile_rss_init();
@@ -535,8 +538,8 @@ void sh_start_profile_master_thread() {
 }
 
 void deinitialize_profiling() {
-  if(should_profile_all()) {
-    profile_all_deinit();
+  if(should_profile_pebs()) {
+    profile_pebs_deinit();
   }
   if(should_profile_rss()) {
     profile_rss_deinit();

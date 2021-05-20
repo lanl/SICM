@@ -21,6 +21,7 @@ static pthread_key_t sa_default_key;
 static extent_hooks_t sa_hooks;
 void (*sicm_extent_alloc_callback)(sarena *arena, void *start, void *end) = NULL;
 void (*sicm_extent_dalloc_callback)(sarena *arena, void *start, void *end) = NULL;
+void (*sicm_extent_split_callback)(sarena *arena, void *start, void *end, size_t size) = NULL;
 
 static void sarena_init() {
 	int err;
@@ -254,9 +255,6 @@ static void sicm_arena_range_move(void *aux, void *start, void *end) {
   if (!(sa->flags & SICM_MOVE_RELAXED)) {
     flags = MPOL_MF_MOVE;
   }
-  if (sa->flags & SICM_MOVE_LAZY) {
-    flags |= MPOL_MF_LAZY;
-  }
   
 	err = mbind((void *) start, (char*) end - (char*) start, mpol, nodemaskp, maxnode, flags);
 	if (err < 0 && sa->err == 0)
@@ -302,13 +300,12 @@ int sicm_arena_set_devices(sicm_arena a, sicm_device_list *devs) {
 		}
 		// TODO: not sure what to do if moving back fails
 		numa_free_nodemask(nodemask);
-    pthread_mutex_unlock(sa->mutex);
-		return sa->err;
+    err = sa->err;
 	} else {
 		sa->devs.count = devs->count;
 		sa->devs.devices = realloc(sa->devs.devices, devs->count * sizeof(sicm_device *));
 		memcpy(sa->devs.devices, devs->devices, devs->count * sizeof(sicm_device *));
-		numa_free_nodemask(oldnodemask);
+		//numa_free_nodemask(oldnodemask);
 	}
 
 	pthread_mutex_unlock(sa->mutex);
@@ -505,10 +502,13 @@ static void *sa_alloc(extent_hooks_t *h, void *new_addr, size_t size, size_t ali
 	int oldmode, mmflags;
 	void *ret;
 	struct bitmask *oldnodemask;
+  off_t offset;
+  size_t new_size;
 
-	*commit = 1;
+	*commit = 0;
 	*zero = 0;
 	ret = NULL;
+  new_size = size;
 	sa = container_of(h, sarena, hooks);
 
 	// TODO: figure out a way to prevent taking the mutex twice (sa_range_add also takes it)...
@@ -546,12 +546,16 @@ static void *sa_alloc(extent_hooks_t *h, void *new_addr, size_t size, size_t ali
 		goto free_nodemasks;
 	}
 
-	if (sa->fd == -1)
+	if (sa->fd == -1) {
 		mmflags = MAP_ANONYMOUS|MAP_PRIVATE;
-	else
+    offset = 0;
+	} else {
 		mmflags = MAP_SHARED;
+    offset = sa->size;
+  }
+  offset = 0;
 
-	ret = mmap(new_addr, size, PROT_READ | PROT_WRITE, mmflags, sa->fd, sa->size);
+	ret = mmap(new_addr, size, PROT_READ | PROT_WRITE, mmflags, sa->fd, offset);
 	if (ret == MAP_FAILED) {
 		ret = NULL;
 		perror("mmap");
@@ -571,25 +575,25 @@ static void *sa_alloc(extent_hooks_t *h, void *new_addr, size_t size, size_t ali
 	if (new_addr != NULL)
 		goto restore_mempolicy;
 
-	size += alignment;
-	ret = mmap(NULL, size, PROT_READ | PROT_WRITE, mmflags, sa->fd, sa->size);
+	new_size = size + alignment;
+	ret = mmap(NULL, new_size, PROT_READ | PROT_WRITE, mmflags, sa->fd, offset);
 	if (ret == MAP_FAILED) {
 		perror("mmap2");
 		ret = NULL;
 		goto restore_mempolicy;
 	}
 
-	n = (uintptr_t) ret;
-	m = n + alignment - (n%alignment);
-	munmap(ret, m-n);
-	ret = (void *) m;
-  size = size - (m-n);
+  n = (uintptr_t) ret;
+  m = n + alignment - (n % alignment);
+  munmap(ret, m - n);
+  munmap(m + size, n % alignment);
+  ret = (void *) m;
+  fprintf(stderr, "Had to unmap %p-%p and %p-%p to get alignment (%zu).\n", ret, ret + (m-n), ((char *) m) + size, (((char *) m) + size) + n % alignment, alignment);
+  fprintf(stderr, "Allocated %zu, deallocated %zu, left with %zu (should be %zu).\n", size + alignment, (m - n) + (n % alignment), size + alignment - (m - n) - (n % alignment), size);
+  fflush(stderr);
 
 success:
   flags = MPOL_MF_MOVE;
-  if (sa->flags & SICM_MOVE_LAZY) {
-    flags |= MPOL_MF_LAZY;
-  }
 	if (mbind(ret, size, mpol, nodemaskp, maxnode, flags) < 0) {
     perror("mbind");
     fprintf(stderr, "Allocated: %p to %p\nUnmapped: %p to %p\nm: %p", n, n + size, n, n + m - n, m);
@@ -599,9 +603,23 @@ success:
 		goto restore_mempolicy;
 	}
 
+#if 0
+  if (!(alignment == 0 || ((uintptr_t) ret)%alignment == 0)) {
+    n = (uintptr_t) ret;
+    m = n + alignment - (n%alignment);
+    ret = (void *) m;
+    size -= alignment;
+  }
+#endif
+
+#if 0
+  fprintf(stderr, "%p-%p size %zu\n", ret, ret + size, size);
+  fflush(stderr);
+#endif
+
   /* Add the extent to the array of extents */
   extent_arr_insert(sa->extents, ret, (char *)ret + size, NULL);
-
+  
   /* Call the callback on this chunk if it's set */
   if(sicm_extent_alloc_callback) {
     (*sicm_extent_alloc_callback)(sa, ret, (char *)ret + size);
@@ -630,25 +648,80 @@ free_nodemasks:
 
 static bool sa_dalloc(extent_hooks_t *h, void *addr, size_t size, bool committed, unsigned arena_ind) {
 	sarena *sa;
-	bool ret;
+	bool ret, still_searching, partial;
+  size_t i, leftover_size;
+  uint64_t start, end, partial_start, partial_end, target_ptr;
 
 	ret = false;
 	sa = container_of(h, sarena, hooks);
 	pthread_mutex_lock(sa->mutex);
-	extent_arr_delete(sa->extents, addr);
 
-	if (munmap(addr, size) != 0) {
-		fprintf(stderr, "munmap failed: %p %ld\n", addr, size);
-		extent_arr_insert(sa->extents, addr, (char *)addr + size, NULL);
-		ret = true;
-	}
-	sa->size -= size;
-
-	if((!ret) && sicm_extent_dalloc_callback) {
-		(*sicm_extent_dalloc_callback)(sa, addr, (char *)addr + size);
-	}
+  /* We could have actually allocated more than jemalloc asked for, depending on alignment.
+     Therefore we must search for this extent's actual size. */
+  still_searching = true;
+  target_ptr = addr;
+  leftover_size = size;
+  while(still_searching) {
+    partial_start = 0;
+    partial_end = 0;
+    partial = false;
+    extent_arr_for(sa->extents, i) {
+      start = (uint64_t) sa->extents->arr[i].start;
+      end = (uint64_t) sa->extents->arr[i].end;
+      if(start == target_ptr) {
+        if(leftover_size < (end - start)) {
+          /* jemalloc is asking us to only unmap part of this extent */
+          partial_start = start;
+          partial_end = end;
+          partial = true;
+          still_searching = false;
+          target_ptr = NULL;
+        } else if(leftover_size > (end - start)) {
+          /* This extent is only part of the size that jemalloc wants to free.
+             Our `end` pointer is the next pointer that we need to find. */
+          partial = false;
+          still_searching = true;
+          target_ptr = end;
+        } else {
+          /* jemalloc wants us to free exactly this extent */
+          partial = false;
+          still_searching = false;
+          target_ptr = NULL;
+        }
+        break;
+      }
+    }
+    if(partial) {
+      /* Only free part of this extent. Put the remainder back in the extent array. */
+    	extent_arr_delete(sa->extents, partial_start);
+      extent_arr_insert(sa->extents, ((char *) partial_start) + leftover_size, partial_end, NULL);
+    	if(sicm_extent_split_callback) {
+    		(*sicm_extent_split_callback)(sa, partial_start, partial_end, leftover_size);
+    	}
+    	if (munmap(partial_start, leftover_size) != 0) {
+        fprintf(stderr, "Failed to unmap %zu bytes starting at %p.\n", leftover_size, partial_start);
+        exit(1);
+      }
+    	sa->size -= (leftover_size);
+      leftover_size = 0;
+    } else {
+      /* We'll free this whole extent (and possibly more).
+         Here, leftover_size should always be larger than (end - start). */
+    	extent_arr_delete(sa->extents, start);
+    	if(sicm_extent_dalloc_callback) {
+    		(*sicm_extent_dalloc_callback)(sa, start, end);
+    	}
+    	if (munmap(start, end - start) != 0) {
+        fprintf(stderr, "Failed to unmap %zu bytes starting at %p.\n", end - start, start);
+        exit(1);
+      }
+    	sa->size -= (end - start);
+      leftover_size -= (end - start);
+    }
+  }
 
 	pthread_mutex_unlock(sa->mutex);
+
 	return ret;
 }
 

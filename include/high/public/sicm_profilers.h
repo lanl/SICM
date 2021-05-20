@@ -16,7 +16,7 @@ typedef struct profiling_options profiling_options;
 extern profiling_options profopts;
 
 /********************
- * PROFILE_ALL
+ * PROFILE_PEBS
  ********************/
 
 struct __attribute__ ((__packed__)) sample {
@@ -37,24 +37,24 @@ union pfn_t {
   } obj;
 };
 
-typedef struct per_event_profile_all_info {
+typedef struct per_event_profile_pebs_info {
   size_t total, peak, current;
-} per_event_profile_all_info;
+} per_event_profile_pebs_info;
 
-void sh_get_profile_all_event();
+void sh_get_profile_pebs_event();
 
-typedef struct per_arena_profile_all_info {
-  /* profile_all */
-  per_event_profile_all_info *events;
-} per_arena_profile_all_info;
+typedef struct per_arena_profile_pebs_info {
+  /* profile_pebs */
+  per_event_profile_pebs_info *events;
+} per_arena_profile_pebs_info;
 
-typedef struct profile_all_info {
+typedef struct profile_pebs_info {
   /* Just counts up total accesses that are associated with
      an arena. Overflows eventually. */
   size_t total;
-} profile_all_info;
+} profile_pebs_info;
 
-typedef struct profile_all_data {
+typedef struct profile_pebs_data {
   /* For each of these arrays, the first dimension is per-cpu,
    * and the second dimension is per-event. */
   struct perf_event_attr ***pes;
@@ -63,21 +63,27 @@ typedef struct profile_all_data {
   uint64_t **prev_head;
   size_t pagesize;
   unsigned long tid;
-} profile_all_data;
+} profile_pebs_data;
 
 /********************
  * PROFILE_BW
  ********************/
+typedef struct per_event_profile_bw_info {
+  size_t peak, current, total, current_count, total_count;
+} per_event_profile_bw_info;
+
 typedef struct per_arena_profile_bw_info {
   /* This is per-arena, but not per-socket. Requires profile_bw_relative. 
-     Uses values gathered from profile_all. */
-  size_t peak, current, total;
+     Uses values gathered from profile_pebs. */
+  size_t peak, current, total, current_count, total_count;
+  /* These track the per-event values in pebs */
+  per_event_profile_bw_info *events;
 } per_arena_profile_bw_info;
  
 typedef struct per_skt_profile_bw_info {
   /* These are in the unit of cache lines per second.
      On most systems, multiply by 64 and divide by 1,000,000 to get MB/s. */
-  size_t peak, current;
+  size_t peak, current, current_count;
 } per_skt_profile_bw_info;
 
 typedef struct profile_bw_info {
@@ -152,6 +158,10 @@ typedef struct profile_rss_data {
  * PROFILE_OBJECT_MAP
  ********************/
  
+unsigned long long get_cgroup_node0_current();
+unsigned long long get_cgroup_node1_current();
+unsigned long long get_cgroup_node0_max();
+size_t get_smaps_rss();
 typedef struct profile_objmap_info {
   double time;
   size_t heap_bytes,
@@ -220,7 +230,6 @@ use_tree(int, size_t);
 typedef struct profile_online_info {
   char reconfigure; /* If there was a rebinding this interval */
   char phase_change;
-  size_t using_hotset_weight; /* The weight of the currently-bound hotset */
 } profile_online_info;
 
 typedef struct per_arena_profile_online_info {
@@ -228,15 +237,7 @@ typedef struct per_arena_profile_online_info {
   char dev; /* The device it was on at the end of the interval.
                0 for lower, 1 for upper, -1 for not yet set. */
   char hot; /* Whether it was hot or not. -1 for not yet set. */
-  size_t num_hot_intervals; /* How long it's been hot, as of this interval. */
 } per_arena_profile_online_info;
-
-typedef struct profile_online_data_orig {
-  /* Metrics that only the orig strat needs */
-  size_t total_site_weight, total_site_value, total_sites,
-         site_weight_diff, site_value_diff, num_sites_diff,
-         site_weight_to_rebind, site_value_to_rebind, num_sites_to_rebind;
-} profile_online_data_orig;
 
 typedef struct profile_online_data_ski {
   /* Metrics that only the ski strat needs */
@@ -245,19 +246,29 @@ typedef struct profile_online_data_ski {
 } profile_online_data_ski;
 
 typedef struct profile_online_data {
-  size_t profile_online_event_index;
+  
+  /* Device lists for the low-level interface */
   sicm_dev_ptr upper_dl, lower_dl;
+  
+  /* Stats for keeping track of various states */
   char upper_contention, /* Upper tier full? */
        first_upper_contention, /* First interval where upper tier full? */
        first_online_interval; /* First interval where strategy can run? */
-  tree(site_info_ptr, int) offline_sorted_sites, using_sorted_sites;
-  tree(int, site_info_ptr) using_hotset;
-  size_t upper_max,
-         upper_used, lower_used,
-         offline_invalid_weight;
+  size_t upper_max, upper_used, lower_used;
+  
+  /* For taking into account an offline profile */
+  tree(site_info_ptr, int) offline_sorted_sites;
+  size_t offline_invalid_weight;
+  
+  /* Keep track of the previous hot sites, the current hot sites.
+     The bandwidth values correspond to before and after binding these sites. */
+  tree(site_info_ptr, int) prev_sorted_sites, cur_sorted_sites;
+  size_t prev_bw, cur_bw;
+  char prev_interval_reconfigure; /* Indicates if the previous interval reconfigured or not */
+  
+  FILE *smaps_file;
 
   /* Strat-specific data */
-  profile_online_data_orig *orig;
   profile_online_data_ski *ski;
 } profile_online_data;
 
@@ -274,13 +285,13 @@ typedef struct profile_online_data {
  * - arena_init
  *******************/
 
-void profile_all_init();
-void profile_all_deinit();
-void *profile_all(void *);
-void profile_all_interval(int);
-void profile_all_post_interval(arena_profile *);
-void profile_all_skip_interval(int);
-void profile_all_arena_init(per_arena_profile_all_info *);
+void profile_pebs_init();
+void profile_pebs_deinit();
+void *profile_pebs(void *);
+void profile_pebs_interval(int);
+void profile_pebs_post_interval(arena_profile *);
+void profile_pebs_skip_interval(int);
+void profile_pebs_arena_init(per_arena_profile_pebs_info *);
 
 void *profile_rss(void *);
 void profile_rss_interval(int);
@@ -320,6 +331,7 @@ void *profile_bw(void *);
 void profile_bw_interval(int);
 void profile_bw_post_interval();
 void profile_bw_skip_interval(int);
+void profile_bw_arena_init(per_arena_profile_bw_info *);
 
 void profile_latency_init();
 void profile_latency_deinit();

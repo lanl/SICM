@@ -15,19 +15,32 @@
 
 void profile_bw_deinit();
 void profile_bw_init();
+void profile_bw_arena_init();
 void *profile_bw(void *);
 void profile_bw_interval(int);
 void profile_bw_skip_interval(int);
 void profile_bw_post_interval();
 
+void profile_bw_arena_init(per_arena_profile_bw_info *info) {
+  size_t i;
+
+  info->events = internal_calloc(prof.profile->num_profile_pebs_events, sizeof(per_event_profile_bw_info));
+  for(i = 0; i < prof.profile->num_profile_pebs_events; i++) {
+    info->events[i].total = 0;
+    info->events[i].peak = 0;
+    info->events[i].current = 0;
+    info->events[i].total_count = 0;
+  }
+}
+
 /* Uses libpfm to figure out the event we're going to use */
-void sh_get_profile_bw_event() {
+void sh_get_bw_event() {
   int err;
   size_t i, n, p;
   pfm_perf_encode_arg_t pfm;
   char *tmp;
 
-  if(!should_profile_all()) {
+  if(!should_profile_pebs()) {
     /* We don't want to initialize twice, so only initialize if
        we haven't already */
     pfm_initialize();
@@ -46,7 +59,7 @@ void sh_get_profile_bw_event() {
         
         /* We need to prepend the IMC string to the event name, because libpfm likes that.
            The resulting string will be the IMC name, two colons, then the event name. */
-        tmp = orig_malloc(sizeof(char) * (strlen(profopts.profile_bw_events[n]) +
+        tmp = internal_malloc(sizeof(char) * (strlen(profopts.profile_bw_events[n]) +
                                      strlen(profopts.imcs[p]) + 3));
         sprintf(tmp, "%s::%s", profopts.imcs[p], profopts.profile_bw_events[n]);
         
@@ -55,11 +68,11 @@ void sh_get_profile_bw_event() {
                                         PFM_OS_PERF_EVENT,
                                         &pfm);
         if(err != PFM_SUCCESS) {
-          fprintf(stderr, "Failed to initialize event '%s'. Aborting.\n", tmp);
-          free(tmp);
+          fprintf(stderr, "Failed to initialize bw event '%s'. Aborting.\n", tmp);
+          internal_free(tmp);
           exit(1);
         }
-        free(tmp);
+        internal_free(tmp);
       }
     }
   }
@@ -74,34 +87,34 @@ void profile_bw_init() {
   prof.profile_bw.pagesize = (size_t) sysconf(_SC_PAGESIZE);
   
   /* Allocate room for the events profiling info */
-  get_profile_bw_prof()->skt = 
-    orig_calloc(profopts.num_profile_skt_cpus,
+  get_bw_prof()->skt = 
+    internal_calloc(profopts.num_profile_skt_cpus,
                 sizeof(per_skt_profile_bw_info));
   
   /* Allocate perf structs */
-  prof.profile_bw.pes = orig_malloc(sizeof(struct perf_event_attr ***) *
+  prof.profile_bw.pes = internal_malloc(sizeof(struct perf_event_attr ***) *
                                      profopts.num_profile_skt_cpus);
-  prof.profile_bw.fds = orig_malloc(sizeof(int **) *
+  prof.profile_bw.fds = internal_malloc(sizeof(int **) *
                                      profopts.num_profile_skt_cpus);
   for(i = 0; i < profopts.num_profile_skt_cpus; i++) {
-    prof.profile_bw.pes[i] = orig_malloc(sizeof(struct perf_event_attr **) *
+    prof.profile_bw.pes[i] = internal_malloc(sizeof(struct perf_event_attr **) *
                                           profopts.num_imcs);
-    prof.profile_bw.fds[i] = orig_malloc(sizeof(int *) *
+    prof.profile_bw.fds[i] = internal_malloc(sizeof(int *) *
                                           profopts.num_imcs);
     for(p = 0; p < profopts.num_imcs; p++) {
-      prof.profile_bw.pes[i][p] = orig_malloc(sizeof(struct perf_event_attr *) *
+      prof.profile_bw.pes[i][p] = internal_malloc(sizeof(struct perf_event_attr *) *
                                             profopts.num_profile_bw_events);
-      prof.profile_bw.fds[i][p] = orig_malloc(sizeof(int) *
+      prof.profile_bw.fds[i][p] = internal_malloc(sizeof(int) *
                                             profopts.num_profile_bw_events);
       for(n = 0; n < profopts.num_profile_bw_events; n++) {
-        prof.profile_bw.pes[i][p][n] = orig_malloc(sizeof(struct perf_event_attr));
+        prof.profile_bw.pes[i][p][n] = internal_malloc(sizeof(struct perf_event_attr));
         prof.profile_bw.fds[i][p][n] = 0;
       }
     }
   }
 
   /* Use libpfm to fill the pe struct */
-  sh_get_profile_bw_event();
+  sh_get_bw_event();
 
   /* Open all perf file descriptors */
   pid = -1;
@@ -136,6 +149,25 @@ void profile_bw_init() {
 }
 
 void profile_bw_deinit() {
+  size_t i, p, n;
+  
+  /* Allocate room for the events profiling info */
+  internal_free(get_bw_prof()->skt);
+  
+  /* Allocate perf structs */
+  for(i = 0; i < profopts.num_profile_skt_cpus; i++) {
+    for(p = 0; p < profopts.num_imcs; p++) {
+      for(n = 0; n < profopts.num_profile_bw_events; n++) {
+        internal_free(prof.profile_bw.pes[i][p][n]);
+      }
+      internal_free(prof.profile_bw.pes[i][p]);
+      internal_free(prof.profile_bw.fds[i][p]);
+    }
+    internal_free(prof.profile_bw.pes[i]);
+    internal_free(prof.profile_bw.fds[i]);
+  }
+  internal_free(prof.profile_bw.pes);
+  internal_free(prof.profile_bw.fds);
 }
 
 void *profile_bw(void *a) {
@@ -146,7 +178,7 @@ void *profile_bw(void *a) {
 
 void profile_bw_interval(int s) {
   long long count;
-  size_t i, n, p, tmp_bw, tmp_all, tmp_arena_all;
+  size_t i, n, p, total_bw, total_pebs, total_arena_pebs, *total_event_pebs, total_count;
   double time;
   arena_info *arena;
   arena_profile *aprof;
@@ -163,7 +195,8 @@ void profile_bw_interval(int s) {
      we're really just iterating over the sockets here. We'll sum
      the values from each IMC across the socket. */
   for(i = 0; i < profopts.num_profile_skt_cpus; i++) {
-    get_profile_bw_skt_prof(i)->current = 0;
+    get_bw_skt_prof(i)->current = 0;
+    get_bw_skt_prof(i)->current_count = 0;
     for(p = 0; p < profopts.num_imcs; p++) {
       for(n = 0; n < profopts.num_profile_bw_events; n++) {
         ioctl(prof.profile_bw.fds[i][p][n], PERF_EVENT_IOC_DISABLE, 0);
@@ -171,45 +204,69 @@ void profile_bw_interval(int s) {
         
         /* Here, the counter should be gathering the number of retired cache
           lines that go through the IMC. */
-        get_profile_bw_skt_prof(i)->current += (((double) count) / time);
+        get_bw_skt_prof(i)->current += (((double) count) / time);
+        get_bw_skt_prof(i)->current_count += count;
       }
     }
   }
   
-  if(profopts.profile_bw_relative) {
-    /* Clear current values, and add up all profile_all values this interval */
-    tmp_all = 0;
-    aprof_arr_for(n, aprof) {
-      aprof_check_good(n, aprof);
-      for(i = 0; i < prof.profile->num_profile_all_events; i++) {
-        tmp_all += aprof->profile_all.events[i].current;
+  if(should_profile_pebs() && should_profile_bw()) {
+    /* Clear current values, and add up all profile_pebs values this interval */
+    total_pebs = 0;
+    total_event_pebs = internal_calloc(prof.profile->num_profile_pebs_events, sizeof(size_t));
+    aprof_arr_for(i, aprof) {
+      aprof_check_good(i, aprof);
+      for(n = 0; n < prof.profile->num_profile_pebs_events; n++) {
+        /* total_pebs is the total PEBS counts for this interval
+           total_event_pebs is the total PEBS counts for this even for this interval */
+        total_pebs += get_pebs_event_prof(i, n)->current;
+        total_event_pebs[n] += get_pebs_event_prof(i, n)->current;
       }
     }
     
     /* Add up this interval's bandwidth in tmp */
-    tmp_bw = 0;
+    total_bw = 0;
+    total_count = 0;
     for(i = 0; i < profopts.num_profile_skt_cpus; i++) {
-      tmp_bw += get_profile_bw_skt_prof(i)->current;
+      /* total_bw is the total bandwidth for this interval, for all sockets */
+      total_bw += get_bw_skt_prof(i)->current;
+      total_count += get_bw_skt_prof(i)->current_count;
     }
     
     /* Spread this interval's bandwidth amongst the arenas, based on
-       their profile_all values. */
-    aprof_arr_for(n, aprof) {
-      aprof_check_good(n, aprof);
-      tmp_arena_all = 0;
-      for(i = 0; i < prof.profile->num_profile_all_events; i++) {
-        tmp_arena_all += aprof->profile_all.events[i].current;
+       their profile_pebs values. */
+    aprof_arr_for(i, aprof) {
+      aprof_check_good(i, aprof);
+      total_arena_pebs = 0;
+      for(n = 0; n < prof.profile->num_profile_pebs_events; n++) {
+        total_arena_pebs += get_pebs_event_prof(i, n)->current;
+        /* Per-event bw_relative */
+        if(total_event_pebs[n] == 0) {
+          get_bw_event_prof(i, n)->current = 0;
+          get_bw_event_prof(i, n)->current_count = 0;
+        } else {
+          get_bw_event_prof(i, n)->current = (((double) get_pebs_event_prof(i, n)->current) / total_event_pebs[n]) * total_bw;
+          get_bw_event_prof(i, n)->current_count = ((double) get_pebs_event_prof(i, n)->current / total_event_pebs[n]) * total_count;
+        }
       }
-      if((tmp_arena_all == 0) || (tmp_all == 0) || (tmp_bw == 0)) {
-        aprof->profile_bw.current = 0;
+      if(total_pebs == 0) {
+        get_bw_arena_prof(i)->current = 0;
+        get_bw_arena_prof(i)->current_count = 0;
       } else {
-        aprof->profile_bw.current = (((double) tmp_arena_all) / tmp_all) * tmp_bw;
+        get_bw_arena_prof(i)->current = (((double) total_arena_pebs) / total_pebs) * total_bw;
+        get_bw_arena_prof(i)->current_count = (((double) total_arena_pebs) / total_pebs) * total_count;
       }
     }
+    internal_free(total_event_pebs);
     
-    aprof_arr_for(n, aprof) {
-      aprof_check_good(n, aprof);
-      aprof->profile_bw.total += aprof->profile_bw.current;
+    aprof_arr_for(i, aprof) {
+      aprof_check_good(i, aprof);
+      get_bw_arena_prof(i)->total += get_bw_arena_prof(i)->current;
+      get_bw_arena_prof(i)->total_count += get_bw_arena_prof(i)->current_count;
+      for(n = 0; n < prof.profile->num_profile_pebs_events; n++) {
+        get_bw_event_prof(i, n)->total += get_bw_event_prof(i, n)->current;
+        get_bw_event_prof(i, n)->total_count += get_bw_event_prof(i, n)->current_count;
+      }
     }
   }
   
@@ -227,26 +284,29 @@ void profile_bw_interval(int s) {
 }
 
 void profile_bw_post_interval() {
-  per_skt_profile_bw_info *per_skt_aprof;
   size_t i, n;
   arena_info *arena;
   arena_profile *aprof;
 
   /* All we need to do here is maintain the peak */
   for(i = 0; i < profopts.num_profile_skt_cpus; i++) {
-    per_skt_aprof = get_profile_bw_skt_prof(i);
-    if(per_skt_aprof->current > per_skt_aprof->peak) {
-      per_skt_aprof->peak = per_skt_aprof->current;
+    if(get_bw_skt_prof(i)->current > get_bw_skt_prof(i)->peak) {
+      get_bw_skt_prof(i)->peak = get_bw_skt_prof(i)->current;
     }
   }
   
-  if(profopts.profile_bw_relative) {
+  if(should_profile_pebs() && should_profile_bw()) {
     /* We'll have to iterate over all of the arenas and maintain
       their peaks, too. */
-    aprof_arr_for(n, aprof) {
-      aprof_check_good(n, aprof);
-      if(aprof->profile_bw.current > aprof->profile_bw.peak) {
-        aprof->profile_bw.peak = aprof->profile_bw.current;
+    aprof_arr_for(i, aprof) {
+      aprof_check_good(i, aprof);
+      if(get_bw_arena_prof(i)->current > get_bw_arena_prof(i)->peak) {
+        get_bw_arena_prof(i)->peak = get_bw_arena_prof(i)->current;
+      }
+      for(n = 0; n < prof.profile->num_profile_pebs_events; n++) {
+        if(get_bw_event_prof(i, n)->current > get_bw_event_prof(i, n)->peak) {
+          get_bw_event_prof(i, n)->peak = get_bw_event_prof(i, n)->current;
+        }
       }
     }
   }

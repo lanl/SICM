@@ -53,7 +53,7 @@ void *profile_rss(void *a) {
 
 /* Just copies the previous value */
 void profile_rss_skip_interval(int s) {
-  get_profile_rss_prof()->time = 0;
+  get_rss_prof()->time = 0;
 }
 
 void profile_rss_interval(int s) {
@@ -94,7 +94,7 @@ void profile_rss_interval(int s) {
     numpages = (end - start) / prof.profile_rss.pagesize;
     aprof->profile_rss.non_present += (end - start);
     
-    prof.profile_rss.pfndata = (union pfn_t *) orig_realloc(prof.profile_rss.pfndata, numpages * prof.profile_rss.addrsize);
+    prof.profile_rss.pfndata = (union pfn_t *) internal_realloc(prof.profile_rss.pfndata, numpages * prof.profile_rss.addrsize);
 
     /* Seek to the starting of this chunk in the pagemap */
     if(lseek64(prof.profile_rss.pagemap_fd, (start / prof.profile_rss.pagesize) * prof.profile_rss.addrsize, SEEK_SET) == ((__off64_t) - 1)) {
@@ -135,7 +135,7 @@ void profile_rss_interval(int s) {
   
   clock_gettime(CLOCK_MONOTONIC, &end_time);
   timespec_diff(&start_time, &end_time, &actual);
-  get_profile_rss_prof()->time = actual.tv_sec + (((double) actual.tv_nsec) / 1000000000);
+  get_rss_prof()->time = actual.tv_sec + (((double) actual.tv_nsec) / 1000000000);
 }
 
 void profile_rss_post_interval(arena_profile *info) {

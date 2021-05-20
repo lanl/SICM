@@ -41,6 +41,7 @@ __attribute__((packed))
 struct object_map_controller_info {
     unsigned int       _magic;
     int                cmd;
+    int                node;
     unsigned long long range_start;
     unsigned long long range_end;
 };
@@ -92,6 +93,7 @@ static int write_object_map_controller_info(int fd, struct object_map_controller
     status = write(fd, info, sizeof(*info));
 
     if (status == -1) {
+        fprintf(stderr, "Failed to write %zu bytes to fd %d, info %p\n", sizeof(*info), fd, info);
         status = -errno;
     }
 
@@ -130,12 +132,14 @@ int objmap_add_range(struct proc_object_map_t *objmap, void *start, void *end) {
     status = 0;
 
     if (end <= start) {
+        /*  The end is before the start */
         status = -EINVAL;
         goto out;
     }
 
     if (((unsigned long long)start) & (objmap->page_size - 1)
     ||  ((unsigned long long)end)   & (objmap->page_size - 1)) {
+        /* The address range isn't page-aligned */
         status = -EINVAL;
         goto out;
     }
