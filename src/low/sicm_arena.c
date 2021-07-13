@@ -19,9 +19,10 @@ static size_t sa_lookup_mib[2];
 static pthread_once_t sa_init = PTHREAD_ONCE_INIT;
 static pthread_key_t sa_default_key;
 static extent_hooks_t sa_hooks;
+void (*sicm_extent_lock_callback)(void) = NULL;
+void (*sicm_extent_unlock_callback)(void) = NULL;
 void (*sicm_extent_alloc_callback)(sarena *arena, void *start, void *end) = NULL;
 void (*sicm_extent_dalloc_callback)(sarena *arena, void *start, void *end) = NULL;
-void (*sicm_extent_split_callback)(sarena *arena, void *start, void *end, size_t size) = NULL;
 
 static void sarena_init() {
 	int err;
@@ -494,7 +495,7 @@ static extent_hooks_t sa_hooks = {
 };
 
 static void *sa_alloc(extent_hooks_t *h, void *new_addr, size_t size, size_t alignment, bool *zero, bool *commit, unsigned arena_ind) {
-	int mpol;
+	int mpol, page_size;
 	unsigned flags;
 	unsigned long *nodemaskp, maxnode;
 	sarena *sa;
@@ -510,10 +511,17 @@ static void *sa_alloc(extent_hooks_t *h, void *new_addr, size_t size, size_t ali
 	ret = NULL;
 	new_size = size;
 	sa = container_of(h, sarena, hooks);
+  page_size = sicm_device_page_size(sa->devs.devices[0]) * 1024;
 
 	// TODO: figure out a way to prevent taking the mutex twice (sa_range_add also takes it)...
 	pthread_mutex_lock(sa->mutex);
+	if(sicm_extent_lock_callback) {
+		(*sicm_extent_lock_callback)();
+	}
 	if (sa->maxsize > 0 && sa->size + size > sa->maxsize) {
+  	if(sicm_extent_unlock_callback) {
+  		(*sicm_extent_unlock_callback)();
+  	}
 		pthread_mutex_unlock(sa->mutex);
 		return NULL;
 	}
@@ -586,18 +594,15 @@ static void *sa_alloc(extent_hooks_t *h, void *new_addr, size_t size, size_t ali
 	n = (uintptr_t) ret;
 	m = n + alignment - (n % alignment);
 	munmap(ret, m - n);
-	munmap(m + size, n % alignment);
-	ret = (void *) m;
-	fprintf(stderr, "Had to unmap %p-%p and %p-%p to get alignment (%zu).\n", ret, ret + (m-n), ((char *) m) + size, (((char *) m) + size) + n % alignment, alignment);
-	fprintf(stderr, "Allocated %zu, deallocated %zu, left with %zu (should be %zu).\n", size + alignment, (m - n) + (n % alignment), size + alignment - (m - n) - (n % alignment), size);
+	munmap(m + size, (n % alignment) - page_size);
+	fprintf(stderr, "Had to unmap %p-%p and %p-%p to get alignment (%zu).\n", ret, ret + m - n, m + size, m + size + (n % alignment), alignment);
 	fflush(stderr);
+	ret = (void *) m;
 
 success:
 	flags = MPOL_MF_MOVE;
 	if (mbind(ret, size, mpol, nodemaskp, maxnode, flags) < 0) {
 		perror("mbind");
-		fprintf(stderr, "Allocated: %p to %p\nUnmapped: %p to %p\nm: %p", n, n + size, n, n + m - n, m);
-		fflush(stderr);
 		munmap(ret, size);
 		ret = NULL;
 		goto restore_mempolicy;
@@ -627,6 +632,9 @@ restore_mempolicy:
 
 free_nodemasks:
 	numa_free_nodemask(oldnodemask);
+	if(sicm_extent_unlock_callback) {
+		(*sicm_extent_unlock_callback)();
+	}
 	pthread_mutex_unlock(sa->mutex);
 
 	return ret;
@@ -634,13 +642,18 @@ free_nodemasks:
 
 static bool sa_dalloc(extent_hooks_t *h, void *addr, size_t size, bool committed, unsigned arena_ind) {
 	sarena *sa;
-	bool ret, still_searching, partial;
+	bool ret, still_searching, partial, found_anything;
 	size_t i, leftover_size;
-	uint64_t start, end, partial_start, partial_end, target_ptr;
+	uint64_t start, end, target_ptr, free_start, free_end, before_start, after_end;
+  int page_size;
 
 	ret = false;
 	sa = container_of(h, sarena, hooks);
 	pthread_mutex_lock(sa->mutex);
+	if(sicm_extent_lock_callback) {
+		(*sicm_extent_lock_callback)();
+	}
+  page_size = sicm_device_page_size(sa->devs.devices[0]) * 1024;
 
 	/* We could have actually allocated more than jemalloc asked for, depending on alignment. */
 	/* Therefore we must search for this extent's actual size. */
@@ -648,51 +661,88 @@ static bool sa_dalloc(extent_hooks_t *h, void *addr, size_t size, bool committed
 	target_ptr = addr;
 	leftover_size = size;
 	while(still_searching) {
-		partial_start = 0;
-		partial_end = 0;
+		before_start = 0;
+		after_end = 0;
+    free_start = 0;
+    free_end = 0;
 		partial = false;
+    found_anything = false;
+    fprintf(stderr, "Searching for %p...\n", target_ptr);
 		extent_arr_for(sa->extents, i) {
 			start = (uint64_t) sa->extents->arr[i].start;
 			end = (uint64_t) sa->extents->arr[i].end;
-			if(start == target_ptr) {
-				if(leftover_size < (end - start)) {
-					/* jemalloc is asking us to only unmap part of this extent */
-					partial_start = start;
-					partial_end = end;
-					partial = true;
-					still_searching = false;
-					target_ptr = NULL;
-				} else if(leftover_size > (end - start)) {
-					/* This extent is only part of the size that jemalloc wants to free. */
-					/* Our `end` pointer is the next pointer that we need to find. */
-					partial = false;
-					still_searching = true;
-					target_ptr = end;
-				} else {
-					/* jemalloc wants us to free exactly this extent */
-					partial = false;
-					still_searching = false;
-					target_ptr = NULL;
-				}
-				break;
-			}
+			if((start == target_ptr) && ((start + leftover_size) >= end)) {
+				/* jemalloc wants us to free the whole extent, and possibly more */
+				partial = false;
+        if((start + leftover_size) > end) {
+          still_searching = true;
+          target_ptr = end;
+        } else {
+  				still_searching = false;
+  				target_ptr = NULL;
+        }
+        found_anything = true;
+  			break;
+			} else if((target_ptr >= start) && ((target_ptr + leftover_size) <= end)) {
+        /* jemalloc wants to free only part of the extent */
+        free_start = target_ptr;
+        free_end = target_ptr + leftover_size;
+        if(free_start == start) {
+          before_start = NULL;
+        } else {
+          before_start = start;
+        }
+        if(free_end == end) {
+          after_end = NULL;
+        } else {
+          after_end = end;
+        }
+				partial = true;
+				still_searching = false;
+				target_ptr = NULL;
+        found_anything = true;
+  			break;
+      }
 		}
+    if(!found_anything) {
+      fprintf(stderr, "Couldn't find any extents which include %p with size %zu. Not going to free it.\n", target_ptr, leftover_size);
+      fflush(stderr);
+      ret = true;
+      break;
+    }
 		if(partial) {
 			/* Only free part of this extent. Put the remainder back in the extent array. */
-			extent_arr_delete(sa->extents, partial_start);
-			extent_arr_insert(sa->extents, ((char *) partial_start) + leftover_size, partial_end, NULL);
-			if(sicm_extent_split_callback) {
-				(*sicm_extent_split_callback)(sa, partial_start, partial_end, leftover_size);
+      fprintf(stderr, "Partial: Originally %p-%p, freeing %p-%p, leave %p-%p and %p-%p.\n", start, end, free_start, free_end, before_start, free_start, free_end, after_end);
+      
+      /* Free up the chunk that jemalloc wants us to */
+			extent_arr_delete(sa->extents, start);
+			if(sicm_extent_dalloc_callback) {
+				(*sicm_extent_dalloc_callback)(sa, start, end);
 			}
-			if (munmap(partial_start, leftover_size) != 0) {
-				fprintf(stderr, "Failed to unmap %zu bytes starting at %p.\n", leftover_size, partial_start);
+
+      if(before_start) {
+  			extent_arr_insert(sa->extents, before_start, free_start, NULL);
+  			if(sicm_extent_alloc_callback) {
+  				(*sicm_extent_alloc_callback)(sa, before_start, free_start);
+  			}
+      }
+  
+      if(after_end) {
+  			extent_arr_insert(sa->extents, free_end, after_end, NULL);
+  			if(sicm_extent_alloc_callback) {
+  				(*sicm_extent_alloc_callback)(sa, free_end, after_end);
+  			}
+      }
+
+			if (munmap(free_start, free_end - free_start) != 0) {
+				fprintf(stderr, "Failed to unmap %zu bytes starting at %p.\n", free_end - free_start, free_start);
+        fflush(stderr);
 				exit(1);
 			}
-			sa->size -= (leftover_size);
-			leftover_size = 0;
+			sa->size -= (free_end - free_start);
+			leftover_size -= (free_end - free_start);
 		} else {
 			/* We'll free this whole extent (and possibly more). */
-			/* Here, leftover_size should always be larger than (end - start). */
 			extent_arr_delete(sa->extents, start);
 			if(sicm_extent_dalloc_callback) {
 				(*sicm_extent_dalloc_callback)(sa, start, end);
@@ -706,6 +756,14 @@ static bool sa_dalloc(extent_hooks_t *h, void *addr, size_t size, bool committed
 		}
 	}
 
+  if(leftover_size) {
+    fprintf(stderr, "WARNING: fulfilled a dalloc, but leftover_size is still %zu.\n", leftover_size);
+    fflush(stderr);
+  }
+
+	if(sicm_extent_unlock_callback) {
+		(*sicm_extent_unlock_callback)();
+	}
 	pthread_mutex_unlock(sa->mutex);
 
 	return ret;

@@ -101,6 +101,7 @@ tree(site_info_ptr, int) calculate_hotset() {
     } else {
       get_online_arena_prof(tree_it_key(sit)->index)->hot = 0;
     }
+    get_online_arena_prof(tree_it_key(sit)->index)->weight = tree_it_key(sit)->weight;
   }
   
   /* Clean up */
@@ -121,6 +122,7 @@ void profile_online_post_interval(arena_profile *);
 void profile_online_arena_init(per_arena_profile_online_info *info) {
   info->dev = -1;
   info->hot = -1;
+  info->weight = 0;
 }
 
 void *profile_online(void *a) {

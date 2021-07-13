@@ -976,7 +976,8 @@ void sh_init() {
     /* Set the arena allocator's callback function */
     sicm_extent_alloc_callback = &sh_create_extent;
     sicm_extent_dalloc_callback = &sh_delete_extent;
-    sicm_extent_split_callback = &sh_split_extent;
+    sicm_extent_lock_callback = &sh_lock_extents;
+    sicm_extent_unlock_callback = &sh_unlock_extents;
   }
 
   if(should_profile()) {

@@ -423,67 +423,32 @@ void sh_create_arena(int index, int id, sicm_device *device, char invalid) {
   }
 }
 
-/* Splits up an extent, starting at `start + size`, in the extents array.
-   This differs from a call to both `sh_create_extent` and `sh_delete_extent`
-   because it holds the lock while it does both (to prevent a race condition). */
-void sh_split_extent(sarena *arena, void *start, void *end, size_t size) {
-  int arena_index, err;
-  size_t i;
-  arena_info *arena_ptr;
-  
+void sh_lock_extents() {
+  int err;
   err = pthread_rwlock_wrlock(&tracker.extents_lock);
   if(err != 0) {
     fprintf(stderr, "Failed to acquire read/write lock while creating an extent: %d. Aborting.\n", err);
     exit(1);
   }
-  
-  arena_index = pending_index;
-  if((arena_index == -1) && arena) {
-    for(i = 0; i <= tracker.max_index; i++) {
-      if(tracker.arenas[i]) {
-        if(arena == tracker.arenas[i]->arena) {
-          arena_index = i;
-          break;
-        }
-      }
-    }
-  }
+}
 
-  arena_ptr = NULL;
-  if(arena_index == -1) {
-    fprintf(stderr, "Couldn't figure out the arena index of a splitting allocation: %p-%p\n", start, end);
-    fprintf(stderr, "The sarena pointer was %p.\n", arena);
-    fflush(stderr);
-  } else {
-    arena_ptr = tracker.arenas[arena_index];
-  }
-
-  extent_arr_delete(tracker.extents, start);
-  if(should_profile_objmap()) {
-    delete_extent_objmap_entry(start);
-  }
-  extent_arr_insert(tracker.extents, start + size, end, arena_ptr);
-  if(should_profile_objmap()) {
-    create_extent_objmap_entry(start + size, end);
-  }
-  if(pthread_rwlock_unlock(&tracker.extents_lock) != 0) {
-    fprintf(stderr, "Failed to unlock read/write lock. Aborting.\n");
+void sh_unlock_extents() {
+  int err;
+  err = pthread_rwlock_unlock(&tracker.extents_lock);
+  if(err != 0) {
+    fprintf(stderr, "Failed to unlock read/write lock while creating an extent: %d. Aborting.\n", err);
     exit(1);
   }
 }
 
 /* Adds an extent to the `extents` array. */
 void sh_create_extent(sarena *arena, void *start, void *end) {
-  int arena_index, err;
+  int arena_index;
   size_t i;
   arena_info *arena_ptr;
   
-  err = pthread_rwlock_wrlock(&tracker.extents_lock);
-  if(err != 0) {
-    fprintf(stderr, "Failed to acquire read/write lock while creating an extent: %d. Aborting.\n", err);
-    exit(1);
-  }
-  
+  /* We'll do our absolute best to find the arena that this extent should be
+     associated with. This usually isn't necessary. */
   arena_index = pending_index;
   if((arena_index == -1) && arena) {
     for(i = 0; i <= tracker.max_index; i++) {
@@ -495,52 +460,25 @@ void sh_create_extent(sarena *arena, void *start, void *end) {
       }
     }
   }
-  
   arena_ptr = NULL;
   if(arena_index == -1) {
     fprintf(stderr, "Couldn't figure out the arena index of an allocation: %p-%p\n", start, end);
     fflush(stderr);
+    return;
   } else {
     arena_ptr = tracker.arenas[arena_index];
-    if(pending_index == -1) {
-      fprintf(stderr, "Found an arena pointer by searching.\n");
-      fflush(stderr);
-    }
   }
 
   extent_arr_insert(tracker.extents, start, end, arena_ptr);
   if(should_profile_objmap()) {
     create_extent_objmap_entry(start, end);
   }
-  if(pthread_rwlock_unlock(&tracker.extents_lock) != 0) {
-    fprintf(stderr, "Failed to unlock read/write lock. Aborting.\n");
-    exit(1);
-  }
 }
 
 void sh_delete_extent(sarena *arena, void *start, void *end) {
-  int err;
-  
-  err = pthread_rwlock_wrlock(&tracker.extents_lock);
-  if(err != 0) {
-    fprintf(stderr, "Failed to acquire read/write lock while deleting an extent: %d. Aborting.\n", err);
-    fflush(stderr);
-    exit(1);
-  }
   extent_arr_delete(tracker.extents, start);
-#if 0
-  if(profopts.profile_online_debug_file) {
-    fprintf(profopts.profile_online_debug_file, "Extent delete: %p-%p\n", start, end);
-    fflush(profopts.profile_online_debug_file);
-  }
-#endif
   if(should_profile_objmap()) {
     delete_extent_objmap_entry(start);
-  }
-  if(pthread_rwlock_unlock(&tracker.extents_lock) != 0) {
-    fprintf(stderr, "Failed to unlock read/write lock. Aborting.\n");
-    fflush(stderr);
-    exit(1);
   }
 }
 

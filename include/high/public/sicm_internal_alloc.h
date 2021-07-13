@@ -63,6 +63,7 @@ static void internal_init() {
     fprintf(stderr, "Failed to open the object map: %d. Aborting.\n", err);
     exit(1);
   }
+  fprintf(stderr, "Opened objmap fd: %d\n", internal_objmap.fd);
   new_hooks = &internal_hooks;
   internal_extents = extent_arr_init();
   arena_ind_sz = sizeof(unsigned);
@@ -225,34 +226,31 @@ static void *internal_alloc(extent_hooks_t *h, void *new_addr, size_t size, size
   unsigned flags;
   uintptr_t n, m;
   int oldmode, mmflags;
-  void *ret;
+  uintptr_t ret;
 
   *commit = 0;
   *zero = 0;
-  ret = NULL;
+  ret = 0;
 
   pthread_rwlock_wrlock(&internal_extents_lock);
-  if(internal_initialized != 2) {
-    fprintf(stderr, "The internal allocator is still %d.\n", internal_initialized);
-    fflush(stderr);
-  }
-
+  
   mmflags = MAP_ANONYMOUS|MAP_PRIVATE;
-  ret = mmap(new_addr, size, PROT_READ | PROT_WRITE, mmflags, -1, 0);
-  if (ret == MAP_FAILED) {
-    ret = NULL;
+  ret = (uintptr_t *) mmap(new_addr, size, PROT_READ | PROT_WRITE, mmflags, -1, 0);
+  if (((void *) ret) == MAP_FAILED) {
+    ret = 0;
     perror("mmap");
     goto failure;
   }
 
-  if (alignment == 0 || ((uintptr_t) ret)%alignment == 0) {
+  if (alignment == 0 || ret % alignment == 0) {
     // we are lucky and got the right alignment
+    fprintf(stderr, "Got the alignment right.\n");
     goto success;
   }
 
   // the alignment didn't work out, munmap and try again
-  munmap(ret, size);
-  ret = NULL;
+  munmap((void *) ret, size);
+  ret = 0;
 
   // if new_addr is set, we can't fulfill the alignment, so just fail
   if (new_addr != NULL) {
@@ -261,22 +259,23 @@ static void *internal_alloc(extent_hooks_t *h, void *new_addr, size_t size, size
     goto failure;
   }
 
-  ret = mmap(NULL, size + alignment, PROT_READ | PROT_WRITE, mmflags, -1, 0);
-  if (ret == MAP_FAILED) {
+  ret = (uintptr_t) mmap(NULL, size + alignment, PROT_READ | PROT_WRITE, mmflags, -1, 0);
+  if (((void *) ret) == MAP_FAILED) {
     perror("mmap2");
-    ret = NULL;
+    ret = 0;
     goto failure;
   }
 
-  n = (uintptr_t) ret;
+  n = ret;
   m = n + alignment - (n % alignment);
-  munmap(ret, m-n);
-  munmap(ret + size, n % alignment);
-  ret = (void *) m;
+  fprintf(stderr, "Originally %p-%p, %p-%p (size: %zu) is allocated, unmapped %p-%p and %p-%p.\n", ret, ret + size + alignment, m, m + size, size, ret, ret + m - n, m + size, m + size + (n % alignment));
+  munmap((void *) ret, m-n);
+  munmap((void *) (m + size), n % alignment);
+  ret = m;
 
 success:
-  extent_arr_insert(internal_extents, ret, (char *)ret + size, NULL);
-  err = objmap_add_range(&internal_objmap, ret, (char *)ret + size);
+  extent_arr_insert(internal_extents, (void *) ret, (void *) (ret + size), NULL);
+  err = objmap_add_range(&internal_objmap, (void *) ret, (void *) (ret + size));
   if (err < 0) {
     fprintf(stderr, "WARNING: Couldn't add internal extent (start=%p, end=%p) to object_map (error = %d).\n", ret, (char *)ret + size, err);
   }

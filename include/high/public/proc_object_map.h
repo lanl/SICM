@@ -93,7 +93,7 @@ static int write_object_map_controller_info(int fd, struct object_map_controller
     status = write(fd, info, sizeof(*info));
 
     if (status == -1) {
-        fprintf(stderr, "Failed to write %zu bytes to fd %d, info %p\n", sizeof(*info), fd, info);
+        fprintf(stderr, "Failed to write %zu bytes to fd %d, info %p-%p\n", sizeof(*info), fd, info->range_start, info->range_end);
         status = -errno;
     }
 
@@ -131,8 +131,10 @@ int objmap_add_range(struct proc_object_map_t *objmap, void *start, void *end) {
 
     status = 0;
 
+    fprintf(stderr, "Adding %p-%p\n", start, end);
     if (end <= start) {
         /*  The end is before the start */
+        fprintf(stderr, "The end is before the start.\n");
         status = -EINVAL;
         goto out;
     }
@@ -140,6 +142,7 @@ int objmap_add_range(struct proc_object_map_t *objmap, void *start, void *end) {
     if (((unsigned long long)start) & (objmap->page_size - 1)
     ||  ((unsigned long long)end)   & (objmap->page_size - 1)) {
         /* The address range isn't page-aligned */
+        fprintf(stderr, "Not page-aligned.\n");
         status = -EINVAL;
         goto out;
     }

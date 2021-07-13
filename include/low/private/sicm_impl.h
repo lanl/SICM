@@ -108,6 +108,7 @@ extern void sicm_arena_unlock(void);
 /* Set by the user, called whenever an extent is (d)allocated */
 extern void (*sicm_extent_alloc_callback)(sarena *arena, void *start, void *end);
 extern void (*sicm_extent_dalloc_callback)(sarena *arena, void *start, void *end);
-extern void (*sicm_extent_split_callback)(sarena *arena, void *start, void *end, size_t size);
+extern void (*sicm_extent_lock_callback)(void);
+extern void (*sicm_extent_unlock_callback)(void);
 
 #endif

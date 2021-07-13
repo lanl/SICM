@@ -237,6 +237,7 @@ typedef struct per_arena_profile_online_info {
   char dev; /* The device it was on at the end of the interval.
                0 for lower, 1 for upper, -1 for not yet set. */
   char hot; /* Whether it was hot or not. -1 for not yet set. */
+  size_t weight; /* The weight that this site consumes */
 } per_arena_profile_online_info;
 
 typedef struct profile_online_data_ski {

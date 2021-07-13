@@ -192,9 +192,10 @@ extern profiling_options profopts;
 /* Function declarations */
 void sh_start_profile_master_thread();
 void sh_stop_profile_master_thread();
+void sh_lock_extents();
+void sh_unlock_extents();
 void sh_create_extent(sarena *arena, void *begin, void *end);
 void sh_delete_extent(sarena *arena, void *begin, void *end);
-void sh_split_extent(sarena *arena, void *begin, void *end, size_t size);
 int get_arena_index(int id, size_t sz);
 void set_site_device(int id, deviceptr device);
 sicm_device *get_arena_device(int index);

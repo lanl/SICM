@@ -1,4 +1,5 @@
 #pragma once
+#define SICM_RUNTIME 1
 #include "sicm_packing.h"
 #include <time.h>
 #include <sys/time.h>

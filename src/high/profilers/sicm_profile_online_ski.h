@@ -125,9 +125,8 @@ void prepare_stats_ski(tree(site_info_ptr, int) sorted_sites) {
                 tree_it_val(sit), dev, hot);
       }
          
-      /* Calculate the penalty to move this site */
+      /* Calculate the penalties for this sites */
       get_online_data()->ski->penalty_move += penalty_move(index);
-      
       if((((dev == -1) || (dev == 0)) && (hot))) {
         /* The site is due to be rebound up */
         get_online_data()->ski->penalty_stay += penalty_stay(index);
@@ -150,13 +149,14 @@ void prepare_stats_ski(tree(site_info_ptr, int) sorted_sites) {
 
 /* This implements the classic ski rental break-even algorithm. */
 void profile_online_interval_ski(tree(site_info_ptr, int) sorted_sites) {
-  size_t rent_cost, buy_cost, i;
-  char dev;
+  size_t rent_cost, buy_cost, i,
+         weight, prev_weight, weight_diff, bound_weight;
+  char dev, hot, prev_hot;
   int index;
   tree_it(site_info_ptr, int) sit;
   site_info_ptr tmp;
   
-  suspend_all_threads();
+  //suspend_all_threads();
   
   //print_smaps_info();
   
@@ -171,6 +171,27 @@ void profile_online_interval_ski(tree(site_info_ptr, int) sorted_sites) {
      lower tier. */
   buy_cost = get_online_data()->ski->penalty_move +
              get_online_data()->ski->penalty_displace;
+             
+  /* Calculate weight_diff, which is the difference in weight between the currently-bound
+     hotset and what those same sites weigh right now. */
+  weight_diff = 0;
+  bound_weight = 0;
+  if(get_online_data()->cur_sorted_sites) {
+    tree_traverse(get_online_data()->cur_sorted_sites, sit) {
+      index = tree_it_key(sit)->index;
+      prev_hot = tree_it_key(sit)->hot;
+      prev_weight = tree_it_key(sit)->weight;
+      hot = get_online_arena_prof(index)->hot;
+      weight = get_online_arena_prof(index)->weight;
+      
+      bound_weight += weight;
+      if((prev_hot != hot) && (weight > prev_weight)) {
+        /* Only increment this if the site has changed in hotness, AND
+          if the site has grown (shrinking sites won't push things out of the upper tier) */
+        weight_diff += weight - prev_weight;
+      }
+    }
+  }
      
   if(get_online_data()->first_online_interval == 1) {
     /* Here, we'll short-circuit the algorithm and rebind all sites no matter what, since
@@ -184,6 +205,15 @@ void profile_online_interval_ski(tree(site_info_ptr, int) sorted_sites) {
     /* This is the case where it's not our first online interval, but the rent cost exceeds the cost to buy. */
     full_rebind(sorted_sites);
     //print_smaps_info();
+  } else if((get_online_data()->first_online_interval == 2) && weight_diff && (bound_weight > get_online_data()->upper_max)) {
+    /* In this case, we only want to rebind if:
+       1. The online approach has taken over.
+       2. The sites which are currently bound to the upper tier have GROWN in size.
+       3. The sites which are currently bound to the upper tier are now overpacking the upper tier. */
+    if(profopts.profile_online_debug_file) {
+      fprintf(profopts.profile_online_debug_file, "Sites grew by %zu bytes out from under us, and now overpack (%zu / %zu). Rebinding.\n", weight_diff, bound_weight, get_online_data()->upper_max);
+    }
+    full_rebind(sorted_sites);
   } else {
     get_online_prof()->reconfigure = 0;
     
@@ -207,5 +237,5 @@ void profile_online_interval_ski(tree(site_info_ptr, int) sorted_sites) {
     #endif
   }
   //check_rebind();
-  resume_all_threads();
+  //resume_all_threads();
 }
