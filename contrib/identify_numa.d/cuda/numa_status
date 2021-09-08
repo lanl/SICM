@@ -3,9 +3,9 @@
 # find nvidia gpus
 if [[ -d /proc/driver/nvidia/gpus ]]
 then
-    for gpu in /proc/driver/nvidia/gpus/*/numa_status
+    for gpu in $(find /proc/driver/nvidia/gpus -name numa_status)
     do
         node=$(head -n 1 "${gpu}" | awk '{ print $2 }')
-        echo "${node} NVIDIA GPU"
+        echo "${node} GPU"
     done
 fi

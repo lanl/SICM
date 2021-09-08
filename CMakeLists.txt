@@ -15,6 +15,12 @@ find_package(PkgConfig REQUIRED)
 pkg_search_module(JEMALLOC REQUIRED jemalloc)
 string(REPLACE ";" " " JEMALLOC_LDFLAGS "${JEMALLOC_LDFLAGS}")
 
+# find CUDA
+find_package(CUDAToolkit)
+if (CUDAToolkit_FOUND)
+    pkg_search_module(HWLOC REQUIRED hwloc)
+endif()
+
 add_subdirectory(include)
 
 # Compile and install the low- and high-level interfaces

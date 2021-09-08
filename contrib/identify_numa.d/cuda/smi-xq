@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+
+# https://mixable.blog/finding-the-numa-node-of-a-nvidia-cuda-gpu-in-linux/
+
+for i in $(nvidia-smi -x -q | grep "gpu id" | awk -F "\"" '{print $2}' | awk -F ":" '{print "0000:"  $2 ":"  $3}' | tr '[:upper:]' '[:lower:]'); 
+do 
+    numa_node="$(cat /sys/bus/pci/devices/$i/numa_node)"
+    echo "${numa_node} $i"
+done
+

@@ -23,12 +23,18 @@ endfunction()
 
 # build source files for the shared and static libraries separately to not incur PIC penalties
 foreach(type ${TYPES})
+  set(target "sicm_${type}")
   create_library(sicm ${type} sicm_low.c sicm_arena.c
     ${SICM_SOURCE_DIR}/include/low/public/sicm_low.h)
   create_library(sicm_f90 ${type} fbinding_c.c fbinding_f90.f90)
 
   # libsicm needs to link against jemalloc and numa
-  target_link_libraries(sicm_${type} ${JEMALLOC_LDFLAGS})
-  target_link_libraries(sicm_${type} ${NUMA_LIBRARY})
-  target_include_directories(sicm_${type} PRIVATE ${NUMA_INCLUDE_DIR})
+  target_link_libraries(${target} ${JEMALLOC_LDFLAGS})
+  target_link_libraries(${target} ${NUMA_LIBRARY})
+  target_include_directories(${target} PRIVATE ${NUMA_INCLUDE_DIR})
+  if (CUDAToolkit_FOUND)
+    target_compile_definitions(${target} PRIVATE -DCUDA=1)
+    target_include_directories(${target} PRIVATE ${CUDAToolkit_INCLUDE_DIRS} ${HWLOC_INCLUDE_DIRS})
+    target_link_libraries(${target} ${CUDAToolKit_LDFLAGS} ${HWLOC_LDFLAGS})
+  endif()
 endforeach()
