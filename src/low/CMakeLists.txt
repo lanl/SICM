@@ -23,7 +23,7 @@ endfunction()
 
 # build source files for the shared and static libraries separately to not incur PIC penalties
 foreach(type ${TYPES})
-  create_library(sicm ${type} sicm_low.c sicm_arena.c
+  create_library(sicm ${type} sicm_low.c sicm_arena.c detect_devices.c
     ${SICM_SOURCE_DIR}/include/low/public/sicm_low.h)
   create_library(sicm_f90 ${type} fbinding_c.c fbinding_f90.f90)
 
@@ -32,3 +32,5 @@ foreach(type ${TYPES})
   target_link_libraries(sicm_${type} ${NUMA_LIBRARY})
   target_include_directories(sicm_${type} PRIVATE ${NUMA_INCLUDE_DIR})
 endforeach()
+
+add_subdirectory(detect_devices)
