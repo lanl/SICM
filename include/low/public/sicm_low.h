@@ -19,6 +19,10 @@
 #include <stdlib.h>
 #include <sys/types.h>
 
+#ifdef HIP
+#include <hip/hip_runtime.h>
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -36,6 +40,7 @@ typedef enum sicm_device_tag {
   SICM_KNL_HBM,
   SICM_POWERPC_HBM,
   SICM_OPTANE,
+  SICM_HIP,
   INVALID_TAG
 } sicm_device_tag;
 
@@ -69,6 +74,14 @@ typedef struct sicm_optane_data {
   int compute_node;
 } sicm_optane_data;
 
+#ifdef HIP
+/// Data specific to a HIP device.
+typedef struct sicm_hip_data {
+    int compute_node;
+    hipDeviceProp_t prop;
+} sicm_hip_data;
+#endif
+
 /// Data that, given a device type, uniquely identify the device within that type.
 /**
  * This union is only meaningful in the presence of a sicm_device_tag,
@@ -81,6 +94,9 @@ typedef union sicm_device_data {
   sicm_knl_hbm_data knl_hbm;
   sicm_powerpc_hbm_data powerpc_hbm;
   sicm_optane_data optane;
+#ifdef HIP
+  sicm_hip_data hip;
+#endif
 } sicm_device_data;
 
 /// Tagged/discriminated union that fully identifies a device.
