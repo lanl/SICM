@@ -3,6 +3,7 @@
 
 #include "detect_devices/x86.h"
 #include "detect_devices/powerpc.h"
+#include "detect_devices/HIP.h"
 #include "detect_devices/DRAM.h"
 
 int get_node_count();

@@ -48,6 +48,8 @@ char * sicm_device_tag_str(sicm_device_tag tag) {
         return "SICM_POWERPC_HBM";
     case SICM_OPTANE:
         return "SICM_OPTANE";
+    case SICM_HIP:
+        return "SICM_HIP";
     case INVALID_TAG:
         break;
   }
@@ -145,6 +147,11 @@ struct sicm_device_list sicm_init() {
   sicm_default_device(0);
 
   sicm_init_count++;
+
+  for(int i = 0; i < idx; i++) {
+      fprintf(stdout, "%d %s\n", i, sicm_device_tag_str(devices[i]->tag));
+  }
+
   pthread_mutex_unlock(&sicm_init_count_mutex);
   return sicm_global_devices;
 }
@@ -199,7 +206,8 @@ void* sicm_device_alloc(struct sicm_device* device, size_t size) {
     case SICM_DRAM:
     case SICM_KNL_HBM:
     case SICM_OPTANE:
-    case SICM_POWERPC_HBM:; // labels can't be followed by declarations
+    case SICM_POWERPC_HBM:
+      ; // labels can't be followed by declarations
       int page_size = sicm_device_page_size(device);
       if(page_size == normal_page_size)
         return numa_alloc_onnode(size, sicm_numa_id(device));
@@ -225,6 +233,8 @@ void* sicm_device_alloc(struct sicm_device* device, size_t size) {
         set_mempolicy(old_mode, old_nodemask.n, numa_max_node() + 2);
         return ptr;
       }
+    case SICM_HIP:
+        break;
     case INVALID_TAG:
       break;
   }
@@ -237,7 +247,8 @@ void* sicm_device_alloc_mmapped(struct sicm_device* device, size_t size, int fd,
     case SICM_DRAM:
     case SICM_KNL_HBM:
     case SICM_OPTANE:
-    case SICM_POWERPC_HBM:; // labels can't be followed by declarations
+    case SICM_POWERPC_HBM:
+      ; // labels can't be followed by declarations
       int page_size = sicm_device_page_size(device);
       if(page_size == normal_page_size)
         return numa_alloc_onnode(size, sicm_numa_id(device));
@@ -263,6 +274,8 @@ void* sicm_device_alloc_mmapped(struct sicm_device* device, size_t size, int fd,
         set_mempolicy(old_mode, old_nodemask.n, numa_max_node() + 2);
         return ptr;
       }
+    case SICM_HIP:
+        break;
     case INVALID_TAG:
       break;
   }
@@ -277,6 +290,8 @@ int sicm_can_place_exact(struct sicm_device* device) {
     case SICM_OPTANE:
     case SICM_POWERPC_HBM:
       return 1;
+    case SICM_HIP:
+        break;
     case INVALID_TAG:
       break;
   }
@@ -288,7 +303,8 @@ void* sicm_alloc_exact(struct sicm_device* device, void* base, size_t size) {
     case SICM_DRAM:
     case SICM_KNL_HBM:
     case SICM_OPTANE:
-    case SICM_POWERPC_HBM:; // labels can't be followed by declarations
+    case SICM_POWERPC_HBM:
+      ; // labels can't be followed by declarations
       int page_size = sicm_device_page_size(device);
       if(page_size == normal_page_size) {
         int old_mode;
@@ -329,6 +345,8 @@ void* sicm_alloc_exact(struct sicm_device* device, void* base, size_t size) {
         set_mempolicy(old_mode, old_nodemask.n, numa_max_node() + 2);
         return ptr;
       }
+    case SICM_HIP:
+        break;
     case INVALID_TAG:
       break;
   }
@@ -352,6 +370,8 @@ void sicm_device_free(struct sicm_device* device, void* ptr, size_t size) {
         munmap(ptr, sicm_div_ceil(size, page_size * 1024) * page_size * 1024);
       }
       break;
+    case SICM_HIP:
+        break;
     case INVALID_TAG:
     default:
       printf("error in sicm_device_free: unknown tag\n");
@@ -399,6 +419,8 @@ int sicm_device_eq(sicm_device* dev1, sicm_device* dev2) {
           (dev1->data.optane.compute_node == dev2->data.optane.compute_node);
     case SICM_POWERPC_HBM:
       return 1;
+    case SICM_HIP:
+      return 1;
     case INVALID_TAG:
     default:
       return 0;
@@ -430,6 +452,8 @@ int sicm_pin(struct sicm_device* device) {
       #pragma omp parallel
       ret = numa_run_on_node(device->node);
       break;
+    case SICM_HIP:
+        break;
     case INVALID_TAG:
       break;
   }

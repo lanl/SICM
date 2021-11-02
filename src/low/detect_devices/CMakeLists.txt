@@ -1,6 +1,7 @@
 set(DETECTORS
   x86.c
   powerpc.c
+  HIP.c
   DRAM.c
 )
 

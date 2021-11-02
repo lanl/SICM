@@ -5,6 +5,7 @@
 typedef int (* node_mod_t)(void);
 
 static const node_mod_t node_mods[] = {
+    get_HIP_node_count,
 };
 
 static const size_t node_mod_count = sizeof(node_mods) / sizeof(node_mod_t);
@@ -43,6 +44,7 @@ typedef void (* detector_func_t)(struct bitmask* compute_nodes, struct bitmask* 
 static const detector_func_t detectors[] = {
     detect_x86,
     detect_powerpc,
+    detect_HIP,
     detect_DRAM,
 };
 
