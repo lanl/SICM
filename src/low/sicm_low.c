@@ -91,22 +91,9 @@ struct sicm_device_list sicm_init() {
   while((entry = readdir(dir)) != NULL)
     if(entry->d_name[0] != '.') huge_page_size_count++;
 
-  const int node_count = numa_max_node() + 1, depth;
-  const int device_count = node_count * (huge_page_size_count + 1);
-
-  sicm_global_device_array = malloc(device_count * sizeof(struct sicm_device));
   int* huge_page_sizes = malloc(huge_page_size_count * sizeof(int));
 
   normal_page_size = numa_pagesize() / 1024;
-
-  // initialize the device list
-  sicm_device **devices = malloc(device_count * sizeof(sicm_device *));
-  for(int i = 0; i < device_count; i++) {
-      devices[i] = &sicm_global_device_array[i];
-      devices[i]->tag = INVALID_TAG;
-      devices[i]->node = -1;
-      devices[i]->page_size = -1;
-  }
 
   // Find the actual set of huge page sizes (reported in KiB)
   rewinddir(dir);
@@ -130,6 +117,19 @@ struct sicm_device_list sicm_init() {
     }
   }
   closedir(dir);
+
+  const int node_count = get_node_count();
+  const int device_count = node_count * (huge_page_size_count + 1);
+  sicm_global_device_array = malloc(device_count * sizeof(struct sicm_device));
+
+  // initialize the device list
+  sicm_device **devices = malloc(device_count * sizeof(sicm_device *));
+  for(int i = 0; i < device_count; i++) {
+      devices[i] = &sicm_global_device_array[i];
+      devices[i]->tag = INVALID_TAG;
+      devices[i]->node = -1;
+      devices[i]->page_size = -1;
+  }
 
   const int idx = detect_devices(node_count,
                                  huge_page_sizes, huge_page_size_count,
