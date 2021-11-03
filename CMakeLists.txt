@@ -13,7 +13,7 @@ set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/Modules/")
 # find jemalloc through pkg-config
 find_package(PkgConfig REQUIRED)
 pkg_search_module(JEMALLOC REQUIRED jemalloc)
-string(REPLACE ";" " " JEMALLOC_LDFLAGS "${JEMALLOC_LDFLAGS}")
+message(STATUS "Found jemalloc library: inc=${JEMALLOC_INCLUDE_DIRS}, lib=${JEMALLOC_LDFLAGS}")
 
 add_subdirectory(include)
 

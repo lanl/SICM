@@ -28,7 +28,7 @@ jobs:
         ./autogen.sh
         mkdir build
         cd build
-        ../configure --prefix=${JEMALLOC_PATH} --with-jemalloc-prefix=je_
+        ../configure --prefix="${{env.JEMALLOC_PATH}}" --with-jemalloc-prefix=je_
         make -j
         make install
 
@@ -36,7 +36,7 @@ jobs:
       # Configure CMake in a 'build' subdirectory. `CMAKE_BUILD_TYPE` is only required if you are using a single-configuration generator such as make.
       # See https://cmake.org/cmake/help/latest/variable/CMAKE_BUILD_TYPE.html?highlight=cmake_build_type
       run: |
-        export PKG_CONFIG_PATH="${JEMALLOC_PATH}/lib/pkgconfig:${PKG_CONFIG_PATH}"
+        export PKG_CONFIG_PATH="${{env.JEMALLOC_PATH}}/lib/pkgconfig:${PKG_CONFIG_PATH}"
         cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DHUGE_ALLOC_TESTS=OFF
 
     - name: Build
@@ -48,5 +48,5 @@ jobs:
       # Execute tests defined by the CMake configuration.
       # See https://cmake.org/cmake/help/latest/manual/ctest.1.html for more detail
       run: |
-        export LD_LIBRARY_PATH="${JEMALLOC_PATH}/lib:${LD_LIBRARY_PATH}"
+        export LD_LIBRARY_PATH="${{env.JEMALLOC_PATH}}/lib:${LD_LIBRARY_PATH}"
         ctest -C ${{env.BUILD_TYPE}}
