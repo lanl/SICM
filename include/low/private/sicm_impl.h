@@ -5,6 +5,7 @@
 
 #include <jemalloc/jemalloc.h>
 #include "sicm_extent_arr.h"
+#include "sicm_low.h"
 //MKL
 //#include "/usr/include/asm-generic/mman-common.h"
 /// Linear-feedback shift register PRNG algorithm.

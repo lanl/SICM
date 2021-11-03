@@ -41,4 +41,5 @@ foreach(type ${TYPES})
   endif()
 endforeach()
 
+add_subdirectory(arena)
 add_subdirectory(detect_devices)
