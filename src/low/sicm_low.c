@@ -20,6 +20,10 @@
 #include "sicm_impl.h"
 #include "detect_devices.h"
 
+#ifdef HIP
+#include <hip/hip_runtime.h>
+#endif
+
 int normal_page_size = -1;
 
 sicm_device_tag sicm_get_device_tag(char *env) {
@@ -148,10 +152,6 @@ struct sicm_device_list sicm_init() {
 
   sicm_init_count++;
 
-  for(int i = 0; i < idx; i++) {
-      fprintf(stdout, "%d %s\n", i, sicm_device_tag_str(devices[i]->tag));
-  }
-
   pthread_mutex_unlock(&sicm_init_count_mutex);
   return sicm_global_devices;
 }
@@ -234,7 +234,24 @@ void* sicm_device_alloc(struct sicm_device* device, size_t size) {
         return ptr;
       }
     case SICM_HIP:
-        break;
+    #ifdef HIP
+        {
+            // record previously selected device
+            int old_dev = -1;
+            if (hipGetDevice(&old_dev) != hipSuccess) {
+                return NULL;
+            }
+
+            hipSetDevice(device->data.hip.id);
+
+            void *ptr = NULL;
+            hipHostMalloc(&ptr, size, 0);
+
+            // restore previously selected device
+            hipSetDevice(old_dev);
+            return ptr;
+        }
+    #endif
     case INVALID_TAG:
       break;
   }
@@ -275,7 +292,6 @@ void* sicm_device_alloc_mmapped(struct sicm_device* device, size_t size, int fd,
         return ptr;
       }
     case SICM_HIP:
-        break;
     case INVALID_TAG:
       break;
   }
@@ -291,7 +307,6 @@ int sicm_can_place_exact(struct sicm_device* device) {
     case SICM_POWERPC_HBM:
       return 1;
     case SICM_HIP:
-        break;
     case INVALID_TAG:
       break;
   }
@@ -346,7 +361,6 @@ void* sicm_alloc_exact(struct sicm_device* device, void* base, size_t size) {
         return ptr;
       }
     case SICM_HIP:
-        break;
     case INVALID_TAG:
       break;
   }
@@ -371,6 +385,9 @@ void sicm_device_free(struct sicm_device* device, void* ptr, size_t size) {
       }
       break;
     case SICM_HIP:
+        #ifdef HIP
+        hipHostFree(ptr);
+        #endif
         break;
     case INVALID_TAG:
     default:
@@ -420,7 +437,7 @@ int sicm_device_eq(sicm_device* dev1, sicm_device* dev2) {
     case SICM_POWERPC_HBM:
       return 1;
     case SICM_HIP:
-      return 1;
+      return (dev1->data.hip.id == dev2->data.hip.id);
     case INVALID_TAG:
     default:
       return 0;
@@ -453,7 +470,6 @@ int sicm_pin(struct sicm_device* device) {
       ret = numa_run_on_node(device->node);
       break;
     case SICM_HIP:
-        break;
     case INVALID_TAG:
       break;
   }

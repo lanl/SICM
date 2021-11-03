@@ -69,14 +69,14 @@ void detect_HIP(struct bitmask* compute_nodes, struct bitmask* non_dram_nodes,
         devices[idx]->tag = SICM_HIP;
         devices[idx]->node = numa_node;
         devices[idx]->page_size = normal_page_size;
-        devices[idx]->data.hip = (struct sicm_hip_data){ .compute_node = compute_node, .prop = prop };
+        devices[idx]->data.hip = (struct sicm_hip_data){ .compute_node = compute_node, .id = i };
         // do not modify non_dram_nodes since HIP devices might be co-located with DRAM
         idx++;
         for(int j = 0; j < huge_page_size_count; j++) {
             devices[idx]->tag = SICM_HIP;
             devices[idx]->node = numa_node;
             devices[idx]->page_size = huge_page_sizes[j];
-            devices[idx]->data.hip = (struct sicm_hip_data){ .compute_node = compute_node, .prop = prop };
+            devices[idx]->data.hip = (struct sicm_hip_data){ .compute_node = compute_node, .id = i };
             idx++;
         }
     }

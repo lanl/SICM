@@ -1,5 +1,6 @@
 set(ARENA_IMPLS
   mmap.c
+  HIP.c
 )
 
 foreach(type ${TYPES})

@@ -16,8 +16,12 @@ template <template <typename> typename Allocator, typename T>
 bool allocator_test(sicm_device_list *devs) {
     bool correct = true;
 
-    for(unsigned i = 0; i < devs->count; i += 3) {
+    for(unsigned i = 0; i < devs->count; i++) {
         sicm_device *dev = devs->devices[i];
+
+        if (dev->page_size != 4) {
+            continue;
+        }
 
         // deque
         {
@@ -87,10 +91,16 @@ bool allocator_test(sicm_device_list *devs) {
         }
 
         if (correct) {
-            std::cout << "All allocations were located on NUMA node " << dev->node << std::endl;
+            std::cout << "All allocations were located on device " << i
+                      << " (" << sicm_device_tag_str(dev->tag)
+                      << ", NUMA node " << dev->node
+                      << ", " << dev->page_size << ")" << std::endl;
         }
         else {
-            std::cerr << "Not all allocations were located on NUMA node " << dev->node << std::endl;
+            std::cerr << "Not all allocations were located on device " << i
+                      << " (" << sicm_device_tag_str(dev->tag)
+                      << ", NUMA node " << dev->node
+                      << ", " << dev->page_size << ")" << std::endl;
         }
     }
 

@@ -18,8 +18,12 @@ static sarena *sa_list;
 static size_t sa_lookup_mib[2];
 static pthread_once_t sa_init = PTHREAD_ONCE_INIT;
 static pthread_key_t sa_default_key;
+
 extern extent_hooks_t sicm_arena_mmap_hooks;
-void (*sicm_extent_alloc_callback)(void *start, void *end) = NULL;
+
+#ifdef HIP
+extern extent_hooks_t sicm_arena_HIP_hooks;
+#endif
 
 static void sarena_init() {
 	int err;
@@ -79,6 +83,16 @@ static sarena *sicm_arena_new(size_t sz, sicm_arena_flags flags, sicm_device_lis
 	if (nodemask == NULL)
 		return NULL;
 
+	#ifdef HIP
+	// don't create arenas that cross HIP devices
+	if (devs->count > 1) {
+		for(unsigned int i = 0; i < devs->count; i++){
+			if (devs->devices[i]->tag == SICM_HIP) {
+				return NULL;
+			}
+		}
+	}
+	#endif
 
 	sa = malloc(sizeof(sarena));
 	if (sa == NULL) {
@@ -112,7 +126,16 @@ static sarena *sicm_arena_new(size_t sz, sicm_arena_flags flags, sicm_device_lis
 	sa->nodemask = nodemask;
 	sa->fd = -1;	// DON'T TOUCH! sa_alloc depends on it being -1 when arenas.create is called.
 	sa->extents = extent_arr_init();
-	sa->hooks = sicm_arena_mmap_hooks;
+	#ifdef HIP
+	if ((devs->count == 1) && (devs->devices[0]->tag == SICM_HIP)) {
+		sa->hooks = sicm_arena_HIP_hooks;
+	}
+	else {
+	#endif
+		sa->hooks = sicm_arena_mmap_hooks;
+	#ifdef HIP
+	}
+	#endif
 	new_hooks = &sa->hooks;
 	arena_ind_sz = sizeof(unsigned); // sa->arena_ind);
 	arena_ind = -1;
