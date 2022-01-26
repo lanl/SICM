@@ -5,13 +5,19 @@
 #ifdef HIP
 #include "detect_devices/HIP.h"
 #endif
+#ifdef SYCL
+#include "detect_devices/sycl.h"
+#endif
+
 #include "detect_devices/DRAM.h"
 
 static const node_mod_t node_mods[] = {
     #ifdef HIP
     get_HIP_node_count,
     #endif
-
+    #ifdef SYCL
+    get_sycl_node_count,
+    #endif
 };
 
 static const size_t node_mod_count = sizeof(node_mods) / sizeof(node_mod_t);
@@ -48,6 +54,9 @@ static const detector_func_t detectors[] = {
     detect_powerpc,
     #ifdef HIP
     detect_HIP,
+    #endif
+    #ifdef SYCL
+    detect_sycl,
     #endif
     detect_DRAM, /* leave last */
 };

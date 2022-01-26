@@ -8,6 +8,13 @@ if (NOT ENABLE_HIP)
   set(hip_FOUND Off)
 endif()
 
+# find oneAPI/sycl
+find_package(IntelDPCPP)
+option(ENABLE_SYCL "Use oneAPI/sycl if found" On)
+if (NOT ENABLE_SYCL)
+  set(IntelDPCPP_FOUND Off)
+endif()
+
 # whether or not to build the static library
 # the shared libraries are always built
 option(SICM_STATIC_LIB "Build the static library" Off)
@@ -44,6 +51,11 @@ foreach(type ${TYPES})
   if (hip_FOUND)
     target_compile_definitions(${target} PUBLIC HIP=1)
     target_link_libraries(${target} hip::host)
+  endif()
+
+  if (IntelDPCPP_FOUND)
+    target_compile_definitions(${target} PUBLIC SYCL=1)
+    target_link_libraries(${target} sycl)
   endif()
 endforeach()
 

@@ -37,6 +37,7 @@ typedef enum sicm_device_tag {
   SICM_POWERPC_HBM,
   SICM_OPTANE,
   SICM_HIP,
+  SICM_SYCL,
   INVALID_TAG
 } sicm_device_tag;
 
@@ -76,6 +77,11 @@ typedef struct sicm_hip_data {
     int id;
 } sicm_hip_data;
 
+typedef struct sicm_sycl_data {
+    void *device;  // sycl::device
+    void *context; // sycl::context
+} sicm_sycl_data;
+
 /// Data that, given a device type, uniquely identify the device within that type.
 /**
  * This union is only meaningful in the presence of a sicm_device_tag,
@@ -89,6 +95,7 @@ typedef union sicm_device_data {
   sicm_powerpc_hbm_data powerpc_hbm;
   sicm_optane_data optane;
   sicm_hip_data hip;
+  sicm_sycl_data sycl;
 } sicm_device_data;
 
 /// Tagged/discriminated union that fully identifies a device.
