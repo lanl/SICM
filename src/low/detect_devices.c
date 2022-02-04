@@ -50,14 +50,14 @@ static const detector_func_t detectors[] = {
 
 static const size_t detector_count = sizeof(detectors) / sizeof(detector_func_t);
 
-int detect_devices(int node_count,
-                   int *huge_page_sizes, int huge_page_size_count, int normal_page_size,
+/* fill in device list */
+int detect_devices(int node_count, int *huge_page_sizes,
+                   int huge_page_size_count, int normal_page_size,
                    struct sicm_device **devices) {
-    int idx = 0;
-
     struct bitmask* compute_nodes = get_compute_nodes(node_count);
     struct bitmask* non_dram_nodes = numa_bitmask_alloc(node_count);
 
+    int idx = 0;
     for(size_t i = 0; i < detector_count; i++) {
         detectors[i](compute_nodes, non_dram_nodes,
                      huge_page_sizes, huge_page_size_count, normal_page_size,
