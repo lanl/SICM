@@ -68,7 +68,11 @@ static int sicm_device_compare(const void * lhs, const void * rhs) {
     return l->node - r->node;
   }
 
-  return l->page_size - r->page_size;
+  if (l->page_size != r->page_size) {
+      return l->page_size - r->page_size;
+  }
+
+  return l->tag - r->tag;
 }
 
 /* Only initialize SICM once */
