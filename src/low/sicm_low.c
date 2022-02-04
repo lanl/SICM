@@ -238,7 +238,7 @@ void* sicm_device_alloc(struct sicm_device* device, size_t size) {
         return ptr;
       }
     case SICM_HIP:
-    #ifdef HIP
+        #ifdef HIP
         {
             // record previously selected device
             int old_dev = -1;
@@ -255,7 +255,8 @@ void* sicm_device_alloc(struct sicm_device* device, size_t size) {
             hipSetDevice(old_dev);
             return ptr;
         }
-    #endif
+        #endif
+        break;
     case INVALID_TAG:
       break;
   }

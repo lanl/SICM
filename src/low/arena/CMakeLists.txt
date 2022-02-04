@@ -1,7 +1,10 @@
 set(ARENA_IMPLS
   mmap.c
-  HIP.c
 )
+
+if (hip_FOUND)
+  list(APPEND ARENA_IMPLS HIP.c)
+endif()
 
 foreach(type ${TYPES})
   foreach(arena_impl ${ARENA_IMPLS})

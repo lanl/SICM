@@ -1,14 +1,11 @@
 #include "detect_devices/HIP.h"
 #include <stdio.h>
 
-#ifdef HIP
 #include <hip/hip_runtime.h>
-#endif
 
 int get_HIP_node_count() {
     int usable = 0;
 
-    #ifdef HIP
     hipInit(0);
 
     int dev_count = 0;
@@ -25,12 +22,10 @@ int get_HIP_node_count() {
 
         usable++;
     }
-    #endif
 
     return usable;
 }
 
-#ifdef HIP
 static int get_numa_node(int pciBusID) {
     int numa_node = -1;
     char filename[PATH_MAX];
@@ -43,12 +38,10 @@ static int get_numa_node(int pciBusID) {
     fclose(f);
     return numa_node;
 }
-#endif
 
 void detect_HIP(struct bitmask* compute_nodes, struct bitmask* non_dram_nodes,
                 int *huge_page_sizes, int huge_page_size_count, int normal_page_size,
                 struct sicm_device **devices, int *curr_idx) {
-    #ifdef HIP
     int idx = *curr_idx;
 
     int dev_count = 0;
@@ -82,5 +75,4 @@ void detect_HIP(struct bitmask* compute_nodes, struct bitmask* non_dram_nodes,
     }
 
     *curr_idx = idx;
-    #endif
 }

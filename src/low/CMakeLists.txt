@@ -1,7 +1,12 @@
 find_package(NUMA REQUIRED)
 
+# find ROCm/HIP
 list(APPEND CMAKE_PREFIX_PATH /opt/rocm/hip /opt/rocm)
 find_package(hip)
+option(ENABLE_HIP "Use ROCm/HIP if found" On)
+if (NOT ENABLE_HIP)
+  set(hip_FOUND Off)
+endif()
 
 # whether or not to build the static library
 # the shared libraries are always built
@@ -35,6 +40,7 @@ foreach(type ${TYPES})
   # libsicm needs to link against jemalloc and numa
   target_link_libraries(${target} ${JEMALLOC_LDFLAGS})
   target_link_libraries(${target} ${NUMA_LIBRARY})
+
   if (hip_FOUND)
     target_compile_definitions(${target} PUBLIC HIP=1)
     target_link_libraries(${target} hip::host)

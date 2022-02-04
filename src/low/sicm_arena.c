@@ -83,16 +83,16 @@ static sarena *sicm_arena_new(size_t sz, sicm_arena_flags flags, sicm_device_lis
 	if (nodemask == NULL)
 		return NULL;
 
-	#ifdef HIP
-	// don't create arenas that cross HIP devices
 	if (devs->count > 1) {
-		for(unsigned int i = 0; i < devs->count; i++){
+		for(unsigned int i = 1; i < devs->count; i++){
+#ifdef HIP
+			// don't create arenas that cross HIP devices
 			if (devs->devices[i]->tag == SICM_HIP) {
 				return NULL;
 			}
+#endif
 		}
 	}
-	#endif
 
 	sa = malloc(sizeof(sarena));
 	if (sa == NULL) {
@@ -126,14 +126,10 @@ static sarena *sicm_arena_new(size_t sz, sicm_arena_flags flags, sicm_device_lis
 	sa->nodemask = nodemask;
 	sa->fd = -1;	// DON'T TOUCH! sa_alloc depends on it being -1 when arenas.create is called.
 	sa->extents = extent_arr_init();
+	sa->hooks = sicm_arena_mmap_hooks;
 	#ifdef HIP
 	if ((devs->count == 1) && (devs->devices[0]->tag == SICM_HIP)) {
 		sa->hooks = sicm_arena_HIP_hooks;
-	}
-	else {
-	#endif
-		sa->hooks = sicm_arena_mmap_hooks;
-	#ifdef HIP
 	}
 	#endif
 	new_hooks = &sa->hooks;
