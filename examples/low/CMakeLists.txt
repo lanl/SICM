@@ -10,7 +10,7 @@ add_executable(generate_sizes generate_sizes.c sizes)
 # example code
 add_executable(move move.c sizes)
 target_link_libraries(move PUBLIC sicm_SHARED)
-target_link_libraries(move PRIVATE "${JEMALLOC_LDFLAGS}")
+target_link_libraries(move PRIVATE ${JEMALLOC_LDFLAGS})
 
 add_executable(move_perf move_perf.c nano run_move sizes)
 target_link_libraries(move_perf PUBLIC sicm_SHARED)
@@ -24,4 +24,4 @@ configure_file(plot_moves.sh plot_moves.sh @ONLY)
 # C++ allocators
 add_executable(allocators allocators.cpp)
 target_link_libraries(allocators PUBLIC sicm_SHARED)
-target_link_libraries(allocators PRIVATE "${JEMALLOC_LDFLAGS}")
+target_link_libraries(allocators PRIVATE ${JEMALLOC_LDFLAGS})

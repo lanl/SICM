@@ -8,10 +8,17 @@ function(sicm_test src)
   add_test("${name}" "${name}")
 endfunction()
 
-foreach(NUM 1 2 3 4 5)
+foreach(NUM 1 2)
   sicm_test(test${NUM}.c)
 endforeach()
 
+option(HUGE_ALLOC_TESTS "Add tests that allocate 8GB+ memory" ON)
+if (HUGE_ALLOC_TESTS)
+  foreach(NUM 3 4 5)
+    sicm_test(test${NUM}.c)
+  endforeach()
+endif()
+
 sicm_test(default_device.c)
 
-add_test(allocator  ${CMAKE_BINARY_DIR}/examples/low/allocators)
+add_test(allocator ${CMAKE_BINARY_DIR}/examples/low/allocators)

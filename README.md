@@ -1,7 +1,7 @@
 # SICM
 Simplified Interface to Complex Memory
 
-[![Build Status](https://travis-ci.org/lanl/SICM.svg?branch=master)](https://travis-ci.org/lanl/SICM)
+[![GitHub Actions](https://github.com/lanl/SICM/actions/workflows/sicm.yml/badge.svg)](https://github.com/lanl/SICM/actions)
 
 ## Introduction
 This project is split into two interfaces: `low` and `high`.
@@ -30,7 +30,7 @@ configured with the `je_` prefix (using the `--with-jemalloc-prefix` flag).
 For the high-level interface, you need an installation of LLVM. LLVM 4.0 and
 later have been tested, although 3.9 may possibly work. For the profiling, you
 will also need an installation of `libpfm`, which is a small helper library for
-`perf` that is available on most distributions. 
+`perf` that is available on most distributions.
 
 Additionally, several other packages are required, and can be installed through a package manager:
 
