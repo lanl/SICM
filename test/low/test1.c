@@ -8,10 +8,7 @@ int main() {
 	for(int i = 0; i < devs.count; i++) {
 		sicm_device *dev = devs.devices[i];
 		printf("%d %d %s %d\n", i, sicm_numa_id(dev), sicm_device_tag_str(dev->tag), dev->page_size);
-	}
 
-	for(int i = 0; i < devs.count; i++) {
-		sicm_device *dev = devs.devices[i];
 		sicm_device_list ds = {
 			.count = 1,
 			.devices = &dev,
