@@ -68,7 +68,11 @@ static int sicm_device_compare(const void * lhs, const void * rhs) {
     return l->node - r->node;
   }
 
-  return l->page_size - r->page_size;
+  if (l->page_size != r->page_size) {
+      return l->page_size - r->page_size;
+  }
+
+  return l->tag - r->tag;
 }
 
 /* Only initialize SICM once */
@@ -234,7 +238,7 @@ void* sicm_device_alloc(struct sicm_device* device, size_t size) {
         return ptr;
       }
     case SICM_HIP:
-    #ifdef HIP
+        #ifdef HIP
         {
             // record previously selected device
             int old_dev = -1;
@@ -251,7 +255,8 @@ void* sicm_device_alloc(struct sicm_device* device, size_t size) {
             hipSetDevice(old_dev);
             return ptr;
         }
-    #endif
+        #endif
+        break;
     case INVALID_TAG:
       break;
   }

@@ -1,8 +1,7 @@
 #ifndef __SICM_DETECT_HIP_H
 #define __SICM_DETECT_HIP_H
 
-#include <numa.h>
-#include <sicm_low.h>
+#include "detect_devices.h"
 
 int get_HIP_node_count();
 

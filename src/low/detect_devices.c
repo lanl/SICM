@@ -1,11 +1,17 @@
-#include <numa.h>
-
 #include "detect_devices.h"
 
-typedef int (* node_mod_t)(void);
+#include "detect_devices/x86.h"
+#include "detect_devices/powerpc.h"
+#ifdef HIP
+#include "detect_devices/HIP.h"
+#endif
+#include "detect_devices/DRAM.h"
 
 static const node_mod_t node_mods[] = {
+    #ifdef HIP
     get_HIP_node_count,
+    #endif
+
 };
 
 static const size_t node_mod_count = sizeof(node_mods) / sizeof(node_mod_t);
@@ -37,27 +43,25 @@ static struct bitmask *get_compute_nodes(int node_count) {
     return compute_nodes;
 }
 
-typedef void (* detector_func_t)(struct bitmask* compute_nodes, struct bitmask* non_dram_nodes,
-                                 int *huge_page_sizes, int huge_page_size_count, int normal_page_size,
-                                 struct sicm_device **devices, int *curr_idx);
-
 static const detector_func_t detectors[] = {
     detect_x86,
     detect_powerpc,
+    #ifdef HIP
     detect_HIP,
-    detect_DRAM,
+    #endif
+    detect_DRAM, /* leave last */
 };
 
 static const size_t detector_count = sizeof(detectors) / sizeof(detector_func_t);
 
-int detect_devices(int node_count,
-                   int *huge_page_sizes, int huge_page_size_count, int normal_page_size,
+/* fill in device list */
+int detect_devices(int node_count, int *huge_page_sizes,
+                   int huge_page_size_count, int normal_page_size,
                    struct sicm_device **devices) {
-    int idx = 0;
-
     struct bitmask* compute_nodes = get_compute_nodes(node_count);
     struct bitmask* non_dram_nodes = numa_bitmask_alloc(node_count);
 
+    int idx = 0;
     for(size_t i = 0; i < detector_count; i++) {
         detectors[i](compute_nodes, non_dram_nodes,
                      huge_page_sizes, huge_page_size_count, normal_page_size,

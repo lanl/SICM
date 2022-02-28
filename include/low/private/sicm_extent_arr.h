@@ -1,7 +1,7 @@
 #pragma once
 /* extent_arr is an array of jemalloc extents. Each element of
  * the array stores a start and end address, as well as a pointer to an arena.
- * This is designed to be extremely cache-friendly, and thus makes some 
+ * This is designed to be extremely cache-friendly, and thus makes some
  * sacrifices in the runtime complexity department. It's extremely fast
  * for use cases where we need to iterate over all of the extents in the array
  * very quickly, which we do when we rebind an arena or when we search
@@ -75,7 +75,7 @@ static inline void extent_arr_insert(extent_arr *a, void *start, void *end, void
       /* We need to reallocate */
       old_max_extents = a->max_extents;
       a->max_extents *= 2;
-      a->arr = realloc(a->arr, a->max_extents * sizeof(extent_info));
+      a->arr = (extent_info *) realloc(a->arr, a->max_extents * sizeof(extent_info));
       for(i = old_max_extents; i < a->max_extents; i++) {
         a->arr[i].start = NULL;
         a->arr[i].end = NULL;

@@ -1,9 +1,12 @@
 set(DETECTORS
   x86.c
   powerpc.c
-  HIP.c
   DRAM.c
 )
+
+if (hip_FOUND)
+  list(APPEND DETECTORS HIP.c)
+endif()
 
 foreach(type ${TYPES})
   foreach(detector ${DETECTORS})
