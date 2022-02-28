@@ -31,7 +31,7 @@ static void *sa_alloc(extent_hooks_t *h, void *new_addr, size_t size, size_t ali
 		goto done;
 	}
 
-	if (hipHostMalloc(&ret, size, 0) != hipSuccess) {
+	if (hipMalloc(&ret, size) != hipSuccess) {
 		perror("hipHostMalloc");
 		goto done;
 	}
@@ -78,7 +78,7 @@ static bool sa_dalloc(extent_hooks_t *h, void *addr, size_t size, bool committed
 	pthread_mutex_lock(sa->mutex);
 	extent_arr_delete(sa->extents, addr);
 
-    if (hipHostFree(addr) != hipSuccess) {
+    if (hipFree(addr) != hipSuccess) {
 		fprintf(stderr, "hipHostfree failed: %p %ld\n", addr, size);
 		extent_arr_insert(sa->extents, addr, (char *)addr + size, NULL);
 		ret = true;

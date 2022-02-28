@@ -249,7 +249,7 @@ void* sicm_device_alloc(struct sicm_device* device, size_t size) {
             hipSetDevice(device->data.hip.id);
 
             void *ptr = NULL;
-            hipHostMalloc(&ptr, size, 0);
+            hipMalloc(&ptr, size);
 
             // restore previously selected device
             hipSetDevice(old_dev);
@@ -391,7 +391,7 @@ void sicm_device_free(struct sicm_device* device, void* ptr, size_t size) {
       break;
     case SICM_HIP:
         #ifdef HIP
-        hipHostFree(ptr);
+        hipFree(ptr);
         #endif
         break;
     case INVALID_TAG:
