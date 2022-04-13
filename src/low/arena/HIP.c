@@ -25,6 +25,12 @@ static void *sa_alloc(extent_hooks_t *h, void *new_addr, size_t size, size_t ali
 		goto done;
 	}
 
+	int prev = -1;
+	if (hipGetDevice(&prev) != hipSuccess) {
+		perror("hipSetDevice");
+		goto done;
+	}
+
 	// arenas are created only on one device
 	if (hipSetDevice(sa->devs.devices[0]->data.hip.id) != hipSuccess) {
 		perror("hipSetDevice");
@@ -42,11 +48,11 @@ static void *sa_alloc(extent_hooks_t *h, void *new_addr, size_t size, size_t ali
 	}
 
 	// the alignment didn't work out, munmap and try again
-	hipHostFree(ret);
+	hipFree(ret);
 	ret = NULL;
 
 	size += alignment;
-	if (hipHostMalloc(&ret, size, 0) != hipSuccess) {
+	if (hipMalloc(&ret, size) != hipSuccess) {
 		perror("hipHostMalloc 2");
 		ret = NULL;
 		goto done;
@@ -64,6 +70,9 @@ success:
 	extent_arr_insert(sa->extents, ret, (char *)ret + size, NULL);
 
 done:
+	if (hipSetDevice(prev) != hipSuccess) {
+		perror("hipSetDevice");
+	}
 	pthread_mutex_unlock(sa->mutex);
 
 	return ret;
@@ -73,15 +82,17 @@ static bool sa_dalloc(extent_hooks_t *h, void *addr, size_t size, bool committed
 	sarena *sa;
 	bool ret;
 
-	ret = false;
 	sa = container_of(h, sarena, hooks);
-	pthread_mutex_lock(sa->mutex);
-	extent_arr_delete(sa->extents, addr);
 
-    if (hipFree(addr) != hipSuccess) {
-		fprintf(stderr, "hipHostfree failed: %p %ld\n", addr, size);
+	pthread_mutex_lock(sa->mutex);
+	if (hipFree(addr) != hipSuccess) {
+		fprintf(stderr, "hipfree failed: %p %ld\n", addr, size);
 		extent_arr_insert(sa->extents, addr, (char *)addr + size, NULL);
 		ret = true;
+	}
+	else {
+		extent_arr_delete(sa->extents, addr);
+		ret = false;
 	}
 	sa->size -= size;
 	pthread_mutex_unlock(sa->mutex);

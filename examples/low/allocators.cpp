@@ -23,6 +23,8 @@ bool allocator_test(sicm_device_list *devs) {
             continue;
         }
 
+        bool curr = true;
+
         // deque
         {
             Allocator <T> sa(dev);
@@ -35,7 +37,7 @@ bool allocator_test(sicm_device_list *devs) {
 
                 if (!check_location(dev, deque)) {
                     std::cerr << "std::deque item was not in the correct location" << std::endl;
-                    correct = false;
+                    curr = false;
                 }
             }
         }
@@ -52,7 +54,7 @@ bool allocator_test(sicm_device_list *devs) {
 
                 if (!check_location(dev, list)) {
                     std::cerr << "std::list item was not in the correct location" << std::endl;
-                    correct = false;
+                    curr = false;
                 }
             }
         }
@@ -69,7 +71,7 @@ bool allocator_test(sicm_device_list *devs) {
 
             if (!check_location(dev, map)) {
                 std::cerr << "std::map item was not in the correct location" << std::endl;
-                correct = false;
+                curr = false;
             }
         }
 
@@ -85,23 +87,25 @@ bool allocator_test(sicm_device_list *devs) {
 
                 if (!check_location(dev, vector)) {
                     std::cerr << "std::vector item was not in the correct location" << std::endl;
-                    correct = false;
+                    curr = false;
                 }
             }
         }
 
-        if (correct) {
+        if (curr) {
             std::cout << "All allocations were located on device " << i
                       << " (" << sicm_device_tag_str(dev->tag)
                       << ", NUMA node " << dev->node
-                      << ", " << dev->page_size << ")" << std::endl;
+                      << ", " << dev->page_size << " KB)" << std::endl;
         }
         else {
             std::cerr << "Not all allocations were located on device " << i
                       << " (" << sicm_device_tag_str(dev->tag)
                       << ", NUMA node " << dev->node
-                      << ", " << dev->page_size << ")" << std::endl;
+                      << ", " << dev->page_size << " KB)" << std::endl;
         }
+
+        correct &= curr;
     }
 
     return correct;
