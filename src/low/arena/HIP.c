@@ -4,22 +4,22 @@
 
 #include "sicm_impl.h"
 
-static void *sa_alloc(extent_hooks_t *h, void *new_addr, size_t size, size_t alignment, bool *zero, bool *commit, unsigned arena_ind) {
+static void *sa_hip_alloc(extent_hooks_t *h, void *new_addr, size_t size, size_t alignment, bool *zero, bool *commit, unsigned arena_ind) {
 	sarena *sa;
 	uintptr_t n, m;
 	void *ret = NULL;
 	struct bitmask *oldnodemask;
 
+	*commit = 0;
+
 	if (new_addr) {
 		return NULL;
 	}
 
-	*commit = 0;
-	*zero = 0;
 	ret = NULL;
 	sa = container_of(h, sarena, hooks);
 
-	// TODO: figure out a way to prevent taking the mutex twice (sa_range_add also takes it)...
+	// TODO: figure out a way to prevent taking the mutex twice (sa_hip_range_add also takes it)...
 	pthread_mutex_lock(sa->mutex);
 	if (sa->maxsize > 0 && sa->size + size > sa->maxsize) {
 		goto done;
@@ -75,10 +75,13 @@ done:
 	}
 	pthread_mutex_unlock(sa->mutex);
 
+        if (*zero) {
+		memset(ret, 0, size);
+	}
 	return ret;
 }
 
-static bool sa_dalloc(extent_hooks_t *h, void *addr, size_t size, bool committed, unsigned arena_ind) {
+static bool sa_hip_dalloc(extent_hooks_t *h, void *addr, size_t size, bool committed, unsigned arena_ind) {
 	sarena *sa;
 	bool ret;
 
@@ -99,39 +102,40 @@ static bool sa_dalloc(extent_hooks_t *h, void *addr, size_t size, bool committed
 	return ret;
 }
 
-static void sa_destroy(extent_hooks_t *h, void *addr, size_t size, bool committed, unsigned arena_ind) {
-	sa_dalloc(h, addr, size, committed, arena_ind);
+static void sa_hip_destroy(extent_hooks_t *h, void *addr, size_t size, bool committed, unsigned arena_ind) {
+	sa_hip_dalloc(h, addr, size, committed, arena_ind);
 }
 
-static bool sa_commit(extent_hooks_t *h, void *addr, size_t size, size_t offset, size_t length, unsigned arena_ind) {
+static bool sa_hip_commit(extent_hooks_t *h, void *addr, size_t size, size_t offset, size_t length, unsigned arena_ind) {
+	// no support for commit/decommit
+	memset(addr, 0, size);
+	return false;
+}
+
+static bool sa_hip_decommit(extent_hooks_t *h, void *addr, size_t size, size_t offset, size_t length, unsigned arena_ind) {
 	// no support for commit/decommit
 	return false;
 }
 
-static bool sa_decommit(extent_hooks_t *h, void *addr, size_t size, size_t offset, size_t length, unsigned arena_ind) {
-	// no support for commit/decommit
-	return true;
-}
-
-static bool sa_split(extent_hooks_t *h, void *addr, size_t size, size_t size_a, size_t size_b, bool committed, unsigned arena_ind) {
+static bool sa_hip_split(extent_hooks_t *h, void *addr, size_t size, size_t size_a, size_t size_b, bool committed, unsigned arena_ind) {
 	// we don't really need to keep track of each extent, let's figure it out at alloc/dalloc time
 	return false;
 }
 
-static bool sa_merge(extent_hooks_t *h, void *addr_a, size_t size_a, void *addr_b, size_t size_b, bool committed, unsigned arena_ind) {
+static bool sa_hip_merge(extent_hooks_t *h, void *addr_a, size_t size_a, void *addr_b, size_t size_b, bool committed, unsigned arena_ind) {
 	// we don't really need to keep track of each extent, let's figure it all out at alloc/dalloc time
 	return false;
 }
 
 extent_hooks_t sicm_arena_HIP_hooks = {
-	.alloc = sa_alloc,
-	.dalloc = sa_dalloc,
-	.destroy = sa_destroy,
-	.commit = sa_commit,
-	.decommit = sa_decommit,
+	.alloc = sa_hip_alloc,
+	.dalloc = sa_hip_dalloc,
+	.destroy = sa_hip_destroy,
+	.commit = sa_hip_commit,
+	.decommit = sa_hip_decommit,
 	.purge_lazy = NULL,
 	.purge_forced = NULL,
-	.split = sa_split,
-	.merge = sa_merge,
+	.split = sa_hip_split,
+	.merge = sa_hip_merge,
 };
 #endif

@@ -17,7 +17,7 @@ static void *sa_alloc(extent_hooks_t *h, void *new_addr, size_t size, size_t ali
 	struct bitmask *oldnodemask;
 
 	*commit = 0;
-	*zero = 0;
+
 	ret = NULL;
 	sa = container_of(h, sarena, hooks);
 
@@ -129,6 +129,10 @@ free_nodemasks:
 	numa_free_nodemask(oldnodemask);
 	pthread_mutex_unlock(sa->mutex);
 
+	if (*zero) {
+		memset(ret, 0, size);
+	}
+	
 	return ret;
 }
 
