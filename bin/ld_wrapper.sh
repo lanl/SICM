@@ -13,6 +13,8 @@ flock 200
 pid=$$
 echo $pid 1>&200
 
+trap "rm -f $PIDFILE" EXIT
+
 # Gets the location of the script to find Compass, SICM, etc.
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null && pwd )"
 LIB_DIR="$DIR/../lib"
@@ -99,29 +101,29 @@ if [ ${#FILES_ARR[@]} -eq 0 ]; then
 fi
 
 # Link all of the IR files into one
-${LLVMPATH}${LLVMLINK} $BC_STR -o .sicm_ir.bc
+${LLVMPATH}${LLVMLINK} $BC_STR -o .sicm_ir.bc || exit $?
 
 # Run the compiler pass to generate the call graph.
 if [[ $NO_TRANSFORM = " " ]]; then
-  ${LLVMPATH}${LLVMOPT} -load ${LIB_DIR}/libsicm_compass.so -compass-mode=analyze \
+  ${LLVMPATH}${LLVMOPT} -enable-new-pm=0 -load ${LIB_DIR}/libsicm_compass.so -compass-mode=analyze \
       -compass -compass-depth=${SH_CONTEXT} \
-      .sicm_ir.bc -o .sicm_ir_transformed.bc
+      .sicm_ir.bc -o .sicm_ir_transformed.bc || exit $?
 
   # Run the compiler pass on each individual file
   # Construct a newline-separated list of commands.
   COMMANDS=""
   if [ -z ${SH_RDSPY+x} ]; then
       for file in "${FILES_ARR[@]}"; do
-        COMMANDS+="${LLVMPATH}${LLVMOPT} -load ${LIB_DIR}/libsicm_compass.so -compass-detail -compass-mode=transform -compass -compass-depth=${SH_CONTEXT} ${file}.bc -o ${file}.bc"
+        COMMANDS+="${LLVMPATH}${LLVMOPT} -enable-new-pm=0 -load ${LIB_DIR}/libsicm_compass.so -compass-detail -compass-mode=transform -compass -compass-depth=${SH_CONTEXT} ${file}.bc -o ${file}.bc"
         COMMANDS+=$'\n'
       done
   else
       for file in "${FILES_ARR[@]}"; do
-        COMMANDS+="${LLVMPATH}${LLVMOPT} -load ${LIB_DIR}/libsicm_compass.so -load ${LIB_DIR}/libsicm_rdspy.so -compass-mode=transform -compass -compass-depth=${SH_CONTEXT} -rdspy -rdspy-sampling-threshold=${SH_RDSPY_SAMPLE} ${file}.bc -o ${file}.bc"
+        COMMANDS+="${LLVMPATH}${LLVMOPT} -enable-new-pm=0 -load ${LIB_DIR}/libsicm_compass.so -load ${LIB_DIR}/libsicm_rdspy.so -compass-mode=transform -compass -compass-depth=${SH_CONTEXT} -rdspy -rdspy-sampling-threshold=${SH_RDSPY_SAMPLE} ${file}.bc -o ${file}.bc"
         COMMANDS+=$'\n'
       done
   fi
-  echo "$COMMANDS" | xargs -I CMD --max-procs=64 bash -c CMD
+  echo "$COMMANDS" | xargs -I CMD --max-procs=64 bash -c CMD || exit $?
 fi
 
 # Also compile each file to its transformed object file, overwriting the old one
@@ -134,6 +136,4 @@ done
 echo "$COMMANDS" | xargs -I CMD --max-procs=64 bash -c CMD
 
 # Now finally link the transformed '.o' files
-${LLVMPATH}${LD_LINKER} $LINKER_INPUT_FILES $LINKARGS
-
-rm $PIDFILE
+${LLVMPATH}${LD_LINKER} $LINKER_INPUT_FILES $LINKARGS || exit $?

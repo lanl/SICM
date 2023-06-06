@@ -46,10 +46,11 @@ extern size_t peak_internal_usage_present_pages;
 extern size_t peak_internal_usage_pages;
 extern unsigned int internal_pagesize;
 extern atomic_int internal_initialized;
+extern int internal_use_objmap;
 
 /* This is an internal allocator that uses `jemalloc`. It places all
    SICM-internal allocations into an arena for easy bookkeeping. */
-   
+
 static void internal_init() {
   int err;
   size_t arena_ind_sz;
@@ -57,20 +58,23 @@ static void internal_init() {
 
   internal_initialized = 1;
 
-  /* Initialize objmap to keep track of present pages in internal allocations, too */
-  err = objmap_open(&internal_objmap);
-  if (err < 0) {
-    fprintf(stderr, "Failed to open the object map: %d. Aborting.\n", err);
-    exit(1);
+  if(internal_use_objmap) {
+    /* Initialize objmap to keep track of present pages in internal allocations, too */
+    err = objmap_open(&internal_objmap);
+    if (err < 0) {
+      fprintf(stderr, "Failed to open the object map: %d. Aborting.\n", err);
+      exit(1);
+    }
+    fprintf(stderr, "Opened objmap fd: %d\n", internal_objmap.fd);
   }
-  fprintf(stderr, "Opened objmap fd: %d\n", internal_objmap.fd);
+
   new_hooks = &internal_hooks;
   internal_extents = extent_arr_init();
   arena_ind_sz = sizeof(unsigned);
   internal_arena_ind = -1;
   internal_pid = getpid();
   internal_pagesize = sysconf(_SC_PAGE_SIZE);
-  
+
   err = je_mallctl("arenas.create", (void *) &internal_arena_ind, &arena_ind_sz, (void *)&new_hooks, sizeof(extent_hooks_t *));
   if (err != 0) {
     fprintf(stderr, "Can't create the internal arena: %d\n", err);
@@ -88,11 +92,11 @@ static size_t peak_internal_present_usage(FILE *output) {
   int status;
   char entry_path_buff[4096];
   struct proc_object_map_record_t record;
-  
+
   pthread_once(&internal_init_once, internal_init);
-  
+
   pthread_rwlock_rdlock(&internal_extents_lock);
-  
+
   tot = 0;
   extent_arr_for(internal_extents, i) {
     start = (uint64_t) internal_extents->arr[i].start;
@@ -111,13 +115,13 @@ static size_t peak_internal_present_usage(FILE *output) {
   if(tot > peak_internal_usage_present_pages) {
     peak_internal_usage_present_pages = tot;
   }
-  
+
   if(output) {
     fflush(output);
   }
-        
+
   pthread_rwlock_unlock(&internal_extents_lock);
-  
+
   return peak_internal_usage_present_pages;
 }
 
@@ -125,11 +129,11 @@ static size_t peak_internal_present_usage(FILE *output) {
 static size_t peak_internal_usage() {
   size_t i, tot;
   uint64_t start, end;
-  
+
   pthread_once(&internal_init_once, internal_init);
-  
+
   pthread_rwlock_rdlock(&internal_extents_lock);
-  
+
   tot = 0;
   extent_arr_for(internal_extents, i) {
     start = (uint64_t) internal_extents->arr[i].start;
@@ -139,9 +143,9 @@ static size_t peak_internal_usage() {
   if(tot > peak_internal_usage_pages) {
     peak_internal_usage_pages = tot;
   }
-  
+
   pthread_rwlock_unlock(&internal_extents_lock);
-  
+
   return peak_internal_usage_pages;
 }
 
@@ -170,7 +174,7 @@ static void *__attribute__ ((noinline)) internal_calloc(size_t num, size_t size)
 
 static void *__attribute__ ((noinline)) internal_realloc(void *ptr, size_t size) {
   int flags;
-  
+
   pthread_once(&internal_init_once, internal_init);
   flags = MALLOCX_ARENA(internal_arena_ind) | MALLOCX_TCACHE_NONE;
   if(ptr) {
@@ -233,7 +237,7 @@ static void *internal_alloc(extent_hooks_t *h, void *new_addr, size_t size, size
   ret = 0;
 
   pthread_rwlock_wrlock(&internal_extents_lock);
-  
+
   mmflags = MAP_ANONYMOUS|MAP_PRIVATE;
   ret = (uintptr_t *) mmap(new_addr, size, PROT_READ | PROT_WRITE, mmflags, -1, 0);
   if (((void *) ret) == MAP_FAILED) {
@@ -275,11 +279,13 @@ static void *internal_alloc(extent_hooks_t *h, void *new_addr, size_t size, size
 
 success:
   extent_arr_insert(internal_extents, (void *) ret, (void *) (ret + size), NULL);
-  err = objmap_add_range(&internal_objmap, (void *) ret, (void *) (ret + size));
-  if (err < 0) {
-    fprintf(stderr, "WARNING: Couldn't add internal extent (start=%p, end=%p) to object_map (error = %d).\n", ret, (char *)ret + size, err);
+  if (internal_use_objmap) {
+    err = objmap_add_range(&internal_objmap, (void *) ret, (void *) (ret + size));
+    if (err < 0) {
+      fprintf(stderr, "WARNING: Couldn't add internal extent (start=%p, end=%p) to object_map (error = %d).\n", ret, (char *)ret + size, err);
+    }
   }
-  
+
 failure:
   pthread_rwlock_unlock(&internal_extents_lock);
   return ret;

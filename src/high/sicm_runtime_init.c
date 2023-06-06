@@ -99,7 +99,7 @@ sicm_device *get_device_from_numa_node(int id) {
   X(SH_UPPER_NODE) \
   X(SH_LOWER_NODE) \
   X(SH_DEFAULT_NODE)
-  
+
 #define PROFILE_OPTIONS \
   X(SH_PROFILE_INPUT_FILE) \
   X(SH_PROFILE_OUTPUT_FILE) \
@@ -153,11 +153,11 @@ sicm_device *get_device_from_numa_node(int id) {
 
 void print_options() {
   char *env;
-  
+
   if(!tracker.log_file) {
     return;
   }
-  
+
   fprintf(tracker.log_file, "===== OPTIONS =====\n");
   #define X(name) env = getenv(#name); if(env) fprintf(tracker.log_file, #name " = %s\n", env);
     COMMON_OPTIONS
@@ -171,7 +171,7 @@ void print_options() {
 void set_common_options() {
   char *env;
   long long tmp_val;
-  
+
   /* Output the chosen options to this file */
   env = getenv("SH_LOG_FILE");
   tracker.log_file = NULL;
@@ -182,7 +182,7 @@ void set_common_options() {
       exit(1);
     }
   }
-  
+
   /* Get the arena layout */
   env = getenv("SH_ARENA_LAYOUT");
   if(env) {
@@ -190,7 +190,7 @@ void set_common_options() {
   } else {
     tracker.layout = DEFAULT_ARENA_LAYOUT;
   }
-  
+
   /* This sets the SICM_MOVE_LAZY flag for all arenas */
   env = getenv("SH_LAZY_MIGRATION");
   tracker.lazy_migration = 0;
@@ -250,7 +250,7 @@ void set_common_options() {
       tracker.max_sites_per_arena = (int) tmp_val;
     }
   }
-  
+
   /* Get max_sites.
      This is the maximum number of allocation sites that you can have. Keep in mind
      that we use site IDs as indices into an array, so the maximum site ID that you can
@@ -266,7 +266,7 @@ void set_common_options() {
       tracker.max_sites = (int) tmp_val;
     }
   }
-  
+
   /* Get the devices */
   env = getenv("SH_UPPER_NODE");
   tracker.upper_device = NULL;
@@ -304,7 +304,7 @@ void set_guided_options() {
   int node, site;
   FILE *guidance_file;
   ssize_t len;
-  
+
   /* Get the guidance file that tells where each site goes */
   env = getenv("SH_GUIDANCE_FILE");
   if(env) {
@@ -314,7 +314,7 @@ void set_guided_options() {
       fprintf(stderr, "Failed to open guidance file. Aborting.\n");
       exit(1);
     }
-    
+
     /* Read in the sites */
     guidance = 0;
     found_guidance = 0; /* Set if we find any site guidance at all */
@@ -348,7 +348,7 @@ void set_guided_options() {
 
         /* Use the arrays of atomics to set this site to go to the proper device */
         tracker.site_devices[site] = (atomic_int *) get_device_from_numa_node(node);
-        
+
       } else {
         if(!str) continue;
         /* Find the "===== GUIDANCE" tokens */
@@ -378,7 +378,7 @@ void set_profile_options() {
   ssize_t len;
   struct bitmask *cpus, *nodes;
   char flag;
-  
+
   /* See if there's profiling information that we can use later */
   env = getenv("SH_PROFILE_INPUT_FILE");
   profopts.profile_input_file = NULL;
@@ -406,7 +406,7 @@ void set_profile_options() {
   if(env) {
     profopts.print_profile_intervals = 1;
   }
-  
+
   /* Should we profile all allocation sites using sampling-based profiling? */
   env = getenv("SH_PROFILE_PEBS");
   if(env) {
@@ -432,7 +432,7 @@ void set_profile_options() {
       fprintf(stderr, "No profiling events given. Can't profile with sampling.\n");
       exit(1);
     }
-    
+
     env = getenv("SH_PROFILE_PEBS_MULTIPLIERS");
     profopts.num_profile_pebs_multipliers = 0;
     profopts.profile_pebs_multipliers = NULL;
@@ -456,7 +456,7 @@ void set_profile_options() {
       profopts.profile_pebs_skip_intervals = strtoul(env, NULL, 0);
     }
   }
-  
+
   /* The user should specify a comma-delimited list of IMCs to read the
     * bandwidth from. This will be passed to libpfm. For example, on an Ivy
     * Bridge server, this value is e.g. `ivbep_unc_imc0`, and on KNL it's
@@ -475,13 +475,13 @@ void set_profile_options() {
       env = NULL;
     }
   }
-  
+
   /* Should we profile bandwidth on a specific socket? */
   env = getenv("SH_PROFILE_BW");
   profopts.profile_bw_skip_intervals = 0;
   if(env) {
     enable_profile_bw();
-    
+
     if(profopts.num_imcs == 0) {
       fprintf(stderr, "No IMCs given. Can't enable profile_bw.\n");
       exit(1);
@@ -492,11 +492,11 @@ void set_profile_options() {
     if(env) {
       profopts.profile_bw_skip_intervals = strtoul(env, NULL, 0);
     }
-    
+
     /* The user should specify a number of CPUs to use to read
        the bandwidth from the IMCs. In the case of many machines,
        this usually means that the user should select one CPU per socket. */
-    
+
     /*
     What events should be used to measure the bandwidth?
      */
@@ -529,6 +529,7 @@ void set_profile_options() {
       profopts.profile_objmap_skip_intervals = strtoul(env, NULL, 0);
     }
   }
+  internal_use_objmap = should_profile_objmap();
 
   /* Do we want to use the online approach, moving arenas around devices automatically? */
   env = getenv("SH_PROFILE_ONLINE");
@@ -538,9 +539,9 @@ void set_profile_options() {
       fprintf(stderr, "The online approach requires OBJMAP, BW, and PEBS profiling. Aborting.\n");
       exit(1);
     }
-    
+
     enable_profile_online();
-    
+
     env = getenv("SH_PROFILE_ONLINE_DEBUG_FILE");
     profopts.profile_online_debug_file = NULL;
     if(env) {
@@ -550,7 +551,7 @@ void set_profile_options() {
         exit(1);
       }
     }
-    
+
     /* Grace period at the beginning of a run. Until this number of profiling accesses is reached,
        the profile_online won't rebind any sites. */
     env = getenv("SH_PROFILE_ONLINE_GRACE_ACCESSES");
@@ -571,13 +572,13 @@ void set_profile_options() {
     if(env) {
       profopts.profile_online_skip_intervals = strtoul(env, NULL, 0);
     }
-    
+
     env = getenv("SH_PROFILE_ONLINE_VALUE");
     if(env) {
       profopts.profile_online_value = internal_malloc((strlen(env) + 1) * sizeof(char));
       strcpy(profopts.profile_online_value, env);
     }
-    
+
     env = getenv("SH_PROFILE_ONLINE_WEIGHT");
     if(env) {
       profopts.profile_online_weight = internal_malloc((strlen(env) + 1) * sizeof(char));
@@ -589,13 +590,13 @@ void set_profile_options() {
       profopts.profile_online_sort = internal_malloc((strlen(env) + 1) * sizeof(char));
       strcpy(profopts.profile_online_sort, env);
     }
-    
+
     env = getenv("SH_PROFILE_ONLINE_PACKING_ALGO");
     if(env) {
       profopts.profile_online_packing_algo = internal_malloc((strlen(env) + 1) * sizeof(char));
       strcpy(profopts.profile_online_packing_algo, env);
     }
-    
+
     env = getenv("SH_PROFILE_ONLINE_USE_LAST_INTERVAL");
     profopts.profile_online_use_last_interval = 0;
     if(env) {
@@ -613,7 +614,7 @@ void set_profile_options() {
     if(env) {
       profopts.profile_online_last_iter_weight = strtof(env, NULL);
     }
-    
+
     env = getenv("SH_PROFILE_ONLINE_ALPHA");
     profopts.profile_online_alpha = -1.0;
     if(env) {
@@ -709,18 +710,18 @@ void set_profile_options() {
   if(env) {
     enable_profile_allocs();
   }
-  
+
   /* Should we profile latency on a specific socket? */
   env = getenv("SH_PROFILE_LATENCY");
   profopts.profile_latency_skip_intervals = 0;
   if(env) {
     enable_profile_latency();
-    
+
     if(profopts.num_imcs == 0) {
       fprintf(stderr, "No IMCs given. Can't enable profile_latency.\n");
       exit(1);
     }
-    
+
     env = getenv("SH_PROFILE_LATENCY_SET_MULTIPLIERS");
     profopts.profile_latency_set_multipliers = 0;
     if(env) {
@@ -732,7 +733,7 @@ void set_profile_options() {
     if(env) {
       profopts.profile_latency_skip_intervals = strtoul(env, NULL, 0);
     }
-    
+
     /*
       What events should be used to measure the latency?
     */
@@ -759,7 +760,7 @@ void set_profile_options() {
       fprintf(stderr, "No profiling events given. Can't profile latency.\n");
       exit(1);
     }
-    
+
     /*
       We'll need an event to measure the DRAM clockticks
     */
@@ -884,11 +885,11 @@ void sh_init() {
     fflush(stderr);
     return;
   }
-  
+
   rlim.rlim_cur = -1;
   rlim.rlim_max = -1;
   setrlimit(RLIMIT_STACK, &rlim);
-  
+
   /* Disable the background thread in jemalloc to avoid a segfault */
   on = false;
   err = je_mallctl("background_thread", NULL, NULL, (void *)&on, sizeof(bool));
@@ -896,7 +897,7 @@ void sh_init() {
     fprintf(stderr, "Failed to disable background threads: %d\n", err);
     exit(1);
   }
-  
+
   tracker.device_list = sicm_init();
 
   /* Initialize all of the locks */
@@ -915,9 +916,9 @@ void sh_init() {
   }
 
   tracker.arena_counter = 0;
-  
+
   set_common_options();
-  
+
   /* Get arenas_per_thread */
   switch(tracker.layout) {
     case ONE_ARENA:
@@ -939,7 +940,7 @@ void sh_init() {
 
   if(tracker.layout != INVALID_LAYOUT) {
     tracker.arenas = (arena_info **) internal_calloc(tracker.max_arenas, sizeof(arena_info *));
-    
+
     /* These atomics keep track of per-site information, such as:
        1. `site_bigs`: boolean for if the site is above big_small_threshold or not.
        2. `site_sizes`: the number of bytes allocated to this site.
@@ -963,15 +964,15 @@ void sh_init() {
     /* This is just an atomic counter that we use to grab a new
        index for every thread that allocates for the first time. */
     tracker.current_thread_index = 0;
-    
+
     /* Initialize the extents array.
      */
     tracker.extents = extent_arr_init();
   }
-  
+
   set_profile_options();
   set_guided_options();
-  
+
   if(should_profile()) {
     /* Set the arena allocator's callback function */
     sicm_extent_alloc_callback = &sh_create_extent;
@@ -987,9 +988,9 @@ void sh_init() {
   if (profopts.should_run_rdspy) {
     sh_rdspy_init(tracker.max_threads, tracker.num_static_sites);
   }
-  
+
   print_options();
-  
+
   /* Re-enable the background thread in jemalloc to avoid a segfault */
   on = true;
   err = je_mallctl("background_thread", NULL, NULL, (void *)&on, sizeof(bool));
@@ -1012,16 +1013,16 @@ void sh_terminate_helper() {
     return;
   }
   sh_initialized = 0;
-  
+
   //printf("SICM's peak memory usage was %zu bytes.\n", peak_sicm_mem_usage);
-  
+
   /* We need to stop the profiling first */
   if(tracker.layout != INVALID_LAYOUT) {
     if(should_profile()) {
       sh_stop_profile_master_thread();
     }
   }
-    
+
   /* Now disable background threads in jemalloc, so we don't get any allocations
      happening while we're terminating */
   on = false;
