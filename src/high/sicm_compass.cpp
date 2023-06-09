@@ -52,7 +52,6 @@ cl::opt<unsigned int>
 cl::opt<std::string>
     CompassMode("compass-mode",
                 cl::desc("Select the operation that compass performs. "
-                         "'prep' renames functions with internal linkage to be unique. "
                          "'analyze' creates the bottom-up call graph file. "
                          "'transform' clones functions to resolve context."),
                 cl::value_desc("mode"));
