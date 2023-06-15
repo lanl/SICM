@@ -63,7 +63,7 @@ use_tree(int, siteinfo_ptr);
 typedef struct tracker_struct {
   /* File to output log to */
   FILE *log_file;
-  
+
   /* Stores all machine devices and device
    * we should bind to by default */
   struct sicm_device_list device_list;
@@ -107,7 +107,7 @@ typedef struct tracker_struct {
   atomic_int current_thread_index;
   atomic_int arena_counter;
   int num_static_sites;
-  
+
   /* Ensures that nothing happens before initialization */
   char finished_initializing;
 } tracker_struct;
@@ -117,10 +117,10 @@ typedef struct tracker_struct {
  */
 typedef struct profiling_options {
   char free_buffer;
-  
+
   /* bitmask of which profiling types are enabled */
   char profile_type_flags;
-  
+
   int should_run_rdspy;
   int profile_latency_set_multipliers;
   int print_profile_intervals;
@@ -170,11 +170,11 @@ typedef struct profiling_options {
   size_t num_profile_skt_cpus;
   int *profile_skt_cpus;
   int *profile_skts;
-  
+
   /* Array of strings for profile_bw events */
   size_t num_profile_bw_events;
   char **profile_bw_events;
-  
+
   /* Array of strings for profile_latency events */
   size_t num_profile_latency_events;
   char **profile_latency_events;
@@ -207,11 +207,14 @@ extern "C" {
 #endif
   void* sh_alloc_exact(int id, size_t sz);
   void* sh_alloc(int id, size_t sz);
+  void* sh_alloc_cxx_nothrow(int id, size_t sz, void *nothrow_t_ref);
   void* sh_aligned_alloc(int id, size_t alignment, size_t sz);
   void* sh_memalign(int id, size_t alignment, size_t sz);
   int sh_posix_memalign(int id, void **ptr, size_t alignment, size_t sz);
   void* sh_calloc(int id, size_t num, size_t sz);
   void* sh_realloc(int id, void *ptr, size_t sz);
+  char* sh_strdup(int id, const char *s);
+  char* sh_strndup(int id, const char *s, size_t n);
   void sh_free(void* ptr);
   void sh_sized_free(void* ptr, size_t size);
 #ifdef __cplusplus
@@ -224,7 +227,7 @@ extern "C" {
 #define arena_check_good(a, i) \
   a = tracker.arenas[i]; \
   if(!a) continue;
-  
+
 /* Used to determine which types of profiling are enabled */
 #define should_profile() \
   profopts.profile_type_flags
@@ -244,7 +247,7 @@ extern "C" {
   profopts.profile_type_flags & (1 << 6)
 #define should_profile_objmap() \
   profopts.profile_type_flags & (1 << 7)
-  
+
 /* Used to set which types of profiling are enabled */
 #define enable_profile_pebs() \
   profopts.profile_type_flags = profopts.profile_type_flags | 1

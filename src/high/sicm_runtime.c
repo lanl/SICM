@@ -36,10 +36,11 @@ size_t peak_internal_usage_present_pages = 0;
 size_t peak_internal_usage_pages = 0;
 unsigned int internal_pagesize = 0;
 atomic_int internal_initialized = 0;
+int internal_use_objmap = 0;
 
 void print_sizet(size_t val, const char *str) {
   char buf[32], index;
-  
+
   index = 0;
   while(val != 0) {
     buf[index] = (val % 10) + '0';
@@ -137,11 +138,11 @@ int get_thread_index() {
   return thread_index;
 }
 
-/* Gets which arena index a site is allocated to. 
+/* Gets which arena index a site is allocated to.
    Uses new_site to tell the caller if the arena is newly assigned. */
 int get_site_arena(int id, char *new_site) {
   int ret;
-  
+
   if(id > (tracker.max_sites - 1)) {
     fprintf(stderr, "Site %d goes over the maximum number of sites, %d. Aborting.\n", id, tracker.max_sites);
     exit(1);
@@ -150,13 +151,13 @@ int get_site_arena(int id, char *new_site) {
   if(new_site) {
     *new_site = 0;
   }
-  
+
   ret = tracker.site_arenas[id];
   if(ret == -1) {
     /* This site doesn't have an arena yet, so grab the next available */
     ret = tracker.arena_counter++;
     tracker.site_arenas[id] = ret;
-    
+
     if(new_site) {
       *new_site = 1;
     }
@@ -168,7 +169,7 @@ int get_site_arena(int id, char *new_site) {
 sicm_device *get_arena_device(int index) {
   sicm_device_list devices;
   sicm_device *retval;
-  
+
   /* We're not safe here, because the only place this is used checks to make
      sure the arena is there, and grabs a lock. */
   devices = sicm_arena_get_devices(tracker.arenas[index]->arena);
@@ -203,7 +204,7 @@ void set_site_device(int id, deviceptr device) {
 /* Gets an offset (0 to `num_devices`) for the per-device arenas. */
 int get_device_offset(deviceptr device) {
   int ret;
-  
+
   /* This is a very fast method, but isn't very generalizable.
      Eventually that can be fixed, but I can't think of a safe
      way to associate a pointer with an index without locks (since
@@ -216,32 +217,32 @@ int get_device_offset(deviceptr device) {
     fprintf(stderr, "Device isn't upper_device or lower_device. Aborting.\n");
     exit(1);
   }
-  
+
   return ret;
 }
 
 int get_big_small_arena(int id, size_t sz, deviceptr *device, char *new_site, char *invalid) {
   int ret;
   char prev_big;
-  
+
   prev_big = tracker.site_bigs[id];
-  
+
   if(new_site && (prev_big == -1)) {
     *new_site = 1;
   }
-  
+
   if(prev_big == -1) {
     /* This is the condition that we haven't seen this site before, and that profiling is on.
        We set this variable so that the profiler knows to add it to the list of sites in the arena (which requires locking). */
     tracker.site_bigs[id] = 0;
   }
-  
+
   if((sz + tracker.site_sizes[id] > tracker.big_small_threshold) && id) {
     /* If the site isn't already `big`, and if its size exceeds the threshold, mark it as `big`.
        Checked and set in this manner, the `site_bigs` atomics could be doubly set to `1`. That's fine. */
     tracker.site_bigs[id] = 1;
   }
-  
+
   if(tracker.site_bigs[id] == 1) {
     ret = get_site_arena(id, NULL);
     ret += tracker.max_threads + 1; /* We need to skip the per-thread arenas. */
@@ -260,7 +261,7 @@ int get_big_small_arena(int id, size_t sz, deviceptr *device, char *new_site, ch
       *invalid = 1;
     }
   }
-  
+
   return ret;
 }
 
@@ -309,7 +310,7 @@ int get_arena_index(int id, size_t sz) {
     /* Fit the index to the maximum number of arenas */
     ret = ret % tracker.max_arenas;
   }
-  
+
   /* Assuming pending_index is specific to this thread,
      we don't need a lock here. */
   pending_index = ret;
@@ -328,7 +329,7 @@ int get_arena_index(int id, size_t sz) {
     add_site_profile(ret, id);
   }
   (tracker.arenas[ret]->thread_allocs[get_thread_index()])++;
-  
+
   return ret;
 }
 
@@ -369,11 +370,11 @@ int get_arena_index_free(int id) {
       exit(1);
       break;
   };
-  
+
   /* Assuming pending_index is specific to this thread,
      we don't need a lock here. */
   pending_index = ret;
-  
+
   return ret;
 }
 
@@ -382,7 +383,7 @@ int get_arena_index_free(int id) {
  *************************************************
  *  Functions for creating arenas and extents.
  */
- 
+
 /* Adds an arena to the `arenas` array. */
 void sh_create_arena(int index, int id, sicm_device *device, char invalid) {
   size_t i;
@@ -391,7 +392,7 @@ void sh_create_arena(int index, int id, sicm_device *device, char invalid) {
   sicm_device_list dl;
   int err;
   sicm_arena_flags flags;
-  
+
   /* Put an upper bound on the indices that need to be searched. */
   if(index > tracker.max_index) {
     tracker.max_index = index;
@@ -400,12 +401,12 @@ void sh_create_arena(int index, int id, sicm_device *device, char invalid) {
   if(!device) {
     device = tracker.default_device;
   }
-  
+
   flags = SICM_ALLOC_RELAXED;
   if(tracker.lazy_migration) {
     flags |= SICM_MOVE_LAZY;
   }
-  
+
   arena = internal_calloc(1, sizeof(arena_info));
   arena->index = index;
   arena->thread_allocs = internal_calloc(tracker.max_threads, sizeof(int));
@@ -416,7 +417,7 @@ void sh_create_arena(int index, int id, sicm_device *device, char invalid) {
   tracker.arenas[index] = arena;
   arena->arena = sicm_arena_create(0, flags, &dl);
   internal_free(dl.devices);
-  
+
   /* Finally, tell the profiler about this arena */
   if(should_profile()) {
     create_arena_profile(index, id, invalid);
@@ -446,7 +447,7 @@ void sh_create_extent(sarena *arena, void *start, void *end) {
   int arena_index;
   size_t i;
   arena_info *arena_ptr;
-  
+
   /* We'll do our absolute best to find the arena that this extent should be
      associated with. This usually isn't necessary. */
   arena_index = pending_index;
@@ -495,7 +496,7 @@ void* sh_realloc(int id, void *ptr, size_t sz) {
   alloc_info_ptr aip;
   size_t new_usable_size, old_usable_size;
   char *charptr;
-  
+
   old_usable_size = 0;
   if(!sh_initialized || (tracker.layout == INVALID_LAYOUT)) {
     if(ptr) {
@@ -521,7 +522,7 @@ void* sh_realloc(int id, void *ptr, size_t sz) {
     //print_sizet(unaccounted, "re ");
     return ret;
   }
-  
+
   index = get_arena_index(id, sz);
   if(ptr) {
     old_usable_size = je_malloc_usable_size(ptr);
@@ -573,12 +574,12 @@ void* sh_alloc(int id, size_t sz) {
     //print_sizet(unaccounted, "al ");
     return ret;
   }
-  
+
   if(id >= tracker.max_sites) {
     fprintf(stderr, "Site %d went over maximum number of sites, %d.\n", id, tracker.max_sites);
     exit(1);
   }
-  
+
   /* Here, we'll actually grab 4 more bytes than the application asked for */
   index = get_arena_index(id, sz);
   ret = sicm_arena_alloc(tracker.arenas[index]->arena, sz + sizeof(int));
@@ -590,12 +591,16 @@ void* sh_alloc(int id, size_t sz) {
   if(should_profile_allocs()) {
     profile_allocs_alloc(ret, sz, index);
   }
-  
+
   if (profopts.should_run_rdspy) {
     sh_rdspy_alloc(ret, sz, id);
   }
 
   return ret;
+}
+
+void* sh_alloc_cxx_nothrow(int id, size_t sz, void *nothrow_t_ref) {
+  return sh_alloc(id, sz);
 }
 
 void* sh_aligned_alloc(int id, size_t alignment, size_t sz) {
@@ -634,7 +639,7 @@ void* sh_aligned_alloc(int id, size_t alignment, size_t sz) {
   if(should_profile_allocs()) {
     profile_allocs_alloc(ret, sz, index);
   }
-  
+
   if (profopts.should_run_rdspy) {
     sh_rdspy_alloc(ret, sz, id);
   }
@@ -660,11 +665,40 @@ void* sh_calloc(int id, size_t num, size_t sz) {
   return ptr;
 }
 
+char* sh_strdup(int id, const char *s) {
+  char   *ptr;
+  size_t  n;
+
+  n   = strlen(s);
+  ptr = sh_alloc(id, n + 1);
+
+  memcpy(ptr, s, n);
+  ptr[n] = 0;
+
+  return ptr;
+}
+
+char* sh_strndup(int id, const char *s, size_t n) {
+  char   *ptr;
+  size_t  len;
+
+  len = strlen(s);
+
+  if (len < n) { n = len; }
+
+  ptr = sh_alloc(id, n + 1);
+
+  memcpy(ptr, s, n);
+  ptr[n] = 0;
+
+  return ptr;
+}
+
 void sh_free(void* ptr) {
   int id;
   size_t usable_size;
   char *charptr;
-  
+
   if(!ptr) {
     return;
   }
@@ -700,7 +734,7 @@ void sh_sized_free(void* ptr, size_t size) {
   int id;
   size_t usable_size;
   char *charptr;
-  
+
   if(!ptr) {
     return;
   }

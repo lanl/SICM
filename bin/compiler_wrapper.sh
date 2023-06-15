@@ -8,12 +8,15 @@
 # The path that this script is in
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 
+LIB_DIR="$DIR/../lib"
+
 # To disable the transformation
 NO_IR="${NO_IR:- }"
 NO_TRANSFORM="${NO_TRANSFORM:- }"
 
 # Might want to define these manually depending on environment
 LLVMPATH="${LLVMPATH:- }"
+LLVMOPT="${LLVMOPT:-opt}"
 C_COMPILER="${C_COMPILER:-clang}"
 CXX_COMPILER="${CXX_COMPILER:-clang++}"
 FORT_COMPILER="${FORT_COMPILER:-flang}"
@@ -24,6 +27,7 @@ OBJECT_FILES=""
 
 # The original arguments to the compiler
 ARGS=$@
+
 INPUT_FILES=()
 EXTENSIONS=() # Store extensions separately
 
@@ -82,31 +86,31 @@ for word in $ARGS; do
     LANGUAGE_SPECIFIED=true
 
   # DETECT INPUT AND OUTPUT FILES
-  elif [[ $(file --mime-type -b $(readlink -f "$word")) == "application/x-object" ]]; then
-    OBJECT_FILES="${OBJECT_FILES} $word"
-  elif [[ $(file --mime-type -b $(readlink -f "$word")) == "application/x-sharedlib" ]]; then
-    EXTRA_ARGS="$EXTRA_ARGS $word"
+  elif [[ $(file --mime-type -b $(readlink -f "$word") 2>/dev/null) == "application/x-object" ]]; then
+      OBJECT_FILES="${OBJECT_FILES} $word"
+  elif [[ $(file --mime-type -b $(readlink -f "$word") 2>/dev/null) == "application/x-sharedlib" ]]; then
+      EXTRA_ARGS="$EXTRA_ARGS $word"
   elif [[ "$word" =~ (.*)\.(c)$ ]]; then
-    # Check if the argument is a C file.
-    # Use the C++ compiler if a C++ file has already been specified.
-    INPUT_FILES+=("${BASH_REMATCH[1]}")
-    EXTENSIONS+=("${BASH_REMATCH[2]}")
-    if [[ $COMPILER != "$CXX_COMPILER" ]]; then
+      # Check if the argument is a C file.
+      # Use the C++ compiler if a C++ file has already been specified.
+      INPUT_FILES+=("${BASH_REMATCH[1]}")
+      EXTENSIONS+=("${BASH_REMATCH[2]}")
+      if [[ $COMPILER != "$CXX_COMPILER" ]]; then
       COMPILER="$C_COMPILER"
-    fi
+      fi
   elif [[ "$word" =~ (.*)\.(cpp)$ ]] || [[ "$word" =~ (.*)\.(C)$ ]] || [[ "$word" =~ (.*)\.(cc)$ ]] || [[ "$word" =~ (.*)\.(cxx)$ ]]; then
-    # Or if it's a C++ file
-    INPUT_FILES+=("${BASH_REMATCH[1]}")
-    EXTENSIONS+=("${BASH_REMATCH[2]}")
-    COMPILER="$CXX_COMPILER"
+      # Or if it's a C++ file
+      INPUT_FILES+=("${BASH_REMATCH[1]}")
+      EXTENSIONS+=("${BASH_REMATCH[2]}")
+      COMPILER="$CXX_COMPILER"
   elif [[ "$word" =~ (.*)\.(f90)$ ]] || [[ "$word" =~ (.*)\.(f95)$ ]] || [[ "$word" =~ (.*)\.(f03)$ ]] || [[ "$word" =~ (.*)\.(F90)$ ]] || [[ "$word" =~ (.*)\.(f)$ ]]; then
-    # Or a Fortran file
-    INPUT_FILES+=("${BASH_REMATCH[1]}")
-    EXTENSIONS+=("${BASH_REMATCH[2]}")
-    COMPILER="$FORT_COMPILER"
+      # Or a Fortran file
+      INPUT_FILES+=("${BASH_REMATCH[1]}")
+      EXTENSIONS+=("${BASH_REMATCH[2]}")
+      COMPILER="$FORT_COMPILER"
   else
-    # Everything except `-o`, `-c`, and the input source files
-    EXTRA_ARGS="$EXTRA_ARGS $word"
+      # Everything except `-o`, `-c`, and the input source files
+      EXTRA_ARGS="$EXTRA_ARGS $word"
   fi
 
 done
@@ -162,29 +166,33 @@ if [[ "$ONLY_LINK" = false ]]; then
 
   # Produce a normal object file as well as the bytecode file
   if [[ $OUTPUT_FILE  == "" ]]; then
-    ${LLVMPATH}${COMPILER} $EXTRA_ARGS $INPUTFILE_STR -c
-    ${LLVMPATH}${COMPILER} $EXTRA_ARGS -emit-llvm $INPUTFILE_STR -c
+    ${LLVMPATH}${COMPILER} $EXTRA_ARGS $INPUTFILE_STR -c || exit $?
+    ${LLVMPATH}${COMPILER} $EXTRA_ARGS -emit-llvm $INPUTFILE_STR -c || exit $?
     for file in ${INPUT_FILES[@]}; do
+      ${LLVMPATH}${LLVMOPT} -enable-new-pm=0 -load ${LIB_DIR}/libsicm_compass.so -compass-mode=prep -compass ${file}.bc -o ${file}.bc || exit $?
       echo $EXTRA_ARGS > ${file}.args
     done
   else
     if [[ "$ONLY_COMPILE" = true ]]; then
       # If we're only compiling and they specify an output file, adhere to that
-      ${LLVMPATH}${COMPILER} $EXTRA_ARGS $INPUTFILE_STR -c -o $OUTPUT_FILE
+      ${LLVMPATH}${COMPILER} $EXTRA_ARGS $INPUTFILE_STR -c -o $OUTPUT_FILE || exit $?
       if [[ "$OUTPUT_FILE" =~ (.*)\.o$ ]]; then
         # If their output file choice ends in '.o', replace that with '.bc'
-        ${LLVMPATH}${COMPILER} $EXTRA_ARGS -emit-llvm -c $INPUTFILE_STR -o ${BASH_REMATCH[1]}.bc
+        ${LLVMPATH}${COMPILER} $EXTRA_ARGS -emit-llvm -c $INPUTFILE_STR -o ${BASH_REMATCH[1]}.bc || exit $?
+        ${LLVMPATH}${LLVMOPT} -enable-new-pm=0 -load ${LIB_DIR}/libsicm_compass.so -compass-mode=prep -compass ${BASH_REMATCH[1]}.bc -o ${BASH_REMATCH[1]}.bc || exit $?
         echo $EXTRA_ARGS > ${BASH_REMATCH[1]}.args
       else
         # Otherwise, just use append '.bc'. This way, the ld_wrapper doesn't have to guess.
-        ${LLVMPATH}${COMPILER} $EXTRA_ARGS -emit-llvm $INPUTFILE_STR -c -o ${OUTPUT_FILE}.bc
+        ${LLVMPATH}${COMPILER} $EXTRA_ARGS -emit-llvm $INPUTFILE_STR -c -o ${OUTPUT_FILE}.bc || exit $?
+        ${LLVMPATH}${LLVMOPT} -enable-new-pm=0 -load ${LIB_DIR}/libsicm_compass.so -compass-mode=prep -compass ${OUTPUT_FILE}.bc -o ${OUTPUT_FILE}.bc || exit $?
         echo $EXTRA_ARGS > ${OUTPUT_FILE}.args
       fi
     else
       # If we're going to link and they specify an executable name, ignore that until we link
-      ${LLVMPATH}${COMPILER} ${EXTRA_ARGS} -c $INPUTFILE_STR
-      ${LLVMPATH}${COMPILER} ${EXTRA_ARGS} -emit-llvm -c $INPUTFILE_STR
+      ${LLVMPATH}${COMPILER} ${EXTRA_ARGS} -c $INPUTFILE_STR || exit $?
+      ${LLVMPATH}${COMPILER} ${EXTRA_ARGS} -emit-llvm -c $INPUTFILE_STR || exit $?
       for file in ${INPUT_FILES[@]}; do
+        ${LLVMPATH}${LLVMOPT} -enable-new-pm=0 -load ${LIB_DIR}/libsicm_compass.so -compass-mode=prep -compass ${file}.bc -o ${file}.bc || exit $?
         echo $EXTRA_ARGS > ${file}.args
       done
     fi
@@ -200,8 +208,8 @@ if [[ "$ONLY_COMPILE" = false ]]; then
 
   # Call the ld_wrapper
   if [[ $OUTPUT_FILE == "" ]]; then
-    ${LD_WRAPPER} $EXTRA_ARGS $OBJECT_FILES
+    ${LD_WRAPPER} $OBJECT_FILES $EXTRA_ARGS || exit $?
   else
-    ${LD_WRAPPER} $EXTRA_ARGS $OBJECT_FILES -o $OUTPUT_FILE
+    ${LD_WRAPPER} $OBJECT_FILES $EXTRA_ARGS -o $OUTPUT_FILE || exit $?
   fi
 fi

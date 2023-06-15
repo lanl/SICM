@@ -5,19 +5,21 @@
 #include <llvm/Config/llvm-config.h>
 #if LLVM_VERSION_MAJOR >= 4
 /* Required for CompassQuickExit, requires LLVM 4.0 or newer */
-#include "llvm/Bitcode/BitcodeWriter.h"
+#include <llvm/Bitcode/BitcodeWriter.h>
 #endif
-#include "llvm/IR/Constants.h"
-#include "llvm/IR/Function.h"
-#include "llvm/IR/Operator.h"
-#include "llvm/Pass.h"
-#include "llvm/Support/CommandLine.h"
-#include "llvm/Support/FileSystem.h"
-#include "llvm/Support/raw_ostream.h"
-#include "llvm/Transforms/Utils/BasicBlockUtils.h"
-#include "llvm/Transforms/Utils/Cloning.h"
-#include "llvm/IR/DebugLoc.h"
-#include "llvm/IR/DebugInfoMetadata.h"
+#include <llvm/IR/Constants.h>
+#include <llvm/IR/Function.h>
+#include <llvm/IR/Operator.h>
+#include <llvm/IR/InstrTypes.h>
+#include <llvm/IR/AbstractCallSite.h>
+#include <llvm/Pass.h>
+#include <llvm/Support/CommandLine.h>
+#include <llvm/Support/FileSystem.h>
+#include <llvm/Support/raw_ostream.h>
+#include <llvm/Transforms/Utils/BasicBlockUtils.h>
+#include <llvm/Transforms/Utils/Cloning.h>
+#include <llvm/IR/DebugLoc.h>
+#include <llvm/IR/DebugInfoMetadata.h>
 #include <algorithm>
 #include <fstream>
 #include <iostream>
@@ -91,9 +93,9 @@ struct compass : public ModulePass {
     static char ID;
 
     unsigned int ncloned;
-    std::map<Function *, std::set<Function *>> buCG;
-    std::map<std::string, std::set<std::string>> str_buCG;
-    std::map<std::string, std::set<std::string>> str_CG;
+    std::map<Function *, std::set<Function *> > buCG;
+    std::map<std::string, std::set<std::string> > str_buCG;
+    std::map<std::string, std::set<std::string> > str_CG;
     std::map<std::string, std::string> cloneLink;
     std::map<std::string, unsigned int> sitesPerFn;
     std::map<std::string, unsigned int> times1Calls2;
@@ -124,11 +126,15 @@ struct compass : public ModulePass {
         allocFnMap["aligned_alloc"] = "sh_aligned_alloc";
         allocFnMap["posix_memalign"] = "sh_posix_memalign";
         allocFnMap["memalign"] = "sh_memalign";
+        allocFnMap["strdup"] = "sh_strdup";
+        allocFnMap["strndup"] = "sh_strndup";
         dallocFnMap["free"] = "sh_free";
 
   /* C++ */
         allocFnMap["_Znam"] = "sh_alloc";
+        allocFnMap["_ZnamRKSt9nothrow_t"] = "sh_alloc_cxx_nothrow";
         allocFnMap["_Znwm"] = "sh_alloc";
+        allocFnMap["_ZnwmRKSt9nothrow_t"] = "sh_alloc_cxx_nothrow";
         dallocFnMap["_ZdaPv"] = "sh_free";
         dallocFnMap["_ZdlPv"] = "sh_free";
 
@@ -241,13 +247,13 @@ struct compass : public ModulePass {
 
     void getAnalysisUsage(AnalysisUsage & AU) const { }
 
-    ///////////// Make the use of CallSite generic across CallInst and InvokeInst
+    ///////////// Make the use of AbstractCallSite generic across CallInst and InvokeInst
     /////////////////////////////////////////////////////////////////////////////
     bool isCallSite(llvm::Instruction * inst) {
         return isa<CallInst>(inst) || isa<InvokeInst>(inst);
     }
 
-    Function * getDirectlyCalledFunction(CallSite & site) {
+    Function * getDirectlyCalledFunction(AbstractCallSite & site) {
         Function * fn  = nullptr;
 
         CallInst * call = dyn_cast<CallInst>(site.getInstruction());
@@ -261,15 +267,15 @@ struct compass : public ModulePass {
         return fn;
     }
 
-    Value * getCalledValue(CallSite & site) {
+    Value * getCalledValue(AbstractCallSite & site) {
         Value    * val = nullptr;
 
         CallInst * call = dyn_cast<CallInst>(site.getInstruction());
         if (call) {
-            val = call->getCalledValue();
+            val = call->getCalledOperand();
         } else {
             InvokeInst * inv = dyn_cast<InvokeInst>(site.getInstruction());
-            val = inv->getCalledValue();
+            val = inv->getCalledOperand();
         }
 
         return val;
@@ -279,7 +285,7 @@ struct compass : public ModulePass {
     // If the call is direct this is easy.
     // If the call is indirect, we may still be able to get the function
     // if it is known statically.
-    Function * getCalledFunction(CallSite & site) {
+    Function * getCalledFunction(AbstractCallSite & site) {
         Function * fn  = nullptr;
         Value    * val = nullptr;
 
@@ -307,7 +313,7 @@ struct compass : public ModulePass {
         return nullptr;
     }
 
-    void setCalledFunction(CallSite & site, Function * fn) {
+    void setCalledFunction(AbstractCallSite & site, Function * fn) {
         CallInst * call = dyn_cast<CallInst>(site.getInstruction());
         if (call) {
             call->setCalledFunction(fn);
@@ -316,14 +322,14 @@ struct compass : public ModulePass {
         dyn_cast<InvokeInst>(site.getInstruction())->setCalledFunction(fn);
     }
 
-    User::op_iterator arg_begin(CallSite & site) {
+    User::op_iterator arg_begin(AbstractCallSite & site) {
         CallInst * call = dyn_cast<CallInst>(site.getInstruction());
         if (call)
             return call->arg_begin();
         return dyn_cast<InvokeInst>(site.getInstruction())->arg_begin();
     }
 
-    User::op_iterator arg_end(CallSite & site) {
+    User::op_iterator arg_end(AbstractCallSite & site) {
         CallInst * call = dyn_cast<CallInst>(site.getInstruction());
         if (call)
             return call->arg_end();
@@ -348,7 +354,7 @@ struct compass : public ModulePass {
         for (auto & BB : *f) {
             for (auto it = BB.begin(); it != BB.end(); it++) {
                 if (isCallSite(&*it)) {
-                    CallSite site(&*it);
+                    AbstractCallSite site(&(dyn_cast<CallBase>(&*it)->getCalledOperandUse()));
                     Function * callee = getCalledFunction(site);
                     if (callee) {
                         std::string combined = f->getName().str() + callee->getName().str();
@@ -387,7 +393,7 @@ struct compass : public ModulePass {
                 for (auto & BB : *callee) {
                     for (auto it = BB.begin(); it != BB.end(); it++) {
                         if (isCallSite(&*it)) {
-                            CallSite site(&*it);
+                            AbstractCallSite site(&(dyn_cast<CallBase>(&*it)->getCalledOperandUse()));
                             Function * called = getCalledFunction(site);
                             if (called) {
                                 std::string name = called->getName().str();
@@ -447,7 +453,6 @@ struct compass : public ModulePass {
         }
     }
     ////////////////////////////////////////////////////////////////////////////////
-
 
     /////////////////////////////////////////////////////////////// Function cloning
     ////////////////////////////////////////////////////////////////////////////////
@@ -630,14 +635,16 @@ struct compass : public ModulePass {
                         for (auto & BB : *caller_fn) {
                             for (auto it = BB.begin(); it != BB.end(); it++) {
                                 if (isCallSite(&*it)) {
-                                    CallSite site(&*it);
+                                    AbstractCallSite site(&(dyn_cast<CallBase>(&*it)->getCalledOperandUse()));
                                     Function * called = getCalledFunction(site);
                                     if (called == callee_fn) {
-                                        CallSite site_clone(site->clone());
-                                        setCalledFunction(site_clone, fclone);
-                                        ReplaceInstWithInst(
-                                            BB.getInstList(), it,
-                                            site_clone.getInstruction());
+                                        setCalledFunction(site, fclone);
+//                                         Instruction *inst_clone = site.getInstruction()->clone();
+//                                         AbstractCallSite site_clone(&(inst_clone->getCalledOperandUse()));
+//                                         setCalledFunction(site_clone, fclone);
+//                                         ReplaceInstWithInst(
+//                                             BB.getInstList(), it,
+//                                             site_clone.getInstruction());
                                     }
                                 }
                             }
@@ -781,17 +788,18 @@ struct compass : public ModulePass {
                         for (auto & BB : *caller_fn) {
                             for (auto it = BB.begin(); it != BB.end(); it++) {
                                 if (isCallSite(&*it)) {
-                                    CallSite site(&*it);
+                                    AbstractCallSite site(&(dyn_cast<CallBase>(&*it)->getCalledOperandUse()));
                                     Function * called = getCalledFunction(site);
                                     if (called == callee_fn) {
-                                        CallSite site_clone(site->clone());
-                                        setCalledFunction(site_clone, fclone);
-                                        ReplaceInstWithInst(
-                                            BB.getInstList(), it,
-                                            site_clone.getInstruction());
-                                        // Jump out early so that on the next iterations, clones
-                                        // for multiple calls will replace the next site.
-                                        goto out;
+                                        setCalledFunction(site, fclone);
+//                                         AbstractCallSite site_clone(&(site.getInstruction()->getCalledOperandUse()));
+//                                         setCalledFunction(site_clone, fclone);
+//                                         ReplaceInstWithInst(
+//                                             BB.getInstList(), it,
+//                                             site_clone.getInstruction());
+//                                         // Jump out early so that on the next iterations, clones
+//                                         // for multiple calls will replace the next site.
+//                                         goto out;
                                     }
                                 }
                             }
@@ -873,7 +881,7 @@ out:
 
                 auto BB = inst->getParent();
                 std::vector<std::string> bt;
-                std::string p = BB->getParent()->getName();
+                std::string p = BB->getParent()->getName().str();
                 for (int i = 0; i <= CompassDepth; i += 1) {
                     bt.push_back(p);
                     if (str_buCG[p].empty())
@@ -928,7 +936,7 @@ out:
 
             auto BB = inst->getParent();
             std::vector<std::string> bt;
-            std::string p = BB->getParent()->getName();
+            std::string p = BB->getParent()->getName().str();
             for (int i = 0; i <= CompassDepth; i += 1) {
                 bt.push_back(p);
                 if (str_buCG[p].empty())
@@ -958,22 +966,30 @@ out:
     }
     ////////////////////////////////////////////////////////////////////////////////
 
-    ///////////////////////////////////////////////////////////// transformCallSites
+    // Cache of mappings.
+    std::map<std::string, Function *> fnMap;
+    // Make sure we only use on copy of declarations.
+    std::map<std::string, Function *> declaredMap;
+
+#define ZERO_ID   (0)
+#define UNIQUE_ID (1)
+
+    ////////////////////////////////////////////////////////////// transformFunction
     ////////////////////////////////////////////////////////////////////////////////
     // Replaces allocation sites with the corresponding ben* routines.
     // May add additional arguments indicating the unique site ID.
     ////////////////////////////////////////////////////////////////////////////////
-    void transformCallSites() {
-        // Cache of mappings.
-        std::map<std::string, Function *> fnMap;
-        // Make sure we only use on copy of declarations.
-        std::map<std::string, Function *> declaredMap;
+
+    void transformFunction(Function *fn, int use_unique_id = UNIQUE_ID) {
+        if (!fn || fn->isDeclaration())
+            return;
 
         // Convenience lambda.
         // If the new function is not in fnMap, it is created and put in the
         // map.
         auto get = [&](std::string & name,
                        std::map<std::string, std::string> & theMap) {
+
             // Look for the function in the mapping cache.
             auto search = fnMap.find(name);
             if (search != fnMap.end())
@@ -1021,6 +1037,103 @@ out:
             return (fnMap[name] = new_fn);
         };
 
+        // Collect the sites.
+        std::vector<AbstractCallSite> sites;
+        for (auto & BB : *fn) {
+            for (auto inst = BB.begin(); inst != BB.end(); inst++) {
+                if (isCallSite(&*inst)) {
+                    AbstractCallSite site(&(dyn_cast<CallBase>(&*inst)->getCalledOperandUse()));
+                    Function * called = getCalledFunction(site);
+
+                    // If called is NULL here, that indicates that the call
+                    // is a non-trivial indirect call. We don't do anything
+                    // about those in this pass, so we just move on.
+                    // See getCalledFunction() for info about the indirect
+                    // calls that we do intercept.
+                    if (!called)
+                        continue;
+
+                    std::string called_name = called->getName().str();
+                    if (allocFnMap.find(called_name) != allocFnMap.end() ||
+                        dallocFnMap.find(called_name) != dallocFnMap.end())
+                        sites.push_back(site);
+                }
+            }
+        }
+
+        std::map<Instruction*, unsigned int> ids;
+
+        std::string caller = fn->getName().str();
+
+        // Replace and add site ID argument.
+        unsigned int i = CompassStartID;
+        for (AbstractCallSite & site : sites) {
+            Function * fn = getCalledFunction(site);
+            std::string fn_name = fn->getName().str();
+
+            std::vector<Value *> args{};
+            Instruction * newcall = nullptr;
+
+            if (allocFnMap.find(fn_name) != allocFnMap.end()) {
+                // If it's an allocation function, we will add a site ID
+                // argument to the call.
+                unsigned int id = use_unique_id ? getSiteID(caller, i++) : 0;
+                args.push_back(
+                    ConstantInt::get(IntegerType::get(myContext, 32),
+                                    id));
+
+                for (auto it = arg_begin(site); it != arg_end(site); it++)
+                    args.push_back(*it);
+
+                // CallInst vs InvokeInst differences.
+                if (isa<CallInst>(site.getInstruction())) {
+                    newcall =
+                        CallInst::Create(get(fn_name, allocFnMap), args);
+                } else {
+                    InvokeInst * inv =
+                        dyn_cast<InvokeInst>(site.getInstruction());
+                    BasicBlock * norm = inv->getNormalDest();
+                    BasicBlock * unwind = inv->getUnwindDest();
+                    newcall = InvokeInst::Create(get(fn_name, allocFnMap),
+                                                norm, unwind, args);
+                }
+
+                ids[newcall] = id;
+
+                n_sites += 1;
+            } else if (dallocFnMap.find(fn_name) != dallocFnMap.end()) {
+                for (auto it = arg_begin(site); it != arg_end(site); it++)
+                    args.push_back(*it);
+
+                if (isa<CallInst>(site.getInstruction())) {
+                    newcall =
+                        CallInst::Create(get(fn_name, dallocFnMap), args);
+                } else {
+                    InvokeInst * inv =
+                        dyn_cast<InvokeInst>(site.getInstruction());
+                    BasicBlock * norm = inv->getNormalDest();
+                    BasicBlock * unwind = inv->getUnwindDest();
+                    newcall = InvokeInst::Create(get(fn_name, dallocFnMap),
+                                                norm, unwind, args);
+                }
+            }
+
+            ReplaceInstWithInst(site.getInstruction(), newcall);
+
+            if (allocFnMap.find(fn_name) != allocFnMap.end()) {
+                emitDebugLocation(newcall, fn_name, ids[newcall]);
+            }
+        }
+    }
+
+
+    ///////////////////////////////////////////////////////////// transformCallSites
+    ////////////////////////////////////////////////////////////////////////////////
+    // Replaces allocation sites with the corresponding ben* routines.
+    // May add additional arguments indicating the unique site ID.
+    ////////////////////////////////////////////////////////////////////////////////
+
+    void transformCallSites() {
         // Do the actual work.
         // Find all call sites and replace.
         // Layer is the set of all functions that call
@@ -1034,94 +1147,13 @@ out:
         // Search them for the call sites.
         for (auto & caller : layer) {
             Function * fn = theModule->getFunction(caller);
+            transformFunction(fn, UNIQUE_ID);
+        }
 
-            if (!fn || fn->isDeclaration())
-                continue;
-
-            // Collect the sites.
-            std::vector<CallSite> sites;
-            for (auto & BB : *fn) {
-                for (auto inst = BB.begin(); inst != BB.end(); inst++) {
-                    if (isCallSite(&*inst)) {
-                        CallSite site(&*inst);
-                        Function * called = getCalledFunction(site);
-
-                        // If called is NULL here, that indicates that the call
-                        // is a non-trivial indirect call. We don't do anything
-                        // about those in this pass, so we just move on.
-                        // See getCalledFunction() for info about the indirect
-                        // calls that we do intercept.
-                        if (!called)
-                            continue;
-
-                        std::string called_name = called->getName().str();
-                        if (allocFnMap.find(called_name) != allocFnMap.end() ||
-                            dallocFnMap.find(called_name) != dallocFnMap.end())
-                            sites.push_back(site);
-                    }
-                }
-            }
-
-            std::map<Instruction*, unsigned int> ids;
-
-            // Replace and add site ID argument.
-            unsigned int i = CompassStartID;
-            for (CallSite & site : sites) {
-                Function * fn = getCalledFunction(site);
-                std::string fn_name = fn->getName().str();
-
-                std::vector<Value *> args{};
-                Instruction * newcall = nullptr;
-
-                if (allocFnMap.find(fn_name) != allocFnMap.end()) {
-                    // If it's an allocation function, we will add a site ID
-                    // argument to the call.
-                    unsigned int id = getSiteID(caller, i++);
-                    args.push_back(
-                        ConstantInt::get(IntegerType::get(myContext, 32),
-                                         id));
-
-                    for (auto it = arg_begin(site); it != arg_end(site); it++)
-                        args.push_back(*it);
-
-                    // CallInst vs InvokeInst differences.
-                    if (isa<CallInst>(site.getInstruction())) {
-                        newcall =
-                            CallInst::Create(get(fn_name, allocFnMap), args);
-                    } else {
-                        InvokeInst * inv =
-                            dyn_cast<InvokeInst>(site.getInstruction());
-                        BasicBlock * norm = inv->getNormalDest();
-                        BasicBlock * unwind = inv->getUnwindDest();
-                        newcall = InvokeInst::Create(get(fn_name, allocFnMap),
-                                                     norm, unwind, args);
-                    }
-
-                    ids[newcall] = id;
-
-                    n_sites += 1;
-                } else if (dallocFnMap.find(fn_name) != dallocFnMap.end()) {
-                    for (auto it = arg_begin(site); it != arg_end(site); it++)
-                        args.push_back(*it);
-
-                    if (isa<CallInst>(site.getInstruction())) {
-                        newcall =
-                            CallInst::Create(get(fn_name, dallocFnMap), args);
-                    } else {
-                        InvokeInst * inv =
-                            dyn_cast<InvokeInst>(site.getInstruction());
-                        BasicBlock * norm = inv->getNormalDest();
-                        BasicBlock * unwind = inv->getUnwindDest();
-                        newcall = InvokeInst::Create(get(fn_name, dallocFnMap),
-                                                     norm, unwind, args);
-                    }
-                }
-
-                ReplaceInstWithInst(site.getInstruction(), newcall);
-
-                if (allocFnMap.find(fn_name) != allocFnMap.end()) {
-                    emitDebugLocation(newcall, fn_name, ids[newcall]);
-                }
+        // For every remaining function, transform the same way, but use ID 0.
+        for (auto & fn : *theModule) {
+            if (layer.find(fn.getName().str()) == layer.end()) {
+                transformFunction(&fn, ZERO_ID);
             }
         }
     }
@@ -1133,7 +1165,20 @@ out:
     bool runOnModule(Module & module) {
         theModule = &module;
 
-        if (CompassMode == "analyze") {
+        if (CompassMode == "prep") {
+            auto hash_name = [&module](std::string &&name) -> std::string {
+                auto result = name;
+                result += ".compass.";
+                result += std::to_string(std::hash<std::string>{}(module.getName().str()));
+                return result;
+            };
+            for (auto& f : module) {
+                if (f.hasInternalLinkage()) {
+                    auto new_name = hash_name(f.getName().str());
+                    f.setName(new_name);
+                }
+            }
+        } else if (CompassMode == "analyze") {
             // Clear files from previous runs.
             contexts_file = fopen(SOURCE_LOCATIONS_FILE, "w");
             nsites_file = fopen(NSITES_FILE, "w");
