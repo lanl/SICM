@@ -230,7 +230,7 @@ void* sicm_device_alloc(struct sicm_device* device, size_t size) {
         nodemask_set_compat(&nodemask, sicm_numa_id(device));
         set_mempolicy(MPOL_BIND, nodemask.n, numa_max_node() + 2);
         void* ptr = mmap(NULL, size, PROT_READ | PROT_WRITE,
-          MAP_PRIVATE | MAP_ANONYMOUS | MAP_HUGETLB | (shift << MAP_HUGE_SHIFT), -1, 0);
+          MAP_PRIVATE | MAP_ANONYMOUS | (shift << MAP_HUGE_SHIFT), -1, 0);
         if(ptr == MAP_FAILED) {
           printf("huge page allocation error: %s\n", strerror(errno));
         }
@@ -357,7 +357,7 @@ void* sicm_alloc_exact(struct sicm_device* device, void* base, size_t size) {
         nodemask_set_compat(&nodemask, sicm_numa_id(device));
         set_mempolicy(MPOL_BIND, nodemask.n, numa_max_node() + 2);
         void* ptr = mmap(base, size, PROT_READ | PROT_WRITE,
-          MAP_PRIVATE | MAP_FIXED | MAP_ANONYMOUS | MAP_HUGETLB | (shift << MAP_HUGE_SHIFT), -1, 0);
+          MAP_PRIVATE | MAP_FIXED | MAP_ANONYMOUS | (shift << MAP_HUGE_SHIFT), -1, 0);
         printf("alloc exact: %p, %p\n", base, ptr);
         if(ptr == (void*)-1) {
           printf("huge page allocation error: %s\n", strerror(errno));
@@ -386,7 +386,7 @@ void sicm_device_free(struct sicm_device* device, void* ptr, size_t size) {
         // Huge page allocation occurs in whole page chunks, so we need
         // to free (unmap) in whole page chunks.
         int page_size = sicm_device_page_size(device);
-        munmap(ptr, sicm_div_ceil(size, page_size * 1024) * page_size * 1024);
+        munmap(ptr, sicm_div_ceil(size, page_size * 1024) * 1024);
       }
       break;
     case SICM_HIP:
