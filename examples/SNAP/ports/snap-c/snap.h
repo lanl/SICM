@@ -13,6 +13,8 @@
 #include <stdbool.h>
 #include <string.h>
 
+#include "sicm_low.h"
+
 #ifdef USEMKL
 #include "mkl.h"
 #define INTEL_BB 64
@@ -997,6 +999,12 @@ void output_flux_file ( input_data *input_vars, para_data *para_vars,
                  "Reallocation failed for " #PNTR ". Terminating...\n");  \
      *IERR = 1; /* exit(-1); */                                         \
      }
+
+#define test_alloc (PNTR,NUM, TYPE,IERR) \
+       sicm_device_list src; \
+       sicm_arena arena = sicm_arena_create(0,0,&src); \
+       SIZE = NUM*sizeof(TYPE); \
+       PNTR = sicm_arena_alloc(arena,SIZE);
 
 #define ALLOC_1D(PNTR, NUM, TYPE, IERR)                                 \
                 PNTR = (TYPE *)calloc(NUM, sizeof(TYPE));               \
