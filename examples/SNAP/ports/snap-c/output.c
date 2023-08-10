@@ -105,7 +105,7 @@ void output ( input_data *input_vars, para_data *para_vars, time_data *time_vars
         FREE ( error );
 
         stop_run ( 3, 3, 0, para_vars, sn_vars, data_vars, mms_vars,
-                   geom_vars, solvar_vars, control_vars );
+                   geom_vars, solvar_vars, control_vars, input_vars );
     }
 
 /***********************************************************************
@@ -285,7 +285,7 @@ void output_flux_file ( input_data *input_vars, para_data *para_vars,
         FREE ( error );
 
         stop_run ( 3, 3, 0, para_vars, sn_vars, data_vars, mms_vars,
-                   geom_vars, solvar_vars, control_vars );
+                   geom_vars, solvar_vars, control_vars,input_vars );
     }
 
     if ( IPROC == ROOT )
@@ -312,7 +312,7 @@ void output_flux_file ( input_data *input_vars, para_data *para_vars,
         FREE ( error );
 
         stop_run ( 3, 3, 0, para_vars, sn_vars, data_vars, mms_vars,
-                   geom_vars, solvar_vars, control_vars );
+                   geom_vars, solvar_vars, control_vars, input_vars );
     }
 
 /***********************************************************************
@@ -444,6 +444,6 @@ void output_flux_file ( input_data *input_vars, para_data *para_vars,
         FREE ( error );
 
         stop_run ( 3, 3, 0, para_vars, sn_vars, data_vars, mms_vars,
-                   geom_vars, solvar_vars, control_vars );
+                   geom_vars, solvar_vars, control_vars,input_vars );
     }
 }

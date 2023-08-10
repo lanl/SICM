@@ -201,11 +201,11 @@ int string_empty ( char *stringName )
  ***********************************************************************/
 void stop_run ( int inputFlag, int solveFlag, int statusFlag, para_data *para_vars,
                 sn_data *sn_vars, data_data *data_vars, mms_data *mms_vars,
-                geom_data *geom_vars, solvar_data *solvar_vars, control_data *control_vars )
+                geom_data *geom_vars, solvar_data *solvar_vars, control_data *control_vars, input_data *input_vars )
 {
     if ( inputFlag > 0 )
     {
-        dealloc_input ( inputFlag, sn_vars, data_vars, mms_vars );
+        dealloc_input ( inputFlag, sn_vars, data_vars, mms_vars, input_vars );
     }
 
     if ( solveFlag > 0 )

@@ -521,12 +521,12 @@ int string_empty ( char *stringName );
 
 void stop_run ( int inputFlag, int solveFlag, int statusFlag, para_data *para_vars,
                 sn_data *sn_vars, data_data *data_vars, mms_data *mms_vars,
-                geom_data *geom_vars, solvar_data *solvar_vars, control_data *control_vars );
+                geom_data *geom_vars, solvar_data *solvar_vars, control_data *control_vars,input_data *input_vars );
 
 
 // dealloc.c
 void dealloc_input ( int selectFlag, sn_data *sn_vars,
-                     data_data *data_vars, mms_data *mms_vars );
+                     data_data *data_vars, mms_data *mms_vars,  input_data *input_vars );
 
 void dealloc_solve ( int selectFlag, geom_data *geom_vars,
                      solvar_data *solvar_vars, control_data *control_vars );
@@ -614,7 +614,8 @@ void sn_data_init ( sn_data *sn_vars );
 
 void sn_allocate ( sn_data *sn_vars, input_data *input_vars, int *ierr );
 
-void sn_deallocate ( sn_data *sn_vars );
+//void sn_deallocate ( sn_data *sn_vars );
+void sn_deallocate ( sn_data *sn_vars, input_data *input_vars );
 
 void expcoeff ( input_data *input_vars, sn_data *sn_vars, int *ndimen );
 
@@ -990,6 +991,17 @@ void output_flux_file ( input_data *input_vars, para_data *para_vars,
         free ( PNTR );                          \
     }
 
+
+#define DEALLOC_SICM(PNTR, NUM,TYPE) \
+       sicm_device_list devs = sicm_init();  \
+       sicm_device *location = devs.devices[0];\
+       const size_t SIZE = NUM*sizeof(TYPE); \
+   if (PNTR)   \
+   {     \
+   sicm_device_free(location, PNTR, SIZE); \
+   } \
+  sicm_fini();
+
 #define REALLOC_2D(PNTR, NUMX, NUMY, TYPE, IERR)                        \
     PNTR = (TYPE *)realloc(PNTR, NUMX*NUMY*sizeof(TYPE));              \
     if (!PNTR)                                                          \
@@ -1000,11 +1012,20 @@ void output_flux_file ( input_data *input_vars, para_data *para_vars,
      *IERR = 1; /* exit(-1); */                                         \
      }
 
-#define test_alloc (PNTR,NUM, TYPE,IERR) \
-       sicm_device_list src; \
-       sicm_arena arena = sicm_arena_create(0,0,&src); \
-       SIZE = NUM*sizeof(TYPE); \
-       PNTR = sicm_arena_alloc(arena,SIZE);
+#define ALLOC_SICM(PNTR,NUM, TYPE,IERR) \
+       sicm_device_list devs = sicm_init(); \
+       sicm_device *src = devs.devices[0];\
+       const size_t SIZE = NUM*sizeof(TYPE); \
+       PNTR = sicm_device_alloc(src,SIZE); \
+      if (!PNTR)                                              \
+                {                                                       \
+                    perror("ALLOC_1D");                                 \
+                   fprintf(stderr,                                     \
+                            "Allocation failed for " #PNTR ". Terminating...\n"); \
+                    *IERR = 1; /* exit(-1); */                         \
+               } \
+sicm_fini();
+
 
 #define ALLOC_1D(PNTR, NUM, TYPE, IERR)                                 \
                 PNTR = (TYPE *)calloc(NUM, sizeof(TYPE));               \

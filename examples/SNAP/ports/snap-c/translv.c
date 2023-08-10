@@ -47,7 +47,7 @@ void translv ( input_data *input_vars, para_data *para_vars, time_data *time_var
         print_error ( fp_out, *error, IPROC, ROOT );
 
         stop_run ( 3, 0, 0, para_vars, sn_vars, data_vars, mms_vars,
-                   geom_vars, solvar_vars, control_vars );
+                   geom_vars, solvar_vars, control_vars, input_vars );
     }
 
     solvar_alloc ( input_vars, sn_vars, solvar_vars, ierr );
@@ -66,7 +66,7 @@ void translv ( input_data *input_vars, para_data *para_vars, time_data *time_var
         print_error ( fp_out, *error, IPROC, ROOT );
 
         stop_run ( 3, 1, 0, para_vars, sn_vars, data_vars, mms_vars,
-                   geom_vars, solvar_vars, control_vars );
+                   geom_vars, solvar_vars, control_vars, input_vars );
     }
 
     control_alloc ( input_vars, control_vars, ierr );
@@ -85,7 +85,7 @@ void translv ( input_data *input_vars, para_data *para_vars, time_data *time_var
         print_error ( fp_out, *error, IPROC, ROOT );
 
         stop_run ( 3, 2, 0, para_vars, sn_vars, data_vars, mms_vars,
-                   geom_vars, solvar_vars, control_vars );
+                   geom_vars, solvar_vars, control_vars, input_vars );
     }
 
 /***********************************************************************
@@ -107,7 +107,7 @@ void translv ( input_data *input_vars, para_data *para_vars, time_data *time_var
         print_error ( fp_out, *error, IPROC, ROOT );
 
         stop_run ( 3, 3, 0, para_vars, sn_vars, data_vars, mms_vars,
-                   geom_vars, solvar_vars, control_vars );
+                   geom_vars, solvar_vars, control_vars, input_vars );
     }
 
     t2 = wtime ();

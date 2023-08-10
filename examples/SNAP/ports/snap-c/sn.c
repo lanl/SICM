@@ -24,7 +24,8 @@ void sn_allocate ( sn_data *sn_vars, input_data *input_vars, int *ierr )
     NOCT = 2;
 
     // Allocate size nang for 1D mu array, w array, and wmu
-    ALLOC_1D(MU,  NANG, double, ierr);
+   // ALLOC_1D(MU,  NANG, double, ierr);
+    ALLOC_SICM(MU, NANG, double, ierr);
     ALLOC_1D(W,   NANG, double, ierr);
     ALLOC_1D(WMU, NANG, double, ierr);
 
@@ -57,9 +58,10 @@ void sn_allocate ( sn_data *sn_vars, input_data *input_vars, int *ierr )
     if ( *ierr != 0 ) return;
 }
 
-void sn_deallocate ( sn_data *sn_vars )
+void sn_deallocate ( sn_data *sn_vars, input_data *input_vars )
 {
-    FREE(MU);
+    DEALLOC_SICM(MU,NANG,double);
+    //FREE(MU);
     FREE(W);
     FREE(WMU);
     FREE(ETA);

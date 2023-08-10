@@ -94,7 +94,7 @@ int main ( int argc, char *argv[] )
         FREE ( error );
 
         stop_run ( 0, 0, 0, &para_vars, &sn_vars, &data_vars, &mms_vars,
-                   &geom_vars, &solvar_vars, &control_vars );
+                   &geom_vars, &solvar_vars, &control_vars ,&input_vars );
     }
 
     /* Open the input file to read in initial values */
@@ -112,7 +112,7 @@ int main ( int argc, char *argv[] )
         FREE ( error );
 
         stop_run ( 0, 0, 0, &para_vars, &sn_vars, &data_vars, &mms_vars,
-                   &geom_vars, &solvar_vars, &control_vars );
+                   &geom_vars, &solvar_vars, &control_vars, &input_vars );
     }
 
     /* Open the output file to write results and error messages */
@@ -130,7 +130,7 @@ int main ( int argc, char *argv[] )
         FREE ( error );
 
         stop_run ( 0, 0, 0, &para_vars, &sn_vars, &data_vars, &mms_vars,
-                   &geom_vars, &solvar_vars, &control_vars );
+                   &geom_vars, &solvar_vars, &control_vars,&input_vars );
     }
 
 /***********************************************************************
@@ -158,7 +158,7 @@ int main ( int argc, char *argv[] )
         FREE ( error );
 
         stop_run ( 0, 0, 0, &para_vars, &sn_vars, &data_vars, &mms_vars,
-                   &geom_vars, &solvar_vars, &control_vars );
+                   &geom_vars, &solvar_vars, &control_vars,&input_vars );
     }
 
 /***********************************************************************
@@ -205,7 +205,7 @@ int main ( int argc, char *argv[] )
 /***********************************************************************
  * Final cleanup: deallocate, close output file, end the program
  ***********************************************************************/
-    dealloc_input ( 3, &sn_vars, &data_vars, &mms_vars );
+    dealloc_input ( 3, &sn_vars, &data_vars, &mms_vars, &input_vars);
     dealloc_solve ( 3, &geom_vars, &solvar_vars, &control_vars );
 
     t5 = wtime();
@@ -235,7 +235,7 @@ int main ( int argc, char *argv[] )
         FREE ( error );
 
         stop_run ( 0, 0, 0, &para_vars, &sn_vars, &data_vars, &mms_vars,
-                   &geom_vars, &solvar_vars, &control_vars );
+                   &geom_vars, &solvar_vars, &control_vars, &input_vars );
     }
 
 
@@ -244,14 +244,14 @@ int main ( int argc, char *argv[] )
         FREE ( error );
 
         stop_run ( 0, 0, 1, &para_vars, &sn_vars, &data_vars, &mms_vars,
-                   &geom_vars, &solvar_vars, &control_vars );
+                   &geom_vars, &solvar_vars, &control_vars, &input_vars );
     }
     else
     {
         FREE ( error );
 
         stop_run ( 0, 0, 2, &para_vars, &sn_vars, &data_vars, &mms_vars,
-                   &geom_vars, &solvar_vars, &control_vars );
+                   &geom_vars, &solvar_vars, &control_vars, &input_vars );
     }
 
     return 0;
