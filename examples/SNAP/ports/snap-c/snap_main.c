@@ -25,6 +25,8 @@ int main ( int argc, char *argv[] )
     char *error = NULL; // Error message string
 
     double t1, t2, t3, t4, t5; // Variables to track runtime
+    
+    sicm_device_list devs = sicm_init(); // add SICM initialization
 
     /* File in/out handling variables */
     char *inputFile = NULL, *outputFile = NULL;
@@ -184,7 +186,7 @@ int main ( int argc, char *argv[] )
  ***********************************************************************/
     setup ( &input_vars, &para_vars, &time_vars, &geom_vars, &sn_vars,
             &data_vars, &solvar_vars, &control_vars, &mms_vars, fp_out,
-            &ierr, &error );
+            &ierr, &error, &devs );
 
 /***********************************************************************
  * Call for the problem solution
@@ -253,6 +255,7 @@ int main ( int argc, char *argv[] )
         stop_run ( 0, 0, 2, &para_vars, &sn_vars, &data_vars, &mms_vars,
                    &geom_vars, &solvar_vars, &control_vars, &input_vars );
     }
-
+    
+    sicm_fini();
     return 0;
 }

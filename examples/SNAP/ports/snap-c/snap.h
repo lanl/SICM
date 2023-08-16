@@ -563,10 +563,10 @@ void time_summ ( FILE *fp_out, time_data *time_vars );
 void setup ( input_data *input_vars, para_data *para_vars, time_data *time_vars,
              geom_data *geom_vars, sn_data *sn_vars, data_data *data_vars,
              solvar_data *solvar_vars, control_data *control_vars,
-             mms_data *mms_vars, FILE *fp_out, int *ierr, char **error );
+             mms_data *mms_vars, FILE *fp_out, int *ierr, char **error ,sicm_device_list *devs );
 
 void setup_alloc( input_data *input_vars, para_data *para_vars, sn_data *sn_vars,
-                  data_data *data_vars, int *flg, int *ierr, char **error );
+                  data_data *data_vars, int *flg, int *ierr, char **error, sicm_device_list *devs );
 
 void setup_delta( input_data *input_vars, geom_data *geom_vars,
                   control_data *control_vars );
@@ -612,7 +612,7 @@ void diag_setup ( input_data *input_vars, para_data *para_vars,
 // sn.c
 void sn_data_init ( sn_data *sn_vars );
 
-void sn_allocate ( sn_data *sn_vars, input_data *input_vars, int *ierr );
+void sn_allocate ( sn_data *sn_vars, input_data *input_vars, int *ierr, sicm_device_list *devs );
 
 //void sn_deallocate ( sn_data *sn_vars );
 void sn_deallocate ( sn_data *sn_vars, input_data *input_vars );
@@ -1012,9 +1012,8 @@ void output_flux_file ( input_data *input_vars, para_data *para_vars,
      *IERR = 1; /* exit(-1); */                                         \
      }
 
-#define ALLOC_SICM(PNTR,NUM, TYPE,IERR) \
-       sicm_device_list devs = sicm_init(); \
-       sicm_device *src = devs.devices[0];\
+#define ALLOC_SICM(devs, PNTR, NUM, TYPE,IERR) \
+       sicm_device *src = devs->devices[0];\
        const size_t SIZE = NUM*sizeof(TYPE); \
        PNTR = sicm_device_alloc(src,SIZE); \
       if (!PNTR)                                              \
@@ -1024,7 +1023,6 @@ void output_flux_file ( input_data *input_vars, para_data *para_vars,
                             "Allocation failed for " #PNTR ". Terminating...\n"); \
                     *IERR = 1; /* exit(-1); */                         \
                } \
-sicm_fini();
 
 
 #define ALLOC_1D(PNTR, NUM, TYPE, IERR)                                 \

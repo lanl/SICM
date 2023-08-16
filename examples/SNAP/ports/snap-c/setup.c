@@ -11,7 +11,7 @@
 void setup ( input_data *input_vars, para_data *para_vars, time_data *time_vars,
              geom_data *geom_vars, sn_data *sn_vars, data_data *data_vars,
              solvar_data *solvar_vars, control_data *control_vars,
-             mms_data *mms_vars, FILE *fp_out, int *ierr, char **error )
+             mms_data *mms_vars, FILE *fp_out, int *ierr, char **error, sicm_device_list *devs )
 {
 /*******************************************************************************
  * Local variables
@@ -43,7 +43,7 @@ void setup ( input_data *input_vars, para_data *para_vars, time_data *time_vars,
 /*******************************************************************************
  *  Allocate needed arrays
  *******************************************************************************/
-    setup_alloc( input_vars, para_vars, sn_vars, data_vars, &flg, ierr, error );
+    setup_alloc( input_vars, para_vars, sn_vars, data_vars, &flg, ierr, error, devs );
 
     if ( *ierr != 0 )
     {
@@ -117,12 +117,12 @@ void setup ( input_data *input_vars, para_data *para_vars, time_data *time_vars,
  * Call for individual allocation routines to size the run-time arrays.
  *******************************************************************************/
 void setup_alloc( input_data *input_vars, para_data *para_vars, sn_data *sn_vars,
-                  data_data *data_vars, int *flg, int *ierr, char **error )
+                  data_data *data_vars, int *flg, int *ierr, char **error, sicm_device_list *devs )
 {
     int tmpStrLen = 0;
     *flg = 0;
 
-    sn_allocate ( sn_vars, input_vars, ierr );
+    sn_allocate ( sn_vars, input_vars, ierr, devs );
 
     glmax_i ( ierr, COMM_SNAP );
 

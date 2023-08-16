@@ -15,7 +15,7 @@ void sn_data_init( sn_data *sn_vars )
 /***********************************************************************
  * Allocate sn_module arrays.
  ***********************************************************************/
-void sn_allocate ( sn_data *sn_vars, input_data *input_vars, int *ierr )
+void sn_allocate ( sn_data *sn_vars, input_data *input_vars, int *ierr, sicm_device_list *devs )
 {
 /***********************************************************************
  * Allocate cosines and weights.
@@ -25,7 +25,7 @@ void sn_allocate ( sn_data *sn_vars, input_data *input_vars, int *ierr )
 
     // Allocate size nang for 1D mu array, w array, and wmu
    // ALLOC_1D(MU,  NANG, double, ierr);
-    ALLOC_SICM(MU, NANG, double, ierr);
+    ALLOC_SICM(devs, MU, NANG, double, ierr);
     ALLOC_1D(W,   NANG, double, ierr);
     ALLOC_1D(WMU, NANG, double, ierr);
 
