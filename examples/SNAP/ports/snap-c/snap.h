@@ -28,6 +28,7 @@
 #define M_PI 3.14159265358979323846
 #endif
 
+
 /***********************************************************************
  * Typedef functions
  ***********************************************************************/
@@ -992,12 +993,10 @@ void output_flux_file ( input_data *input_vars, para_data *para_vars,
     }
 
 
-#define DEALLOC_SICM(devs, PNTR, NUM,TYPE) \
-       sicm_device *location = devs->devices[0];\
-       const size_t SIZE = NUM*sizeof(TYPE); \
+#define DEALLOC_SICM(location, PNTR, NUM,TYPE) \
    if (PNTR)   \
    {     \
-   sicm_device_free(location, PNTR, SIZE); \
+   sicm_device_free(location, PNTR, NUM*sizeof(TYPE)); \
    } \
 
 #define REALLOC_2D(PNTR, NUMX, NUMY, TYPE, IERR)                        \
@@ -1010,10 +1009,8 @@ void output_flux_file ( input_data *input_vars, para_data *para_vars,
      *IERR = 1; /* exit(-1); */                                         \
      }
 
-#define ALLOC_SICM(devs, PNTR, NUM, TYPE,IERR) \
-       sicm_device *src = devs->devices[0];\
-       const size_t SIZE = NUM*sizeof(TYPE); \
-       PNTR = sicm_device_alloc(src,SIZE); \
+#define ALLOC_SICM(src, PNTR, NUM, TYPE,IERR) \
+       PNTR = sicm_device_alloc(src,NUM*sizeof(TYPE)); \
       if (!PNTR)                                              \
                 {                                                       \
                     perror("ALLOC_1D");                                 \

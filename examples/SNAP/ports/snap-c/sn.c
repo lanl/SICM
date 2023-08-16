@@ -22,12 +22,12 @@ void sn_allocate ( sn_data *sn_vars, input_data *input_vars, int *ierr, sicm_dev
  ***********************************************************************/
     CMOM = NMOM;
     NOCT = 2;
-
+    sicm_device *src = devs->devices[0];
     // Allocate size nang for 1D mu array, w array, and wmu
    // ALLOC_1D(MU,  NANG, double, ierr);
-    ALLOC_SICM(devs, MU, NANG, double, ierr);
-    ALLOC_1D(W,   NANG, double, ierr);
-    ALLOC_1D(WMU, NANG, double, ierr);
+    ALLOC_SICM(src, MU, NANG, double, ierr);
+    ALLOC_SICM(src,  W, NANG, double, ierr);
+    ALLOC_SICM(src, WMU, NANG, double, ierr);
 
     if ( *ierr != 0 ) return;
 
@@ -36,8 +36,8 @@ void sn_allocate ( sn_data *sn_vars, input_data *input_vars, int *ierr, sicm_dev
         CMOM = NMOM * (NMOM+1) / 2;
         NOCT = 4;
 
-        ALLOC_1D(ETA,  NANG, double, ierr);
-        ALLOC_1D(WETA, NANG, double, ierr);
+        ALLOC_SICM(src,ETA,  NANG, double, ierr);
+        ALLOC_SICM(src,WETA, NANG, double, ierr);
     }
 
     if ( *ierr != 0 ) return;
@@ -46,30 +46,31 @@ void sn_allocate ( sn_data *sn_vars, input_data *input_vars, int *ierr, sicm_dev
     {
         CMOM = NMOM * NMOM;
         NOCT = 8;
-        ALLOC_1D(XI,  NANG, double, ierr);
-        ALLOC_1D(WXI, NANG, double, ierr);
+        ALLOC_SICM(src,XI,  NANG, double, ierr);
+        ALLOC_SICM(src, WXI, NANG, double, ierr);
     }
 
     if ( *ierr != 0 ) return;
 
     ALLOC_3D(EC, NANG, CMOM, NOCT, double, ierr);
-    ALLOC_1D(LMA, NMOM, int, ierr);
+    ALLOC_SICM(src,LMA, NMOM, int, ierr);
 
     if ( *ierr != 0 ) return;
 }
 
 void sn_deallocate ( sn_data *sn_vars, input_data *input_vars, sicm_device_list *devs )
 {
-    DEALLOC_SICM(devs, MU,NANG,double);
-    //FREE(MU);
-    FREE(W);
-    FREE(WMU);
-    FREE(ETA);
-    FREE(WETA);
-    FREE(XI);
-    FREE(WXI);
+   sicm_device *location = devs->devices[0];
+    DEALLOC_SICM(location, MU,NANG,double);
+    DEALLOC_SICM(location,W,NANG,double);
+    DEALLOC_SICM(location,WMU,NANG,double);
+    DEALLOC_SICM(location,ETA,NANG,double);
+    DEALLOC_SICM(location,WETA,NANG,double);
+    DEALLOC_SICM(location,XI,NANG,double);
+    DEALLOC_SICM(location, WXI, NANG, double);
     FREE(EC);
-    FREE(LMA);
+    DEALLOC_SICM(location,LMA, NANG, double);
+
 }
 
 /***********************************************************************
