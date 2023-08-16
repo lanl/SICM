@@ -74,7 +74,7 @@ void setup ( input_data *input_vars, para_data *para_vars, time_data *time_vars,
     expcoeff( input_vars, sn_vars, &NDIMEN );
 
     setup_src( input_vars, para_vars, geom_vars, sn_vars, data_vars, control_vars,
-               mms_vars, &qis, &qie, &qjs, &qje, &qks, &qke, ierr, error );
+               mms_vars, &qis, &qie, &qjs, &qje, &qks, &qke, ierr, error, devs );
 
     if ( *ierr != 0 )
     {
@@ -140,7 +140,7 @@ void setup_alloc( input_data *input_vars, para_data *para_vars, sn_data *sn_vars
         return;
     }
 
-    data_allocate( data_vars, input_vars, sn_vars, ierr );
+    data_allocate( data_vars, input_vars, sn_vars, ierr, devs );
 
     glmax_i ( ierr, COMM_SNAP );
 
@@ -416,7 +416,7 @@ void setup_mat ( input_data *input_vars, geom_data *geom_vars, data_data *data_v
 void setup_src ( input_data *input_vars, para_data *para_vars, geom_data *geom_vars,
                  sn_data *sn_vars, data_data *data_vars, control_data *control_vars,
                  mms_data *mms_vars, int *i1, int *i2, int *j1, int *j2, int *k1,
-                 int *k2, int *ierr, char **error )
+                 int *k2, int *ierr, char **error, sicm_device_list *devs )
 {
 /*******************************************************************************
  * Local variables
@@ -430,7 +430,7 @@ void setup_src ( input_data *input_vars, para_data *para_vars, geom_data *geom_v
     if ( SRC_OPT == 3 )
     {
         mms_setup ( input_vars, para_vars, geom_vars, data_vars,
-                    sn_vars, control_vars, mms_vars, ierr, error );
+                    sn_vars, control_vars, mms_vars, ierr, error, devs );
         return;
     }
 

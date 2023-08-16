@@ -30,17 +30,18 @@ void geom_data_init ( geom_data *geom_vars )
 /***********************************************************************
  * Allocate the geometry-related solution arrays.
  ***********************************************************************/
-void geom_alloc ( input_data *input_vars, geom_data *geom_vars, int *ierr  )
-{
-    ALLOC_1D(HJ, NANG, double, ierr);
-    ALLOC_1D(HK, NANG, double, ierr);
+void geom_alloc ( input_data *input_vars, geom_data *geom_vars, int *ierr, sicm_device_list *devs )
+{    
+    sicm_device *src = devs->devices[0];
+    ALLOC_SICM(src, HJ, NANG, double, ierr);
+    ALLOC_SICM(src, HK, NANG, double, ierr);
     ALLOC_5D(DINV, NANG, NX, NY, NZ, NG, double, ierr);
 }
 
 /***********************************************************************
  * Dellocate the geometry-related solution arrays.
  ***********************************************************************/
-void geom_dealloc ( geom_data *geom_vars )
+void geom_dealloc ( geom_data *geom_vars, input_data *input_vars, sicm_device_list *devs )
 {
 /***********************************************************************
  * Local variables
@@ -50,8 +51,9 @@ void geom_dealloc ( geom_data *geom_vars )
 /***********************************************************************
  * Deallocate the sweep parameters
  ***********************************************************************/
-    FREE(HJ);
-    FREE(HK);
+    sicm_device *location = devs->devices[0];
+    DEALLOC_SICM(location, HJ,NANG,double);
+    DEALLOC_SICM(location, HK,NANG,double);
     FREE(DINV);
 
 /***********************************************************************
@@ -59,10 +61,10 @@ void geom_dealloc ( geom_data *geom_vars )
  ***********************************************************************/
     for ( i = 1; i <= NDIAG; i++ )
     {
-        FREE(DIAG_1D(i-1).cell_id_vars);
+        DEALLOC_SICM(location,DIAG_1D(i-1).cell_id_vars,NANG, double);
     }
 
-    FREE(DIAG);
+    DEALLOC_SICM(location,DIAG,NANG, double);
 }
 
 /***********************************************************************
@@ -129,7 +131,7 @@ void param_calc ( input_data *input_vars, sn_data *sn_vars,
 }
 
 void diag_setup ( input_data *input_vars, para_data *para_vars,
-                  geom_data *geom_vars, int *ierr, char **error )
+                  geom_data *geom_vars, int *ierr, char **error, sicm_device_list *devs )
 {
 /***********************************************************************
  * Local variables
@@ -137,6 +139,7 @@ void diag_setup ( input_data *input_vars, para_data *para_vars,
     int i, j, k, nn, ing;
     int *indx;
 
+        sicm_device *src = devs->devices[0];
     *ierr = 0;
 /***********************************************************************
  * Set up the diagonal indices according to do_nested. If 1, use
@@ -145,9 +148,8 @@ void diag_setup ( input_data *input_vars, para_data *para_vars,
     if ( DO_NESTED )
     {
         NDIAG = ICHUNK + NY + NZ - 2;
-
-        ALLOC_1D(DIAG, NDIAG, diag_type, ierr);
-        ALLOC_1D(indx, NDIAG, int, ierr);
+        ALLOC_SICM(src, DIAG, NDIAG, diag_type, ierr);
+        ALLOC_SICM(src, indx, NDIAG, int, ierr);
 
         if ( *ierr != 0 ) return;
 
@@ -179,7 +181,7 @@ void diag_setup ( input_data *input_vars, para_data *para_vars,
         for ( nn = 1; nn <= NDIAG; nn++ )
         {
             ing = DIAG_1D(nn-1).lenc;
-            ALLOC_1D(DIAG_1D(nn-1).cell_id_vars, ing, cell_id_type, ierr);
+            ALLOC_SICM(src, DIAG_1D(nn-1).cell_id_vars, ing, cell_id_type, ierr);
 
             if ( *ierr != 0 ) return;
         }
@@ -202,8 +204,8 @@ void diag_setup ( input_data *input_vars, para_data *para_vars,
                 }
             }
         }
-
-        FREE(indx);
+        sicm_device *location = devs->devices[0];
+        DEALLOC_SICM(location, indx,NDIAG,int);
     }
 
     else
@@ -214,11 +216,11 @@ void diag_setup ( input_data *input_vars, para_data *para_vars,
  * lexographical order.
  ***********************************************************************/
         NDIAG = 1;
-        ALLOC_1D(DIAG, 1, diag_type, ierr);
+        ALLOC_SICM(src, DIAG, 1, diag_type, ierr);
 
         if ( *ierr != 0) return;
 
-        ALLOC_1D(DIAG_1D(0).cell_id_vars, (ICHUNK*NY*NZ), cell_id_type, ierr);
+        ALLOC_SICM(src, DIAG_1D(0).cell_id_vars, (ICHUNK*NY*NZ), cell_id_type, ierr);
 
         if ( *ierr != 0) return;
 

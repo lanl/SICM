@@ -57,7 +57,7 @@ void input_data_init ( input_data *input_vars )
  * Read the input file.
  ***********************************************************************/
 int read_input ( FILE *fp_in, FILE *fp_out, input_data *input_vars,
-                 para_data *para_vars, time_data *time_vars )
+                 para_data *para_vars, time_data *time_vars, sicm_device_list *devs )
 {
 /***********************************************************************
  * Local variables.
@@ -305,7 +305,7 @@ int read_input ( FILE *fp_in, FILE *fp_out, input_data *input_vars,
 /***********************************************************************
  * Broadcast the data to all processes.
  ***********************************************************************/
-    ierr = var_bcast ( input_vars, para_vars );
+    ierr = var_bcast ( input_vars, para_vars, devs );
 
     t2 = wtime();
     time_vars->tinp = t2 - t1;
@@ -961,17 +961,18 @@ int input_check ( FILE *fp_out, input_data *input_vars, para_data *para_vars )
  * To do: Create MPI_Type_create_struct to skip packing
  * struct data into array.
  ***********************************************************************/
-int var_bcast ( input_data *input_vars, para_data *para_vars )
+int var_bcast ( input_data *input_vars, para_data *para_vars, sicm_device_list *devs )
 {
     int ierr = 0;
 
     int *ipak;
     int ilen = 30;
-    ALLOC_1D(ipak, ilen, int, &ierr);
+sicm_device *src = devs->devices[0]; 
+    ALLOC_SICM(src, ipak, ilen, int, &ierr);
 
     double *dpak;
     int dlen = 15;
-    ALLOC_1D(dpak, dlen, double, &ierr);
+    ALLOC_SICM(src, dpak, dlen, double, &ierr);
 
     if ( IPROC == ROOT )
     {
@@ -1077,9 +1078,9 @@ int var_bcast ( input_data *input_vars, para_data *para_vars )
 }
 #endif
 #endif
-
-    FREE (ipak);
-    FREE (dpak);
+    sicm_device *location = devs->devices[0];
+    DEALLOC_SICM(location, ipak,ilen,int);
+    DEALLOC_SICM(location, dpak,dlen,double);
 
     return ierr;
 }

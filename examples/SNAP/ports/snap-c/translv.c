@@ -31,7 +31,7 @@ void translv ( input_data *input_vars, para_data *para_vars, time_data *time_var
  ***********************************************************************/
     t1 = wtime ();
 
-    geom_alloc ( input_vars, geom_vars, ierr );
+    geom_alloc ( input_vars, geom_vars, ierr, devs );
 
     glmax_i ( ierr, COMM_SNAP );
 
@@ -69,7 +69,7 @@ void translv ( input_data *input_vars, para_data *para_vars, time_data *time_var
                    geom_vars, solvar_vars, control_vars, input_vars, devs );
     }
 
-    control_alloc ( input_vars, control_vars, ierr );
+    control_alloc ( input_vars, control_vars, ierr, devs );
 
     glmax_i ( ierr, COMM_SNAP );
 
@@ -91,7 +91,7 @@ void translv ( input_data *input_vars, para_data *para_vars, time_data *time_var
 /***********************************************************************
  * Call for setup of the mini-KBA diagonal map
  ***********************************************************************/
-    diag_setup ( input_vars, para_vars, geom_vars, ierr, error );
+    diag_setup ( input_vars, para_vars, geom_vars, ierr, error, devs );
 
     glmax_i ( ierr, COMM_SNAP );
 

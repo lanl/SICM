@@ -530,7 +530,7 @@ void dealloc_input ( int selectFlag, sn_data *sn_vars,
                      data_data *data_vars, mms_data *mms_vars,  input_data *input_vars, sicm_device_list *devs);
 
 void dealloc_solve ( int selectFlag, geom_data *geom_vars,
-                     solvar_data *solvar_vars, control_data *control_vars );
+                     solvar_data *solvar_vars, control_data *control_vars, sicm_device_list *devs,input_data *input_vars );
 
 
 // version.c
@@ -541,7 +541,7 @@ void version_print ( FILE *fp_out );
 void input_data_init ( input_data *input_vars );
 
 int read_input ( FILE *fp_in, FILE *fp_out, input_data *input_vars,
-                 para_data *para_vars, time_data *time_vars );
+                 para_data *para_vars, time_data *time_vars, sicm_device_list *devs );
 
 void get_input_value ( char *lineData, char *valueID, char **tmpData );
 
@@ -549,7 +549,7 @@ void input_echo ( input_data *input_vars, FILE *fp_out );
 
 int input_check ( FILE *fp_out, input_data *input_vars, para_data *para_vars );
 
-int var_bcast ( input_data *input_vars, para_data *para_vars );
+int var_bcast ( input_data *input_vars, para_data *para_vars, sicm_device_list *devs );
 
 
 // time.c
@@ -584,7 +584,7 @@ void setup_data ( input_data *input_vars, data_data *data_vars);
 void setup_src ( input_data *input_vars, para_data *para_vars, geom_data *geom_vars,
                  sn_data *sn_vars, data_data *data_vars, control_data *control_vars,
                  mms_data *mms_vars, int *i1, int *i2, int *j1, int *j2, int *k1,
-                 int *k2, int *ierr, char **error );
+                 int *k2, int *ierr, char **error,sicm_device_list *devs );
 
 void setup_echo ( FILE *fp_out, input_data *input_vars, para_data *para_vars,
                   geom_data *geom_vars, data_data *data_vars, sn_data *sn_vars,
@@ -598,16 +598,16 @@ void setup_scatp( input_data *input_vars, para_data *para_vars,
 // geom.c
 void geom_data_init ( geom_data *geom_vars );
 
-void geom_alloc ( input_data *input_vars, geom_data *geom_vars, int *ierr );
+void geom_alloc ( input_data *input_vars, geom_data *geom_vars, int *ierr, sicm_device_list *devs );
 
-void geom_dealloc ( geom_data *geom_vars );
+void geom_dealloc ( geom_data *geom_vars, input_data *input_vars, sicm_device_list *devs );
 
 void param_calc ( input_data *input_vars, sn_data *sn_vars,
                   solvar_data *solvar_vars, data_data *data_vars,
                   geom_data *geom_vars, int ng_indx );
 
 void diag_setup ( input_data *input_vars, para_data *para_vars,
-                  geom_data *geom_vars, int *ierr, char **error );
+                  geom_data *geom_vars, int *ierr, char **error,sicm_device_list *devs );
 
 
 // sn.c
@@ -629,18 +629,18 @@ void data_data_init (data_data *data_vars );
 
 // Allocate data module arrays
 void data_allocate ( data_data *data_vars, input_data *input_vars,
-                     sn_data *sn_vars, int *ierr );
+                     sn_data *sn_vars, int *ierr ,sicm_device_list *devs);
 
 // Deallocate the data module arrays
-void data_deallocate ( data_data *data_vars );
+void data_deallocate ( data_data *data_vars, input_data *input_vars, sicm_device_list *devs );
 
 
 // control.c
 void control_data_init ( control_data *control_vars );
 
-void control_alloc ( input_data *input_vars, control_data *control_vars, int *ierr);
+void control_alloc ( input_data *input_vars, control_data *control_vars, int *ierr, sicm_device_list *devs);
 
-void control_dealloc ( control_data *control_vars );
+void control_dealloc ( control_data *control_vars, sicm_device_list *devs, input_data *input_vars );
 
 
 // mms.c
@@ -648,23 +648,23 @@ void mms_data_init ( mms_data *mms_vars );
 
 void mms_setup ( input_data *input_vars, para_data *para_vars, geom_data *geom_vars,
                  data_data *data_vars, sn_data *sn_vars, control_data *control_vars,
-                 mms_data *mms_vars, int *ierr, char **error );
+                 mms_data *mms_vars, int *ierr, char **error, sicm_device_list *devs );
 
 void mms_allocate ( input_data *input_vars, sn_data *sn_vars, mms_data *mms_vars,
-                    int *ierr, char **error );
+                    int *ierr, char **error, sicm_device_list *devs );
 
-void mms_deallocate (  mms_data *mms_vars );
+void mms_deallocate (  mms_data *mms_vars ,input_data *input_vars, sicm_device_list *devs );
 
 void mms_cells ( input_data *input_vars, geom_data *geom_vars, mms_data *mms_vars );
 
 void mms_flux_1 ( input_data *input_vars, geom_data *geom_vars,
-                  sn_data *sn_vars, mms_data *mms_vars );
+                  sn_data *sn_vars, mms_data *mms_vars,sicm_device_list *devs );
 
 void mms_trigint ( char *trig, int lc, double d, double del,
                    double *cb, double *fn );
 
 void mms_src_1( input_data *input_vars, geom_data *geom_vars, data_data *data_vars,
-                sn_data *sn_vars, mms_data *mms_vars );
+                sn_data *sn_vars, mms_data *mms_vars, sicm_device_list *devs );
 
 void mms_flux_1_2 ( input_data *input_vars, control_data *control_vars,
                     mms_data *mms_vars );
@@ -991,6 +991,7 @@ void output_flux_file ( input_data *input_vars, para_data *para_vars,
     {                                           \
         free ( PNTR );                          \
     }
+
 
 
 #define DEALLOC_SICM(location, PNTR, NUM,TYPE) \

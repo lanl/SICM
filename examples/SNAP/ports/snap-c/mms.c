@@ -46,7 +46,7 @@ void mms_data_init (mms_data *mms_vars)
  *******************************************************************************/
 void mms_setup ( input_data *input_vars, para_data *para_vars, geom_data *geom_vars,
                  data_data *data_vars, sn_data *sn_vars, control_data *control_vars,
-                 mms_data *mms_vars, int *ierr, char **error )
+                 mms_data *mms_vars, int *ierr, char **error, sicm_device_list *devs )
 {
 /*******************************************************************************
  * Local variables
@@ -56,7 +56,7 @@ void mms_setup ( input_data *input_vars, para_data *para_vars, geom_data *geom_v
 /*******************************************************************************
  * Start by allocating the reference, manufactured solution
  *******************************************************************************/
-    mms_allocate ( input_vars, sn_vars, mms_vars, ierr, error );
+    mms_allocate ( input_vars, sn_vars, mms_vars, ierr, error, devs );
 
     glmax_i ( ierr, COMM_SNAP );
 
@@ -98,8 +98,8 @@ void mms_setup ( input_data *input_vars, para_data *para_vars, geom_data *geom_v
  *******************************************************************************/
     if ( SRC_OPT == 3 )
     {
-        mms_flux_1 ( input_vars, geom_vars, sn_vars, mms_vars );
-        mms_src_1 ( input_vars, geom_vars, data_vars, sn_vars, mms_vars );
+        mms_flux_1 ( input_vars, geom_vars, sn_vars, mms_vars, devs );
+        mms_src_1 ( input_vars, geom_vars, data_vars, sn_vars, mms_vars, devs );
         if ( TIMEDEP == 1 ) mms_flux_1_2 ( input_vars, control_vars, mms_vars );
     }
 }
@@ -108,28 +108,29 @@ void mms_setup ( input_data *input_vars, para_data *para_vars, geom_data *geom_v
  * Allocate MMS arrays.
  *******************************************************************************/
 void mms_allocate ( input_data *input_vars, sn_data *sn_vars, mms_data *mms_vars,
-                    int *ierr, char **error )
+                    int *ierr, char **error, sicm_device_list *devs )
 {
     ALLOC_4D(REF_FLUX, NX, NY, NZ, NG, double, ierr);
     ALLOC_5D(REF_FLUXM, (CMOM-1), NX, NY, NZ, NG, double, ierr);
 
     if ( *ierr != 0 ) return;
-
-    ALLOC_1D(IB, (NX+1), double, ierr);
-    ALLOC_1D(JB, (NY+1), double, ierr);
-    ALLOC_1D(KB, (NZ+1), double, ierr);
+    sicm_device *src = devs->devices[0];
+    ALLOC_SICM(src, IB, (NX+1), double, ierr);
+    ALLOC_SICM(src, JB, (NY+1), double, ierr);
+    ALLOC_SICM(src, KB, (NZ+1), double, ierr);
 }
 
 /*******************************************************************************
  * Deallocate MMS arrays.
  *******************************************************************************/
-void mms_deallocate (  mms_data *mms_vars )
+void mms_deallocate (  mms_data *mms_vars, input_data *input_vars, sicm_device_list *devs )
 {
+    sicm_device *location = devs->devices[0];
     if (REF_FLUX)  FREE(REF_FLUX);
     if (REF_FLUXM) FREE(REF_FLUXM);
-    if (IB)        FREE(IB);
-    if (JB)        FREE(JB);
-    if (KB)        FREE(KB);
+    if (IB)        DEALLOC_SICM(location, IB,(NX+1),double);
+    if (JB)        DEALLOC_SICM(location, JB,(NY+1),double);
+    if (KB)        DEALLOC_SICM(location, KB,(NZ+1),double);
 }
 
 /*******************************************************************************
@@ -181,7 +182,7 @@ void mms_cells ( input_data *input_vars, geom_data *geom_vars, mms_data *mms_var
  *******************************************************************************/
 // TODO: add USEMKL functions
 void mms_flux_1 ( input_data *input_vars, geom_data *geom_vars,
-                  sn_data *sn_vars, mms_data *mms_vars )
+                  sn_data *sn_vars, mms_data *mms_vars, sicm_device_list *devs )
 {
 /*******************************************************************************
  * Local variables
@@ -192,11 +193,11 @@ void mms_flux_1 ( input_data *input_vars, geom_data *geom_vars,
     int sum_wec = 0;
 
     double *p, *tx, *ty, *tz;
-
-    ALLOC_1D(p, (CMOM-1), double, &ierr);
-    ALLOC_1D(tx, NX,      double, &ierr);
-    ALLOC_1D(ty, NY,      double, &ierr);
-    ALLOC_1D(tz, NZ,      double, &ierr);
+    sicm_device *src = devs->devices[0];
+    ALLOC_SICM(src, p, (CMOM-1), double, &ierr);
+    ALLOC_SICM(src, tx, NX,      double, &ierr);
+    ALLOC_SICM(src, ty, NY,      double, &ierr);
+    ALLOC_SICM(src, tz, NZ,      double, &ierr);
 
 /*******************************************************************************
  * Get all the integrations done by dimension separately
@@ -285,11 +286,11 @@ void mms_flux_1 ( input_data *input_vars, geom_data *geom_vars,
             }
         }
     }
-
-    FREE(p);
-    FREE(tx);
-    FREE(ty);
-    FREE(tz);
+    sicm_device *location = devs->devices[0];
+    DEALLOC_SICM(location, p,(CMOM-1),double);
+    DEALLOC_SICM(location,tx,NX,double);
+    DEALLOC_SICM(location,ty,NY,double);
+    DEALLOC_SICM(location,tz,NZ,double);
 }
 
 /*******************************************************************************
@@ -352,7 +353,7 @@ void mms_trigint ( char *trig, int lc, double d, double del,
  * coefficient, which is done in octsweep.
  *******************************************************************************/
 void mms_src_1( input_data *input_vars, geom_data *geom_vars,
-                data_data *data_vars, sn_data *sn_vars, mms_data *mms_vars )
+                data_data *data_vars, sn_data *sn_vars, mms_data *mms_vars, sicm_device_list *devs )
 {
 /*******************************************************************************
  * Local variables
@@ -361,13 +362,14 @@ void mms_src_1( input_data *input_vars, geom_data *geom_vars,
     int ierr = 0;
 
     double *cx, *sx, *cy, *sy, *cz, *sz;
+    sicm_device *src = devs->devices[0];
 
-    ALLOC_1D(cx, NX, double, &ierr);
-    ALLOC_1D(sx, NX, double, &ierr);
-    ALLOC_1D(cy, NY, double, &ierr);
-    ALLOC_1D(sy, NY, double, &ierr);
-    ALLOC_1D(cz, NZ, double, &ierr);
-    ALLOC_1D(sz, NZ, double, &ierr);
+    ALLOC_SICM(src, cx, NX, double, &ierr);
+    ALLOC_SICM(src, sx, NX, double, &ierr);
+    ALLOC_SICM(src, cy, NY, double, &ierr);
+    ALLOC_SICM(src, sy, NY, double, &ierr);
+    ALLOC_SICM(src, cz, NZ, double, &ierr);
+    ALLOC_SICM(src, sz, NZ, double, &ierr);
 
 /*******************************************************************************
  * Get the needed integrations. Need both sine and cosine for each
@@ -516,14 +518,15 @@ void mms_src_1( input_data *input_vars, geom_data *geom_vars,
         }
     }
 
-    FREE(cx);
-    FREE(sx);
-    FREE(cy);
-    FREE(sy);
-    FREE(cz);
-    FREE(sz);
-}
+sicm_device *location = devs->devices[0];
+    DEALLOC_SICM(location, cx,NX,double);
+    DEALLOC_SICM(location,sx,NX,double);
+    DEALLOC_SICM(location,cy,NY,double);
+    DEALLOC_SICM(location,sy,NY,double);
+    DEALLOC_SICM(location,cz,NZ,double);
+    DEALLOC_SICM(location,sz,NZ,double);
 
+}
 /*******************************************************************************
  * Now that static source is computed, can scale reference solution to
  * that of final time step. (Source is linearly scaled in time in

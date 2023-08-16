@@ -28,7 +28,7 @@ void data_data_init (data_data *data_vars )
  * Allocate data_module arrays.
  *******************************************************************************/
 void data_allocate ( data_data *data_vars, input_data *input_vars,
-                     sn_data *sn_vars, int *ierr )
+                     sn_data *sn_vars, int *ierr, sicm_device_list *devs )
 {
 /*******************************************************************************
  * Local variables
@@ -42,13 +42,13 @@ void data_allocate ( data_data *data_vars, input_data *input_vars,
     {
         NMAT = 2;
     }
-
+     sicm_device *src = devs->devices[0];
 /*******************************************************************************
  * Allocate velocities
  *******************************************************************************/
     if ( TIMEDEP == 1 )
     {
-        ALLOC_1D(V, NG, double, ierr);
+        ALLOC_SICM(src,V, NG, double, ierr);
     }
 
     if ( *ierr != 0 ) return;
@@ -107,9 +107,9 @@ void data_allocate ( data_data *data_vars, input_data *input_vars,
     }
     else
     {
-        ALLOC_1D(SIGT, NG, double, ierr);
-        ALLOC_1D(SIGA, NG, double, ierr);
-        ALLOC_1D(SIGS, NG, double, ierr);
+        ALLOC_SICM(src, SIGT, NG, double, ierr);
+        ALLOC_SICM(src, SIGA, NG, double, ierr);
+        ALLOC_SICM(src, SIGS, NG, double, ierr);
         ALLOC_3D(SLGG, NMOM, NG, NG, double, ierr);
 
         if ( *ierr != 0 ) return;
@@ -119,7 +119,7 @@ void data_allocate ( data_data *data_vars, input_data *input_vars,
 /*******************************************************************************
  * Allocate the vdelt array
  *******************************************************************************/
-    ALLOC_1D(VDELT, NG, double, ierr);
+    ALLOC_SICM(src, VDELT, NG, double, ierr);
 
     if ( *ierr != 0 ) return;
 }
@@ -127,16 +127,17 @@ void data_allocate ( data_data *data_vars, input_data *input_vars,
 /*******************************************************************************
  * Deallocate the data module arrays
  *******************************************************************************/
-void data_deallocate ( data_data *data_vars )
+void data_deallocate ( data_data *data_vars, input_data *input_vars, sicm_device_list *devs )
 {
-    FREE(V);
+    sicm_device *location = devs->devices[0];
+    DEALLOC_SICM(location, V,NG,double);
+    DEALLOC_SICM(location, SIGT,NG,double);
+    DEALLOC_SICM(location, SIGA,NG,double);
+    DEALLOC_SICM(location, SIGS,NG,double);
+  
     FREE(MAT);
     FREE(QI);
     FREE(QIM);
-    FREE(SIGT);
-    FREE(SIGA);
-    FREE(SIGS);
-    FREE(SLGG);
-    FREE(VDELT);
+    DEALLOC_SICM(location, VDELT,NG,double);
 }
 

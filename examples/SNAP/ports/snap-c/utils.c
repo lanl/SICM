@@ -210,7 +210,7 @@ void stop_run ( int inputFlag, int solveFlag, int statusFlag, para_data *para_va
 
     if ( solveFlag > 0 )
     {
-        dealloc_solve ( solveFlag, geom_vars, solvar_vars, control_vars );
+        dealloc_solve ( solveFlag, geom_vars, solvar_vars, control_vars, devs, input_vars );
     }
 
     if ( IPROC == ROOT )

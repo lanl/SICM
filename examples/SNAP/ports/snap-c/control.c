@@ -18,12 +18,12 @@ void control_data_init ( control_data *control_vars )
 /***********************************************************************
  * Allocate control module variables.
  ***********************************************************************/
-void control_alloc ( input_data *input_vars, control_data *control_vars, int *ierr )
+void control_alloc ( input_data *input_vars, control_data *control_vars, int *ierr ,sicm_device_list *devs )
 {
     int i;
-
-    ALLOC_1D(DFMXI,   NG, double, ierr);
-    ALLOC_1D(INRDONE, NG, bool,   ierr);
+    sicm_device *src = devs->devices[0];
+    ALLOC_SICM(src, DFMXI,   NG, double, ierr);
+    ALLOC_SICM(src, INRDONE, NG, bool,   ierr);
 
     if ( *ierr != 0 ) return;
 
@@ -39,8 +39,9 @@ void control_alloc ( input_data *input_vars, control_data *control_vars, int *ie
 /***********************************************************************
  * Deallocate control module variables.
  ***********************************************************************/
-void control_dealloc ( control_data *control_vars )
+void control_dealloc ( control_data *control_vars, sicm_device_list *devs, input_data *input_vars )
 {
-    FREE(DFMXI);
-    FREE(INRDONE);
+    sicm_device *location = devs->devices[0];
+    DEALLOC_SICM(location, DFMXI,NG,double);
+    DEALLOC_SICM(location, INRDONE,NG,bool);
 }

@@ -143,7 +143,7 @@ int main ( int argc, char *argv[] )
 /***********************************************************************
  * Read input
  ***********************************************************************/
-    ierr = read_input ( fp_in, fp_out, &input_vars, &para_vars, &time_vars );
+    ierr = read_input ( fp_in, fp_out, &input_vars, &para_vars, &time_vars, &devs );
 
     ierr = close_file ( fp_in, inputFile, &error, para_vars.iproc,
                         para_vars.root );
@@ -207,7 +207,7 @@ int main ( int argc, char *argv[] )
  * Final cleanup: deallocate, close output file, end the program
  ***********************************************************************/
     dealloc_input ( 3, &sn_vars, &data_vars, &mms_vars, &input_vars, &devs);
-    dealloc_solve ( 3, &geom_vars, &solvar_vars, &control_vars );
+    dealloc_solve ( 3, &geom_vars, &solvar_vars, &control_vars, &devs, &input_vars );
 
     t5 = wtime();
     time_vars.tsnap = t5 - t1;
