@@ -521,12 +521,12 @@ int string_empty ( char *stringName );
 
 void stop_run ( int inputFlag, int solveFlag, int statusFlag, para_data *para_vars,
                 sn_data *sn_vars, data_data *data_vars, mms_data *mms_vars,
-                geom_data *geom_vars, solvar_data *solvar_vars, control_data *control_vars,input_data *input_vars );
+                geom_data *geom_vars, solvar_data *solvar_vars, control_data *control_vars,input_data *input_vars ,sicm_device_list *devs );
 
 
 // dealloc.c
 void dealloc_input ( int selectFlag, sn_data *sn_vars,
-                     data_data *data_vars, mms_data *mms_vars,  input_data *input_vars );
+                     data_data *data_vars, mms_data *mms_vars,  input_data *input_vars, sicm_device_list *devs);
 
 void dealloc_solve ( int selectFlag, geom_data *geom_vars,
                      solvar_data *solvar_vars, control_data *control_vars );
@@ -615,7 +615,7 @@ void sn_data_init ( sn_data *sn_vars );
 void sn_allocate ( sn_data *sn_vars, input_data *input_vars, int *ierr, sicm_device_list *devs );
 
 //void sn_deallocate ( sn_data *sn_vars );
-void sn_deallocate ( sn_data *sn_vars, input_data *input_vars );
+void sn_deallocate ( sn_data *sn_vars, input_data *input_vars, sicm_device_list *devs );
 
 void expcoeff ( input_data *input_vars, sn_data *sn_vars, int *ndimen );
 
@@ -677,7 +677,7 @@ void translv ( input_data *input_vars, para_data *para_vars, time_data *time_var
                geom_data *geom_vars, sn_data *sn_vars, data_data *data_vars,
                control_data *control_vars, solvar_data *solvar_vars, mms_data *mms_vars,
                sweep_data *sweep_vars, dim_sweep_data *dim_sweep_vars,
-               FILE *fp_out, int *ierr, char **error );
+               FILE *fp_out, int *ierr, char **error, sicm_device_list *devs );
 
 // solvar.c
 void solvar_data_init ( solvar_data *solvar_vars );
@@ -795,7 +795,7 @@ void inr_conv ( input_data *input_vars, para_data *para_vars,
 void output ( input_data *input_vars, para_data *para_vars, time_data *time_vars,
               geom_data *geom_vars, data_data *data_vars, sn_data *sn_vars,
               control_data *control_vars, mms_data *mms_vars, solvar_data *solvar_vars,
-              sweep_data *sweep_vars, FILE *fp_out, int *ierr, char **error );
+              sweep_data *sweep_vars, FILE *fp_out, int *ierr, char **error, sicm_device_list *devs );
 
 //void output_send ( input_data *input_vars, para_data *para_vars,
 //                   control_data *control_vars, sweep_data *sweep_vars,
@@ -817,7 +817,7 @@ void output_flux_file ( input_data *input_vars, para_data *para_vars,
                         sn_data *sn_vars, control_data *control_vars,
                         mms_data *mms_vars, solvar_data *solvar_vars,
                         sweep_data *sweep_vars, int klb, int kub,
-                        int *ierr, char **error, FILE *fp_out );
+                        int *ierr, char **error, FILE *fp_out, sicm_device_list *devs );
 
 
 /***********************************************************************
@@ -992,15 +992,13 @@ void output_flux_file ( input_data *input_vars, para_data *para_vars,
     }
 
 
-#define DEALLOC_SICM(PNTR, NUM,TYPE) \
-       sicm_device_list devs = sicm_init();  \
-       sicm_device *location = devs.devices[0];\
+#define DEALLOC_SICM(devs, PNTR, NUM,TYPE) \
+       sicm_device *location = devs->devices[0];\
        const size_t SIZE = NUM*sizeof(TYPE); \
    if (PNTR)   \
    {     \
    sicm_device_free(location, PNTR, SIZE); \
    } \
-  sicm_fini();
 
 #define REALLOC_2D(PNTR, NUMX, NUMY, TYPE, IERR)                        \
     PNTR = (TYPE *)realloc(PNTR, NUMX*NUMY*sizeof(TYPE));              \

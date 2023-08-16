@@ -45,7 +45,7 @@
 void output ( input_data *input_vars, para_data *para_vars, time_data *time_vars,
               geom_data *geom_vars, data_data *data_vars, sn_data *sn_vars,
               control_data *control_vars, mms_data *mms_vars, solvar_data *solvar_vars,
-              sweep_data *sweep_vars, FILE *fp_out, int *ierr, char **error )
+              sweep_data *sweep_vars, FILE *fp_out, int *ierr, char **error, sicm_device_list *devs )
 {
 /***********************************************************************
  * Local variables
@@ -105,7 +105,7 @@ void output ( input_data *input_vars, para_data *para_vars, time_data *time_vars
         FREE ( error );
 
         stop_run ( 3, 3, 0, para_vars, sn_vars, data_vars, mms_vars,
-                   geom_vars, solvar_vars, control_vars, input_vars );
+                   geom_vars, solvar_vars, control_vars, input_vars, devs );
     }
 
 /***********************************************************************
@@ -214,7 +214,7 @@ void output ( input_data *input_vars, para_data *para_vars, time_data *time_vars
     {
         output_flux_file ( input_vars, para_vars, geom_vars, data_vars,
                            sn_vars, control_vars, mms_vars, solvar_vars,
-                           sweep_vars, klb, kub, ierr, error, fp_out );
+                           sweep_vars, klb, kub, ierr, error, fp_out, devs );
     }
 
 /***********************************************************************
@@ -257,7 +257,7 @@ void output_flux_file ( input_data *input_vars, para_data *para_vars,
                         sn_data *sn_vars, control_data *control_vars,
                         mms_data *mms_vars, solvar_data *solvar_vars,
                         sweep_data *sweep_vars, int klb, int kub,
-                        int *ierr, char **error, FILE *fp_out )
+                        int *ierr, char **error, FILE *fp_out, sicm_device_list *devs )
 {
 /***********************************************************************
  * Local variable
@@ -285,7 +285,7 @@ void output_flux_file ( input_data *input_vars, para_data *para_vars,
         FREE ( error );
 
         stop_run ( 3, 3, 0, para_vars, sn_vars, data_vars, mms_vars,
-                   geom_vars, solvar_vars, control_vars,input_vars );
+                   geom_vars, solvar_vars, control_vars,input_vars, devs );
     }
 
     if ( IPROC == ROOT )
@@ -312,7 +312,7 @@ void output_flux_file ( input_data *input_vars, para_data *para_vars,
         FREE ( error );
 
         stop_run ( 3, 3, 0, para_vars, sn_vars, data_vars, mms_vars,
-                   geom_vars, solvar_vars, control_vars, input_vars );
+                   geom_vars, solvar_vars, control_vars, input_vars, devs );
     }
 
 /***********************************************************************
@@ -444,6 +444,6 @@ void output_flux_file ( input_data *input_vars, para_data *para_vars,
         FREE ( error );
 
         stop_run ( 3, 3, 0, para_vars, sn_vars, data_vars, mms_vars,
-                   geom_vars, solvar_vars, control_vars,input_vars );
+                   geom_vars, solvar_vars, control_vars,input_vars, devs );
     }
 }

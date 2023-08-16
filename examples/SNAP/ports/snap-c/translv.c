@@ -8,7 +8,7 @@ void translv ( input_data *input_vars, para_data *para_vars, time_data *time_var
                geom_data *geom_vars, sn_data *sn_vars, data_data *data_vars,
                control_data *control_vars, solvar_data *solvar_vars, mms_data *mms_vars,
                sweep_data *sweep_vars, dim_sweep_data *dim_sweep_vars,
-               FILE *fp_out, int *ierr, char **error )
+               FILE *fp_out, int *ierr, char **error, sicm_device_list *devs )
 {
 /***********************************************************************
  * Local variables
@@ -47,7 +47,7 @@ void translv ( input_data *input_vars, para_data *para_vars, time_data *time_var
         print_error ( fp_out, *error, IPROC, ROOT );
 
         stop_run ( 3, 0, 0, para_vars, sn_vars, data_vars, mms_vars,
-                   geom_vars, solvar_vars, control_vars, input_vars );
+                   geom_vars, solvar_vars, control_vars, input_vars, devs );
     }
 
     solvar_alloc ( input_vars, sn_vars, solvar_vars, ierr );
@@ -66,7 +66,7 @@ void translv ( input_data *input_vars, para_data *para_vars, time_data *time_var
         print_error ( fp_out, *error, IPROC, ROOT );
 
         stop_run ( 3, 1, 0, para_vars, sn_vars, data_vars, mms_vars,
-                   geom_vars, solvar_vars, control_vars, input_vars );
+                   geom_vars, solvar_vars, control_vars, input_vars, devs );
     }
 
     control_alloc ( input_vars, control_vars, ierr );
@@ -85,7 +85,7 @@ void translv ( input_data *input_vars, para_data *para_vars, time_data *time_var
         print_error ( fp_out, *error, IPROC, ROOT );
 
         stop_run ( 3, 2, 0, para_vars, sn_vars, data_vars, mms_vars,
-                   geom_vars, solvar_vars, control_vars, input_vars );
+                   geom_vars, solvar_vars, control_vars, input_vars, devs );
     }
 
 /***********************************************************************
@@ -107,7 +107,7 @@ void translv ( input_data *input_vars, para_data *para_vars, time_data *time_var
         print_error ( fp_out, *error, IPROC, ROOT );
 
         stop_run ( 3, 3, 0, para_vars, sn_vars, data_vars, mms_vars,
-                   geom_vars, solvar_vars, control_vars, input_vars );
+                   geom_vars, solvar_vars, control_vars, input_vars, devs );
     }
 
     t2 = wtime ();

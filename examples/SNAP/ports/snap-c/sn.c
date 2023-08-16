@@ -58,9 +58,9 @@ void sn_allocate ( sn_data *sn_vars, input_data *input_vars, int *ierr, sicm_dev
     if ( *ierr != 0 ) return;
 }
 
-void sn_deallocate ( sn_data *sn_vars, input_data *input_vars )
+void sn_deallocate ( sn_data *sn_vars, input_data *input_vars, sicm_device_list *devs )
 {
-    DEALLOC_SICM(MU,NANG,double);
+    DEALLOC_SICM(devs, MU,NANG,double);
     //FREE(MU);
     FREE(W);
     FREE(WMU);

@@ -96,7 +96,7 @@ int main ( int argc, char *argv[] )
         FREE ( error );
 
         stop_run ( 0, 0, 0, &para_vars, &sn_vars, &data_vars, &mms_vars,
-                   &geom_vars, &solvar_vars, &control_vars ,&input_vars );
+                   &geom_vars, &solvar_vars, &control_vars ,&input_vars, &devs );
     }
 
     /* Open the input file to read in initial values */
@@ -114,7 +114,7 @@ int main ( int argc, char *argv[] )
         FREE ( error );
 
         stop_run ( 0, 0, 0, &para_vars, &sn_vars, &data_vars, &mms_vars,
-                   &geom_vars, &solvar_vars, &control_vars, &input_vars );
+                   &geom_vars, &solvar_vars, &control_vars, &input_vars, &devs );
     }
 
     /* Open the output file to write results and error messages */
@@ -132,7 +132,7 @@ int main ( int argc, char *argv[] )
         FREE ( error );
 
         stop_run ( 0, 0, 0, &para_vars, &sn_vars, &data_vars, &mms_vars,
-                   &geom_vars, &solvar_vars, &control_vars,&input_vars );
+                   &geom_vars, &solvar_vars, &control_vars,&input_vars, &devs );
     }
 
 /***********************************************************************
@@ -160,7 +160,7 @@ int main ( int argc, char *argv[] )
         FREE ( error );
 
         stop_run ( 0, 0, 0, &para_vars, &sn_vars, &data_vars, &mms_vars,
-                   &geom_vars, &solvar_vars, &control_vars,&input_vars );
+                   &geom_vars, &solvar_vars, &control_vars,&input_vars, &devs );
     }
 
 /***********************************************************************
@@ -193,21 +193,20 @@ int main ( int argc, char *argv[] )
  ***********************************************************************/
     translv ( &input_vars, &para_vars, &time_vars, &geom_vars, &sn_vars,
               &data_vars, &control_vars, &solvar_vars, &mms_vars,
-              &sweep_vars, &dim_sweep_vars, fp_out, &ierr, &error );
+              &sweep_vars, &dim_sweep_vars, fp_out, &ierr, &error, &devs);
 
 /***********************************************************************
  * Output the results. Print the timing summary
  ***********************************************************************/
     output ( &input_vars, &para_vars, &time_vars, &geom_vars, &data_vars,
              &sn_vars, &control_vars, &mms_vars, &solvar_vars, &sweep_vars,
-             fp_out, &ierr, &error );
-
+             fp_out, &ierr, &error, &devs);
     if ( para_vars.iproc == para_vars.root ) time_summ ( fp_out, &time_vars );
 
 /***********************************************************************
  * Final cleanup: deallocate, close output file, end the program
  ***********************************************************************/
-    dealloc_input ( 3, &sn_vars, &data_vars, &mms_vars, &input_vars);
+    dealloc_input ( 3, &sn_vars, &data_vars, &mms_vars, &input_vars, &devs);
     dealloc_solve ( 3, &geom_vars, &solvar_vars, &control_vars );
 
     t5 = wtime();
@@ -237,7 +236,7 @@ int main ( int argc, char *argv[] )
         FREE ( error );
 
         stop_run ( 0, 0, 0, &para_vars, &sn_vars, &data_vars, &mms_vars,
-                   &geom_vars, &solvar_vars, &control_vars, &input_vars );
+                   &geom_vars, &solvar_vars, &control_vars, &input_vars, &devs );
     }
 
 
@@ -246,14 +245,14 @@ int main ( int argc, char *argv[] )
         FREE ( error );
 
         stop_run ( 0, 0, 1, &para_vars, &sn_vars, &data_vars, &mms_vars,
-                   &geom_vars, &solvar_vars, &control_vars, &input_vars );
+                   &geom_vars, &solvar_vars, &control_vars, &input_vars, &devs );
     }
     else
     {
         FREE ( error );
 
         stop_run ( 0, 0, 2, &para_vars, &sn_vars, &data_vars, &mms_vars,
-                   &geom_vars, &solvar_vars, &control_vars, &input_vars );
+                   &geom_vars, &solvar_vars, &control_vars, &input_vars, &devs );
     }
     
     sicm_fini();

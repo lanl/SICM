@@ -8,9 +8,9 @@
  * subroutines. Covers the allocations from input.
  ***********************************************************************/
 void dealloc_input ( int selectFlag, sn_data *sn_vars, data_data *data_vars,
-                     mms_data *mms_vars, input_data *input_vars )
+                     mms_data *mms_vars, input_data *input_vars, sicm_device_list *devs )
 {
-    sn_deallocate ( sn_vars, input_vars );
+    sn_deallocate ( sn_vars, input_vars, devs);
     if ( selectFlag > 1 )
          data_deallocate ( data_vars );
     if ( selectFlag > 2 )

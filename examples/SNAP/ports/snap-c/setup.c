@@ -50,7 +50,7 @@ void setup ( input_data *input_vars, para_data *para_vars, time_data *time_vars,
         print_error ( fp_out, *error, IPROC, ROOT );
 
         stop_run( flg, 0, 0, para_vars, sn_vars, data_vars, mms_vars,
-                   geom_vars, solvar_vars, control_vars, input_vars );
+                   geom_vars, solvar_vars, control_vars, input_vars,devs );
     }
 
 /*******************************************************************************
@@ -81,7 +81,7 @@ void setup ( input_data *input_vars, para_data *para_vars, time_data *time_vars,
         print_error ( fp_out, *error, IPROC, ROOT );
 
         stop_run( 2, 0, 0, para_vars, sn_vars, data_vars, mms_vars,
-                   geom_vars, solvar_vars, control_vars, input_vars );
+                   geom_vars, solvar_vars, control_vars, input_vars, devs );
     }
 
 /*******************************************************************************
@@ -106,7 +106,7 @@ void setup ( input_data *input_vars, para_data *para_vars, time_data *time_vars,
         FREE ( error );
 
         stop_run ( 3, 0, 0, para_vars, sn_vars, data_vars, mms_vars,
-                   geom_vars, solvar_vars, control_vars, input_vars );
+                   geom_vars, solvar_vars, control_vars, input_vars, devs );
     }
 
     t2 = wtime();
