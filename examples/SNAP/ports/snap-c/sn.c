@@ -25,9 +25,9 @@ void sn_allocate ( sn_data *sn_vars, input_data *input_vars, int *ierr, sicm_dev
     sicm_device *src = devs->devices[0];
     // Allocate size nang for 1D mu array, w array, and wmu
    // ALLOC_1D(MU,  NANG, double, ierr);
-    ALLOC_SICM(src, MU, NANG, double, ierr);
-    ALLOC_SICM(src,  W, NANG, double, ierr);
-    ALLOC_SICM(src, WMU, NANG, double, ierr);
+    ALLOC_SICM_1D(src, MU, NANG, double, ierr);
+    ALLOC_SICM_1D(src,  W, NANG, double, ierr);
+    ALLOC_SICM_1D(src, WMU, NANG, double, ierr);
 
     if ( *ierr != 0 ) return;
 
@@ -36,8 +36,8 @@ void sn_allocate ( sn_data *sn_vars, input_data *input_vars, int *ierr, sicm_dev
         CMOM = NMOM * (NMOM+1) / 2;
         NOCT = 4;
 
-        ALLOC_SICM(src,ETA,  NANG, double, ierr);
-        ALLOC_SICM(src,WETA, NANG, double, ierr);
+        ALLOC_SICM_1D(src,ETA,  NANG, double, ierr);
+        ALLOC_SICM_1D(src,WETA, NANG, double, ierr);
     }
 
     if ( *ierr != 0 ) return;
@@ -46,14 +46,14 @@ void sn_allocate ( sn_data *sn_vars, input_data *input_vars, int *ierr, sicm_dev
     {
         CMOM = NMOM * NMOM;
         NOCT = 8;
-        ALLOC_SICM(src,XI,  NANG, double, ierr);
-        ALLOC_SICM(src, WXI, NANG, double, ierr);
+        ALLOC_SICM_1D(src,XI,  NANG, double, ierr);
+        ALLOC_SICM_1D(src, WXI, NANG, double, ierr);
     }
 
     if ( *ierr != 0 ) return;
 
-    ALLOC_3D(EC, NANG, CMOM, NOCT, double, ierr);
-    ALLOC_SICM(src,LMA, NMOM, int, ierr);
+    ALLOC_SICM_3D(src, EC, NANG, CMOM, NOCT, double, ierr);
+    ALLOC_SICM_1D(src, LMA, NMOM, int, ierr);
 
     if ( *ierr != 0 ) return;
 }
@@ -68,7 +68,7 @@ void sn_deallocate ( sn_data *sn_vars, input_data *input_vars, sicm_device_list 
     DEALLOC_SICM(location,WETA,NANG,double);
     DEALLOC_SICM(location,XI,NANG,double);
     DEALLOC_SICM(location, WXI, NANG, double);
-    FREE(EC);
+    DEALLOC_SICM(location, EC, NANG*CMOM*NOCT, double);
     DEALLOC_SICM(location,LMA, NANG, double);
 
 }

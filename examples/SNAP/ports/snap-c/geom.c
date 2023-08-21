@@ -33,8 +33,8 @@ void geom_data_init ( geom_data *geom_vars )
 void geom_alloc ( input_data *input_vars, geom_data *geom_vars, int *ierr, sicm_device_list *devs )
 {    
     sicm_device *src = devs->devices[0];
-    ALLOC_SICM(src, HJ, NANG, double, ierr);
-    ALLOC_SICM(src, HK, NANG, double, ierr);
+    ALLOC_SICM_1D(src, HJ, NANG, double, ierr);
+    ALLOC_SICM_1D(src, HK, NANG, double, ierr);
     ALLOC_5D(DINV, NANG, NX, NY, NZ, NG, double, ierr);
 }
 
@@ -148,8 +148,8 @@ void diag_setup ( input_data *input_vars, para_data *para_vars,
     if ( DO_NESTED )
     {
         NDIAG = ICHUNK + NY + NZ - 2;
-        ALLOC_SICM(src, DIAG, NDIAG, diag_type, ierr);
-        ALLOC_SICM(src, indx, NDIAG, int, ierr);
+        ALLOC_SICM_1D(src, DIAG, NDIAG, diag_type, ierr);
+        ALLOC_SICM_1D(src, indx, NDIAG, int, ierr);
 
         if ( *ierr != 0 ) return;
 
@@ -181,7 +181,7 @@ void diag_setup ( input_data *input_vars, para_data *para_vars,
         for ( nn = 1; nn <= NDIAG; nn++ )
         {
             ing = DIAG_1D(nn-1).lenc;
-            ALLOC_SICM(src, DIAG_1D(nn-1).cell_id_vars, ing, cell_id_type, ierr);
+            ALLOC_SICM_1D(src, DIAG_1D(nn-1).cell_id_vars, ing, cell_id_type, ierr);
 
             if ( *ierr != 0 ) return;
         }
@@ -216,11 +216,11 @@ void diag_setup ( input_data *input_vars, para_data *para_vars,
  * lexographical order.
  ***********************************************************************/
         NDIAG = 1;
-        ALLOC_SICM(src, DIAG, 1, diag_type, ierr);
+        ALLOC_SICM_1D(src, DIAG, 1, diag_type, ierr);
 
         if ( *ierr != 0) return;
 
-        ALLOC_SICM(src, DIAG_1D(0).cell_id_vars, (ICHUNK*NY*NZ), cell_id_type, ierr);
+        ALLOC_SICM_1D(src, DIAG_1D(0).cell_id_vars, (ICHUNK*NY*NZ), cell_id_type, ierr);
 
         if ( *ierr != 0) return;
 

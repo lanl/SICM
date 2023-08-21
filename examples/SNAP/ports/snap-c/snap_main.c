@@ -207,7 +207,7 @@ int main ( int argc, char *argv[] )
  * Final cleanup: deallocate, close output file, end the program
  ***********************************************************************/
     dealloc_input ( 3, &sn_vars, &data_vars, &mms_vars, &input_vars, &devs);
-    dealloc_solve ( 3, &geom_vars, &solvar_vars, &control_vars, &devs, &input_vars );
+    dealloc_solve ( 3, &geom_vars, &solvar_vars, &control_vars, &devs, &input_vars, &sn_vars);
 
     t5 = wtime();
     time_vars.tsnap = t5 - t1;

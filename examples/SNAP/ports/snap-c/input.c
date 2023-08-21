@@ -968,11 +968,11 @@ int var_bcast ( input_data *input_vars, para_data *para_vars, sicm_device_list *
     int *ipak;
     int ilen = 30;
 sicm_device *src = devs->devices[0]; 
-    ALLOC_SICM(src, ipak, ilen, int, &ierr);
+    ALLOC_SICM_1D(src, ipak, ilen, int, &ierr);
 
     double *dpak;
     int dlen = 15;
-    ALLOC_SICM(src, dpak, dlen, double, &ierr);
+    ALLOC_SICM_1D(src, dpak, dlen, double, &ierr);
 
     if ( IPROC == ROOT )
     {

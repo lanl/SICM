@@ -59,7 +59,7 @@ void output ( input_data *input_vars, para_data *para_vars, time_data *time_vars
     double t1, t2;
 
     double *fprnt;
-
+    sicm_device *src = devs->devices[0];
     t1 = wtime();
 
 /***********************************************************************
@@ -84,7 +84,7 @@ void output ( input_data *input_vars, para_data *para_vars, time_data *time_vars
                   "****************************************\n");
 
         //       ALLOC_1D(co, 2, int, ierr);
-        ALLOC_2D(fprnt, NX, NY_GL, double, ierr);
+        ALLOC_SICM_2D(src, fprnt, NX, NY_GL, double, ierr);
     }
 
     bcast_i_scalar ( ierr, COMM_SNAP, ROOT, NPROC );
@@ -202,9 +202,10 @@ void output ( input_data *input_vars, para_data *para_vars, time_data *time_vars
 /***********************************************************************
  * Cleanup
  ***********************************************************************/
+sicm_device *location = devs->devices[0];
     if ( IPROC == ROOT )
     {
-        FREE(fprnt);
+        DEALLOC_SICM(location, fprnt, NX*NY_GL, double);
     }
 
 /***********************************************************************
@@ -270,7 +271,7 @@ void output_flux_file ( input_data *input_vars, para_data *para_vars,
     int co[2];
 
     double *fprnt;
-
+    sicm_device *src = devs->devices[0];
 /***********************************************************************
  * Root opens the file, allocates the space for fprnt
  ***********************************************************************/
@@ -291,7 +292,7 @@ void output_flux_file ( input_data *input_vars, para_data *para_vars,
     if ( IPROC == ROOT )
     {
 //        ALLOC_1D(co, 2, int, ierr);
-        ALLOC_2D(fprnt, NX, NY_GL, double, ierr);
+        ALLOC_SICM_2D(src, fprnt, NX, NY_GL, double, ierr);
     }
 
     bcast_i_scalar ( ierr, COMM_SNAP, ROOT, NPROC );
@@ -427,10 +428,11 @@ void output_flux_file ( input_data *input_vars, para_data *para_vars,
 /***********************************************************************
  * Cleanup
  ***********************************************************************/
+   sicm_device *location = devs->devices[0];
     if ( IPROC == ROOT )
     {
-        // FREE(co);
-        FREE(fprnt);
+        
+        DEALLOC_SICM(location, fprnt, NX*NY_GL, double);
     }
 
     close_file ( fp_flux, "flux", error, IPROC, ROOT );

@@ -50,7 +50,7 @@ void translv ( input_data *input_vars, para_data *para_vars, time_data *time_var
                    geom_vars, solvar_vars, control_vars, input_vars, devs );
     }
 
-    solvar_alloc ( input_vars, sn_vars, solvar_vars, ierr );
+    solvar_alloc ( input_vars, sn_vars, solvar_vars, ierr, devs );
 
     glmax_i ( ierr, COMM_SNAP );
 

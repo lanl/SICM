@@ -36,16 +36,17 @@ void solvar_data_init ( solvar_data *solvar_vars )
  * Allocate solution arrays.
  ***********************************************************************/
 void solvar_alloc ( input_data *input_vars, sn_data* sn_vars,
-                    solvar_data *solvar_vars, int *ierr )
+                    solvar_data *solvar_vars, int *ierr, sicm_device_list *devs )
 {
 /***********************************************************************
  * Allocate ptr_in/out if needed. Provide an initial condition of zero
  * This may be changed in the future if necessary.
  ***********************************************************************/
+sicm_device *src = devs->devices[0];
     if ( TIMEDEP == 1 )
     {
-        ALLOC_6D(PTR_IN,  NANG, NX, NY, NZ, NOCT, NG, double, ierr);
-        ALLOC_6D(PTR_OUT, NANG, NX, NY, NZ, NOCT, NG, double, ierr);
+        ALLOC_SICM_6D(src, PTR_IN,  NANG, NX, NY, NZ, NOCT, NG, double, ierr);
+        ALLOC_SICM_6D(src, PTR_OUT, NANG, NX, NY, NZ, NOCT, NG, double, ierr);
     }
 
 /***********************************************************************
@@ -96,8 +97,11 @@ void solvar_alloc ( input_data *input_vars, sn_data* sn_vars,
     ALLOC_4D(FLKZ,     NX,     NY, (NZ+1), NG, double, ierr);
 }
 
-void solvar_dealloc ( solvar_data *solvar_vars )
+void solvar_dealloc ( solvar_data *solvar_vars, input_data *input_vars, sn_data* sn_vars, sicm_device_list *devs )
 {
+    sicm_device *location = devs->devices[0];
+    DEALLOC_SICM(location, PTR_IN, NANG*NX*NY*NZ*NOCT*NG, double);
+    DEALLOC_SICM(location, PTR_OUT, NANG*NX*NY*NZ*NOCT*NG, double);
     FREE(FLUX);
     FREE(FLUXPO);
     FREE(FLUXPI);
@@ -117,6 +121,6 @@ void solvar_dealloc ( solvar_data *solvar_vars )
     FREE(Q2GRP);
     FREE(FLUXM);
     FREE(S_XS);
-    FREE(PTR_IN);
-    FREE(PTR_OUT);
+    //FREE(PTR_IN);
+    //FREE(PTR_OUT);
 }

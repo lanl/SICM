@@ -22,8 +22,8 @@ void control_alloc ( input_data *input_vars, control_data *control_vars, int *ie
 {
     int i;
     sicm_device *src = devs->devices[0];
-    ALLOC_SICM(src, DFMXI,   NG, double, ierr);
-    ALLOC_SICM(src, INRDONE, NG, bool,   ierr);
+    ALLOC_SICM_1D(src, DFMXI,   NG, double, ierr);
+    ALLOC_SICM_1D(src, INRDONE, NG, bool,   ierr);
 
     if ( *ierr != 0 ) return;
 

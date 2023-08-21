@@ -115,9 +115,9 @@ void mms_allocate ( input_data *input_vars, sn_data *sn_vars, mms_data *mms_vars
 
     if ( *ierr != 0 ) return;
     sicm_device *src = devs->devices[0];
-    ALLOC_SICM(src, IB, (NX+1), double, ierr);
-    ALLOC_SICM(src, JB, (NY+1), double, ierr);
-    ALLOC_SICM(src, KB, (NZ+1), double, ierr);
+    ALLOC_SICM_1D(src, IB, (NX+1), double, ierr);
+    ALLOC_SICM_1D(src, JB, (NY+1), double, ierr);
+    ALLOC_SICM_1D(src, KB, (NZ+1), double, ierr);
 }
 
 /*******************************************************************************
@@ -194,10 +194,10 @@ void mms_flux_1 ( input_data *input_vars, geom_data *geom_vars,
 
     double *p, *tx, *ty, *tz;
     sicm_device *src = devs->devices[0];
-    ALLOC_SICM(src, p, (CMOM-1), double, &ierr);
-    ALLOC_SICM(src, tx, NX,      double, &ierr);
-    ALLOC_SICM(src, ty, NY,      double, &ierr);
-    ALLOC_SICM(src, tz, NZ,      double, &ierr);
+    ALLOC_SICM_1D(src, p, (CMOM-1), double, &ierr);
+    ALLOC_SICM_1D(src, tx, NX,      double, &ierr);
+    ALLOC_SICM_1D(src, ty, NY,      double, &ierr);
+    ALLOC_SICM_1D(src, tz, NZ,      double, &ierr);
 
 /*******************************************************************************
  * Get all the integrations done by dimension separately
@@ -364,12 +364,12 @@ void mms_src_1( input_data *input_vars, geom_data *geom_vars,
     double *cx, *sx, *cy, *sy, *cz, *sz;
     sicm_device *src = devs->devices[0];
 
-    ALLOC_SICM(src, cx, NX, double, &ierr);
-    ALLOC_SICM(src, sx, NX, double, &ierr);
-    ALLOC_SICM(src, cy, NY, double, &ierr);
-    ALLOC_SICM(src, sy, NY, double, &ierr);
-    ALLOC_SICM(src, cz, NZ, double, &ierr);
-    ALLOC_SICM(src, sz, NZ, double, &ierr);
+    ALLOC_SICM_1D(src, cx, NX, double, &ierr);
+    ALLOC_SICM_1D(src, sx, NX, double, &ierr);
+    ALLOC_SICM_1D(src, cy, NY, double, &ierr);
+    ALLOC_SICM_1D(src, sy, NY, double, &ierr);
+    ALLOC_SICM_1D(src, cz, NZ, double, &ierr);
+    ALLOC_SICM_1D(src, sz, NZ, double, &ierr);
 
 /*******************************************************************************
  * Get the needed integrations. Need both sine and cosine for each

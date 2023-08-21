@@ -530,7 +530,7 @@ void dealloc_input ( int selectFlag, sn_data *sn_vars,
                      data_data *data_vars, mms_data *mms_vars,  input_data *input_vars, sicm_device_list *devs);
 
 void dealloc_solve ( int selectFlag, geom_data *geom_vars,
-                     solvar_data *solvar_vars, control_data *control_vars, sicm_device_list *devs,input_data *input_vars );
+                     solvar_data *solvar_vars, control_data *control_vars, sicm_device_list *devs,input_data *input_vars, sn_data *sn_vars );
 
 
 // version.c
@@ -632,7 +632,7 @@ void data_allocate ( data_data *data_vars, input_data *input_vars,
                      sn_data *sn_vars, int *ierr ,sicm_device_list *devs);
 
 // Deallocate the data module arrays
-void data_deallocate ( data_data *data_vars, input_data *input_vars, sicm_device_list *devs );
+void data_deallocate ( data_data *data_vars, input_data *input_vars, sn_data *sn_vars, sicm_device_list *devs );
 
 
 // control.c
@@ -684,9 +684,9 @@ void translv ( input_data *input_vars, para_data *para_vars, time_data *time_var
 void solvar_data_init ( solvar_data *solvar_vars );
 
 void solvar_alloc ( input_data *input_vars, sn_data* sn_vars, solvar_data *solvar_vars,
-                    int *ierr );
+                    int *ierr, sicm_device_list *devs );
 
-void solvar_dealloc ( solvar_data *solvar_vars );
+void solvar_dealloc ( solvar_data *solvar_vars, input_data *input_vars, sn_data* sn_vars, sicm_device_list *devs );
 
 
 // dim1_sweep.c
@@ -1010,7 +1010,7 @@ void output_flux_file ( input_data *input_vars, para_data *para_vars,
      *IERR = 1; /* exit(-1); */                                         \
      }
 
-#define ALLOC_SICM(src, PNTR, NUM, TYPE,IERR) \
+#define ALLOC_SICM_1D(src, PNTR, NUM, TYPE,IERR) \
        PNTR = sicm_device_alloc(src,NUM*sizeof(TYPE)); \
       if (!PNTR)                                              \
                 {                                                       \
@@ -1031,6 +1031,18 @@ void output_flux_file ( input_data *input_vars, para_data *para_vars,
                     *IERR = 1; /* exit(-1); */                         \
                 }
 
+
+#define ALLOC_SICM_2D(src, PNTR, NUMX, NUMY, TYPE, IERR)                          \
+    PNTR = sicm_device_alloc(src,NUMX*NUMY*sizeof(TYPE));               \
+    if (!PNTR)                                                          \
+    {                                                                   \
+     perror("ALLOC_2D");                                                \
+     fprintf(stderr,                                                    \
+                 "Allocation failed for " #PNTR ". Terminating...\n");  \
+     *IERR = 1; /* exit(-1); */                                        \
+     }
+
+
 #define ALLOC_2D(PNTR, NUMX, NUMY, TYPE, IERR)                          \
     PNTR = (TYPE *)calloc((NUMX) * (NUMY), sizeof(TYPE));               \
     if (!PNTR)                                                          \
@@ -1040,6 +1052,16 @@ void output_flux_file ( input_data *input_vars, para_data *para_vars,
                  "Allocation failed for " #PNTR ". Terminating...\n");  \
      *IERR = 1; /* exit(-1); */                                        \
      }
+
+#define ALLOC_SICM_3D(src, PNTR, NUMX, NUMY, NUMZ, TYPE, IERR)                    \
+    PNTR = sicm_device_alloc(src,NUMX*NUMY*NUMZ*sizeof(TYPE));      \
+    if (!PNTR)                                                          \
+    {                                                                   \
+        perror("ALLOC_3D");                                             \
+        fprintf(stderr,                                                 \
+                "Allocation failed for " #PNTR ".  Terminating...\n");  \
+        *IERR = 1; /* exit(-1); */                                     \
+    }
 
 #define ALLOC_3D(PNTR, NUMX, NUMY, NUMZ, TYPE, IERR)                    \
     PNTR = (TYPE *)calloc((NUMX) * (NUMY) * (NUMZ), sizeof(TYPE));      \
@@ -1072,6 +1094,18 @@ void output_flux_file ( input_data *input_vars, para_data *para_vars,
                 "Allocation failed for " #PNTR ".  Terminating...\n");  \
         *IERR = 1; /* exit(-1); */                                     \
     }
+
+#define ALLOC_SICM_6D(src, PNTR, NUMU, NUMV, NUMW, NUMX, NUMY, NUMZ, TYPE, IERR)  \
+    PNTR = sicm_device_alloc(src, (NUMU) * (NUMV) *(NUMW)                       \
+                          * (NUMX) * (NUMY) * (NUMZ)*                   \
+                              sizeof(TYPE));                            \
+    if (!PNTR)                                                          \
+    {                                                                   \
+     perror("ALLOC_6D");                                                \
+     fprintf(stderr,                                                    \
+                 "Allocation failed for " #PNTR ".  Terminating...\n"); \
+     *IERR = 1; /* exit(-1); */                                         \
+     }
 
 #define ALLOC_6D(PNTR, NUMU, NUMV, NUMW, NUMX, NUMY, NUMZ, TYPE, IERR)  \
     PNTR = (TYPE *)calloc((NUMU) * (NUMV) *(NUMW)                       \

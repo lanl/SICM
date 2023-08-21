@@ -48,7 +48,7 @@ void data_allocate ( data_data *data_vars, input_data *input_vars,
  *******************************************************************************/
     if ( TIMEDEP == 1 )
     {
-        ALLOC_SICM(src,V, NG, double, ierr);
+        ALLOC_SICM_1D(src,V, NG, double, ierr);
     }
 
     if ( *ierr != 0 ) return;
@@ -57,7 +57,7 @@ void data_allocate ( data_data *data_vars, input_data *input_vars,
  * Allocate the material identifier array. ny and nz are 1 if not
  * 2-D/3-D.
  *******************************************************************************/
-    ALLOC_3D(MAT, NX, NY, NZ, int, ierr);
+    ALLOC_SICM_3D(src, MAT, NX, NY, NZ, int, ierr);
 
     if ( *ierr != 0 ) return;
 
@@ -87,7 +87,7 @@ void data_allocate ( data_data *data_vars, input_data *input_vars,
     else
     {
         ALLOC_4D(QI, NX, NY, NZ, NG, double, ierr);
-        ALLOC_6D(QIM, NANG, NX, NY, NZ, NOCT, NG, double, ierr);
+        ALLOC_SICM_6D(src, QIM, NANG, NX, NY, NZ, NOCT, NG, double, ierr);
 
         if ( *ierr != 0 ) return;
     }
@@ -98,19 +98,19 @@ void data_allocate ( data_data *data_vars, input_data *input_vars,
  *******************************************************************************/
     if (NMAT != 0 )
     {
-        ALLOC_2D(SIGT, NMAT, NG, double, ierr);
-        ALLOC_2D(SIGA, NMAT, NG, double, ierr);
-        ALLOC_2D(SIGS, NMAT, NG, double, ierr);
+        ALLOC_SICM_2D(src, SIGT, NMAT, NG, double, ierr);
+        ALLOC_SICM_2D(src, SIGA, NMAT, NG, double, ierr);
+        ALLOC_SICM_2D(src, SIGS, NMAT, NG, double, ierr);
         ALLOC_4D(SLGG, NMAT, NMOM, NG, NG, double, ierr);
 
         if ( *ierr != 0 ) return;
     }
     else
     {
-        ALLOC_SICM(src, SIGT, NG, double, ierr);
-        ALLOC_SICM(src, SIGA, NG, double, ierr);
-        ALLOC_SICM(src, SIGS, NG, double, ierr);
-        ALLOC_3D(SLGG, NMOM, NG, NG, double, ierr);
+        ALLOC_SICM_1D(src, SIGT, NG, double, ierr);
+        ALLOC_SICM_1D(src, SIGA, NG, double, ierr);
+        ALLOC_SICM_1D(src, SIGS, NG, double, ierr);
+        ALLOC_SICM_3D(src, SLGG, NMOM, NG, NG, double, ierr);
 
         if ( *ierr != 0 ) return;
     }
@@ -119,7 +119,7 @@ void data_allocate ( data_data *data_vars, input_data *input_vars,
 /*******************************************************************************
  * Allocate the vdelt array
  *******************************************************************************/
-    ALLOC_SICM(src, VDELT, NG, double, ierr);
+    ALLOC_SICM_1D(src, VDELT, NG, double, ierr);
 
     if ( *ierr != 0 ) return;
 }
@@ -127,17 +127,25 @@ void data_allocate ( data_data *data_vars, input_data *input_vars,
 /*******************************************************************************
  * Deallocate the data module arrays
  *******************************************************************************/
-void data_deallocate ( data_data *data_vars, input_data *input_vars, sicm_device_list *devs )
+void data_deallocate ( data_data *data_vars, input_data *input_vars, sn_data *sn_vars, sicm_device_list *devs )
 {
     sicm_device *location = devs->devices[0];
     DEALLOC_SICM(location, V,NG,double);
+   if (NMAT != 0)
+{
+    DEALLOC_SICM(location, SIGT,NMAT*NG,double);
+    DEALLOC_SICM(location, SIGA,NMAT*NG,double);
+    DEALLOC_SICM(location, SIGS,NMAT*NG,double);
+ }
+ else {
     DEALLOC_SICM(location, SIGT,NG,double);
     DEALLOC_SICM(location, SIGA,NG,double);
     DEALLOC_SICM(location, SIGS,NG,double);
-  
-    FREE(MAT);
+  } 
+   DEALLOC_SICM(location,MAT,NX*NY*NZ,int);
+   DEALLOC_SICM(location, SLGG,NMOM*NG*NG, double);
     FREE(QI);
-    FREE(QIM);
+    DEALLOC_SICM(location,QIM, NANG*NX*NY*NZ*NOCT*NG, double );
     DEALLOC_SICM(location, VDELT,NG,double);
 }
 
