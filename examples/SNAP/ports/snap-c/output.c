@@ -224,7 +224,7 @@ sicm_device *location = devs->devices[0];
     if ( SRC_OPT == 3 )
     {
         mms_verify_1 ( input_vars, para_vars, control_vars,
-                       mms_vars, solvar_vars, fp_out );
+                       mms_vars, solvar_vars, fp_out, devs );
     }
 
     t2 = wtime();

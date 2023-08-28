@@ -14,7 +14,7 @@ void dealloc_input ( int selectFlag, sn_data *sn_vars, data_data *data_vars,
     if ( selectFlag > 1 )
          data_deallocate ( data_vars, input_vars, sn_vars, devs );
     if ( selectFlag > 2 )
-        mms_deallocate ( mms_vars, input_vars, devs );
+        mms_deallocate ( mms_vars, input_vars, sn_vars, devs );
 }
 
 /***********************************************************************

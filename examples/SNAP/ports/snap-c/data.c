@@ -80,13 +80,13 @@ void data_allocate ( data_data *data_vars, input_data *input_vars,
  *******************************************************************************/
     if ( SRC_OPT < 3 )
     {
-        ALLOC_4D(QI, NX, NY, NZ, NG, double, ierr);
+        ALLOC_SICM_4D(src, QI, NX, NY, NZ, NG, double, ierr);
 
         if ( *ierr != 0 ) return;
     }
     else
     {
-        ALLOC_4D(QI, NX, NY, NZ, NG, double, ierr);
+        ALLOC_SICM_4D(src, QI, NX, NY, NZ, NG, double, ierr);
         ALLOC_SICM_6D(src, QIM, NANG, NX, NY, NZ, NOCT, NG, double, ierr);
 
         if ( *ierr != 0 ) return;
@@ -101,7 +101,7 @@ void data_allocate ( data_data *data_vars, input_data *input_vars,
         ALLOC_SICM_2D(src, SIGT, NMAT, NG, double, ierr);
         ALLOC_SICM_2D(src, SIGA, NMAT, NG, double, ierr);
         ALLOC_SICM_2D(src, SIGS, NMAT, NG, double, ierr);
-        ALLOC_4D(SLGG, NMAT, NMOM, NG, NG, double, ierr);
+        ALLOC_SICM_4D(src, SLGG, NMAT, NMOM, NG, NG, double, ierr);
 
         if ( *ierr != 0 ) return;
     }
@@ -136,15 +136,16 @@ void data_deallocate ( data_data *data_vars, input_data *input_vars, sn_data *sn
     DEALLOC_SICM(location, SIGT,NMAT*NG,double);
     DEALLOC_SICM(location, SIGA,NMAT*NG,double);
     DEALLOC_SICM(location, SIGS,NMAT*NG,double);
+    DEALLOC_SICM(location, SLGG,NMAT*NMOM*NG*NG, double);
  }
  else {
     DEALLOC_SICM(location, SIGT,NG,double);
     DEALLOC_SICM(location, SIGA,NG,double);
     DEALLOC_SICM(location, SIGS,NG,double);
+    DEALLOC_SICM(location, SLGG,NMOM*NG*NG, double);
   } 
    DEALLOC_SICM(location,MAT,NX*NY*NZ,int);
-   DEALLOC_SICM(location, SLGG,NMOM*NG*NG, double);
-    FREE(QI);
+    DEALLOC_SICM(location, QI,NX*NY*NZ*NG, double);
     DEALLOC_SICM(location,QIM, NANG*NX*NY*NZ*NOCT*NG, double );
     DEALLOC_SICM(location, VDELT,NG,double);
 }

@@ -653,7 +653,7 @@ void mms_setup ( input_data *input_vars, para_data *para_vars, geom_data *geom_v
 void mms_allocate ( input_data *input_vars, sn_data *sn_vars, mms_data *mms_vars,
                     int *ierr, char **error, sicm_device_list *devs );
 
-void mms_deallocate (  mms_data *mms_vars ,input_data *input_vars, sicm_device_list *devs );
+void mms_deallocate (  mms_data *mms_vars ,input_data *input_vars, sn_data *sn_vars, sicm_device_list *devs );
 
 void mms_cells ( input_data *input_vars, geom_data *geom_vars, mms_data *mms_vars );
 
@@ -670,7 +670,7 @@ void mms_flux_1_2 ( input_data *input_vars, control_data *control_vars,
                     mms_data *mms_vars );
 
 void mms_verify_1 ( input_data *input_vars, para_data *para_vars, control_data *control_vars,
-                    mms_data *mms_vars, solvar_data *solvar_vars, FILE *fp_out );
+                    mms_data *mms_vars, solvar_data *solvar_vars, FILE *fp_out, sicm_device_list *devs );
 
 
 // translv.c
@@ -1073,6 +1073,18 @@ void output_flux_file ( input_data *input_vars, para_data *para_vars,
         *IERR = 1; /* exit(-1); */                                     \
     }
 
+#define ALLOC_SICM_4D(src, PNTR, NUMW, NUMX, NUMY, NUMZ, TYPE, IERR)              \
+    PNTR = sicm_device_alloc(src, (NUMW) * (NUMX) * (NUMY) * (NUMZ)*            \
+                          sizeof(TYPE));                                \
+    if (!PNTR)                                                          \
+    {                                                                   \
+        perror("ALLOC_4D");                                             \
+        fprintf(stderr,                                                 \
+                "Allocation failed for " #PNTR ".  Terminating...\n");  \
+        *IERR = 1; /* exit(-1); */                                     \
+    }
+
+
 #define ALLOC_4D(PNTR, NUMW, NUMX, NUMY, NUMZ, TYPE, IERR)              \
     PNTR = (TYPE *)calloc((NUMW) * (NUMX) * (NUMY) * (NUMZ),            \
                           sizeof(TYPE));                                \
@@ -1083,6 +1095,19 @@ void output_flux_file ( input_data *input_vars, para_data *para_vars,
                 "Allocation failed for " #PNTR ".  Terminating...\n");  \
         *IERR = 1; /* exit(-1); */                                     \
     }
+
+#define ALLOC_SICM_5D(src, PNTR, NUMV, NUMW, NUMX, NUMY, NUMZ, TYPE, IERR)        \
+    PNTR = sicm_device_alloc(src, (NUMV) *(NUMW)                       \
+                          * (NUMX) * (NUMY) * (NUMZ)*                   \
+                              sizeof(TYPE));                            \
+    if (!PNTR)                                                          \
+    {                                                                   \
+        perror("ALLOC_5D");                                             \
+        fprintf(stderr,                                                 \
+                "Allocation failed for " #PNTR ".  Terminating...\n");  \
+        *IERR = 1; /* exit(-1); */                                     \
+    }
+
 
 #define ALLOC_5D(PNTR, NUMV, NUMW, NUMX, NUMY, NUMZ, TYPE, IERR)        \
     PNTR = (TYPE *)calloc((NUMV) * (NUMW) * (NUMX) * (NUMY) * (NUMZ),   \

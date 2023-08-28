@@ -110,11 +110,11 @@ void mms_setup ( input_data *input_vars, para_data *para_vars, geom_data *geom_v
 void mms_allocate ( input_data *input_vars, sn_data *sn_vars, mms_data *mms_vars,
                     int *ierr, char **error, sicm_device_list *devs )
 {
-    ALLOC_4D(REF_FLUX, NX, NY, NZ, NG, double, ierr);
-    ALLOC_5D(REF_FLUXM, (CMOM-1), NX, NY, NZ, NG, double, ierr);
+    sicm_device *src = devs->devices[0];
+    ALLOC_SICM_4D(src, REF_FLUX, NX, NY, NZ, NG, double, ierr);
+    ALLOC_SICM_5D(src, REF_FLUXM, (CMOM-1), NX, NY, NZ, NG, double, ierr);
 
     if ( *ierr != 0 ) return;
-    sicm_device *src = devs->devices[0];
     ALLOC_SICM_1D(src, IB, (NX+1), double, ierr);
     ALLOC_SICM_1D(src, JB, (NY+1), double, ierr);
     ALLOC_SICM_1D(src, KB, (NZ+1), double, ierr);
@@ -123,11 +123,11 @@ void mms_allocate ( input_data *input_vars, sn_data *sn_vars, mms_data *mms_vars
 /*******************************************************************************
  * Deallocate MMS arrays.
  *******************************************************************************/
-void mms_deallocate (  mms_data *mms_vars, input_data *input_vars, sicm_device_list *devs )
+void mms_deallocate (  mms_data *mms_vars, input_data *input_vars, sn_data *sn_vars, sicm_device_list *devs )
 {
     sicm_device *location = devs->devices[0];
-    if (REF_FLUX)  FREE(REF_FLUX);
-    if (REF_FLUXM) FREE(REF_FLUXM);
+    if (REF_FLUX)  DEALLOC_SICM(location, REF_FLUX, NX*NY*NZ*NG, double);
+    if (REF_FLUXM) DEALLOC_SICM(location, REF_FLUXM, (CMOM-1)*NX*NY*NZ*NG, double);
     if (IB)        DEALLOC_SICM(location, IB,(NX+1),double);
     if (JB)        DEALLOC_SICM(location, JB,(NY+1),double);
     if (KB)        DEALLOC_SICM(location, KB,(NZ+1),double);
@@ -568,7 +568,7 @@ void mms_flux_1_2 ( input_data *input_vars, control_data *control_vars,
  *******************************************************************************/
 // TODO: Add USEMKL functions
 void mms_verify_1 ( input_data *input_vars, para_data *para_vars, control_data *control_vars,
-                    mms_data *mms_vars, solvar_data *solvar_vars, FILE *fp_out )
+                    mms_data *mms_vars, solvar_data *solvar_vars, FILE *fp_out, sicm_device_list *devs )
 {
 /*******************************************************************************
  * Local variables
@@ -578,7 +578,8 @@ void mms_verify_1 ( input_data *input_vars, para_data *para_vars, control_data *
     double *df;
 
     // Use macro DF_4D(NX,NY,NZ,NG) to index df
-    ALLOC_4D(df, NX, NY, NZ, NG, double, &ierr);
+    sicm_device *src = devs->devices[0];
+    ALLOC_SICM_4D(src, df, NX, NY, NZ, NG, double, &ierr);
 
     for ( g = 0; g < NG; g++ )
     {
@@ -630,6 +631,6 @@ void mms_verify_1 ( input_data *input_vars, para_data *para_vars, control_data *
                   "****************************************"
                   "****************************************\n\n", dfmx, dfmn );
     }
-
-    FREE(df);
+   sicm_device *location = devs->devices[0];
+    DEALLOC_SICM(location, df, NX*NY*NZ*NG, double);
 }

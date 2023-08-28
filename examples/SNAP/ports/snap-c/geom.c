@@ -35,7 +35,7 @@ void geom_alloc ( input_data *input_vars, geom_data *geom_vars, int *ierr, sicm_
     sicm_device *src = devs->devices[0];
     ALLOC_SICM_1D(src, HJ, NANG, double, ierr);
     ALLOC_SICM_1D(src, HK, NANG, double, ierr);
-    ALLOC_5D(DINV, NANG, NX, NY, NZ, NG, double, ierr);
+    ALLOC_SICM_5D(src, DINV, NANG, NX, NY, NZ, NG, double, ierr);
 }
 
 /***********************************************************************
@@ -54,7 +54,7 @@ void geom_dealloc ( geom_data *geom_vars, input_data *input_vars, sicm_device_li
     sicm_device *location = devs->devices[0];
     DEALLOC_SICM(location, HJ,NANG,double);
     DEALLOC_SICM(location, HK,NANG,double);
-    FREE(DINV);
+    DEALLOC_SICM(location, DINV, NANG*NX*NY*NZ*NG, double);
 
 /***********************************************************************
  * Deallocate the diagonal related arrays
