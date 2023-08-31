@@ -8,8 +8,6 @@ env:
     JEMALLOC_PATH: /tmp/jemalloc
     CC: mpicc
     CXX: mpicxx
-    CXX_FLAGS: -fopenmp
-    C_FLAGS: -fopenmp
     
 
 jobs:
