@@ -8,6 +8,9 @@ env:
     JEMALLOC_PATH: /tmp/jemalloc
     CC: mpicc
     CXX: mpicxx
+    CXX_FLAGS: -fopenmp
+    C_FLAGS: -fopenmp
+    
 
 jobs:
   build:
@@ -39,11 +42,11 @@ jobs:
       # See https://cmake.org/cmake/help/latest/variable/CMAKE_BUILD_TYPE.html?highlight=cmake_build_type
       run: |
         export PKG_CONFIG_PATH="${{env.JEMALLOC_PATH}}/lib/pkgconfig:${PKG_CONFIG_PATH}"
-        cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DHUGE_ALLOC_TESTS=OFF
+        cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DHUGE_ALLOC_TESTS=OFF -DCMAKE_C_FLAGS=-fopenmp -DCMAKE_CXX_FLAGS=-fopenmp
 
     - name: Build
       # Build your program with the given configuration
-      run: cmake -DCMAKE_CXX_COMPILER=${{env.CXX}} -DCMAKE_C_COMPILER=${{env.CC}} -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} 
+      run: cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}} 
 
     - name: Test
       working-directory: ${{github.workspace}}/build
