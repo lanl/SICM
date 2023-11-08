@@ -24,6 +24,10 @@
 #include <hip/hip_runtime.h>
 #endif
 
+#ifdef SYCL
+#include "detect_devices/sycl.h"
+#endif
+
 int normal_page_size = -1;
 
 sicm_device_tag sicm_get_device_tag(char *env) {
@@ -54,6 +58,8 @@ char * sicm_device_tag_str(sicm_device_tag tag) {
         return "SICM_OPTANE";
     case SICM_HIP:
         return "SICM_HIP";
+    case SICM_SYCL:
+        return "SICM_SYCL";
     case INVALID_TAG:
         break;
   }
@@ -257,6 +263,11 @@ void* sicm_device_alloc(struct sicm_device* device, size_t size) {
         }
         #endif
         break;
+    case SICM_SYCL:
+        #ifdef SYCL
+        return sicm_alloc_sycl_device(device, size);
+        #endif
+        break;
     case INVALID_TAG:
       break;
   }
@@ -297,6 +308,7 @@ void* sicm_device_alloc_mmapped(struct sicm_device* device, size_t size, int fd,
         return ptr;
       }
     case SICM_HIP:
+    case SICM_SYCL:
     case INVALID_TAG:
       break;
   }
@@ -312,6 +324,7 @@ int sicm_can_place_exact(struct sicm_device* device) {
     case SICM_POWERPC_HBM:
       return 1;
     case SICM_HIP:
+    case SICM_SYCL:
     case INVALID_TAG:
       break;
   }
@@ -366,6 +379,7 @@ void* sicm_alloc_exact(struct sicm_device* device, void* base, size_t size) {
         return ptr;
       }
     case SICM_HIP:
+    case SICM_SYCL:
     case INVALID_TAG:
       break;
   }
@@ -443,6 +457,9 @@ int sicm_device_eq(sicm_device* dev1, sicm_device* dev2) {
       return 1;
     case SICM_HIP:
       return (dev1->data.hip.id == dev2->data.hip.id);
+    case SICM_SYCL:
+      return ((dev1->data.sycl.device == dev2->data.sycl.device) &&
+              (dev1->data.sycl.context == dev2->data.sycl.context));
     case INVALID_TAG:
     default:
       return 0;
@@ -475,6 +492,7 @@ int sicm_pin(struct sicm_device* device) {
       ret = numa_run_on_node(device->node);
       break;
     case SICM_HIP:
+    case SICM_SYCL:
     case INVALID_TAG:
       break;
   }

@@ -25,6 +25,10 @@ extern extent_hooks_t sicm_arena_mmap_hooks;
 extern extent_hooks_t sicm_arena_HIP_hooks;
 #endif
 
+#ifdef SYCL
+extern extent_hooks_t sicm_arena_sycl_hooks;
+#endif
+
 static void sarena_init() {
 	int err;
 	size_t miblen;
@@ -91,6 +95,12 @@ static sarena *sicm_arena_new(size_t sz, sicm_arena_flags flags, sicm_device_lis
 				return NULL;
 			}
 #endif
+#ifdef SYCL
+			// don't create arenas that cross SYCL devices
+			if (devs->devices[i]->tag == SICM_SYCL) {
+				return NULL;
+			}
+#endif
 		}
 	}
 
@@ -130,6 +140,11 @@ static sarena *sicm_arena_new(size_t sz, sicm_arena_flags flags, sicm_device_lis
 	#ifdef HIP
 	if ((devs->count == 1) && (devs->devices[0]->tag == SICM_HIP)) {
 		sa->hooks = sicm_arena_HIP_hooks;
+	}
+	#endif
+	#if SYCL
+	if ((devs->count == 1) && (devs->devices[0]->tag == SICM_SYCL)) {
+		sa->hooks = sicm_arena_sycl_hooks;
 	}
 	#endif
 	new_hooks = &sa->hooks;
